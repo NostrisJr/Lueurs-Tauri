@@ -17,6 +17,7 @@
     "fs:allow-mkdir",
     "fs:allow-read-file",
     "fs:allow-write-file",
+    "fs:allow-rename",
     "shell:allow-execute",
     {
       "identifier": "shell:allow-execute",
@@ -36,6 +37,7 @@
         }
       ]
     },
-    "shell:default"
+    "shell:default",
+    "dialog:default"
   ]
 }

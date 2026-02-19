@@ -4,15 +4,16 @@
   "version": "0.1.0",
   "identifier": "com.theophiledonato.lueurs-tauri",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "pnpm run build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
         "title": "lueurs-tauri",
+        "decorations": true,
         "width": 1200,
         "height": 800
       }

@@ -1,19 +1,23 @@
 import { Crepe } from "@milkdown/crepe";
 import "@milkdown/crepe/theme/common/style.css";
-import "@milkdown/crepe/theme/frame.css"; // TODO: custom theme
+import "@milkdown/crepe/theme/frame.css";
+import "../lib/MilkdownStyle.css"; //TODO : comprendre les différences avec les thèmes de base et qui overwrite
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
+import { NoteFile } from "../hooks/useFileTree";
+import { EditableText } from "./EditableText";
+import { useNote } from "../hooks/useNote";
 
-interface Props {
-    value: string;
+interface MilkdownEditorProps {
+    node: NoteFile;
     onChange: (markdown: string) => void;
     className?: string;
 }
 
-const CrepeEditor: React.FC<Props> = ({ value, onChange }) => {
+function CrepeEditor({ node: note, onChange }: MilkdownEditorProps) {
     useEditor((root) => {
         const crepe = new Crepe({
             root,
-            defaultValue: value,
+            defaultValue: note.content,
             features: {
                 [Crepe.Feature.CodeMirror]: true,
             },
@@ -33,11 +37,21 @@ const CrepeEditor: React.FC<Props> = ({ value, onChange }) => {
     return <Milkdown />;
 };
 
-export const MilkdownEditor: React.FC<Props> = ({ value, onChange, className }) => {
+export function MilkdownEditor({ node, onChange, className }: MilkdownEditorProps) {
+    const { handleRename } = useNote();
     return (
         <div className={className}>
+            <div className=" border-gray-100 border-b px-4 py-2 flex justify-start">
+                <EditableText
+                    className="text-3xl h-12 font-body border-gray-100 font-title text-left flex items-center"
+                    value={node.name}
+                    onSave={async (newName) => {
+                        await handleRename(node.id, newName, false);
+                    }}
+                />
+            </div>
             <MilkdownProvider>
-                <CrepeEditor value={value} onChange={onChange} />
+                <CrepeEditor node={node} onChange={onChange} />
             </MilkdownProvider>
         </div>
     );

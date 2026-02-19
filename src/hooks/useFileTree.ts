@@ -1,12 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { readDir, readTextFile, writeTextFile, mkdir, rename } from "@tauri-apps/plugin-fs";
+import { useAtom, useSetAtom } from "jotai";
+import { activeNoteAtom, errorAtom, folderPathAtom, loadingAtom, treeAtom } from "../lib/Atoms";
 import {
-    readDir,
-    readTextFile,
-    writeTextFile,
-    mkdir,
-} from "@tauri-apps/plugin-fs";
-import { Command } from "@tauri-apps/plugin-shell";
+    extractTitle,
+    extractTags,
+    sortNodes,
+    updateNodeInTree,
+    renameNodeInTree,
+    deleteNodeInTree,
+    addNodeInTree,
+    flattenTree,
+    moveToTrash,
+    findNextAvailableNumber,
+} from "../lib/FileTreeHelpers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,54 +37,16 @@ export interface FolderNode {
 
 export type TreeNode = NoteFile | FolderNode;
 
-// ── Utilitaires ───────────────────────────────────────────────────────────────
+export { flattenTree };
 
-function extractTitle(markdown: string): string {
-    for (const line of markdown.split("\n")) {
-        const trimmed = line.replace(/^#+\s*/, "").trim();
-        if (trimmed) return trimmed;
-    }
-    return "Sans titre";
-}
+// ── Constantes ────────────────────────────────────────────────────────────────
 
-function extractTags(markdown: string): string[] {
-    const match = markdown.match(/^---\n([\s\S]*?)\n---/);
-    if (!match) return [];
-    const tagsMatch = match[1].match(/tags:\s*\[([^\]]*)\]/);
-    if (!tagsMatch) return [];
-    return tagsMatch[1].split(",").map((t) => t.trim()).filter(Boolean);
-}
-
-function sortNodes(nodes: TreeNode[]): TreeNode[] {
-    return [...nodes].sort((a, b) => {
-        if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
-        return a.name.localeCompare(b.name, "fr");
-    });
-}
-
-const STORAGE_KEY = "lueurs_folder_path";
 const DEBOUNCE_MS = 1000;
-
-// ── Fonction pour mettre à la poubelle ───────────────────────────────────────
-
-async function moveToTrash(filePath: string) {
-    // Utiliser la commande native macOS pour mettre à la poubelle
-    const command = Command.create("osascript", [
-        "-e",
-        `tell application "Finder" to delete POSIX file "${filePath}"`
-    ]);
-
-    await command.execute();
-}
 
 // ── Chargement récursif ───────────────────────────────────────────────────────
 
 async function loadTree(dirPath: string): Promise<TreeNode[]> {
-    const entries = await readDir(dirPath, {
-        // @ts-ignore
-        baseDir: null
-    });
-
+    const entries = await readDir(dirPath, { baseDir: null } as any);
     const nodes: TreeNode[] = [];
 
     await Promise.all(
@@ -94,20 +64,16 @@ async function loadTree(dirPath: string): Promise<TreeNode[]> {
                     children: sortNodes(children),
                 });
             } else if (entry.name.endsWith(".md")) {
-                const content = await readTextFile(fullPath, {
-                    // @ts-ignore
-                    baseDir: null
-                });
-                const note = {
-                    kind: "file" as const,
+                const content = await readTextFile(fullPath, { baseDir: null } as any);
+                nodes.push({
+                    kind: "file",
                     id: fullPath,
                     name: entry.name.replace(/\.md$/, ""),
                     title: extractTitle(content),
                     content,
                     tags: extractTags(content),
                     updatedAt: new Date(),
-                };
-                nodes.push(note);
+                });
             }
         }),
     );
@@ -115,143 +81,157 @@ async function loadTree(dirPath: string): Promise<TreeNode[]> {
     return sortNodes(nodes);
 }
 
-// ── Aplatissement de l'arbre (pour recherche) ─────────────────────────────────
-
-export function flattenTree(nodes: TreeNode[]): NoteFile[] {
-    return nodes.flatMap((node) =>
-        node.kind === "file" ? [node] : flattenTree(node.children),
-    );
-}
-
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useFileTree() {
-    const [folderPath, setFolderPath] = useState<string | null>(
-        () => localStorage.getItem(STORAGE_KEY),
-    );
-    const [tree, setTree] = useState<TreeNode[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [folderPath, setFolderPath] = useAtom(folderPathAtom);
+    const setTree = useSetAtom(treeAtom);
+    const setLoading = useSetAtom(loadingAtom);
+    const setError = useSetAtom(errorAtom);
+    const setActiveNote = useSetAtom(activeNoteAtom);
 
     const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-    const pickFolder = useCallback(async () => {
-        const selected = await open({ directory: true, multiple: false });
-        if (typeof selected === "string") {
-            localStorage.setItem(STORAGE_KEY, selected);
-            setFolderPath(selected);
-            setError(null);
-        }
-    }, []);
+    // ── Chargement ────────────────────────────────────────────────────────────
 
-    const reload = useCallback(async (path: string) => {
+    async function reload(path: string) {
         setLoading(true);
         setError(null);
         try {
             const nodes = await loadTree(path);
             setTree(nodes);
         } catch (e) {
-            setError(`Impossible de lire le dossier : ${e}`);
+            setError(`Impossible de lire le dossier : ${e instanceof Error ? e.message : String(e)}`);
+            setTree([]);
         } finally {
             setLoading(false);
         }
-    }, []);
-
-    useEffect(() => {
-        if (folderPath) reload(folderPath);
-    }, [folderPath, reload]);
-
-    function updateNodeInTree(nodes: TreeNode[], fileId: string, patch: Partial<NoteFile>): TreeNode[] {
-        return nodes.map((node) => {
-            if (node.kind === "file" && node.id === fileId) {
-                return { ...node, ...patch };
-            }
-            if (node.kind === "folder") {
-                return { ...node, children: updateNodeInTree(node.children, fileId, patch) };
-            }
-            return node;
-        });
     }
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-    const updateNote = useCallback(
-        (fileId: string, markdown: string) => {
-            setTree((prev) =>
-                updateNodeInTree(prev, fileId, {
-                    content: markdown,
-                    title: extractTitle(markdown),
-                    tags: extractTags(markdown),
-                    updatedAt: new Date(),
-                }),
-            );
+    async function initFolder() {
+        if (folderPath) await reload(folderPath);
+    }
 
-            const existing = debounceTimers.current.get(fileId);
-            if (existing) clearTimeout(existing);
+    async function pickFolder() {
+        const selected = await open({ directory: true, multiple: false });
+        if (typeof selected === "string") {
+            setTree([]);
+            setActiveNote(null);
+            setError(null);
+            setFolderPath(selected);
+            await reload(selected);
+        }
+    }
 
-            const timer = setTimeout(async () => {
-                await writeTextFile(fileId, markdown, {
-                    // @ts-ignore
-                    baseDir: null
-                });
-                debounceTimers.current.delete(fileId);
-            }, DEBOUNCE_MS);
+    // ── Écriture ──────────────────────────────────────────────────────────────
 
-            debounceTimers.current.set(fileId, timer);
-        },
-        [],
-    );
+    function updateNote(fileId: string, markdown: string) {
+        setTree((prev) =>
+            updateNodeInTree(prev, fileId, {
+                content: markdown,
+                title: extractTitle(markdown),
+                tags: extractTags(markdown),
+                updatedAt: new Date(),
+            })
+        );
 
-    const createNote = useCallback(
-        async (dirPath: string) => {
-            const fileName = `note-${Date.now()}.md`;
-            const filePath = `${dirPath}/${fileName}`;
-            const content = "# Nouvelle note\n\nCommence à écrire...\n";
-            await writeTextFile(filePath, content, {
-                // @ts-ignore
-                baseDir: null
-            });
-            if (folderPath) await reload(folderPath);
-            return filePath;
-        },
-        [folderPath, reload],
-    );
+        const existing = debounceTimers.current.get(fileId);
+        if (existing) clearTimeout(existing);
 
-    const createFolder = useCallback(
-        async (dirPath: string) => {
-            const name = `Nouveau dossier ${Date.now()}`;
-            await mkdir(`${dirPath}/${name}`, {
-                // @ts-ignore
-                baseDir: null
-            });
-            if (folderPath) await reload(folderPath);
-        },
-        [folderPath, reload],
-    );
+        const timer = setTimeout(async () => {
+            await writeTextFile(fileId, markdown, { baseDir: null } as any);
+            debounceTimers.current.delete(fileId);
+        }, DEBOUNCE_MS);
 
-    const deleteNote = useCallback(
-        async (fileId: string) => {
-            try {
-                await moveToTrash(fileId);
-                if (folderPath) await reload(folderPath);
-            } catch (e) {
-                console.error("Erreur lors de la mise à la poubelle:", e);
-                // Fallback : afficher une erreur à l'utilisateur
-                alert(`Impossible de mettre le fichier à la poubelle : ${e}`);
+        debounceTimers.current.set(fileId, timer);
+    }
+
+    // ── Création ──────────────────────────────────────────────────────────────
+
+    async function createNote(dirPath: string) {
+        const entries = await readDir(dirPath, { baseDir: null } as any);
+        const number = await findNextAvailableNumber(entries, "Nouvelle note", false);
+        const fileName = `Nouvelle note ${number}.md`;
+        const filePath = `${dirPath}/${fileName}`;
+        const content = "# Nouvelle note\n\nCommence à écrire...\n";
+
+        await writeTextFile(filePath, content, { baseDir: null } as any);
+
+        const newNode: NoteFile = {
+            kind: "file",
+            id: filePath,
+            name: `Nouvelle note ${number}`,
+            title: "Nouvelle note",
+            content,
+            tags: [],
+            updatedAt: new Date(),
+        };
+
+        setTree((prev) => addNodeInTree(prev, dirPath, newNode));
+        return filePath;
+    }
+
+    async function createFolder(dirPath: string) {
+        const entries = await readDir(dirPath, { baseDir: null } as any);
+        const number = await findNextAvailableNumber(entries, "Nouveau dossier", true);
+        const name = `Nouveau dossier ${number}`;
+        const fullPath = `${dirPath}/${name}`;
+
+        await mkdir(fullPath, { baseDir: null } as any);
+
+        const newNode: FolderNode = {
+            kind: "folder",
+            id: fullPath,
+            name,
+            children: [],
+        };
+
+        setTree((prev) => addNodeInTree(prev, dirPath, newNode));
+    }
+
+    // ── Suppression ───────────────────────────────────────────────────────────
+
+    async function deleteNote(fileId: string) {
+        await moveToTrash(fileId);
+        setTree((prev) => deleteNodeInTree(prev, fileId));
+    }
+
+    async function deleteFolder(folderId: string, recursive = false) {
+        if (!recursive) {
+            const entries = await readDir(folderId, { baseDir: null } as any);
+            const visible = entries.filter((e) => e.name && !e.name.startsWith("."));
+            if (visible.length > 0) {
+                throw new Error("Le dossier n'est pas vide.");
             }
-        },
-        [folderPath, reload],
-    );
+        }
+        await moveToTrash(folderId);
+        setTree((prev) => deleteNodeInTree(prev, folderId));
+    }
+
+    // ── Renommage ─────────────────────────────────────────────────────────────
+
+    async function renameNode(oldPath: string, newName: string, isFolder: boolean) {
+        const pathParts = oldPath.split("/");
+        pathParts[pathParts.length - 1] = isFolder ? newName : `${newName}.md`;
+        const newPath = pathParts.join("/");
+
+        await rename(oldPath, newPath, { baseDir: null } as any);
+        setTree((prev) => renameNodeInTree(prev, oldPath, newPath, newName));
+
+        return newPath;
+    }
+
+    // ── API ───────────────────────────────────────────────────────────────────
 
     return {
-        folderPath,
-        tree,
-        loading,
-        error,
         pickFolder,
+        initFolder,
         reload: () => folderPath && reload(folderPath),
         createNote,
         createFolder,
         updateNote,
         deleteNote,
+        deleteFolder,
+        renameNode,
     };
 }
