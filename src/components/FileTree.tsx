@@ -196,7 +196,7 @@ export function FileTree({
     activeId,
 }: FileTreeProps) {
     return (
-        <div className="px-2 py-1">
+        <div className="px-2 py-1 overflow-scroll">
             <TreeNodes
                 nodes={nodes}
                 activeId={activeId}

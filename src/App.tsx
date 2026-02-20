@@ -3,8 +3,8 @@ import { useFileTree } from "./hooks/useFileTree";
 import { sfCheckmark, sfFolder } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { SideBar } from "./components/SideBar";
-import { useAtom, useAtomValue } from "jotai";
-import { activeNoteAtom, folderPathAtom, loadingAtom, savingAtom } from "./lib/Atoms";
+import { useAtomValue } from "jotai";
+import { activeNoteAtom, folderPathAtom, loadingAtom, savingAtom } from "./lib/atoms";
 import { useNote } from "./hooks/useNote";
 import { useEffect } from "react";
 
@@ -34,40 +34,25 @@ function WelcomeScreen({ onPick }: { onPick: () => void }) {
 }
 
 export default function App() {
-  const { pickFolder, updateNote, initFolder } = useFileTree()
-  const { handleCreateNote } = useNote()
+  const { pickFolder, initFolder } = useFileTree();
+  const { handleCreateNote, handleChange } = useNote();
 
-  const activeNote = useAtomValue(activeNoteAtom)
-  const [saving, setSaving] = useAtom(savingAtom)
-  const folderPath = useAtomValue(folderPathAtom)
-  const loading = useAtomValue(loadingAtom)
+  const activeNote = useAtomValue(activeNoteAtom);
+  const saving = useAtomValue(savingAtom);
+  const folderPath = useAtomValue(folderPathAtom);
+  const loading = useAtomValue(loadingAtom);
 
   useEffect(() => {
-    if (folderPath) {
-      initFolder();
-    }
+    if (folderPath) initFolder();
   }, [folderPath]);
-
-  function handleChange(markdown: string) {
-    if (!activeNote) return;
-    setSaving(true);
-    updateNote(activeNote.id, markdown);
-    // L'indicateur "saving" s'éteint après le debounce + un peu de marge
-    // TODO: système de réponse plus robuste : ack du back
-    setTimeout(() => setSaving(false), 1200);
-  }
 
   if (!folderPath) return <WelcomeScreen onPick={pickFolder} />;
 
   return (
     <div className="h-screen flex bg-white text-gray-900 overflow-hidden text-sm">
-
       <SideBar />
 
-      {/* ── Éditeur ───────────────────────────────────────────── */}
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">
-
-        {/* Barre de statut */}
         {activeNote && (
           <div className="flex items-center justify-end px-4 h-8 border-b border-gray-100 shrink-0">
             <span
@@ -84,7 +69,6 @@ export default function App() {
           {activeNote ? (
             <MilkdownEditor
               key={activeNote.id}
-              node={activeNote}
               onChange={handleChange}
               className="h-full"
             />

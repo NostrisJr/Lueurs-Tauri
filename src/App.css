@@ -5,3 +5,12 @@
     --font-default: 'Inter', Arial, Helvetica, sans-serif;
     --font-code: Fira Code, Menlo, Monaco, 'Courier New', Courier, monospace;
 }
+
+:root {
+    overscroll-behavior: none;
+}
+
+.scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gray-300) transparent;
+}

@@ -1,10 +1,55 @@
 import type { NoteFile, TreeNode } from "../hooks/useFileTree";
 import { Command } from "@tauri-apps/plugin-shell";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface Frontmatter {
+    [key: string]: string | string[] | undefined;
+}
+
+// ── Frontmatter ───────────────────────────────────────────────────────────────
+
+export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; body: string } {
+    const match = markdown.match(/^---\n([\s\S]*?)\n---\n?/);
+    if (!match) return { frontmatter: {}, body: markdown };
+
+    const raw = match[1];
+    const body = markdown.slice(match[0].length);
+    const frontmatter: Frontmatter = {};
+
+    for (const line of raw.split("\n")) {
+        const colonIdx = line.indexOf(":");
+        if (colonIdx === -1) continue;
+        const key = line.slice(0, colonIdx).trim();
+        const value = line.slice(colonIdx + 1).trim();
+
+        if (value.startsWith("[") && value.endsWith("]")) {
+            frontmatter[key] = value.slice(1, -1).split(",").map((v) => v.trim()).filter(Boolean);
+        } else {
+            frontmatter[key] = value;
+        }
+    }
+
+    return { frontmatter, body };
+}
+
+export function serializeFrontmatter(frontmatter: Frontmatter, body: string): string {
+    const keys = Object.keys(frontmatter);
+    if (keys.length === 0) return body;
+
+    const lines = keys.map((key) => {
+        const value = frontmatter[key];
+        if (Array.isArray(value)) return `${key}: [${value.join(", ")}]`;
+        return `${key}: ${value ?? ""}`;
+    });
+
+    return `---\n${lines.join("\n")}\n---\n${body}`;
+}
+
 // ── Extraction de métadonnées ─────────────────────────────────────────────────
 
-export function extractTitle(markdown: string): string {
-    for (const line of markdown.split("\n")) {
+export function extractTitle(body: string): string {
+    for (const line of body.split("\n")) {
         const trimmed = line.replace(/^#+\s*/, "").trim();
         if (trimmed) return trimmed;
     }
@@ -12,11 +57,9 @@ export function extractTitle(markdown: string): string {
 }
 
 export function extractTags(markdown: string): string[] {
-    const match = markdown.match(/^---\n([\s\S]*?)\n---/);
-    if (!match) return [];
-    const tagsMatch = match[1].match(/tags:\s*\[([^\]]*)\]/);
-    if (!tagsMatch) return [];
-    return tagsMatch[1].split(",").map((t) => t.trim()).filter(Boolean);
+    const { frontmatter } = parseFrontmatter(markdown);
+    const tags = frontmatter.tags;
+    return Array.isArray(tags) ? tags : [];
 }
 
 // ── Tri ───────────────────────────────────────────────────────────────────────

@@ -15,11 +15,18 @@
         "title": "lueurs-tauri",
         "decorations": true,
         "width": 1200,
-        "height": 800
+        "height": 800,
+        "dragDropEnabled": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "**"
+        ]
+      }
     }
   },
   "bundle": {

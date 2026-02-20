@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readDir, readTextFile, writeTextFile, mkdir, rename } from "@tauri-apps/plugin-fs";
 import { useAtom, useSetAtom } from "jotai";
-import { activeNoteAtom, errorAtom, folderPathAtom, loadingAtom, treeAtom } from "../lib/Atoms";
+import { activeNoteAtom, errorAtom, folderPathAtom, loadingAtom, treeAtom } from "../lib/atoms";
 import {
     extractTitle,
     extractTags,
@@ -14,7 +14,10 @@ import {
     flattenTree,
     moveToTrash,
     findNextAvailableNumber,
-} from "../lib/FileTreeHelpers";
+    parseFrontmatter,
+    serializeFrontmatter,
+    type Frontmatter,
+} from "../lib/fileTreeHelpers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,8 +25,10 @@ export interface NoteFile {
     kind: "file";
     id: string;
     name: string;
+    type: string | null;
     title: string;
-    content: string;
+    body: string;
+    frontmatter: Frontmatter;
     tags: string[];
     updatedAt: Date;
 }
@@ -38,10 +43,28 @@ export interface FolderNode {
 export type TreeNode = NoteFile | FolderNode;
 
 export { flattenTree };
+export type { Frontmatter };
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
 const DEBOUNCE_MS = 1000;
+
+// ── Helper interne ────────────────────────────────────────────────────────────
+
+function noteFromRaw(fullPath: string, fileName: string, rawContent: string): NoteFile {
+    const { frontmatter, body } = parseFrontmatter(rawContent);
+    return {
+        kind: "file",
+        id: fullPath,
+        name: fileName.replace(/\.md$/, ""),
+        type: null,
+        title: extractTitle(body),
+        body,
+        frontmatter,
+        tags: extractTags(rawContent),
+        updatedAt: new Date(),
+    };
+}
 
 // ── Chargement récursif ───────────────────────────────────────────────────────
 
@@ -64,16 +87,8 @@ async function loadTree(dirPath: string): Promise<TreeNode[]> {
                     children: sortNodes(children),
                 });
             } else if (entry.name.endsWith(".md")) {
-                const content = await readTextFile(fullPath, { baseDir: null } as any);
-                nodes.push({
-                    kind: "file",
-                    id: fullPath,
-                    name: entry.name.replace(/\.md$/, ""),
-                    title: extractTitle(content),
-                    content,
-                    tags: extractTags(content),
-                    updatedAt: new Date(),
-                });
+                const rawContent = await readTextFile(fullPath, { baseDir: null } as any);
+                nodes.push(noteFromRaw(fullPath, entry.name, rawContent));
             }
         }),
     );
@@ -125,12 +140,15 @@ export function useFileTree() {
 
     // ── Écriture ──────────────────────────────────────────────────────────────
 
-    function updateNote(fileId: string, markdown: string) {
+    function updateNote(fileId: string, body: string, frontmatter: Frontmatter) {
+        const raw = serializeFrontmatter(frontmatter, body);
+
         setTree((prev) =>
             updateNodeInTree(prev, fileId, {
-                content: markdown,
-                title: extractTitle(markdown),
-                tags: extractTags(markdown),
+                body,
+                frontmatter,
+                title: extractTitle(body),
+                tags: extractTags(raw),
                 updatedAt: new Date(),
             })
         );
@@ -139,7 +157,7 @@ export function useFileTree() {
         if (existing) clearTimeout(existing);
 
         const timer = setTimeout(async () => {
-            await writeTextFile(fileId, markdown, { baseDir: null } as any);
+            await writeTextFile(fileId, raw, { baseDir: null } as any);
             debounceTimers.current.delete(fileId);
         }, DEBOUNCE_MS);
 
@@ -153,16 +171,18 @@ export function useFileTree() {
         const number = await findNextAvailableNumber(entries, "Nouvelle note", false);
         const fileName = `Nouvelle note ${number}.md`;
         const filePath = `${dirPath}/${fileName}`;
-        const content = "# Nouvelle note\n\nCommence à écrire...\n";
+        const body = "Commence à écrire...\n";
 
-        await writeTextFile(filePath, content, { baseDir: null } as any);
+        await writeTextFile(filePath, body, { baseDir: null } as any);
 
         const newNode: NoteFile = {
             kind: "file",
             id: filePath,
             name: `Nouvelle note ${number}`,
+            type: null,
             title: "Nouvelle note",
-            content,
+            body,
+            frontmatter: {},
             tags: [],
             updatedAt: new Date(),
         };
