@@ -9,16 +9,8 @@
     "core:default",
     "opener:default",
     "dialog:allow-open",
-    "fs:allow-read-dir",
-    "fs:allow-read-text-file",
-    "fs:allow-write-text-file",
-    "fs:allow-exists",
-    "fs:allow-remove",
-    "fs:allow-mkdir",
-    "fs:allow-read-file",
-    "fs:allow-write-file",
-    "fs:allow-rename",
-    "shell:allow-execute",
+    "dialog:default",
+    "shell:default",
     {
       "identifier": "shell:allow-execute",
       "allow": [
@@ -30,14 +22,76 @@
       ]
     },
     {
-      "identifier": "fs:scope",
+      "identifier": "fs:allow-read-dir",
       "allow": [
         {
           "path": "**"
         }
       ]
     },
-    "shell:default",
-    "dialog:default"
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    }
   ]
 }

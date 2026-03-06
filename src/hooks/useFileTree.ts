@@ -18,8 +18,10 @@ import {
     serializeFrontmatter,
     type Frontmatter,
 } from "../lib/fileTreeHelpers";
+import { invoke } from "@tauri-apps/api/core";
+import { createLogger } from "../lib/logger";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────
 
 export interface NoteFile {
     kind: "file";
@@ -41,15 +43,15 @@ export interface FolderNode {
 }
 
 export type TreeNode = NoteFile | FolderNode;
-
 export { flattenTree };
 export type { Frontmatter };
 
-// ── Constantes ────────────────────────────────────────────────────────────────
+// ── Constantes ─────────────────────────────────────────────────────────────
 
 const DEBOUNCE_MS = 1000;
+const log = createLogger("useFileTree");
 
-// ── Helper interne ────────────────────────────────────────────────────────────
+// ── Helpers purs (sans état) ───────────────────────────────────────────────
 
 function noteFromRaw(fullPath: string, fileName: string, rawContent: string): NoteFile {
     const { frontmatter, body } = parseFrontmatter(rawContent);
@@ -66,8 +68,6 @@ function noteFromRaw(fullPath: string, fileName: string, rawContent: string): No
     };
 }
 
-// ── Chargement récursif ───────────────────────────────────────────────────────
-
 async function loadTree(dirPath: string): Promise<TreeNode[]> {
     const entries = await readDir(dirPath, { baseDir: null } as any);
     const nodes: TreeNode[] = [];
@@ -75,17 +75,11 @@ async function loadTree(dirPath: string): Promise<TreeNode[]> {
     await Promise.all(
         entries.map(async (entry) => {
             if (!entry.name || entry.name.startsWith(".")) return;
-
             const fullPath = `${dirPath}/${entry.name}`;
 
             if (entry.isDirectory) {
                 const children = await loadTree(fullPath);
-                nodes.push({
-                    kind: "folder",
-                    id: fullPath,
-                    name: entry.name,
-                    children: sortNodes(children),
-                });
+                nodes.push({ kind: "folder", id: fullPath, name: entry.name, children: sortNodes(children) });
             } else if (entry.name.endsWith(".md")) {
                 const rawContent = await readTextFile(fullPath, { baseDir: null } as any);
                 nodes.push(noteFromRaw(fullPath, entry.name, rawContent));
@@ -96,7 +90,19 @@ async function loadTree(dirPath: string): Promise<TreeNode[]> {
     return sortNodes(nodes);
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
+/** Autorise le vault côté Rust (bypass du scope fs frontend). */
+async function allowVaultScope(vaultPath: string): Promise<void> {
+    log.info("autorisation scope vault", { vaultPath });
+    try {
+        await invoke("allow_vault_path", { vaultPath });
+        log.info("scope vault autorisé", { vaultPath });
+    } catch (err) {
+        log.error("échec allow_vault_path", err);
+        throw err;
+    }
+}
+
+// ── Hook ───────────────────────────────────────────────────────────────────
 
 export function useFileTree() {
     const [folderPath, setFolderPath] = useAtom(folderPathAtom);
@@ -107,7 +113,7 @@ export function useFileTree() {
 
     const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-    // ── Chargement ────────────────────────────────────────────────────────────
+    // ── Chargement ──────────────────────────────────────────────────────────
 
     async function reload(path: string) {
         setLoading(true);
@@ -123,22 +129,28 @@ export function useFileTree() {
         }
     }
 
+    /** Appelé au démarrage — restaure le vault persisté et autorise le scope. */
     async function initFolder() {
-        if (folderPath) await reload(folderPath);
+        if (!folderPath) return;
+        log.info("restauration vault au démarrage", { folderPath });
+        await allowVaultScope(folderPath);
+        await reload(folderPath);
     }
 
+    /** Appelé quand l'utilisateur choisit un nouveau vault. */
     async function pickFolder() {
         const selected = await open({ directory: true, multiple: false });
-        if (typeof selected === "string") {
-            setTree([]);
-            setActiveNote(null);
-            setError(null);
-            setFolderPath(selected);
-            await reload(selected);
-        }
+        if (typeof selected !== "string") return;
+
+        await allowVaultScope(selected);
+        setTree([]);
+        setActiveNote(null);
+        setError(null);
+        setFolderPath(selected);
+        await reload(selected);
     }
 
-    // ── Écriture ──────────────────────────────────────────────────────────────
+    // ── Écriture ────────────────────────────────────────────────────────────
 
     function updateNote(fileId: string, body: string, frontmatter: Frontmatter) {
         const raw = serializeFrontmatter(frontmatter, body);
@@ -164,7 +176,7 @@ export function useFileTree() {
         debounceTimers.current.set(fileId, timer);
     }
 
-    // ── Création ──────────────────────────────────────────────────────────────
+    // ── Création ────────────────────────────────────────────────────────────
 
     async function createNote(dirPath: string) {
         const entries = await readDir(dirPath, { baseDir: null } as any);
@@ -199,17 +211,11 @@ export function useFileTree() {
 
         await mkdir(fullPath, { baseDir: null } as any);
 
-        const newNode: FolderNode = {
-            kind: "folder",
-            id: fullPath,
-            name,
-            children: [],
-        };
-
+        const newNode: FolderNode = { kind: "folder", id: fullPath, name, children: [] };
         setTree((prev) => addNodeInTree(prev, dirPath, newNode));
     }
 
-    // ── Suppression ───────────────────────────────────────────────────────────
+    // ── Suppression ─────────────────────────────────────────────────────────
 
     async function deleteNote(fileId: string) {
         await moveToTrash(fileId);
@@ -220,15 +226,13 @@ export function useFileTree() {
         if (!recursive) {
             const entries = await readDir(folderId, { baseDir: null } as any);
             const visible = entries.filter((e) => e.name && !e.name.startsWith("."));
-            if (visible.length > 0) {
-                throw new Error("Le dossier n'est pas vide.");
-            }
+            if (visible.length > 0) throw new Error("Le dossier n'est pas vide.");
         }
         await moveToTrash(folderId);
         setTree((prev) => deleteNodeInTree(prev, folderId));
     }
 
-    // ── Renommage ─────────────────────────────────────────────────────────────
+    // ── Renommage ────────────────────────────────────────────────────────────
 
     async function renameNode(oldPath: string, newName: string, isFolder: boolean) {
         const pathParts = oldPath.split("/");
@@ -237,11 +241,10 @@ export function useFileTree() {
 
         await rename(oldPath, newPath, { baseDir: null } as any);
         setTree((prev) => renameNodeInTree(prev, oldPath, newPath, newName));
-
         return newPath;
     }
 
-    // ── API ───────────────────────────────────────────────────────────────────
+    // ── API ──────────────────────────────────────────────────────────────────
 
     return {
         pickFolder,
