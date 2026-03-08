@@ -13,6 +13,7 @@ import { useRef, useCallback, useEffect } from "react";
 import { resolveImagePath } from "../hooks/useImageUpload";
 import { FrontmatterEditor } from "./FrontmatterEditor";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { createAudioBlockPlugin } from "../plugins/audio-block/audioBlockPlugin";
 import { createLogger } from "../lib/logger";
@@ -32,7 +33,6 @@ function isImagePath(p: string) { return IMAGE_EXTENSIONS.test(p); }
 type DropHandler = (paths: string[]) => void;
 const dropHandlerRef = { current: null as DropHandler | null };
 
-// On initialise le listener une seule fois au chargement du module
 getCurrentWebview().onDragDropEvent((event) => {
     if (event.payload.type !== "drop") return;
     if (!dropHandlerRef.current) return;
@@ -91,13 +91,11 @@ function CrepeEditor({
             dispatch(tr.scrollIntoView());
             view.focus();
             log.info("image insérée");
-
         });
     }, []);
 
     // ── Connecter ce composant au listener singleton ───────────────────────
     useEffect(() => {
-        // Brancher le handler sur le singleton
         dropHandlerRef.current = async (paths: string[]) => {
             for (const srcPath of paths) {
                 const filename = srcPath.split(/[/\\]/).pop() ?? "";
@@ -189,12 +187,12 @@ function CrepeEditor({
             features: {
                 [Crepe.Feature.CodeMirror]: true,
                 [Crepe.Feature.ImageBlock]: true,
+                [Crepe.Feature.BlockEdit]: true,
             },
             featureConfigs: {
                 [Crepe.Feature.ImageBlock]: {
                     onUpload: async (file: File) => {
                         log.info("onUpload image", { name: file.name });
-                        // Images paste/upload via Crepe : même stratégie tmp → vault
                         try {
                             const { appDataDir } = await import("@tauri-apps/api/path");
                             const { writeFile, mkdir } = await import("@tauri-apps/plugin-fs");
@@ -219,6 +217,8 @@ function CrepeEditor({
                         }
                     },
                     proxyDomURL: async (url: string) => {
+                        // Convertit un chemin absolu en URL asset:// lisible par la webview.
+                        // Appelé par Crepe à chaque fois qu'il affiche une image.
                         if (url.startsWith("/") || /^[A-Z]:\\/i.test(url)) {
                             return await resolveImagePath(url);
                         }

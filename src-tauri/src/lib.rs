@@ -10,7 +10,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             allow_vault_path,
-            copy_resource_to_vault
+            copy_resource_to_vault,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -27,9 +27,11 @@ async fn allow_vault_path(app: tauri::AppHandle, vault_path: String) -> Result<(
     Ok(())
 }
 
-/// Copie un fichier depuis son emplacement source (ex: Desktop, Downloads)
-/// vers le vault iCloud. Rust n'est pas soumis au scope fs frontend.
-/// Si le fichier existe déjà (même nom = même hash), ne recopie pas.
+/// Copie un fichier depuis son chemin absolu vers le vault.
+/// Fonctionne pour le drag & drop (fichier sur le disque) et le paste
+/// (fichier écrit dans appDataDir/lueurs-tmp par plugin-fs).
+/// Après la copie, supprime le fichier source dans un thread séparé
+/// si celui-ci vient du dossier temporaire — sans bloquer l'UI.
 #[tauri::command]
 async fn copy_resource_to_vault(
     src_path: String,
@@ -52,11 +54,31 @@ async fn copy_resource_to_vault(
 
     if dest.exists() {
         println!("[copy_resource_to_vault] déjà présent, réutilisation");
+        // Même si le fichier existe déjà, on nettoie le tmp en arrière-plan
+        maybe_cleanup_tmp(src_path);
         return Ok(dest.to_string_lossy().to_string());
     }
 
     std::fs::copy(&src_path, &dest).map_err(|e| format!("copy: {}", e))?;
 
     println!("[copy_resource_to_vault] ✓ copié vers {:?}", dest);
+
+    // Nettoyage du tmp en arrière-plan, sans bloquer le retour à l'UI
+    maybe_cleanup_tmp(src_path);
+
     Ok(dest.to_string_lossy().to_string())
+}
+
+/// Supprime le fichier dans un thread séparé si c'est un fichier temporaire.
+/// TODO: améliorer la détection des fichiers temporaires, actuellement basée
+/// sur la présence de "lueurs-tmp" dans le chemin. Je crois que de toute façon
+/// tous les fichiers sont temporaires...
+fn maybe_cleanup_tmp(path: String) {
+    if !path.contains("lueurs-tmp") {
+        return;
+    }
+    std::thread::spawn(move || match std::fs::remove_file(&path) {
+        Ok(_) => println!("[cleanup_tmp] ✓ supprimé : {}", path),
+        Err(e) => println!("[cleanup_tmp] ⚠ échec : {} — {}", path, e),
+    });
 }

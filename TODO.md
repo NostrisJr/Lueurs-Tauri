@@ -1,14 +1,18 @@
 # Roadmap précise
 - [x] intégration modules divers:
-  - [ ] Audio :
-    - [ ] avec lien
-    - [x] drag and drop
-    - [ ] copier/coller
-  - [ ] image :
-    - [ ] avec lien
+  - [x] Audio :
+    - [x] ~~avec lien~~
+      => ça ne marchera pas, car Milkdown escape automatiquement les caractères [] et () pour permettre de les utiliser dans l'écriture. Et on se sert des raccourcis/Commandes pour avoir des liens en bonne et due forme. Je pense que c'est le meilleur comportement
     - [x] drag and drop
     - [x] copier/coller
-    - [ ] régler le bug de la handle qui ne s'affiche pas au moment de l'insertion, mais seulement après avoir rechargé la note
+  - [x] image :
+    - [x] ~~avec lien~~
+      => ça ne marchera pas pour la même raison que les audios
+    - [x] drag and drop
+    - [x] copier/coller
+    - [x] ~~régler le bug de la handle qui ne s'affiche pas au moment de l'insertion, mais seulement après avoir rechargé la note~~
+      - un peu compliqué : il faut réussir à re-render le markdown au bon moment, après l'insertion du noeud, mais c'est async et on n'a visiblement pas de promesse très claire.
+  - [ ] Essayer de vérifier ce que les paths absolus changent lors du passage à un autre appareil et régler la disparité des chemins (gérer les paths relatifs en fonction du path de la note courante et du path racine ?)
 - [ ] champ __type__ obligatoire dans tous les frontmatters
   - [ ] le rajouter si il n'est pas présent au parsing de la note
   - [ ] Gestion du typage automatique __note__ ou __folder__ au parsing, pour respecter la convention de make.md
@@ -27,9 +31,6 @@
 
 # FileTree et associés
 - [x] régler la disparité entre nom du fichier et première ligne
-- [x] Images
-  - [ ] BUG : quand on marque le texte par soi-même, ça ne se rend pas en image
-  - [ ] TODO : Claude a sans doute fait qqc de vraiment pas très propre. Essayer d'aller fouiller le code pour voir comment simplifier tout ça
 - [ ] rendre invisible les fichiers destinés à la présentation du dossier (Make.md like)
 - [ ] rendre invisible le vault racine
 - [ ] drag and drop
