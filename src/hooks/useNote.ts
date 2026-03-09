@@ -1,35 +1,82 @@
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { activeNoteAtom, folderPathAtom, savingAtom, searchAtom, treeAtom } from "../lib/atoms";
-import { flattenTree, NoteFile, TreeNode, useFileTree, type Frontmatter } from "./useFileTree";
+import { useAtomValue, useSetAtom } from "jotai";
+import { activeNoteAtom, activeNoteIdAtom, constraintViolationsAtom, folderPathAtom, savingAtom, searchAtom, treeAtom } from "../lib/atoms";
+import { flattenTree, type NoteFile, type TreeNode, type FolderNode, useFileTree, type Frontmatter } from "../components/FileTree/useFileTree";
 import { useMemo } from "react";
+import { createLogger } from "../lib/logger";
 import { ask } from '@tauri-apps/plugin-dialog';
+import { useFrontmatter } from '../components/Frontmatter/hooks/useFrontmatter';
+import { useTemplateSync } from './useTemplateSync';
+
+const log = createLogger("useNote");
 
 export function useNote() {
-    const [activeNote, setActiveNote] = useAtom(activeNoteAtom);
+    const activeNote = useAtomValue(activeNoteAtom);
+    const setActiveNoteId = useSetAtom(activeNoteIdAtom);
     const setSaving = useSetAtom(savingAtom);
+    const setConstraintViolations = useSetAtom(constraintViolationsAtom);
     const setSearch = useSetAtom(searchAtom);
     const tree = useAtomValue(treeAtom);
     const folderPath = useAtomValue(folderPathAtom);
 
-    const { updateNote, deleteNote, deleteFolder, createNote, createFolder, renameNode } = useFileTree();
+    const { updateNote, deleteNote, deleteFolder, createNote, createFolder, renameNode, openFolderNote } = useFileTree();
+    const { onFrontmatterChange, refreshBaseChildren, cleanupNoteFromBases } = useFrontmatter();
+    const { onTemplateChange, getConstraintViolations } = useTemplateSync();
 
     const allNotes = useMemo(() => flattenTree(tree), [tree]);
 
     function handleChange(body: string, frontmatter: Frontmatter) {
         if (!activeNote) return;
         setSaving(true);
-        updateNote(activeNote.id, body, frontmatter);
+
+        const frontmatterChanged = JSON.stringify(frontmatter) !== JSON.stringify(activeNote.frontmatter);
+        if (frontmatterChanged) {
+            onFrontmatterChange(activeNote.id, activeNote.frontmatter, frontmatter).catch((err) => {
+                log.error("erreur onFrontmatterChange", err);
+            });
+        }
+
+        const violations = getConstraintViolations(activeNote.id, frontmatter);
+        const violatedKeys = Object.keys(violations);
+        const enforcedFrontmatter = violatedKeys.length > 0
+            ? { ...frontmatter, ...violations }
+            : frontmatter;
+
+        if (violatedKeys.length > 0) {
+            setConstraintViolations(violatedKeys);
+            setTimeout(() => setConstraintViolations([]), 2600);
+        }
+
+        const isTemplate = activeNote.type === "__template__";
+        const prevFrontmatter = activeNote.frontmatter;
+        const noteId = activeNote.id;
+
+        updateNote(activeNote.id, body, enforcedFrontmatter, isTemplate && frontmatterChanged ? () => {
+            log.info("template persisté, propagation des changements", { noteId });
+            onTemplateChange(noteId, prevFrontmatter, enforcedFrontmatter).catch((err) => {
+                log.error("erreur onTemplateChange", err);
+            });
+        } : undefined);
         setTimeout(() => setSaving(false), 1200);
     }
 
     function handleSelectNote(note: NoteFile) {
-        setActiveNote(note);
+        setActiveNoteId(note.id);
+        setSearch("");
+    }
+
+    async function handleOpenFolder(folderNode: FolderNode) {
+        const note = await openFolderNote(folderNode);
+        setActiveNoteId(note.id);
         setSearch("");
     }
 
     async function handleDeleteNote(fileId: string) {
+        if (activeNote?.id === fileId) setActiveNoteId(null);
+        log.info("handleDeleteNote — début", { fileId });
+        await cleanupNoteFromBases(fileId);
+        log.info("handleDeleteNote — cleanup terminé, appel deleteNote", { fileId });
         await deleteNote(fileId);
-        if (activeNote?.id === fileId) setActiveNote(null);
+        log.info("handleDeleteNote — deleteNote terminé", { fileId });
     }
 
     async function handleDeleteFolder(node: TreeNode) {
@@ -49,19 +96,22 @@ export function useNote() {
             });
 
             if (answer) {
-                await deleteFolder(node.id, true);
-                if (activeNote && activeNote.id.startsWith(node.id)) {
-                    setActiveNote(null);
+                const notesInFolder = allNotes.filter((n) => n.id.startsWith(`${node.id}/`));
+                // Séquentiel pour la même raison que handleDeleteNote
+                for (const n of notesInFolder) {
+                    await cleanupNoteFromBases(n.id);
                 }
+
+                if (activeNote?.id.startsWith(node.id)) setActiveNoteId(null);
+                await deleteFolder(node.id, true);
             }
         }
     }
 
     async function handleCreateNote() {
         if (!folderPath) return;
-        const filePath = await createNote(folderPath);
-        const newNote = allNotes.find((n) => n.id === filePath);
-        if (newNote) setActiveNote(newNote);
+        const newNote = await createNote(folderPath);
+        setActiveNoteId(newNote.id);
     }
 
     async function handleCreateFolder() {
@@ -70,16 +120,38 @@ export function useNote() {
     }
 
     async function handleRename(oldPath: string, newName: string, isFolder: boolean) {
-        const newPath = await renameNode(oldPath, newName, isFolder);
-        if (!isFolder && activeNote?.id === oldPath) {
-            setActiveNote({ ...activeNote, id: newPath, name: newName });
+        const note = !isFolder ? allNotes.find((n) => n.id === oldPath) : null;
+        const isFolderNote = note?.type === "__folder__" && note.name === oldPath.split("/").slice(-2, -1)[0];
+
+        if (isFolderNote) {
+            const folderPath = oldPath.split("/").slice(0, -1).join("/");
+            return handleRename(folderPath, newName, true);
         }
+
+        const newPath = await renameNode(oldPath, newName, isFolder);
+
+        if (!isFolder && activeNote?.id === oldPath) {
+            setActiveNoteId(newPath);
+        } else if (isFolder && activeNote) {
+            const oldFolderNoteId = `${oldPath}/${oldPath.split("/").pop()}.md`;
+            const newFolderNoteId = `${newPath}/${newName}.md`;
+
+            if (activeNote.id === oldFolderNoteId) {
+                setActiveNoteId(newFolderNoteId);
+            } else if (activeNote.id.startsWith(`${oldPath}/`)) {
+                const newNoteId = activeNote.id.replace(oldPath, newPath);
+                setActiveNoteId(newNoteId);
+            }
+        }
+
         return newPath;
     }
 
     return {
         handleChange,
+        refreshBaseChildren,
         handleSelectNote,
+        handleOpenFolder,
         handleDeleteNote,
         handleDeleteFolder,
         handleCreateNote,

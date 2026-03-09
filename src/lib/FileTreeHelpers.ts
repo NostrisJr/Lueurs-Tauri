@@ -1,10 +1,66 @@
-import type { NoteFile, TreeNode } from "../hooks/useFileTree";
+import type { NoteFile, TreeNode } from "../components/FileTree/useFileTree";
 import { Command } from "@tauri-apps/plugin-shell";
+import { NoteType } from "./noteTypes";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface Frontmatter {
     [key: string]: string | string[] | undefined;
+}
+
+// ── Types système ─────────────────────────────────────────────────────────────
+
+export { NoteType, SystemField } from "./noteTypes";
+export type { NoteTypeValue, SystemFieldKey } from "./noteTypes";
+
+const SYSTEM_FIELD_REGEX = /^__[A-Za-z]+__$/;
+
+/** Retourne true si la clé est un champ système (__Mot__) */
+export function isSystemField(key: string): boolean {
+    return SYSTEM_FIELD_REGEX.test(key);
+}
+
+/**
+ * Injecte __Type__ dans un frontmatter si absent.
+ * Détecte automatiquement __folder__ si la note porte le même nom que son dossier parent.
+ */
+export function ensureType(
+    frontmatter: Frontmatter,
+    noteName: string,       // sans extension
+    parentFolderName: string // nom du dossier parent direct
+): Frontmatter {
+    if (frontmatter["__Type__"]) return frontmatter;
+
+    const inferredType = noteName === parentFolderName
+        ? NoteType.FOLDER
+        : NoteType.NOTE;
+
+    return { "__Type__": inferredType, ...frontmatter };
+}
+
+/**
+ * Applique les propriétés manquantes d'un ensemble de templates à un frontmatter.
+ * Version pure (sans IO) — utilisée au parsing.
+ * templates : liste de frontmatters de notes __template__.
+ */
+export function applyMissingTemplateProps(
+    frontmatter: Frontmatter,
+    templates: Frontmatter[]
+): { updated: Frontmatter; added: string[] } {
+    const added: string[] = [];
+    const updated = { ...frontmatter };
+
+    for (const template of templates) {
+        for (const [key, value] of Object.entries(template)) {
+            if (/^__[A-Za-z]+__$/.test(key)) continue; // ignorer les champs système
+            if (!(key in updated)) {
+                updated[key] = value ?? "";
+                added.push(key);
+            }
+        }
+    }
+
+    return { updated, added };
 }
 
 // ── Frontmatter ───────────────────────────────────────────────────────────────
@@ -17,17 +73,45 @@ export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; 
     const body = markdown.slice(match[0].length);
     const frontmatter: Frontmatter = {};
 
-    for (const line of raw.split("\n")) {
+    const lines = raw.split("\n");
+    let i = 0;
+    while (i < lines.length) {
+        const line = lines[i];
         const colonIdx = line.indexOf(":");
-        if (colonIdx === -1) continue;
+        if (colonIdx === -1) { i++; continue; }
+
         const key = line.slice(0, colonIdx).trim();
         const value = line.slice(colonIdx + 1).trim();
 
+        // Array inline : key: [a, b, c]
         if (value.startsWith("[") && value.endsWith("]")) {
             frontmatter[key] = value.slice(1, -1).split(",").map((v) => v.trim()).filter(Boolean);
-        } else {
-            frontmatter[key] = value;
+            i++;
+            continue;
         }
+
+        // Array multiligne YAML :
+        // key:
+        //   - item1
+        //   - item2
+        if (value === "") {
+            const items: string[] = [];
+            i++;
+            while (i < lines.length && lines[i].match(/^\s+-\s+/)) {
+                items.push(lines[i].replace(/^\s+-\s+/, "").trim());
+                i++;
+            }
+            if (items.length > 0) {
+                frontmatter[key] = items;
+                continue;
+            }
+            // Valeur vide réelle
+            frontmatter[key] = "";
+            continue;
+        }
+
+        frontmatter[key] = value;
+        i++;
     }
 
     return { frontmatter, body };
@@ -37,9 +121,18 @@ export function serializeFrontmatter(frontmatter: Frontmatter, body: string): st
     const keys = Object.keys(frontmatter);
     if (keys.length === 0) return body;
 
-    const lines = keys.map((key) => {
+    // Les champs système (__Mot__) sont écrits en premier
+    const systemKeys = keys.filter(isSystemField);
+    const userKeys = keys.filter((k) => !isSystemField(k));
+    const orderedKeys = [...systemKeys, ...userKeys];
+
+    const lines = orderedKeys.map((key) => {
         const value = frontmatter[key];
-        if (Array.isArray(value)) return `${key}: [${value.join(", ")}]`;
+        if (Array.isArray(value)) {
+            // Format YAML natif pour les arrays
+            if (value.length === 0) return `${key}: []`;
+            return `${key}:\n${value.map((v) => `  - ${v}`).join("\n")}`;
+        }
         return `${key}: ${value ?? ""}`;
     });
 
@@ -107,19 +200,41 @@ export function deleteNodeInTree(nodes: TreeNode[], id: string): TreeNode[] {
         );
 }
 
-export function addNodeInTree(nodes: TreeNode[], parentId: string, newNode: TreeNode): TreeNode[] {
+export function addNodeInTree(nodes: TreeNode[], parentId: string, newNode: TreeNode, rootId?: string): TreeNode[] {
+    // Cas racine : parentId est le vault root, pas un dossier dans l'arbre
+    if (rootId && parentId === rootId) {
+        return sortNodes([...nodes, newNode]);
+    }
     return nodes.map((node) => {
         if (node.kind === "folder" && node.id === parentId) {
             return { ...node, children: sortNodes([...node.children, newNode]) };
         }
         if (node.kind === "folder") {
-            return { ...node, children: addNodeInTree(node.children, parentId, newNode) };
+            return { ...node, children: addNodeInTree(node.children, parentId, newNode, rootId) };
         }
         return node;
     });
 }
 
 // ── Aplatissement ─────────────────────────────────────────────────────────────
+
+export function updateFolderInTree(
+    nodes: TreeNode[],
+    oldPath: string,
+    newPath: string,
+    newName: string,
+    newChildren: TreeNode[]
+): TreeNode[] {
+    return nodes.map((node) => {
+        if (node.id === oldPath && node.kind === "folder") {
+            return { ...node, id: newPath, name: newName, children: newChildren };
+        }
+        if (node.kind === "folder") {
+            return { ...node, children: updateFolderInTree(node.children, oldPath, newPath, newName, newChildren) };
+        }
+        return node;
+    });
+}
 
 export function flattenTree(nodes: TreeNode[]): NoteFile[] {
     return nodes.flatMap((node) =>

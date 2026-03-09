@@ -1,6 +1,6 @@
 import { mkdir, writeFile, exists } from "@tauri-apps/plugin-fs";
-import { createLogger } from "../lib/logger";
-import { hashFile } from "../lib/fileHash";
+import { createLogger } from "../../../lib/logger";
+import { hashFile } from "../../../lib/fileHash";
 
 const log = createLogger("useAudioUpload");
 

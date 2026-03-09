@@ -1,7 +1,7 @@
 import { mkdir, writeFile, exists } from "@tauri-apps/plugin-fs";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { createLogger } from "../lib/logger";
-import { hashFile } from "../lib/fileHash";
+import { createLogger } from "../../../lib/logger";
+import { hashFile } from "../../../lib/fileHash";
 
 const log = createLogger("useImageUpload");
 
