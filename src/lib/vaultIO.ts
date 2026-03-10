@@ -18,7 +18,7 @@ import {
 } from "./fileTreeHelpers";
 import { NoteType } from "./noteTypes";
 import { createLogger } from "./logger";
-import type { NoteFile, FolderNode, TreeNode } from "../components/FileTree/useFileTree";
+import type { NoteFile, TreeNode } from "../components/FileTree/useFileTree";
 
 const log = createLogger("vaultIO");
 
@@ -32,15 +32,15 @@ export function noteFromRaw(fullPath: string, fileName: string, rawContent: stri
     const { frontmatter: rawFrontmatter, body } = parseFrontmatter(rawContent);
     const frontmatter = ensureType(rawFrontmatter, noteName, parentFolderName);
 
-    if (!rawFrontmatter["__Type__"] && frontmatter["__Type__"]) {
-        log.info("__Type__ injecté automatiquement", { path: fullPath, type: frontmatter["__Type__"] });
+    if (!rawFrontmatter.__Type__ && frontmatter.__Type__) {
+        log.info("__Type__ injecté automatiquement", { path: fullPath, type: frontmatter.__Type__ });
     }
 
     return {
         kind: "file",
         id: fullPath,
         name: noteName,
-        type: frontmatter["__Type__"] as string ?? null,
+        type: frontmatter.__Type__ as string ?? null,
         title: extractTitle(body),
         body,
         frontmatter,
@@ -52,6 +52,7 @@ export function noteFromRaw(fullPath: string, fileName: string, rawContent: stri
 // ── Chargement récursif ────────────────────────────────────────────────────
 
 export async function loadTree(dirPath: string): Promise<TreeNode[]> {
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     const entries = await readDir(dirPath, { baseDir: null } as any);
     const nodes: TreeNode[] = [];
 
@@ -66,12 +67,14 @@ export async function loadTree(dirPath: string): Promise<TreeNode[]> {
                 const children = await loadTree(fullPath);
                 nodes.push({ kind: "folder", id: fullPath, name: entry.name, children: sortNodes(children) });
             } else if (entry.name.endsWith(".md")) {
+                // biome-ignore lint/suspicious/noExplicitAny: <explanation>
                 const rawContent = await readTextFile(fullPath, { baseDir: null } as any);
                 const note = noteFromRaw(fullPath, entry.name, rawContent);
 
                 // Persister __Type__ si absent
-                if (!parseFrontmatter(rawContent).frontmatter["__Type__"]) {
+                if (!parseFrontmatter(rawContent).frontmatter.__Type__) {
                     const raw = serializeFrontmatter(note.frontmatter, note.body);
+                    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
                     writeTextFile(fullPath, raw, { baseDir: null } as any).catch((err) =>
                         log.error("échec persistance __Type__", { path: fullPath, err })
                     );
@@ -112,13 +115,13 @@ export async function applyAllTemplates(nodes: TreeNode[]): Promise<TreeNode[]> 
     const toWrite: { path: string; frontmatter: Frontmatter; body: string }[] = [];
 
     for (const note of sorted) {
-        const fm = resolved.get(note.id)!;
+        const fm = resolved.get(note.id) ?? {};
 
-        const directTemplates = toStringArray(fm["__Template__"]);
-        const parentBases = toStringArray(fm["__Base__"]);
+        const directTemplates = toStringArray(fm.__Template__);
+        const parentBases = toStringArray(fm.__Base__);
         const inheritedTemplates = parentBases.flatMap((basePath) => {
             const baseFm = resolved.get(basePath);
-            return baseFm ? toStringArray(baseFm["__Template__"]) : [];
+            return baseFm ? toStringArray(baseFm.__Template__) : [];
         });
 
         const allTemplatePaths = [...new Set([...directTemplates, ...inheritedTemplates])];
@@ -145,6 +148,7 @@ export async function applyAllTemplates(nodes: TreeNode[]): Promise<TreeNode[]> 
     await Promise.all(
         toWrite.map(({ path, frontmatter, body }) => {
             const raw = serializeFrontmatter(frontmatter, body);
+            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
             return writeTextFile(path, raw, { baseDir: null } as any).catch((err) =>
                 log.error("échec persistance props template", { path, err })
             );

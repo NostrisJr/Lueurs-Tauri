@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { AnchoredDropdown } from "./AnchoredDropdown";
-import { getAddableFields } from "../../lib/noteTypes";
+import type { getAddableFields } from "../../lib/noteTypes";
 
 interface Props {
   addableFields: ReturnType<typeof getAddableFields>;

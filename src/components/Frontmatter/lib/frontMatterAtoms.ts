@@ -2,10 +2,8 @@ import { atom } from "jotai";
 import { activeNoteAtom } from "../../../lib/atoms";
 import { type Row, toRows, toFrontmatter } from "./frontmatterUtils";
 
-// Champs modifiables uniquement par le système (jamais par l'utilisateur en direct)
 const SYSTEM_FIELDS = ["__Children__", "__Base__", "__Template__", "__Type__"];
 
-// Override local pendant l'édition — invalidé si la note change ou si un champ système dérive
 const rowsOverrideAtom = atom<{ noteId: string; rows: Row[] } | null>(null);
 
 export const rowsAtom = atom(
@@ -15,13 +13,25 @@ export const rowsAtom = atom(
         const override = get(rowsOverrideAtom);
         if (override?.noteId !== note.id) return toRows(note.frontmatter);
 
-        // Si un champ système a été modifié en dehors d'un commit (ex: enfant supprimé),
-        // l'override est périmé — on repart du frontmatter frais
         const overrideFm = toFrontmatter(override.rows);
+
+        // Dérive sur les champs système
         const systemDrifted = SYSTEM_FIELDS.some(
             (k) => JSON.stringify(overrideFm[k]) !== JSON.stringify(note.frontmatter[k])
         );
         if (systemDrifted) return toRows(note.frontmatter);
+
+        // Dérive sur les clés : prop ajoutée par applyTemplateProps
+        const noteKeys = Object.keys(note.frontmatter);
+        const overrideKeys = Object.keys(overrideFm);
+        const keysDrifted = noteKeys.some((k) => !overrideKeys.includes(k));
+        if (keysDrifted) return toRows(note.frontmatter);
+
+        // Dérive sur les valeurs : prop écrasée par applyTemplateProps (valeur forcée)
+        const valuesDrifted = noteKeys.some(
+            (k) => !SYSTEM_FIELDS.includes(k) && overrideFm[k] !== undefined && overrideFm[k] !== note.frontmatter[k]
+        );
+        if (valuesDrifted) return toRows(note.frontmatter);
 
         return override.rows;
     },

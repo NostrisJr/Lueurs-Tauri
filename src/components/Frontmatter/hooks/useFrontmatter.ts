@@ -30,14 +30,19 @@ export function useFrontmatter() {
     const store = useStore();
     const setTree = useSetAtom(treeAtom);
 
-    // Lecture de l'arbre au moment de l'exécution, pas au render
     function getCurrentNotes() {
         return flattenTree(store.get(treeAtom));
     }
 
-    function getMissingTemplateProps(noteFrontmatter: Frontmatter): Frontmatter {
+    /**
+     * Calcule les propriétés à appliquer depuis les templates applicables à une note.
+     * - Propriété absente → ajoutée avec la valeur du template (vide ou non)
+     * - Propriété présente + template a une valeur non vide → écrasée
+     * - Propriété présente + template a une valeur vide → laissée intacte
+     */
+    function computeTemplateOverrides(noteFrontmatter: Frontmatter): Frontmatter {
         const allNotes = getCurrentNotes();
-        const missing: Frontmatter = {};
+        const overrides: Frontmatter = {};
 
         const directTemplates = toArray(noteFrontmatter.__Template__);
         const parentBases = toArray(noteFrontmatter.__Base__);
@@ -56,31 +61,39 @@ export function useFrontmatter() {
             }
             for (const [key, value] of Object.entries(template.frontmatter)) {
                 if (isSystemField(key)) continue;
-                if (!(key in noteFrontmatter)) {
-                    missing[key] = value ?? "";
-                    log.info("propriété manquante ajoutée depuis template", { key, templatePath });
+                const isMissing = !(key in noteFrontmatter);
+                const templateHasValue = value !== "" && value !== null && value !== undefined;
+                // Ajouter si absent, écraser si le template impose une valeur non vide
+                if (isMissing || templateHasValue) {
+                    overrides[key] = value ?? "";
                 }
             }
         }
 
-        return missing;
+        return overrides;
     }
 
     async function applyTemplateProps(noteId: string, frontmatter: Frontmatter): Promise<Frontmatter | null> {
+        console.log(frontmatter.__Type__, NoteType.BASE, frontmatter.__Type__ === NoteType.BASE)
+        // Les bases ne sont pas contraintes par leurs propres templates
         if (frontmatter.__Type__ === NoteType.BASE) return null;
 
-        const missing = getMissingTemplateProps(frontmatter);
-        if (Object.keys(missing).length === 0) return null;
+        const overrides = computeTemplateOverrides(frontmatter);
+        if (Object.keys(overrides).length === 0) return null;
 
-        const updated: Frontmatter = { ...frontmatter, ...missing };
+        // Ne persister que si quelque chose change réellement
+        const hasChanges = Object.entries(overrides).some(([k, v]) => frontmatter[k] !== v);
+        if (!hasChanges) return null;
+
+        const updated: Frontmatter = { ...frontmatter, ...overrides };
         const note = getCurrentNotes().find((n) => n.id === noteId);
         if (!note) return updated;
 
         const raw = serializeFrontmatter(updated, note.body);
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
         await writeTextFile(noteId, raw, { baseDir: null } as any);
         setTree((prev) => updateNodeInTree(prev, noteId, { frontmatter: updated }));
-        log.info("propriétés template appliquées", { noteId, added: Object.keys(missing) });
+        log.info("propriétés template appliquées", { noteId, overrides });
 
         return updated;
     }
@@ -143,10 +156,7 @@ export function useFrontmatter() {
             return;
         }
         const children = toArray(base.frontmatter.__Children__);
-        if (children.includes(noteId)) {
-            log.info("note déjà dans __Children__", { basePath, noteId });
-            return;
-        }
+        if (children.includes(noteId)) return;
         await writeBaseChildren(base, [...children, noteId]);
         log.info("note ajoutée à __Children__", { basePath, noteId });
     }
@@ -193,35 +203,30 @@ export function useFrontmatter() {
     async function writeNoteBase(note: NoteFile, bases: string[]): Promise<Frontmatter> {
         const updatedFrontmatter: Frontmatter = { ...note.frontmatter, "__Base__": bases };
         const raw = serializeFrontmatter(updatedFrontmatter, note.body);
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
         await writeTextFile(note.id, raw, { baseDir: null } as any);
         setTree((prev) => updateNodeInTree(prev, note.id, { frontmatter: updatedFrontmatter }));
-        log.info("__Base__ persisté et arbre mis à jour", { noteId: note.id, count: bases.length });
+        log.info("__Base__ persisté", { noteId: note.id, count: bases.length });
         return updatedFrontmatter;
     }
 
     /** Arbre mis à jour immédiatement, persistance disque en arrière-plan. */
     function writeBaseChildren(base: NoteFile, children: string[]) {
         const updatedFrontmatter: Frontmatter = { ...base.frontmatter, "__Children__": children };
-        log.info("writeBaseChildren — avant setTree", { baseId: base.id, children });
-        setTree((prev) => {
-            const next = updateNodeInTree(prev, base.id, { frontmatter: updatedFrontmatter });
-            log.info("writeBaseChildren — setTree appelé", { baseId: base.id });
-            return next;
-        });
+        setTree((prev) => updateNodeInTree(prev, base.id, { frontmatter: updatedFrontmatter }));
         const raw = serializeFrontmatter(updatedFrontmatter, base.body);
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
         writeTextFile(base.id, raw, { baseDir: null } as any).catch((err) =>
             log.error("échec persistance __Children__", { baseId: base.id, err })
         );
-        log.info("writeBaseChildren — terminé", { baseId: base.id, count: children.length });
+        log.info("__Children__ mis à jour", { baseId: base.id, count: children.length });
     }
 
     async function refreshBaseChildren(base: NoteFile) {
         log.info("refresh __Children__", { baseId: base.id });
         const allNotes = getCurrentNotes();
-        const orphans: string[] = [];
         const found: string[] = [];
+        const orphans: string[] = [];
 
         for (const note of allNotes) {
             if (note.id === base.id) continue;
@@ -252,23 +257,16 @@ export function useFrontmatter() {
 
     async function cleanupNoteFromBases(noteId: string) {
         const allNotes = getCurrentNotes();
-        log.info("cleanup — snapshot arbre", { totalNotes: allNotes.length, noteId });
-
         const bases = allNotes.filter((n) =>
             toArray(n.frontmatter.__Children__).includes(noteId)
         );
-        log.info("cleanup — bases trouvées", { baseCount: bases.length, baseIds: bases.map((b) => b.id) });
-
+        log.info("cleanup — bases trouvées", { noteId, baseCount: bases.length });
         if (bases.length === 0) return;
-
         for (const base of bases) {
-            const avant = toArray(base.frontmatter.__Children__);
-            const apres = avant.filter((c) => c !== noteId);
-            log.info("cleanup — writeBaseChildren", { baseId: base.id, avant, apres });
-            writeBaseChildren(base, apres);
+            const updated = toArray(base.frontmatter.__Children__).filter((c) => c !== noteId);
+            writeBaseChildren(base, updated);
         }
-
-        log.info("cleanup — terminé", { noteId });
+        log.info("cleanup terminé", { noteId });
     }
 
     return {

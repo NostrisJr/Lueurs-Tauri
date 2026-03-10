@@ -192,6 +192,7 @@ export function useFileTree() {
         const safeFrontmatter = ensureType(frontmatter, noteName, parentFolderName);
         const raw = serializeFrontmatter(safeFrontmatter, body);
 
+        // Mise à jour mémoire immédiate
         setTree((prev) =>
             updateNodeInTree(prev, fileId, {
                 body,
@@ -203,11 +204,12 @@ export function useFileTree() {
             })
         );
 
+        // Persistance debouncée — absorbe les frappes clavier dans le corps de la note
         const existing = debounceTimers.current.get(fileId);
         if (existing) clearTimeout(existing);
         debounceTimers.current.set(fileId, setTimeout(async () => {
             writingPathsRegistry.add(fileId);
-            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+            // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
             await writeTextFile(fileId, raw, { baseDir: null } as any);
             writingPathsRegistry.delete(fileId);
             debounceTimers.current.delete(fileId);

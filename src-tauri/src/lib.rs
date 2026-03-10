@@ -234,14 +234,19 @@ fn apply_change(
             }
         }
         TemplateChange::ForceValue { key, value } => {
-            if let Some(existing) = fm.get_mut(key.as_str()) {
-                let new_val = serde_yaml::Value::String(value.clone());
-                if *existing != new_val {
+            let new_val = serde_yaml::Value::String(value.clone());
+            match fm.get_mut(key.as_str()) {
+                Some(existing) if *existing != new_val => {
                     *existing = new_val;
-                    return true;
+                    true
+                }
+                Some(_) => false, // valeur déjà correcte
+                None => {
+                    // Clé absente : l'insérer (cas d'une note créée avant l'ajout de la prop au template)
+                    fm.insert(key.clone(), new_val);
+                    true
                 }
             }
-            false
         }
     }
 }

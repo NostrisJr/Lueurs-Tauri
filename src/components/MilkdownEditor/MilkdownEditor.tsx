@@ -31,7 +31,9 @@ export function MilkdownEditor({ className }: Props) {
       {activeNote && folderPath && (
         <>
           <NoteHeader
-            onRename={(newName) => handleRename(activeNote.id, newName, false)}
+            onRename={async (newName) => {
+              await handleRename(activeNote.id, newName, false);
+            }}
             onRefresh={() => refreshBaseChildren(activeNote)}
           />
           <FrontmatterEditor onChange={handleFrontmatterChange} />

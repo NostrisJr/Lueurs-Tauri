@@ -29,7 +29,7 @@ export function ensureType(
     noteName: string,       // sans extension
     parentFolderName: string // nom du dossier parent direct
 ): Frontmatter {
-    if (frontmatter["__Type__"]) return frontmatter;
+    if (frontmatter.__Type__) return frontmatter;
 
     const inferredType = noteName === parentFolderName
         ? NoteType.FOLDER
@@ -272,7 +272,7 @@ export async function findNextAvailableNumber(
     for (const entry of entries) {
         if (!entry.name) continue;
         const match = entry.name.match(pattern);
-        if (match) existingNumbers.add(parseInt(match[1], 10));
+        if (match) existingNumbers.add(Number.parseInt(match[1], 10));
     }
 
     let number = 1;

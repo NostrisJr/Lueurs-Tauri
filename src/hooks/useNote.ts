@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { activeNoteAtom, activeNoteIdAtom, constraintViolationsAtom, folderPathAtom, savingAtom, searchAtom, treeAtom } from "../lib/atoms";
+import { activeNoteAtom, activeNoteIdAtom, folderPathAtom, savingAtom, searchAtom, treeAtom } from "../lib/atoms";
 import { flattenTree, type NoteFile, type TreeNode, type FolderNode, useFileTree, type Frontmatter } from "../components/FileTree/useFileTree";
 import { useMemo } from "react";
 import { createLogger } from "../lib/logger";
@@ -13,14 +13,13 @@ export function useNote() {
     const activeNote = useAtomValue(activeNoteAtom);
     const setActiveNoteId = useSetAtom(activeNoteIdAtom);
     const setSaving = useSetAtom(savingAtom);
-    const setConstraintViolations = useSetAtom(constraintViolationsAtom);
     const setSearch = useSetAtom(searchAtom);
     const tree = useAtomValue(treeAtom);
     const folderPath = useAtomValue(folderPathAtom);
 
     const { updateNote, deleteNote, deleteFolder, createNote, createFolder, renameNode, openFolderNote } = useFileTree();
     const { onFrontmatterChange, refreshBaseChildren, cleanupNoteFromBases } = useFrontmatter();
-    const { onTemplateChange, getConstraintViolations } = useTemplateSync();
+    const { onTemplateChange } = useTemplateSync();
 
     const allNotes = useMemo(() => flattenTree(tree), [tree]);
 
@@ -35,27 +34,18 @@ export function useNote() {
             });
         }
 
-        const violations = getConstraintViolations(activeNote.id, frontmatter);
-        const violatedKeys = Object.keys(violations);
-        const enforcedFrontmatter = violatedKeys.length > 0
-            ? { ...frontmatter, ...violations }
-            : frontmatter;
-
-        if (violatedKeys.length > 0) {
-            setConstraintViolations(violatedKeys);
-            setTimeout(() => setConstraintViolations([]), 2600);
-        }
-
         const isTemplate = activeNote.type === "__template__";
         const prevFrontmatter = activeNote.frontmatter;
         const noteId = activeNote.id;
 
-        updateNote(activeNote.id, body, enforcedFrontmatter, isTemplate && frontmatterChanged ? () => {
+        // onTemplateChange après persistance disque — Rust doit lire les fichiers à jour
+        updateNote(activeNote.id, body, frontmatter, isTemplate && frontmatterChanged ? () => {
             log.info("template persisté, propagation des changements", { noteId });
-            onTemplateChange(noteId, prevFrontmatter, enforcedFrontmatter).catch((err) => {
+            onTemplateChange(noteId, prevFrontmatter, frontmatter).catch((err) => {
                 log.error("erreur onTemplateChange", err);
             });
         } : undefined);
+
         setTimeout(() => setSaving(false), 1200);
     }
 
@@ -72,17 +62,16 @@ export function useNote() {
 
     async function handleDeleteNote(fileId: string) {
         if (activeNote?.id === fileId) setActiveNoteId(null);
-        log.info("handleDeleteNote — début", { fileId });
+        log.info("suppression note", { fileId });
         await cleanupNoteFromBases(fileId);
-        log.info("handleDeleteNote — cleanup terminé, appel deleteNote", { fileId });
         await deleteNote(fileId);
-        log.info("handleDeleteNote — deleteNote terminé", { fileId });
+        log.info("suppression terminée", { fileId });
     }
 
     async function handleDeleteFolder(node: TreeNode) {
-        const countFiles = (node: TreeNode): number => {
-            if (node.kind === "file") return 1;
-            return node.children.reduce((sum, child) => sum + countFiles(child), 0);
+        const countFiles = (n: TreeNode): number => {
+            if (n.kind === "file") return 1;
+            return n.children.reduce((sum, child) => sum + countFiles(child), 0);
         };
 
         const fileCount = node.kind === "folder" ? countFiles(node) : 0;
@@ -94,14 +83,11 @@ export function useNote() {
                 title: 'Suppression de dossier',
                 kind: 'warning',
             });
-
             if (answer) {
                 const notesInFolder = allNotes.filter((n) => n.id.startsWith(`${node.id}/`));
-                // Séquentiel pour la même raison que handleDeleteNote
                 for (const n of notesInFolder) {
                     await cleanupNoteFromBases(n.id);
                 }
-
                 if (activeNote?.id.startsWith(node.id)) setActiveNoteId(null);
                 await deleteFolder(node.id, true);
             }
@@ -139,8 +125,7 @@ export function useNote() {
             if (activeNote.id === oldFolderNoteId) {
                 setActiveNoteId(newFolderNoteId);
             } else if (activeNote.id.startsWith(`${oldPath}/`)) {
-                const newNoteId = activeNote.id.replace(oldPath, newPath);
-                setActiveNoteId(newNoteId);
+                setActiveNoteId(activeNote.id.replace(oldPath, newPath));
             }
         }
 

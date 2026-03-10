@@ -12,13 +12,13 @@ import {
 import { FrontmatterValue } from "./FrontmatterValue";
 import { NoteSelector } from "./NoteSelector";
 import { PropertyEditModal } from "./PropertyEditModal";
+import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import {
   sfPlusCircle,
   sfXCircle,
   sfArrowRight,
 } from "@bradleyhodges/sfsymbols";
-import { constraintViolationsAtom } from "../../lib/atoms";
 
 interface Props {
   row: Row;
@@ -45,8 +45,9 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
   const selectorAnchorRef = useRef<HTMLButtonElement>(null);
 
   const rows = useAtomValue(rowsAtom);
-  const constraintViolations = useAtomValue(constraintViolationsAtom);
-  const isViolation = constraintViolations.includes(row.key);
+  const { lockedKeys, lockedValues } = useTemplateConstraints();
+  const isKeyLocked = lockedKeys.has(row.key);
+  const isValueLocked = lockedValues.has(row.key);
 
   const editingKey = useAtomValue(editingKeyAtom);
   const setEditingKey = useSetAtom(editingKeyAtom);
@@ -78,7 +79,7 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
   }
 
   function removeRow() {
-    if (row.isSystem) return;
+    if (row.isSystem || isKeyLocked) return;
     commit(rows.filter((_, i) => i !== index));
   }
 
@@ -107,6 +108,8 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
     commit(rows.map((r) => (r.key === row.key ? { ...r, key: newKey } : r)));
   }
 
+  const canDelete = !row.isSystem && !isKeyLocked;
+
   return (
     <div
       ref={rowRef}
@@ -115,9 +118,14 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
       {row.key !== SystemField.TYPE ? (
         <SFIcon
           icon={sfXCircle}
-          onClick={removeRow}
-          className="size-3 text-transparent hover:text-red-400 group-hover:text-gray-300 transition-all cursor-pointer"
-          title="Supprimer la propriété"
+          onClick={canDelete ? removeRow : undefined}
+          className={`size-3 transition-all
+            ${
+              canDelete
+                ? "text-transparent hover:text-red-400 group-hover:text-gray-300 cursor-pointer"
+                : "text-transparent cursor-default"
+            }`}
+          title={canDelete ? "Supprimer la propriété" : undefined}
         />
       ) : (
         <span className="shrink-0 w-3" />
@@ -125,9 +133,17 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
 
       <span
         className={`shrink-0 w-28 mt-0.5 truncate text-xs
-          ${row.isSystem ? "font-bold text-gray-500" : "text-gray-400 cursor-pointer hover:text-gray-600"}`}
-        onDoubleClick={() => setEditingKey(row.key)}
-        title="Double-cliquer pour renommer"
+          ${row.isSystem ? "font-bold text-gray-500" : ""}
+          ${!row.isSystem && !isKeyLocked ? "text-gray-400 cursor-pointer hover:text-gray-600" : ""}
+          ${isKeyLocked ? "text-amber-500/70" : ""}`}
+        onDoubleClick={() =>
+          !(isKeyLocked && row.isSystem) && setEditingKey(row.key)
+        }
+        title={
+          isKeyLocked
+            ? "Propriété verrouillée par le template"
+            : "Double-cliquer pour renommer"
+        }
       >
         {row.key.replace(/^__|__$/g, "")}
       </span>
@@ -155,7 +171,7 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
         value={row.value}
         isNoteArray={row.isNoteArray}
         isSystem={row.isSystem}
-        isViolation={isViolation}
+        isValueLocked={isValueLocked}
         onTextChange={updateText}
         onTextBlur={() => commit(rows)}
         onRemoveNote={removeNote}

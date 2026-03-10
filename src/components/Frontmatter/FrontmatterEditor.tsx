@@ -10,6 +10,8 @@ import {
 } from "./lib/frontMatterAtoms";
 import { FrontmatterRow } from "./FrontmatterRow";
 import { AddPropertyDropdown } from "./AddPropertyDropdown";
+import { ask } from "@tauri-apps/plugin-dialog";
+import { isSystemField } from "../../lib/fileTreeHelpers";
 
 interface Props {
   onChange: (updated: Frontmatter) => void;
@@ -22,7 +24,31 @@ export function FrontmatterEditor({ onChange }: Props) {
   const setSelectorOpen = useSetAtom(selectorOpenAtom);
   const activeNote = useAtomValue(activeNoteAtom);
 
-  function commit(updatedRows: Row[]) {
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  const noteType = (activeNote?.type as any) ?? null;
+  const isTemplate = activeNote?.type === NoteType.TEMPLATE;
+
+  async function commit(updatedRows: Row[]) {
+    // Sur un template, intercepter les suppressions de propriétés utilisateur
+    // et demander confirmation avant de propager
+    if (isTemplate) {
+      const prevKeys = rows
+        .filter((r) => !isSystemField(r.key))
+        .map((r) => r.key);
+      const nextKeys = updatedRows
+        .filter((r) => !isSystemField(r.key))
+        .map((r) => r.key);
+      const removed = prevKeys.filter((k) => !nextKeys.includes(k));
+
+      for (const key of removed) {
+        const confirmed = await ask(
+          `Supprimer la propriété "${key}" de toutes les notes utilisant ce template ?`,
+          { title: "Propagation du template", kind: "warning" }
+        );
+        if (!confirmed) return; // annulation — on ne commit pas
+      }
+    }
+
     setRows(updatedRows);
     onChange(toFrontmatter(updatedRows));
   }
@@ -48,9 +74,6 @@ export function FrontmatterEditor({ onChange }: Props) {
     if (isNoteArray) setSelectorOpen(key);
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  const noteType = (activeNote?.type as any) ?? null;
-  const isTemplate = activeNote?.type === NoteType.TEMPLATE;
   const addableFields = getAddableFields(
     noteType,
     rows.map((r) => r.key)
