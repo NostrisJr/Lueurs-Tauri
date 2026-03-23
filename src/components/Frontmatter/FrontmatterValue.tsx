@@ -52,7 +52,7 @@ export function FrontmatterValue({
                 ${isSystem ? "font-bold" : ""}
                 ${
                   isValueLocked
-                    ? "text-amber-600/60 cursor-not-allowed"
+                    ? "text-gray-300 select-none"
                     : "text-gray-600 focus:border-gray-300"
                 }
                 transition-colors`}

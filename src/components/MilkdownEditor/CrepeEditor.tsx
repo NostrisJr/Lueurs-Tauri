@@ -7,7 +7,7 @@ import { editorViewCtx, schemaCtx } from "@milkdown/kit/core";
 import { Milkdown, useEditor } from "@milkdown/react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { NoteFile } from "../FileTree/useFileTree";
+import type { NoteFile } from "../FileTree/hooks/useFileTree";
 import { createAudioBlockPlugin } from "../../plugins/audio-block/audioBlockPlugin";
 import { useDropHandler } from "./hooks/useDropHandler";
 import { useCrepeConfig } from "./hooks/useCrepeConfig";

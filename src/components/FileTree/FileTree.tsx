@@ -1,4 +1,4 @@
-import type { TreeNode } from "./useFileTree";
+import type { TreeNode } from "./hooks/useFileTree";
 import { FolderNodeComponent, FileNodeComponent } from "./FileNode";
 
 // ── Props ─────────────────────────────────────────────────────────────────────

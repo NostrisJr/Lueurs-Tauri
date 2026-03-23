@@ -1,6 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { activeNoteAtom, activeNoteIdAtom, folderPathAtom, savingAtom, searchAtom, treeAtom } from "../lib/atoms";
-import { flattenTree, type NoteFile, type TreeNode, type FolderNode, useFileTree, type Frontmatter } from "../components/FileTree/useFileTree";
+import { flattenTree, type NoteFile, type TreeNode, type FolderNode, useFileTree, type Frontmatter } from "../components/FileTree/hooks/useFileTree";
 import { useMemo } from "react";
 import { createLogger } from "../lib/logger";
 import { ask } from '@tauri-apps/plugin-dialog';
@@ -18,7 +18,7 @@ export function useNote() {
     const folderPath = useAtomValue(folderPathAtom);
 
     const { updateNote, deleteNote, deleteFolder, createNote, createFolder, renameNode, openFolderNote } = useFileTree();
-    const { onFrontmatterChange, refreshBaseChildren, cleanupNoteFromBases } = useFrontmatter();
+    const { onFrontmatterChange, refreshBaseChildren, cleanupNoteFromBases, renameNoteInBases } = useFrontmatter();
     const { onTemplateChange } = useTemplateSync();
 
     const allNotes = useMemo(() => flattenTree(tree), [tree]);
@@ -116,9 +116,11 @@ export function useNote() {
 
         const newPath = await renameNode(oldPath, newName, isFolder);
 
-        if (!isFolder && activeNote?.id === oldPath) {
-            setActiveNoteId(newPath);
-        } else if (isFolder && activeNote) {
+        if (!isFolder) {
+            // Mettre à jour __Children__ des bases qui référencent cette note
+            await renameNoteInBases(oldPath, newPath);
+            if (activeNote?.id === oldPath) setActiveNoteId(newPath);
+        } else if (activeNote) {
             const oldFolderNoteId = `${oldPath}/${oldPath.split("/").pop()}.md`;
             const newFolderNoteId = `${newPath}/${newName}.md`;
 

@@ -15,10 +15,10 @@ import {
     flattenTree,
     updateNodeInTree,
     type Frontmatter,
-} from "./fileTreeHelpers";
+} from "../components/FileTree/lib/fileTreeHelpers";
 import { NoteType } from "./noteTypes";
 import { createLogger } from "./logger";
-import type { NoteFile, TreeNode } from "../components/FileTree/useFileTree";
+import type { NoteFile, TreeNode } from "../components/FileTree/hooks/useFileTree";
 
 const log = createLogger("vaultIO");
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { AnchoredDropdown } from "./AnchoredDropdown";
-import type { NoteFile } from "../FileTree/useFileTree";
+import type { NoteFile } from "../FileTree/hooks/useFileTree";
 
 interface NoteSelectorProps {
   notes: NoteFile[];

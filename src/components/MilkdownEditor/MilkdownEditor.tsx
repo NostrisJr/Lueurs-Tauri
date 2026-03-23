@@ -1,11 +1,13 @@
 import { MilkdownProvider } from "@milkdown/react";
 import { useAtomValue } from "jotai";
 import { activeNoteAtom, folderPathAtom } from "../../lib/atoms";
-import type { Frontmatter } from "../FileTree/useFileTree";
+import type { Frontmatter } from "../FileTree/hooks/useFileTree";
+import { NoteType } from "../../lib/noteTypes";
 import { useNote } from "../../hooks/useNote";
 import { NoteHeader } from "./NoteHeader";
 import { FrontmatterEditor } from "../Frontmatter/FrontmatterEditor";
 import { CrepeEditor } from "./CrepeEditor";
+import { BaseView } from "../BaseView/BaseView";
 
 interface Props {
   className?: string;
@@ -26,6 +28,8 @@ export function MilkdownEditor({ className }: Props) {
     handleChange(activeNote.body, updated);
   }
 
+  const isBase = activeNote?.type === NoteType.BASE;
+
   return (
     <div className={className}>
       {activeNote && folderPath && (
@@ -37,13 +41,20 @@ export function MilkdownEditor({ className }: Props) {
             onRefresh={() => refreshBaseChildren(activeNote)}
           />
           <FrontmatterEditor onChange={handleFrontmatterChange} />
-          <MilkdownProvider key={activeNote.id}>
-            <CrepeEditor
-              node={activeNote}
-              vaultPath={folderPath}
-              onChange={handleBodyChange}
+          {isBase ? (
+            <BaseView
+              base={activeNote}
+              onBaseChange={handleFrontmatterChange}
             />
-          </MilkdownProvider>
+          ) : (
+            <MilkdownProvider key={activeNote.id}>
+              <CrepeEditor
+                node={activeNote}
+                vaultPath={folderPath}
+                onChange={handleBodyChange}
+              />
+            </MilkdownProvider>
+          )}
         </>
       )}
     </div>

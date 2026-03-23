@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { treeAtom } from "../../lib/atoms";
-import { flattenTree } from "../FileTree/useFileTree";
+import { flattenTree } from "../FileTree/hooks/useFileTree";
 import { getFieldDef, SystemField } from "../../lib/noteTypes";
 import type { Row } from "./lib/frontmatterUtils";
 import {
@@ -25,6 +25,7 @@ interface Props {
   index: number;
   isTemplate: boolean;
   commit: (rows: Row[]) => void;
+  onRenameTemplateKey?: (oldKey: string, newKey: string) => void;
 }
 
 const SELECTOR_PLACEHOLDERS: Partial<Record<string, string>> = {
@@ -40,7 +41,13 @@ function hasNoteSelector(key: string) {
   );
 }
 
-export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
+export function FrontmatterRow({
+  row,
+  index,
+  isTemplate,
+  commit,
+  onRenameTemplateKey,
+}: Props) {
   const rowRef = useRef<HTMLDivElement>(null);
   const selectorAnchorRef = useRef<HTMLButtonElement>(null);
 
@@ -79,7 +86,6 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
   }
 
   function removeRow() {
-    if (row.isSystem || isKeyLocked) return;
     commit(rows.filter((_, i) => i !== index));
   }
 
@@ -103,12 +109,20 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
     );
   }
 
-  function renameKey(newKey: string) {
+  function handleRename(oldKey: string, newKey: string) {
     setEditingKey(null);
-    commit(rows.map((r) => (r.key === row.key ? { ...r, key: newKey } : r)));
+    if (isTemplate && onRenameTemplateKey) {
+      onRenameTemplateKey(oldKey, newKey);
+    } else {
+      commit(rows.map((r) => (r.key === oldKey ? { ...r, key: newKey } : r)));
+    }
   }
 
-  const canDelete = !row.isSystem && !isKeyLocked;
+  // Tout est supprimable sauf __Type__ et les props issues d'un template
+  const canDelete = !(row.key === SystemField.TYPE) && !isKeyLocked;
+  // Sur le template lui-même, les props sont toujours renommables.
+  // Sur les enfants, isKeyLocked bloque le renommage.
+  const canRename = !row.isSystem && (isTemplate || !isKeyLocked);
 
   return (
     <div
@@ -133,15 +147,15 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
 
       <span
         className={`shrink-0 w-28 mt-0.5 truncate text-xs
-          ${row.isSystem ? "font-bold text-gray-500" : ""}
-          ${!row.isSystem && !isKeyLocked ? "text-gray-400 cursor-pointer hover:text-gray-600" : ""}
-          ${isKeyLocked ? "text-amber-500/70" : ""}`}
-        onDoubleClick={() =>
-          !(isKeyLocked && row.isSystem) && setEditingKey(row.key)
-        }
+          ${row.isSystem ? "font-bold text-gray-500 select-none" : ""}
+          ${!row.isSystem && canRename ? "text-gray-500 cursor-pointer hover:text-gray-700" : ""}
+          ${isKeyLocked && !isTemplate ? "text-amber-500/70 select-none" : ""}`}
+        onDoubleClick={() => canRename && setEditingKey(row.key)}
         title={
-          isKeyLocked
-            ? "Propriété verrouillée par le template"
+          isKeyLocked && !isTemplate
+            ? isValueLocked
+              ? "Propriété imposée par le template"
+              : "Propriété contraignante — valeur éditable"
             : "Double-cliquer pour renommer"
         }
       >
@@ -150,7 +164,7 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
 
       <SFIcon
         icon={sfArrowRight}
-        className="size-3 text-gray-300"
+        className="size-3 text-gray-300 select-none"
         aria-hidden="true"
       />
 
@@ -158,7 +172,7 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
         <span ref={selectorAnchorRef}>
           <SFIcon
             icon={sfPlusCircle}
-            className="size-3 text-gray-400 hover:text-amber-400 transition-colors cursor-pointer"
+            className="size-3 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
             title="Ajouter une note"
             onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
           />
@@ -182,9 +196,10 @@ export function FrontmatterRow({ row, index, isTemplate, commit }: Props) {
         <PropertyEditModal
           propKey={row.key}
           isTemplate={isTemplate}
+          existingKeys={rows.map((r) => r.key)}
           anchorRef={rowRef}
           onClose={() => setEditingKey(null)}
-          onRename={renameKey}
+          onRename={handleRename}
         />
       )}
 

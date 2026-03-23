@@ -1,5 +1,5 @@
 import { MilkdownEditor } from "./components/MilkdownEditor/MilkdownEditor";
-import { useFileTree } from "./components/FileTree/useFileTree";
+import { useFileTree } from "./components/FileTree/hooks/useFileTree";
 import { sfCheckmark, sfFolder } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { SideBar } from "./components/SideBar";
@@ -15,7 +15,7 @@ import { useEffect } from "react";
 
 function WelcomeScreen({ onPick }: { onPick: () => void }) {
   return (
-    <div className="h-screen flex items-center justify-center bg-white">
+    <div className="h-screen flex items-center justify-center bg-transparent">
       <div className="flex flex-col items-center gap-4 text-center max-w-xs">
         <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400">
           <SFIcon icon={sfFolder} className="size-4" aria-hidden="true" />
@@ -49,6 +49,7 @@ export default function App() {
   const folderPath = useAtomValue(folderPathAtom);
   const loading = useAtomValue(loadingAtom);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     if (folderPath) initFolder();
   }, [folderPath]);

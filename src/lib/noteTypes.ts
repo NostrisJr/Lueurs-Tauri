@@ -19,21 +19,45 @@ export const SystemField = {
     BASE: "__Base__",
     CHILDREN: "__Children__",
     TEMPLATE: "__Template__",
+    VIEW: "__View__",
+    KANBAN_KEY: "__KanbanKey__",
+    KANBAN_COLUMNS: "__KanbanColumns__",
+    TABLE_COLUMNS: "__TableColumns__",
 } as const;
 
 export type SystemFieldKey = typeof SystemField[keyof typeof SystemField];
+
+// ── Vues disponibles ───────────────────────────────────────────────────────
+
+export const BaseViewEnum = {
+    DEFAULT: "default",
+    KANBAN: "kanban",
+    TABLE: "table",
+} as const;
+
+export type BaseViewType = typeof BaseViewEnum[keyof typeof BaseViewEnum];
+
+// ── Structure d'une colonne Kanban ─────────────────────────────────────────
+
+// Persistée en YAML dans __KanbanColumns__ de la base.
+// id : clé stable (jamais modifiée), label : valeur écrite dans les notes enfants.
+export interface KanbanColumn {
+    id: string;
+    label: string;
+}
 
 // ── Définition des propriétés système ─────────────────────────────────────
 
 export interface SystemFieldDef {
     key: SystemFieldKey;
-    label: string;               // Nom affiché dans l'UI (sans les __)
-    description: string;         // Courte description pour le tooltip/dropdown
-    kind: "string" | "noteArray" // "noteArray" = array de chemins de notes
-    noteFilter: NoteTypeValue[] | null; // null = toutes les notes
-    compatibleTypes: NoteTypeValue[];   // Types de notes sur lesquels ce champ a du sens
-    required: boolean;           // Ajouté automatiquement si absent
-    readOnly: boolean;           // Non supprimable ni renommable dans l'UI
+    label: string;
+    description: string;
+    kind: "string" | "noteArray";
+    noteFilter: NoteTypeValue[] | null;
+    compatibleTypes: NoteTypeValue[];
+    required: boolean;
+    readOnly: boolean;
+    hidden: boolean;
 }
 
 export const SYSTEM_FIELDS: SystemFieldDef[] = [
@@ -46,6 +70,7 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
         compatibleTypes: [NoteType.NOTE, NoteType.FOLDER, NoteType.TEMPLATE, NoteType.BASE],
         required: true,
         readOnly: true,
+        hidden: false,
     },
     {
         key: SystemField.BASE,
@@ -56,6 +81,7 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
         compatibleTypes: [NoteType.NOTE, NoteType.FOLDER],
         required: false,
         readOnly: false,
+        hidden: false,
     },
     {
         key: SystemField.CHILDREN,
@@ -66,6 +92,7 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
         compatibleTypes: [NoteType.BASE],
         required: false,
         readOnly: false,
+        hidden: false,
     },
     {
         key: SystemField.TEMPLATE,
@@ -76,26 +103,35 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
         compatibleTypes: [NoteType.NOTE, NoteType.FOLDER, NoteType.BASE],
         required: false,
         readOnly: false,
+        hidden: false,
     },
+    // __View__, __KanbanKey__, __KanbanColumns__ sont gérés exclusivement
+    // via le sélecteur de vue — non ajoutables manuellement via l'UI.
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Retourne les propriétés système compatibles avec un type de note donné,
- *  en excluant celles déjà présentes dans le frontmatter. */
 export function getAddableFields(
     noteType: NoteTypeValue | null,
     existingKeys: string[]
 ): SystemFieldDef[] {
     return SYSTEM_FIELDS.filter((field) => {
-        if (field.required) return false;                          // Déjà géré automatiquement
-        if (existingKeys.includes(field.key)) return false;        // Déjà présent
-        if (!noteType) return true;                                // Type inconnu → tout proposer
+        if (field.required) return false;
+        if (existingKeys.includes(field.key)) return false;
+        if (!noteType) return true;
         return field.compatibleTypes.includes(noteType);
     });
 }
 
-/** Retourne la définition d'un champ système par sa clé, ou null. */
 export function getFieldDef(key: string): SystemFieldDef | null {
     return SYSTEM_FIELDS.find((f) => f.key === key) ?? null;
+}
+
+// Retourne true si la clé est un champ système Kanban (non éditable manuellement)
+export function isFunctionalBaseField(key: string): boolean {
+    return key === SystemField.VIEW
+        || key === SystemField.KANBAN_KEY
+        || key === SystemField.KANBAN_COLUMNS
+        || key === SystemField.TABLE_COLUMNS;
+
 }

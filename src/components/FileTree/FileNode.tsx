@@ -11,7 +11,11 @@ import {
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useState } from "react";
-import { type NoteFile, type FolderNode, useFileTree } from "./useFileTree";
+import {
+  type NoteFile,
+  type FolderNode,
+  useFileTree,
+} from "./hooks/useFileTree";
 import { useNote } from "../../hooks/useNote";
 import { EditableText } from "../EditableText";
 import { TreeNodes } from "./FileTree";
@@ -62,7 +66,7 @@ function FileNodeComponent({
         }}
         aria-label={`Mettre ${node.name} à la poubelle`}
         title="Mettre à la poubelle"
-        className="hidden group-hover:block p-0.5 rounded text-gray-300 hover:text-red-400 transition-all cursor-pointer"
+        className="hidden group-hover:block rounded text-gray-300 hover:text-red-400 transition-all cursor-pointer"
       >
         <SFIcon icon={sfTrash} className="size-3" aria-hidden="true" />
       </button>
@@ -147,7 +151,7 @@ function FolderNodeComponent({
         </div>
 
         {/* Actions dossier (visibles au hover) */}
-        <div className="hidden relative right-0 group-hover:flex items-center gap-0.5 transition-opacity z-10">
+        <div className="hidden relative right-0 group-hover:flex items-center gap-1.5 transition-opacity z-10">
           <button
             type="button"
             onClick={(e) => {
@@ -156,9 +160,9 @@ function FolderNodeComponent({
             }}
             aria-label="Nouvelle note dans ce dossier"
             title="Nouvelle note"
-            className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+            className="rounded text-gray-400 hover:bg-gray-200 transition-colors cursor-pointer"
           >
-            <SFIcon icon={sfPlus} className="size-3" aria-hidden="true" />
+            <SFIcon icon={sfPlus} className="size-3 m-1" aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -168,11 +172,11 @@ function FolderNodeComponent({
             }}
             aria-label="Nouveau sous-dossier"
             title="Nouveau dossier"
-            className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+            className="rounded text-gray-400 hover:bg-gray-200 transition-colors cursor-pointer"
           >
             <SFIcon
               icon={sfFolderBadgePlus}
-              className="size-3"
+              className="size-3.5 m-1"
               aria-hidden="true"
             />
           </button>
@@ -184,7 +188,7 @@ function FolderNodeComponent({
             }}
             aria-label={`Mettre ${node.name} à la poubelle`}
             title="Mettre à la poubelle"
-            className="p-1 rounded text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
+            className="rounded text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
           >
             <SFIcon icon={sfTrash} className="size-3" aria-hidden="true" />
           </button>

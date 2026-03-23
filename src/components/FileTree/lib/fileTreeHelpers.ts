@@ -1,6 +1,6 @@
-import type { NoteFile, TreeNode } from "../components/FileTree/useFileTree";
+import type { NoteFile, TreeNode } from "../../../components/FileTree/hooks/useFileTree";
 import { Command } from "@tauri-apps/plugin-shell";
-import { NoteType } from "./noteTypes";
+import { NoteType, isFunctionalBaseField } from "../../../lib/noteTypes";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -10,24 +10,16 @@ export interface Frontmatter {
 
 // ── Types système ─────────────────────────────────────────────────────────────
 
-export { NoteType, SystemField } from "./noteTypes";
-export type { NoteTypeValue, SystemFieldKey } from "./noteTypes";
-
 const SYSTEM_FIELD_REGEX = /^__[A-Za-z]+__$/;
 
-/** Retourne true si la clé est un champ système (__Mot__) */
 export function isSystemField(key: string): boolean {
     return SYSTEM_FIELD_REGEX.test(key);
 }
 
-/**
- * Injecte __Type__ dans un frontmatter si absent.
- * Détecte automatiquement __folder__ si la note porte le même nom que son dossier parent.
- */
 export function ensureType(
     frontmatter: Frontmatter,
-    noteName: string,       // sans extension
-    parentFolderName: string // nom du dossier parent direct
+    noteName: string,
+    parentFolderName: string
 ): Frontmatter {
     if (frontmatter.__Type__) return frontmatter;
 
@@ -38,11 +30,6 @@ export function ensureType(
     return { "__Type__": inferredType, ...frontmatter };
 }
 
-/**
- * Applique les propriétés manquantes d'un ensemble de templates à un frontmatter.
- * Version pure (sans IO) — utilisée au parsing.
- * templates : liste de frontmatters de notes __template__.
- */
 export function applyMissingTemplateProps(
     frontmatter: Frontmatter,
     templates: Frontmatter[]
@@ -52,7 +39,7 @@ export function applyMissingTemplateProps(
 
     for (const template of templates) {
         for (const [key, value] of Object.entries(template)) {
-            if (/^__[A-Za-z]+__$/.test(key)) continue; // ignorer les champs système
+            if (/^__[A-Za-z]+__$/.test(key)) continue;
             if (!(key in updated)) {
                 updated[key] = value ?? "";
                 added.push(key);
@@ -75,6 +62,7 @@ export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; 
 
     const lines = raw.split("\n");
     let i = 0;
+
     while (i < lines.length) {
         const line = lines[i];
         const colonIdx = line.indexOf(":");
@@ -83,17 +71,27 @@ export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; 
         const key = line.slice(0, colonIdx).trim();
         const value = line.slice(colonIdx + 1).trim();
 
-        // Array inline : key: [a, b, c]
-        if (value.startsWith("[") && value.endsWith("]")) {
-            frontmatter[key] = value.slice(1, -1).split(",").map((v) => v.trim()).filter(Boolean);
+        // String quotée guillemets simples → dé-quoter et garder telle quelle (ex: JSON sérialisé)
+        if (value.startsWith("'") && value.endsWith("'")) {
+            frontmatter[key] = value.slice(1, -1);
             i++;
             continue;
         }
 
-        // Array multiligne YAML :
-        // key:
-        //   - item1
-        //   - item2
+        // Valeur entre crochets : JSON ou array YAML inline
+        if (value.startsWith("[") && value.endsWith("]")) {
+            try {
+                // Tenter JSON d'abord — préserve les objets et types complexes
+                JSON.parse(value);
+                frontmatter[key] = value;
+            } catch {
+                // Fallback : array YAML simple key: [a, b, c]
+                frontmatter[key] = value.slice(1, -1).split(",").map((v) => v.trim()).filter(Boolean);
+            }
+            i++;
+            continue;
+        }
+
         if (value === "") {
             const items: string[] = [];
             i++;
@@ -101,12 +99,7 @@ export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; 
                 items.push(lines[i].replace(/^\s+-\s+/, "").trim());
                 i++;
             }
-            if (items.length > 0) {
-                frontmatter[key] = items;
-                continue;
-            }
-            // Valeur vide réelle
-            frontmatter[key] = "";
+            frontmatter[key] = items.length > 0 ? items : "";
             continue;
         }
 
@@ -121,7 +114,6 @@ export function serializeFrontmatter(frontmatter: Frontmatter, body: string): st
     const keys = Object.keys(frontmatter);
     if (keys.length === 0) return body;
 
-    // Les champs système (__Mot__) sont écrits en premier
     const systemKeys = keys.filter(isSystemField);
     const userKeys = keys.filter((k) => !isSystemField(k));
     const orderedKeys = [...systemKeys, ...userKeys];
@@ -129,11 +121,16 @@ export function serializeFrontmatter(frontmatter: Frontmatter, body: string): st
     const lines = orderedKeys.map((key) => {
         const value = frontmatter[key];
         if (Array.isArray(value)) {
-            // Format YAML natif pour les arrays
             if (value.length === 0) return `${key}: []`;
             return `${key}:\n${value.map((v) => `  - ${v}`).join("\n")}`;
         }
-        return `${key}: ${value ?? ""}`;
+        // Valeur vide → key sans valeur (ex: "Status:" sans espace)
+        if (value === "" || value === null || value === undefined) return `${key}:`;
+        // String JSON (commence par [ ou {) → guillemets pour éviter que YAML la parse comme structure
+        if (typeof value === "string" && (value.startsWith("[") || value.startsWith("{"))) {
+            return `${key}: '${value}'`;
+        }
+        return `${key}: ${value}`;
     });
 
     return `---\n${lines.join("\n")}\n---\n${body}`;
@@ -152,7 +149,17 @@ export function extractTitle(body: string): string {
 export function extractTags(markdown: string): string[] {
     const { frontmatter } = parseFrontmatter(markdown);
     const tags = frontmatter.tags;
-    return Array.isArray(tags) ? tags : [];
+    return Array.isArray(tags) ? tags as string[] : [];
+}
+
+// ── Helpers Kanban ────────────────────────────────────────────────────────────
+
+/** Retourne les propriétés libres (valeur vide) d'un frontmatter de template.
+ *  Ce sont les seules utilisables comme KanbanKey — les notes enfants peuvent y mettre leur propre valeur. */
+export function getFreeProps(templateFrontmatter: Frontmatter): string[] {
+    return Object.entries(templateFrontmatter)
+        .filter(([key, value]) => !isSystemField(key) && !isFunctionalBaseField(key) && (value === "" || value === undefined))
+        .map(([key]) => key);
 }
 
 // ── Tri ───────────────────────────────────────────────────────────────────────
@@ -168,24 +175,16 @@ export function sortNodes(nodes: TreeNode[]): TreeNode[] {
 
 export function updateNodeInTree(nodes: TreeNode[], fileId: string, patch: Partial<NoteFile>): TreeNode[] {
     return nodes.map((node) => {
-        if (node.kind === "file" && node.id === fileId) {
-            return { ...node, ...patch };
-        }
-        if (node.kind === "folder") {
-            return { ...node, children: updateNodeInTree(node.children, fileId, patch) };
-        }
+        if (node.kind === "file" && node.id === fileId) return { ...node, ...patch };
+        if (node.kind === "folder") return { ...node, children: updateNodeInTree(node.children, fileId, patch) };
         return node;
     });
 }
 
 export function renameNodeInTree(nodes: TreeNode[], oldPath: string, newPath: string, newName: string): TreeNode[] {
     return nodes.map((node) => {
-        if (node.id === oldPath) {
-            return { ...node, id: newPath, name: newName };
-        }
-        if (node.kind === "folder") {
-            return { ...node, children: renameNodeInTree(node.children, oldPath, newPath, newName) };
-        }
+        if (node.id === oldPath) return { ...node, id: newPath, name: newName };
+        if (node.kind === "folder") return { ...node, children: renameNodeInTree(node.children, oldPath, newPath, newName) };
         return node;
     });
 }
@@ -201,10 +200,8 @@ export function deleteNodeInTree(nodes: TreeNode[], id: string): TreeNode[] {
 }
 
 export function addNodeInTree(nodes: TreeNode[], parentId: string, newNode: TreeNode, rootId?: string): TreeNode[] {
-    // Cas racine : parentId est le vault root, pas un dossier dans l'arbre
-    if (rootId && parentId === rootId) {
-        return sortNodes([...nodes, newNode]);
-    }
+    if (rootId && parentId === rootId) return sortNodes([...nodes, newNode]);
+
     return nodes.map((node) => {
         if (node.kind === "folder" && node.id === parentId) {
             return { ...node, children: sortNodes([...node.children, newNode]) };
@@ -215,8 +212,6 @@ export function addNodeInTree(nodes: TreeNode[], parentId: string, newNode: Tree
         return node;
     });
 }
-
-// ── Aplatissement ─────────────────────────────────────────────────────────────
 
 export function updateFolderInTree(
     nodes: TreeNode[],
@@ -238,7 +233,7 @@ export function updateFolderInTree(
 
 export function flattenTree(nodes: TreeNode[]): NoteFile[] {
     return nodes.flatMap((node) =>
-        node.kind === "file" ? [node] : flattenTree(node.children),
+        node.kind === "file" ? [node] : flattenTree(node.children)
     );
 }
 
@@ -251,10 +246,7 @@ export async function moveToTrash(filePath: string): Promise<void> {
     ]);
 
     const output = await command.execute();
-
-    if (output.code !== 0) {
-        throw new Error(output.stderr || "Erreur inconnue");
-    }
+    if (output.code !== 0) throw new Error(output.stderr || "Erreur inconnue");
 }
 
 // ── Nommage automatique ───────────────────────────────────────────────────────

@@ -2,13 +2,13 @@ import { useSetAtom, useStore } from "jotai";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { message } from "@tauri-apps/plugin-dialog";
 import { treeAtom } from "../../../lib/atoms";
-import { isSystemField, serializeFrontmatter, updateNodeInTree } from "../../../lib/fileTreeHelpers";
+import { isSystemField, serializeFrontmatter, updateNodeInTree } from "../../FileTree/lib/fileTreeHelpers";
 import { createLogger } from "../../../lib/logger";
 import { NoteType } from "../../../lib/noteTypes";
-import { flattenTree, type Frontmatter, type NoteFile } from "../../FileTree/useFileTree";
+import { flattenTree, type Frontmatter, type NoteFile } from "../../FileTree/hooks/useFileTree";
 
 const log = createLogger("useFrontmatter");
-
+//TODO : régler tous les types any
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function toArray(value: string | string[] | undefined): string[] {
@@ -210,6 +210,21 @@ export function useFrontmatter() {
         return updatedFrontmatter;
     }
 
+    async function renameNoteInBases(oldNoteId: string, newNoteId: string) {
+        const allNotes = getCurrentNotes();
+        const bases = allNotes.filter((n) =>
+            toArray(n.frontmatter.__Children__).includes(oldNoteId)
+        );
+        if (bases.length === 0) return;
+        log.info("mise à jour __Children__ après renommage", { oldNoteId, newNoteId, baseCount: bases.length });
+        for (const base of bases) {
+            const updated = toArray(base.frontmatter.__Children__).map((c) =>
+                c === oldNoteId ? newNoteId : c
+            );
+            writeBaseChildren(base, updated);
+        }
+    }
+
     /** Arbre mis à jour immédiatement, persistance disque en arrière-plan. */
     function writeBaseChildren(base: NoteFile, children: string[]) {
         const updatedFrontmatter: Frontmatter = { ...base.frontmatter, "__Children__": children };
@@ -274,5 +289,6 @@ export function useFrontmatter() {
         refreshBaseChildren,
         applyTemplateProps,
         cleanupNoteFromBases,
+        renameNoteInBases,
     };
 }

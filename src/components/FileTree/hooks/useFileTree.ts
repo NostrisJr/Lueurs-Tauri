@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from "react";
 import { readDir, writeTextFile, mkdir, rename } from "@tauri-apps/plugin-fs";
 import { watchImmediate } from "@tauri-apps/plugin-fs";
 import { useAtom, useSetAtom } from "jotai";
-import { activeNoteIdAtom, errorAtom, folderPathAtom, loadingAtom, treeAtom, writingPathsRegistry } from "../../lib/atoms";
+import { activeNoteIdAtom, errorAtom, folderPathAtom, loadingAtom, treeAtom, writingPathsRegistry } from "../../../lib/atoms";
 import {
     serializeFrontmatter,
     ensureType,
@@ -17,11 +17,11 @@ import {
     moveToTrash,
     findNextAvailableNumber,
     type Frontmatter,
-} from "../../lib/fileTreeHelpers";
-import { NoteType } from "../../lib/noteTypes";
-import { loadTree, allowVaultScope, applyAllTemplates } from "../../lib/vaultIO";
+} from "../lib/fileTreeHelpers";
+import { NoteType } from "../../../lib/noteTypes";
+import { loadTree, allowVaultScope, applyAllTemplates } from "../../../lib/vaultIO";
 import { open } from "@tauri-apps/plugin-dialog";
-import { createLogger } from "../../lib/logger";
+import { createLogger } from "../../../lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

@@ -1,9 +1,9 @@
 import { useAtomValue } from "jotai";
 import { activeNoteAtom } from "../../lib/atoms";
-import { NoteType } from "../../lib/fileTreeHelpers";
 import { EditableText } from "../EditableText";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { sfArrowClockwise } from "@bradleyhodges/sfsymbols";
+import { NoteType } from "../../lib/noteTypes";
 
 interface Props {
   onRename: (newName: string) => Promise<void>;

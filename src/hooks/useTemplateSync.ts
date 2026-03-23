@@ -1,11 +1,13 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import { treeAtom, folderPathAtom, writingPathsRegistry } from "../lib/atoms";
-import { flattenTree, type Frontmatter } from "../components/FileTree/useFileTree";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { treeAtom, folderPathAtom, writingPathsRegistry, skipPropagationAtom } from "../lib/atoms";
+import { flattenTree, type Frontmatter } from "../components/FileTree/hooks/useFileTree";
+import { serializeFrontmatter, updateNodeInTree, isSystemField } from "../components/FileTree/lib/fileTreeHelpers";
 import { invoke } from "@tauri-apps/api/core";
+import { ask, message } from "@tauri-apps/plugin-dialog";
 import { createLogger } from "../lib/logger";
 import { loadTree, applyAllTemplates } from "../lib/vaultIO";
-import { isSystemField } from "../lib/fileTreeHelpers";
-import { NoteType } from "../lib/noteTypes";
+import { NoteType, SystemField } from "../lib/noteTypes";
 
 const log = createLogger("useTemplateSync");
 
@@ -14,7 +16,7 @@ const log = createLogger("useTemplateSync");
 type TemplateChange =
     | { type: "addProp"; key: string; value?: string }
     | { type: "removeProp"; key: string }
-    | { type: "renameProp"; oldKey: string; newKey: string }
+    | { type: "renameProp"; old_key: string; new_key: string }
     | { type: "forceValue"; key: string; value: string };
 
 interface PropagateResult {
@@ -25,38 +27,41 @@ interface PropagateResult {
 // ── Hook ───────────────────────────────────────────────────────────────────
 
 export function useTemplateSync() {
+    const store = useStore();
     const tree = useAtomValue(treeAtom);
     const setTree = useSetAtom(treeAtom);
     const folderPath = useAtomValue(folderPathAtom);
+    const setSkipPropagation = useSetAtom(skipPropagationAtom);
     const allNotes = flattenTree(tree);
 
-    async function onTemplateChange(
-        templateId: string,
-        prev: Frontmatter,
-        next: Frontmatter,
-    ) {
+    async function onTemplateChange(templateId: string, prev: Frontmatter, next: Frontmatter) {
         if (!folderPath) return;
 
         const changes = diffFrontmatter(prev, next);
         if (changes.length === 0) return;
 
-        log.info("changements template détectés", { templateId, changes });
+        // Lire skipPropagationAtom au moment de l'exécution (pas au rendu)
+        const skipPropagation = store.get(skipPropagationAtom);
 
-        // La confirmation removeProp est gérée en amont dans FrontmatterEditor
-        for (const change of changes) {
+        const filteredChanges = changes.filter((change) => {
+            if (change.type !== "removeProp") return true;
+            if (skipPropagation.has(change.key)) {
+                log.info("propagation ignorée pour cette clé", { key: change.key });
+                return false;
+            }
+            return true;
+        });
+
+        // Vider l'atom après consommation
+        if (skipPropagation.size > 0) setSkipPropagation(new Set());
+
+        log.info("changements template détectés", { templateId, changes: filteredChanges });
+        for (const change of filteredChanges) {
             await propagate(templateId, change);
         }
     }
 
-    /**
-     * Renomme une propriété dans un template et propage aux héritiers.
-     * TODO: préserver les valeurs existantes des enfants lors du renommage
-     */
-    async function renameTemplateProperty(
-        templateId: string,
-        oldKey: string,
-        newKey: string,
-    ) {
+    async function renameTemplateProperty(templateId: string, oldKey: string, newKey: string) {
         if (!folderPath) return;
 
         const allPaths = [templateId, ...resolveAllHeirs(templateId)];
@@ -67,7 +72,7 @@ export function useTemplateSync() {
         try {
             const result = await invoke<PropagateResult>("propagate_template_change", {
                 affectedPaths: allPaths,
-                change: { type: "renameProp", oldKey, newKey },
+                change: { type: "renameProp", old_key: oldKey, new_key: newKey },
             });
             log.info("renommage Rust terminé", { modified: result.modified, errors: result.errors });
 
@@ -77,6 +82,52 @@ export function useTemplateSync() {
         } finally {
             for (const p of allPaths) writingPathsRegistry.delete(p);
         }
+    }
+
+    /**
+     * Vérifie si une propriété est utilisée comme KanbanKey dans une base héritière.
+     * Propose de supprimer la vue Kanban en cascade.
+     * Retourne false si l'utilisateur refuse (annule la suppression de la propriété).
+     */
+    async function checkKanbanKeyUsage(templateId: string, propKey: string): Promise<boolean> {
+        const affectedBases = resolveHeirBases(templateId).filter(
+            (base) => base.frontmatter[SystemField.KANBAN_KEY] === propKey
+        );
+
+        if (affectedBases.length === 0) return true;
+
+        const baseNames = affectedBases.map((b) => b.name).join(", ");
+        log.info("propriété utilisée comme KanbanKey", { propKey, bases: baseNames });
+
+        const confirmed = await ask(
+            `La propriété "${propKey}" est utilisée comme clé Kanban dans : ${baseNames}.\n\nSupprimer aussi la vue Kanban de ces bases ?`,
+            { title: "Propriété Kanban", kind: "warning" }
+        );
+
+        if (!confirmed) {
+            log.info("suppression annulée — KanbanKey protégée", { propKey });
+            return false;
+        }
+
+        for (const base of affectedBases) {
+            const { [SystemField.VIEW]: _v, [SystemField.KANBAN_KEY]: _k, [SystemField.KANBAN_COLUMNS]: _c, ...rest } = base.frontmatter;
+            const raw = serializeFrontmatter(rest, base.body);
+
+            try {
+                writingPathsRegistry.add(base.id);
+                // biome-ignore lint/suspicious/noExplicitAny: baseDir null requis par Tauri
+                await writeTextFile(base.id, raw, { baseDir: null } as any);
+                setTree((prev) => updateNodeInTree(prev, base.id, { frontmatter: rest }));
+                log.info("vue Kanban supprimée de la base", { baseId: base.id });
+            } catch (err) {
+                log.error("échec suppression vue Kanban", { baseId: base.id, err });
+                await message(`Impossible de modifier la base "${base.name}".`, { title: "Erreur", kind: "error" });
+            } finally {
+                writingPathsRegistry.delete(base.id);
+            }
+        }
+
+        return true;
     }
 
     // ── Helpers privés ─────────────────────────────────────────────────────
@@ -91,7 +142,6 @@ export function useTemplateSync() {
         }
 
         log.info("propagation vers héritiers", { templateId, change, count: affectedPaths.length });
-
         for (const p of affectedPaths) writingPathsRegistry.add(p);
 
         try {
@@ -109,11 +159,6 @@ export function useTemplateSync() {
         }
     }
 
-    /**
-     * Retourne les chemins de toutes les notes héritant du template donné.
-     * Les bases sont exclues — elles portent __Template__ pour leurs enfants,
-     * pas pour elles-mêmes.
-     */
     function resolveAllHeirs(templateId: string): string[] {
         return allNotes
             .filter((note) => {
@@ -126,15 +171,21 @@ export function useTemplateSync() {
                 const bases = toArray(note.frontmatter.__Base__);
                 return bases.some((basePath) => {
                     const base = allNotes.find((n) => n.id === basePath);
-                    return base
-                        ? toArray(base.frontmatter.__Template__).includes(templateId)
-                        : false;
+                    return base ? toArray(base.frontmatter.__Template__).includes(templateId) : false;
                 });
             })
             .map((n) => n.id);
     }
 
-    return { onTemplateChange, renameTemplateProperty };
+    function resolveHeirBases(templateId: string) {
+        return allNotes.filter(
+            (note) =>
+                note.type === NoteType.BASE &&
+                toArray(note.frontmatter.__Template__).includes(templateId)
+        );
+    }
+
+    return { onTemplateChange, renameTemplateProperty, checkKanbanKeyUsage };
 }
 
 // ── Helpers purs ───────────────────────────────────────────────────────────
@@ -154,9 +205,8 @@ function diffFrontmatter(prev: Frontmatter, next: Frontmatter): TemplateChange[]
     const added = nextKeys.filter((k) => !(k in prev));
     const removed = prevKeys.filter((k) => !(k in next));
 
-    // Ajout + suppression simultanés = renommage
     if (added.length === 1 && removed.length === 1) {
-        changes.push({ type: "renameProp", oldKey: removed[0], newKey: added[0] });
+        changes.push({ type: "renameProp", old_key: removed[0], new_key: added[0] });
         return changes;
     }
 

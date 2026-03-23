@@ -7,7 +7,7 @@ import {
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useMemo } from "react";
-import { flattenTree, useFileTree } from "./FileTree/useFileTree";
+import { flattenTree, useFileTree } from "./FileTree/hooks/useFileTree";
 import { useNote } from "../hooks/useNote";
 import { useAtom, useAtomValue } from "jotai";
 import {
@@ -45,24 +45,13 @@ function SideBarInside() {
   const isSearching = search.trim().length > 0;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden pt-7">
       {/* ── Partie haute fixe ────────────────────────────── */}
       <div className="shrink-0">
         {/* En-tête */}
         <div className="flex items-center justify-between px-4 h-11 border-b border-gray-200">
-          <span className="font-semibold text-gray-800 tracking-tight">
-            Lueurs
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={pickFolder}
-              aria-label="Changer de dossier"
-              title="Changer de dossier"
-              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
-            >
-              <SFIcon icon={sfFolder} className="size-4" aria-hidden="true" />
-            </button>
+          {/* Dossier actif */}
+          <div className="flex items-center -ml-2">
             <button
               type="button"
               onClick={reload}
@@ -76,6 +65,25 @@ function SideBarInside() {
                 aria-hidden="true"
               />
             </button>
+            <button
+              type="button"
+              onClick={pickFolder}
+              aria-label="Changer de dossier"
+              title="Changer de dossier"
+              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+            >
+              <SFIcon icon={sfFolder} className="size-4" aria-hidden="true" />
+            </button>
+
+            <p
+              className="text-xs text-gray-400 truncate"
+              title={folderPath ?? "Aucun dossier sélectionné"}
+            >
+              {folderPath?.split("/").pop()}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={handleCreateNote}
@@ -103,16 +111,6 @@ function SideBarInside() {
               />
             </button>
           </div>
-        </div>
-
-        {/* Dossier actif */}
-        <div className="px-4 py-1.5 border-b border-gray-200">
-          <p
-            className="text-xs text-gray-400 truncate"
-            title={folderPath ?? "Aucun dossier sélectionné"}
-          >
-            {folderPath?.split("/").pop()}
-          </p>
         </div>
 
         {/* Recherche */}

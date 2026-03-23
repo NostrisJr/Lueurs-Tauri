@@ -8,6 +8,7 @@ import { AnchoredDropdown } from "./AnchoredDropdown";
 interface PropertyEditModalProps {
   propKey: string;
   isTemplate: boolean;
+  existingKeys: string[];
   anchorRef: { current: HTMLElement | null };
   onClose: () => void;
   onRename: (oldKey: string, newKey: string) => void;
@@ -16,16 +17,21 @@ interface PropertyEditModalProps {
 export function PropertyEditModal({
   propKey,
   isTemplate,
+  existingKeys,
   anchorRef,
   onClose,
   onRename,
 }: PropertyEditModalProps) {
   const [keyDraft, setKeyDraft] = useState(propKey);
 
+  const trimmed = keyDraft.trim();
+  const isUnchanged = trimmed === propKey;
+  const isDuplicate = !isUnchanged && existingKeys.includes(trimmed);
+  const canSave = trimmed !== "" && !isUnchanged && !isDuplicate;
+
   function handleSave() {
-    if (keyDraft.trim() && keyDraft !== propKey) {
-      onRename(propKey, keyDraft.trim());
-    }
+    if (!canSave) return;
+    onRename(propKey, trimmed);
     onClose();
   }
 
@@ -47,9 +53,15 @@ export function PropertyEditModal({
           if (e.key === "Enter") handleSave();
           if (e.key === "Escape") onClose();
         }}
-        className="w-full text-xs border border-gray-200 rounded px-2 py-1 mb-2 outline-none focus:border-gray-400"
+        className={`w-full text-xs border rounded px-2 py-1 mb-2 outline-none transition-colors
+          ${isDuplicate ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`}
       />
-      {isTemplate && keyDraft !== propKey && keyDraft.trim() && (
+      {isDuplicate && (
+        <p className="text-[10px] text-red-400 mb-2">
+          Ce nom est déjà utilisé.
+        </p>
+      )}
+      {isTemplate && !isDuplicate && !isUnchanged && trimmed && (
         <p className="text-[10px] text-amber-500 mb-2">
           Sera propagé à toutes les notes héritières.
         </p>
@@ -65,7 +77,13 @@ export function PropertyEditModal({
         <button
           type="button"
           onClick={handleSave}
-          className="text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-700 cursor-pointer"
+          disabled={!canSave}
+          className={`text-xs px-2 py-1 rounded transition-colors
+            ${
+              canSave
+                ? "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
         >
           Renommer
         </button>

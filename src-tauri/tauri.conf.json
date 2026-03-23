@@ -12,22 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "lueurs-tauri",
-        "decorations": true,
+        "title": "Lueurs",
         "width": 1200,
         "height": 800,
-        "dragDropEnabled": true
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "acceptFirstMouse": true
       }
-    ],
-    "security": {
-      "csp": null,
-      "assetProtocol": {
-        "enable": true,
-        "scope": [
-          "**"
-        ]
-      }
-    }
+    ]
   },
   "bundle": {
     "active": true,

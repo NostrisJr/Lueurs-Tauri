@@ -1,6 +1,6 @@
-import type { Frontmatter } from "../../FileTree/useFileTree";
-import { isSystemField } from "../../../lib/fileTreeHelpers";
+import type { Frontmatter } from "../../FileTree/hooks/useFileTree";
 import { getFieldDef } from "../../../lib/noteTypes";
+import { isSystemField } from "../../FileTree/lib/fileTreeHelpers";
 
 export interface Row {
     key: string;
