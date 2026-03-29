@@ -1,12 +1,11 @@
 import { useAtomValue, useSetAtom, useStore } from "jotai";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { treeAtom, folderPathAtom, writingPathsRegistry, skipPropagationAtom } from "../lib/atoms";
 import { flattenTree, type Frontmatter } from "../components/FileTree/hooks/useFileTree";
-import { serializeFrontmatter, updateNodeInTree, isSystemField } from "../components/FileTree/lib/fileTreeHelpers";
+import { toArray, isSystemField, updateNodeInTree } from "../components/FileTree/lib/fileTreeHelpers";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { createLogger } from "../lib/logger";
-import { loadTree, applyAllTemplates } from "../lib/vaultIO";
+import { loadTree, applyAllTemplates, persistNotePatch } from "../lib/vaultIO";
 import { NoteType, SystemField } from "../lib/noteTypes";
 
 const log = createLogger("useTemplateSync");
@@ -16,7 +15,8 @@ const log = createLogger("useTemplateSync");
 type TemplateChange =
     | { type: "addProp"; key: string; value?: string }
     | { type: "removeProp"; key: string }
-    | { type: "renameProp"; old_key: string; new_key: string }
+    // template_value : valeur du template pour new_key — détermine si la prop est imposée ou libre
+    | { type: "renameProp"; old_key: string; new_key: string; template_value?: string }
     | { type: "forceValue"; key: string; value: string };
 
 interface PropagateResult {
@@ -28,11 +28,9 @@ interface PropagateResult {
 
 export function useTemplateSync() {
     const store = useStore();
-    const tree = useAtomValue(treeAtom);
     const setTree = useSetAtom(treeAtom);
     const folderPath = useAtomValue(folderPathAtom);
     const setSkipPropagation = useSetAtom(skipPropagationAtom);
-    const allNotes = flattenTree(tree);
 
     async function onTemplateChange(templateId: string, prev: Frontmatter, next: Frontmatter) {
         if (!folderPath) return;
@@ -64,15 +62,20 @@ export function useTemplateSync() {
     async function renameTemplateProperty(templateId: string, oldKey: string, newKey: string) {
         if (!folderPath) return;
 
+        // Lire la valeur actuelle du template pour old_key — détermine si la prop est imposée
+        const freshNotes = flattenTree(store.get(treeAtom));
+        const templateNote = freshNotes.find((n) => n.id === templateId);
+        const templateValue = templateNote ? (templateNote.frontmatter[oldKey] as string ?? "") : "";
+
         const allPaths = [templateId, ...resolveAllHeirs(templateId)];
-        log.info("renommage propriété template", { templateId, oldKey, newKey, pathCount: allPaths.length });
+        log.info("renommage propriété template", { templateId, oldKey, newKey, pathCount: allPaths.length, templateValue });
 
         for (const p of allPaths) writingPathsRegistry.add(p);
 
         try {
             const result = await invoke<PropagateResult>("propagate_template_change", {
                 affectedPaths: allPaths,
-                change: { type: "renameProp", old_key: oldKey, new_key: newKey },
+                change: { type: "renameProp", old_key: oldKey, new_key: newKey, template_value: templateValue },
             });
             log.info("renommage Rust terminé", { modified: result.modified, errors: result.errors });
 
@@ -111,13 +114,9 @@ export function useTemplateSync() {
 
         for (const base of affectedBases) {
             const { [SystemField.VIEW]: _v, [SystemField.KANBAN_KEY]: _k, [SystemField.KANBAN_COLUMNS]: _c, ...rest } = base.frontmatter;
-            const raw = serializeFrontmatter(rest, base.body);
-
+            writingPathsRegistry.add(base.id);
             try {
-                writingPathsRegistry.add(base.id);
-                // biome-ignore lint/suspicious/noExplicitAny: baseDir null requis par Tauri
-                await writeTextFile(base.id, raw, { baseDir: null } as any);
-                setTree((prev) => updateNodeInTree(prev, base.id, { frontmatter: rest }));
+                await persistNotePatch(base.id, rest, base.body, setTree);
                 log.info("vue Kanban supprimée de la base", { baseId: base.id });
             } catch (err) {
                 log.error("échec suppression vue Kanban", { baseId: base.id, err });
@@ -151,16 +150,40 @@ export function useTemplateSync() {
             });
             log.info("propagation Rust terminée", { modified: result.modified, errors: result.errors });
 
-            const nodes = await loadTree(folderPath);
-            const finalNodes = await applyAllTemplates(nodes);
-            setTree(finalNodes);
+            // Mise à jour chirurgicale du treeAtom — évite un rechargement complet du disque
+            setTree((prev) => {
+                let updated = prev;
+                for (const path of affectedPaths) {
+                    const note = flattenTree(updated).find((n) => n.id === path);
+                    if (!note) continue;
+                    const fm = note.frontmatter;
+                    let newFm: Frontmatter | null = null;
+
+                    if (change.type === "addProp" && !(change.key in fm)) {
+                        newFm = { ...fm, [change.key]: change.value ?? "" };
+                    } else if (change.type === "removeProp" && change.key in fm) {
+                        newFm = Object.fromEntries(Object.entries(fm).filter(([k]) => k !== change.key)) as Frontmatter;
+                    } else if (change.type === "forceValue" && fm[change.key] !== change.value) {
+                        newFm = { ...fm, [change.key]: change.value };
+                    } else if (change.type === "renameProp" && change.old_key in fm) {
+                        newFm = applyRenameConflict(fm, change.old_key, change.new_key, change.template_value);
+                    }
+
+                    if (newFm) {
+                        updated = updateNodeInTree(updated, path, { frontmatter: newFm }) as typeof prev;
+                    }
+                }
+                return updated;
+            });
         } finally {
             for (const p of affectedPaths) writingPathsRegistry.delete(p);
         }
     }
 
+    // Toujours lire le treeAtom le plus récent — évite les snapshots périmés lors des callbacks async
     function resolveAllHeirs(templateId: string): string[] {
-        return allNotes
+        const freshNotes = flattenTree(store.get(treeAtom));
+        return freshNotes
             .filter((note) => {
                 if (note.id === templateId) return false;
                 if (note.type === NoteType.BASE) return false;
@@ -170,7 +193,7 @@ export function useTemplateSync() {
 
                 const bases = toArray(note.frontmatter.__Base__);
                 return bases.some((basePath) => {
-                    const base = allNotes.find((n) => n.id === basePath);
+                    const base = freshNotes.find((n) => n.id === basePath);
                     return base ? toArray(base.frontmatter.__Template__).includes(templateId) : false;
                 });
             })
@@ -178,7 +201,8 @@ export function useTemplateSync() {
     }
 
     function resolveHeirBases(templateId: string) {
-        return allNotes.filter(
+        const freshNotes = flattenTree(store.get(treeAtom));
+        return freshNotes.filter(
             (note) =>
                 note.type === NoteType.BASE &&
                 toArray(note.frontmatter.__Template__).includes(templateId)
@@ -190,10 +214,39 @@ export function useTemplateSync() {
 
 // ── Helpers purs ───────────────────────────────────────────────────────────
 
-function toArray(value: unknown): string[] {
-    if (!value) return [];
-    if (Array.isArray(value)) return value as string[];
-    return [value as string];
+/**
+ * Résolution de conflit lors du renommage d'une propriété template.
+ * Si new_key existe déjà dans la note :
+ *   - prop imposée (templateValue non vide) → la valeur du template prime
+ *   - prop libre (templateValue vide) → la valeur existante de la note est conservée
+ * Si pas de conflit : renommage simple (valeur de old_key préservée).
+ */
+function applyRenameConflict(
+    fm: Frontmatter,
+    oldKey: string,
+    newKey: string,
+    templateValue: string | undefined,
+): Frontmatter {
+    const withoutOld = Object.fromEntries(Object.entries(fm).filter(([k]) => k !== oldKey)) as Frontmatter;
+
+    if (newKey in fm) {
+        // Conflit : new_key existe déjà
+        const imposed = !!templateValue;
+        if (imposed) {
+            // Propriété imposée : la valeur du template prime
+            return { ...withoutOld, [newKey]: templateValue! };
+        }
+        // Propriété contraignante : old_key avait une valeur → elle prime ; sinon adopter new_key
+        const oldVal = fm[oldKey];
+        const oldIsEmpty = !oldVal || oldVal === "";
+        if (!oldIsEmpty) {
+            return { ...withoutOld, [newKey]: oldVal };
+        }
+        return withoutOld; // old_key vide → new_key conserve sa valeur
+    }
+
+    // Pas de conflit : renommage simple, préserver la valeur de old_key
+    return { ...withoutOld, [newKey]: fm[oldKey] };
 }
 
 function diffFrontmatter(prev: Frontmatter, next: Frontmatter): TemplateChange[] {
@@ -206,7 +259,7 @@ function diffFrontmatter(prev: Frontmatter, next: Frontmatter): TemplateChange[]
     const removed = prevKeys.filter((k) => !(k in next));
 
     if (added.length === 1 && removed.length === 1) {
-        changes.push({ type: "renameProp", old_key: removed[0], new_key: added[0] });
+        changes.push({ type: "renameProp", old_key: removed[0], new_key: added[0], template_value: next[added[0]] as string | undefined });
         return changes;
     }
 

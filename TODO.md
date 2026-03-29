@@ -1,6 +1,9 @@
-# Bugs actuels à soumettre à Claude : 
+# Bugs/TODO actuels à soumettre à Claude : 
 - [ ] Faire en sorte que renommer un template ne casse pas le lien avec la base. Plus précisément : quand j'ai renommé le dossier contenant les templates, ça a cassé le path... donc ça va être un peu touchy a gérer
-- [ ] que le tableau ait le bon nombre de colonnes
+- [ ] dans le note header, le nom ne se troncature pas si il est trop long
+- [ ] régler le pb des __ dans les types. Les proposer en dropdown
+- [ ] quand on supprime un template (la note), le fait qu'il soit répertorié comme template dans les notes enfants n'est pas propagé
+- [ ] vérifier l'appartenance automatique à une base via l'héritage d'un template. Je sais pas si c'est pertinent
 
 # Roadmap précise
 - [x] intégration modules divers:
