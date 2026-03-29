@@ -131,7 +131,7 @@ Affiche les notes enfant sous forme de tableau Kanban, groupées par les valeurs
 
 Une fois configurée, la vue affiche une colonne par valeur distincte trouvée parmi les notes enfant. La clé de groupement active est affichée dans la barre d'outils sous la forme **Groupé par X** ; cliquer dessus permet de changer la propriété à tout moment.
 
-**Colonnes.** Les colonnes peuvent être renommées en cliquant sur leur titre. Renommer une colonne met à jour la valeur correspondante dans le frontmatter de toutes les notes de cette colonne. De nouvelles colonnes peuvent être ajoutées via le bouton **+ Ajouter une colonne** ; les notes dont la valeur correspond au nouveau label y apparaissent automatiquement. L'ordre des colonnes peut être modifié par glisser-déposer.
+**Colonnes.** Les colonnes peuvent être renommées en cliquant sur leur titre. Renommer une colonne met à jour la valeur correspondante dans le frontmatter de toutes les notes de cette colonne. De nouvelles colonnes peuvent être ajoutées via le bouton **+ Ajouter une colonne** ; les notes dont la valeur correspond au nouveau label y apparaissent automatiquement.
 
 **Colonne "Sans valeur".** Les notes dont la propriété clé est absente ou vide apparaissent automatiquement dans une colonne virtuelle **Sans valeur**, affichée en dernier. Cette colonne n'est pas persistée dans `__KanbanColumns__` : elle apparaît uniquement si au moins une note est dans ce cas, et disparaît dès qu'elles ont toutes une valeur. Déplacer une carte vers cette colonne efface la valeur de la propriété clé dans le frontmatter de la note (la clé reste présente avec une valeur vide). Son titre n'est pas éditable.
 
@@ -146,7 +146,11 @@ Lorsque le frontmatter d'un template est modifié, les changements sont automati
 - **Ajout d'une propriété** — la propriété est ajoutée à toutes les notes héritières avec la valeur définie dans le template.
 - **Suppression d'une propriété** — une confirmation est demandée avant propagation. Si confirmée, la propriété est retirée de toutes les notes héritières. Si la propriété supprimée est utilisée comme `__KanbanKey__` dans une base héritière, une confirmation supplémentaire est demandée pour supprimer la vue Kanban de cette base. Refuser cette confirmation annule entièrement la suppression de la propriété.
 - **Modification d'une valeur non vide** — la nouvelle valeur est forcée sur toutes les notes héritières, écrasant leurs valeurs existantes.
-- **Renommage d'une propriété** — la clé est renommée dans toutes les notes héritières en préservant leurs valeurs existantes. Il n'est pas possible de renommer une propriété avec un nom déjà utilisé dans le frontmatter : le bouton de confirmation est désactivé et un message d'erreur s'affiche dans la modal.
+- **Renommage d'une propriété** — la clé est renommée dans toutes les notes héritières. Si la note héritière possède déjà une propriété portant le nouveau nom (conflit), la résolution suit ces règles :
+  - Propriété **imposée** (valeur non vide dans le template) : la valeur du template prime toujours.
+  - Propriété **contraignante** (valeur vide dans le template) : si la propriété en cours de renommage avait déjà une valeur dans la note, cette valeur prime (une prop héritée a priorité sur une prop personnalisée). Si elle était vide, la valeur existante de la note est conservée.
+  - Sans conflit : renommage simple, la valeur existante est préservée.
+  Il n'est pas possible de renommer une propriété template avec un nom déjà utilisé par une autre propriété du même template : le bouton de confirmation est désactivé dans la modal.
 
 Les notes de type `__base__` sont exclues de la propagation : elles portent `__Template__` pour le transmettre à leurs enfants, pas pour le recevoir elles-mêmes.
 
@@ -161,3 +165,55 @@ Les types utilisateur sont des notes de type `__template__` stockées dans `conf
 ## Compatibilité Obsidian
 
 Les frontmatters générés par Lueurs sont du YAML standard, lisibles nativement par Obsidian. `__Children__` est un array YAML, pas un objet JSON. `__KanbanColumns__` et `__TableColumns__` sont stockés comme des chaînes JSON entre guillemets simples sur une seule ligne — Obsidian les affiche comme des propriétés texte. Les champs système (`__Type__`, `__Base__`, etc.) apparaissent tels quels dans Obsidian, tirets bas inclus.
+
+---
+
+## Architecture technique
+
+### Vue d'ensemble
+
+Lueurs est une application desktop construite avec **Tauri 2** (Rust + WebView) et **React** côté frontend. Les notes sont des fichiers `.md` stockés dans un dossier vault choisi par l'utilisateur. Toute la persistance est locale : pas de serveur, pas de base de données.
+
+### État global (Jotai)
+
+L'état de l'application est géré par des atomes Jotai (`src/lib/atoms.ts`) :
+
+- `treeAtom` — l'arbre complet du vault (source de vérité pour les données des notes)
+- `activeNoteIdAtom` — chemin de la note ouverte
+- `activeNoteAtom` — atome dérivé : note courante extraite du tree
+- `folderPathAtom` — chemin du vault (persisté en localStorage)
+
+### Flux de données
+
+```
+Vault (disque) → useFileTree → treeAtom → activeNoteAtom → Éditeur
+      ↑                                                         |
+      └──── FS watcher (débounce 500 ms) ←── Rust update_note ─┘
+```
+
+Les modifications sont appliquées immédiatement en mémoire (mise à jour optimiste de `treeAtom`), puis envoyées à Rust via `invoke("update_note")`. Rust écrit le fichier sur le disque et émet l'événement `vault:patch`. `useVaultSync` écoute cet événement et réconcilie `treeAtom` avec les données Rust. Un registre `writingPathsRegistry` (Set module-level dans `vaultIO.ts`) liste les chemins en cours d'écriture : le watcher FS ignore ces chemins pour éviter de traiter ses propres modifications.
+
+### Propagation de templates (Rust)
+
+Lorsque le frontmatter d'un template change, le frontend (`useTemplateSync`) calcule la liste des notes héritières et invoque la commande Rust `propagate_template_change`. Rust traite les fichiers en parallèle (Tokio) et les écrit directement sur le disque sans passer par l'événement `vault:patch`. Le frontend recharge ensuite l'arbre entier ou applique une mise à jour chirurgicale de `treeAtom`.
+
+La commande Rust reçoit un `TemplateChange` décrivant la modification :
+
+- `addProp` — ajouter une propriété si absente
+- `removeProp` — supprimer une propriété
+- `renameProp { old_key, new_key, template_value }` — renommer une propriété avec résolution de conflit
+- `forceValue` — imposer une valeur
+
+Pour le renommage, Rust parse le frontmatter YAML, détecte si `new_key` est déjà présent dans la note (conflit), et applique la règle de résolution : valeur du template si imposée ; pour une propriété contraignante, la valeur de `old_key` prime si elle était non vide (prop héritée > prop personnalisée), sinon la valeur existante de `new_key` est conservée.
+
+### Résolution des propriétés template
+
+`computeTemplateProps` (dans `fileTreeHelpers.ts`) calcule les propriétés qu'une note doit recevoir d'après ses templates. Elle distingue les propriétés imposées (valeur non vide dans le template) des propriétés contraignantes (valeur vide), et ne modifie jamais une valeur déjà renseignée par la note pour une propriété contraignante.
+
+### Choix de conception
+
+**Stockage YAML plat.** Les propriétés système utilisent des clés avec doubles tirets bas (`__Type__`, `__Template__`, etc.) pour éviter les collisions avec les propriétés utilisateur tout en restant lisibles dans n'importe quel éditeur Markdown.
+
+**Propagation via Rust.** Le traitement parallèle des fichiers à la modification d'un template aurait été difficile à faire de manière fiable depuis le frontend (contraintes du FS scope Tauri, concurrence). Rust gère cela proprement avec Tokio et `JoinSet`.
+
+**Local-first.** Aucune donnée ne quitte la machine. Le vault est un dossier de fichiers `.md` standard, modifiable depuis n'importe quel éditeur externe (Obsidian, VS Code, etc.). Lueurs détecte les changements externes via le watcher FS et reconcile son état.

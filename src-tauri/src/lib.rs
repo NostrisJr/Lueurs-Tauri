@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use tauri::Emitter;
 use tauri_plugin_fs::FsExt;
 use tokio::task::JoinSet;
 
@@ -10,7 +11,7 @@ use tokio::task::JoinSet;
 enum TemplateChange {
     AddProp { key: String, value: Option<String> },
     RemoveProp { key: String },
-    RenameProp { old_key: String, new_key: String },
+    RenameProp { old_key: String, new_key: String, template_value: Option<String> },
     ForceValue { key: String, value: String },
 }
 
@@ -18,6 +19,12 @@ enum TemplateChange {
 struct PropagateResult {
     modified: usize,
     errors: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct NotePatch {
+    id: String,
+    raw_content: String,
 }
 
 // ── Entrée Tauri ───────────────────────────────────────────────────────────
@@ -33,12 +40,32 @@ pub fn run() {
             allow_vault_path,
             copy_resource_to_vault,
             propagate_template_change,
+            update_note,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
 // ── Commandes ──────────────────────────────────────────────────────────────
+
+/// Écrit une note sur le disque et émet un événement vault:patch pour que le frontend
+/// réconcilie son état sans recharger tout l'arbre.
+#[tauri::command]
+async fn update_note(
+    app: tauri::AppHandle,
+    id: String,
+    raw_content: String,
+) -> Result<(), String> {
+    let path = std::path::PathBuf::from(&id);
+    tokio::fs::write(&path, raw_content.as_bytes())
+        .await
+        .map_err(|e| format!("{}: {}", path.display(), e))?;
+
+    app.emit("vault:patch", vec![NotePatch { id, raw_content }])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
 
 #[tauri::command]
 async fn allow_vault_path(app: tauri::AppHandle, vault_path: String) -> Result<(), String> {
@@ -122,9 +149,10 @@ fn clone_change(change: &TemplateChange) -> TemplateChange {
             value: value.clone(),
         },
         TemplateChange::RemoveProp { key } => TemplateChange::RemoveProp { key: key.clone() },
-        TemplateChange::RenameProp { old_key, new_key } => TemplateChange::RenameProp {
+        TemplateChange::RenameProp { old_key, new_key, template_value } => TemplateChange::RenameProp {
             old_key: old_key.clone(),
             new_key: new_key.clone(),
+            template_value: template_value.clone(),
         },
         TemplateChange::ForceValue { key, value } => TemplateChange::ForceValue {
             key: key.clone(),
@@ -140,18 +168,6 @@ async fn process_file(path: &Path, change: &TemplateChange) -> Result<bool, Stri
     let content = tokio::fs::read_to_string(path)
         .await
         .map_err(|e| format!("{}: {}", path.display(), e))?;
-
-    // RenameProp : remplacement direct dans le contenu brut pour préserver la valeur existante
-    if let TemplateChange::RenameProp { old_key, new_key } = change {
-        let new_content = rename_key_in_content(&content, old_key, new_key);
-        if new_content == content {
-            return Ok(false);
-        }
-        tokio::fs::write(path, new_content)
-            .await
-            .map_err(|e| format!("{}: {}", path.display(), e))?;
-        return Ok(true);
-    }
 
     let (frontmatter_raw, body) = split_frontmatter(&content);
     let mut fm: indexmap::IndexMap<String, serde_yaml::Value> = match frontmatter_raw {
@@ -171,42 +187,6 @@ async fn process_file(path: &Path, change: &TemplateChange) -> Result<bool, Stri
     Ok(true)
 }
 
-/// Remplace `old_key:` par `new_key:` dans le bloc frontmatter uniquement.
-/// Opère sur le texte brut pour préserver la valeur existante de chaque note.
-fn rename_key_in_content(content: &str, old_key: &str, new_key: &str) -> String {
-    // On ne cherche que dans le bloc frontmatter (entre les deux ---)
-    let (Some(fm_raw), body) = split_frontmatter(content) else {
-        return content.to_string();
-    };
-
-    // Chercher la ligne `old_key:` ou `old_key: valeur` dans le frontmatter
-    let target = format!("{}:", old_key);
-    let replacement = format!("{}:", new_key);
-
-    let new_fm = fm_raw
-        .lines()
-        .map(|line| {
-            // Correspondance exacte sur le début de ligne (évite de renommer un sous-champ)
-            if line == target
-                || line.starts_with(&format!("{} ", target))
-                || line.starts_with(&target)
-            {
-                line.replacen(&target, &replacement, 1)
-            } else {
-                line.to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    let new_fm_terminated = if new_fm.ends_with('\n') {
-        new_fm
-    } else {
-        new_fm + "\n"
-    };
-    format!("---\n{}---\n{}", new_fm_terminated, body)
-}
-
 fn apply_change(
     fm: &mut indexmap::IndexMap<String, serde_yaml::Value>,
     change: &TemplateChange,
@@ -224,9 +204,32 @@ fn apply_change(
             true
         }
         TemplateChange::RemoveProp { key } => fm.shift_remove(key.as_str()).is_some(),
-        TemplateChange::RenameProp { old_key, new_key } => {
-            if let Some(val) = fm.shift_remove(old_key.as_str()) {
-                fm.insert(new_key.clone(), val);
+        TemplateChange::RenameProp { old_key, new_key, template_value } => {
+            if let Some(old_val) = fm.shift_remove(old_key.as_str()) {
+                if fm.contains_key(new_key.as_str()) {
+                    // Conflit : new_key existe déjà dans la note
+                    match template_value {
+                        Some(tv) if !tv.is_empty() => {
+                            // Propriété imposée : la valeur du template prime
+                            fm.insert(new_key.clone(), serde_yaml::Value::String(tv.clone()));
+                        }
+                        _ => {
+                            // Propriété contraignante : old_key avait une valeur → elle prime
+                            // old_key vide → adopter la valeur existante de new_key
+                            let old_is_empty = match &old_val {
+                                serde_yaml::Value::String(s) => s.is_empty(),
+                                serde_yaml::Value::Null => true,
+                                _ => false,
+                            };
+                            if !old_is_empty {
+                                fm.insert(new_key.clone(), old_val);
+                            }
+                        }
+                    }
+                } else {
+                    // Pas de conflit : renommage simple, préserver la valeur de old_key
+                    fm.insert(new_key.clone(), old_val);
+                }
                 true
             } else {
                 false
