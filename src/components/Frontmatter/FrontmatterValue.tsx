@@ -1,6 +1,9 @@
 import { NoteChip } from "./NoteChip";
+import { SystemField, type NoteTypeValue } from "../../lib/noteTypes";
+import { TypeSelector } from "./TypeSelector";
 
 interface Props {
+  fieldKey: string;
   value: string | string[];
   isNoteArray: boolean;
   isSystem: boolean;
@@ -12,6 +15,7 @@ interface Props {
 }
 
 export function FrontmatterValue({
+  fieldKey,
   value,
   isNoteArray,
   isSystem,
@@ -21,6 +25,15 @@ export function FrontmatterValue({
   onRemoveNote,
   noteName,
 }: Props) {
+  if (fieldKey === SystemField.TYPE) {
+    return (
+      <TypeSelector
+        value={value as string}
+        onChange={(type: NoteTypeValue) => onTextChange(type)}
+      />
+    );
+  }
+
   if (isNoteArray) {
     const paths = value as string[];
     return (

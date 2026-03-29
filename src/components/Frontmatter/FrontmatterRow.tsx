@@ -127,7 +127,7 @@ export function FrontmatterRow({
   return (
     <div
       ref={rowRef}
-      className="flex items-center gap-2 text-xs min-h-5 group transition duration-300"
+      className="flex items-center gap-2 text-xs min-h-5 group transition duration-300 select-none"
     >
       {row.key !== SystemField.TYPE ? (
         <SFIcon
@@ -182,6 +182,7 @@ export function FrontmatterRow({
       )}
 
       <FrontmatterValue
+        fieldKey={row.key}
         value={row.value}
         isNoteArray={row.isNoteArray}
         isSystem={row.isSystem}
