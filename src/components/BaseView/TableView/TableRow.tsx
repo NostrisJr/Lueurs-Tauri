@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import type { NoteFile } from "../../FileTree/hooks/useFileTree";
 import type { TableColumn } from "../hooks/useTable";
 import { TableCell } from "./TableCell";
+import { useNote } from "../../../hooks/useNote";
+import { useCmdHeld } from "../../../hooks/useCmdHeld";
 
 interface Props {
   note: NoteFile;
@@ -18,6 +20,8 @@ export function TableRow({
   onCellCommit,
   onTitleCommit,
 }: Props) {
+  const { handleSelectNote } = useNote();
+  const cmdHeld = useCmdHeld();
   const [titleDraft, setTitleDraft] = useState(note.name);
   const [editingTitle, setEditingTitle] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -50,7 +54,10 @@ export function TableRow({
         style={{ width: titleColWidth }}
         className="border-r border-gray-100 px-3 last:border-none"
         onDoubleClick={startTitleEdit}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          if (e.metaKey) handleSelectNote(note, true);
+          else e.stopPropagation();
+        }}
       >
         {editingTitle ? (
           <input
@@ -64,7 +71,7 @@ export function TableRow({
             className="w-full text-xs bg-transparent outline-none text-gray-700"
           />
         ) : (
-          <span className="text-xs text-gray-700 truncate block font-body">
+          <span className={`text-xs text-gray-700 truncate block font-body ${cmdHeld ? "cursor-pointer" : ""}`}>
             {note.name || <span className="text-gray-300">Sans titre</span>}
           </span>
         )}

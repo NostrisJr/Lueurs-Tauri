@@ -13,7 +13,6 @@ interface Props {
   notes: NoteFile[];
   kanbanKey: string;
   onRename: (colId: string, newLabel: string) => void;
-  onCardClick: (note: NoteFile) => void;
   // Colonne virtuelle — header non éditable, style distinct
   virtual?: boolean;
 }
@@ -23,7 +22,6 @@ export function KanbanColumn({
   notes,
   kanbanKey,
   onRename,
-  onCardClick,
   virtual = false,
 }: Props) {
   const [editing, setEditing] = useState(false);
@@ -102,7 +100,6 @@ export function KanbanColumn({
               key={note.id}
               note={note}
               kanbanKey={kanbanKey}
-              onClick={onCardClick}
             />
           ))}
         </SortableContext>

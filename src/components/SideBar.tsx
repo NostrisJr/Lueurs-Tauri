@@ -162,7 +162,7 @@ function SideBarInside() {
               searchResults.map((note) => (
                 <div
                   key={note.id}
-                  onClick={() => handleSelectNote(note)}
+                  onClick={(e) => handleSelectNote(note, e.metaKey)}
                   onKeyDown={(e) => e.key === "Enter" && handleSelectNote(note)}
                   className={`flex flex-col gap-0.5 rounded-md px-2 py-2 cursor-pointer transition-colors ${
                     activeNote?.id === note.id

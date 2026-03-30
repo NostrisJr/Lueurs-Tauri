@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useSetAtom } from "jotai";
-import { activeNoteIdAtom } from "../../lib/atoms";
+import { useNote } from "../../hooks/useNote";
 import {
   BaseViewEnum,
   SystemField,
@@ -23,7 +22,7 @@ interface Props {
 }
 
 export function BaseView({ base, onBaseChange }: Props) {
-  const setActiveNoteId = useSetAtom(activeNoteIdAtom);
+  const { handleSelectNote } = useNote();
   const [selectingKey, setSelectingKey] = useState(false);
 
   const {
@@ -68,12 +67,6 @@ export function BaseView({ base, onBaseChange }: Props) {
     initKanban(key);
   }
 
-  // TODO: ouvrir dans un onglet dédié (feature onglets à venir)
-  function handleCardClick(note: NoteFile) {
-    log.info("clic carte kanban", { noteId: note.id });
-    setActiveNoteId(note.id);
-  }
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-2 ">
@@ -115,7 +108,6 @@ export function BaseView({ base, onBaseChange }: Props) {
             onMoveCard={moveCard}
             onRenameColumn={renameColumn}
             onAddColumn={addColumn}
-            onCardClick={handleCardClick}
           />
         ) : (
           <TableView base={base} onBaseChange={onBaseChange} />

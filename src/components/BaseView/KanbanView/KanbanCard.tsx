@@ -1,43 +1,78 @@
+import { useRef, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { NoteFile } from "../../FileTree/hooks/useFileTree";
+import { useNote } from "../../../hooks/useNote";
+import { useCmdHeld } from "../../../hooks/useCmdHeld";
 
 interface Props {
   note: NoteFile;
   kanbanKey: string;
-  onClick: (note: NoteFile) => void;
 }
 
-export function KanbanCard({ note, onClick }: Props) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: note.id,
-  });
+export function KanbanCard({ note }: Props) {
+  const { handleSelectNote, handleRename } = useNote();
+  const cmdHeld = useCmdHeld();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note.name);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
+
+  function startEdit(e: React.MouseEvent) {
+    e.stopPropagation();
+    setDraft(note.name);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }
+
+  function commitEdit() {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== note.name) {
+      handleRename(note.id, trimmed, false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    e.stopPropagation();
+    if (e.key === "Enter") commitEdit();
+    if (e.key === "Escape") { setEditing(false); setDraft(note.name); }
+  }
+
+  function handleClick(e: React.MouseEvent) {
+    if (e.metaKey) handleSelectNote(note, true);
+  }
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
       {...attributes}
       {...listeners}
-      onClick={() => onClick(note)}
-      className="bg-white border border-gray-200 rounded-lg px-3 py-2.5 cursor-grab active:cursor-grabbing hover:border-gray-300 hover:shadow-sm transition-all select-none group"
+      onClick={handleClick}
+      className={`bg-white border border-gray-200 rounded-lg px-3 py-2.5 hover:border-gray-300 hover:shadow-sm transition-all select-none group ${cmdHeld ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
     >
-      <p className="font-body text-sm text-gray-800 leading-snug">
-        {note.name}
-      </p>
+      {editing ? (
+        <input
+          ref={inputRef}
+          // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture de l'édition
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full text-sm bg-transparent outline-none text-gray-800 font-body"
+        />
+      ) : (
+        <p
+          className="font-body text-sm text-gray-800 leading-snug"
+          onDoubleClick={startEdit}
+        >
+          {note.name}
+        </p>
+      )}
       {note.title && note.title !== note.name && (
         <p className="font-body text-xs text-gray-400 mt-1 leading-snug line-clamp-2">
           {note.title}

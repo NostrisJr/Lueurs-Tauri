@@ -83,7 +83,7 @@ function FileNodeComponent({
   return (
     <div
       onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
-      onClick={() => handleSelectNote(node)}
+      onClick={(e) => handleSelectNote(node, e.metaKey)}
       onKeyDown={(e) => e.key === "Enter" && handleSelectNote(node)}
       className={`select-none group flex justify-between items-center gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors
                  ${

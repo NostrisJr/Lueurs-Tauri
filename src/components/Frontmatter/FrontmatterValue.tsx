@@ -54,6 +54,7 @@ export function FrontmatterValue({
           <NoteChip
             key={path}
             name={noteName(path)}
+            noteId={path}
             onRemove={() => onRemoveNote(path)}
           />
         ))}

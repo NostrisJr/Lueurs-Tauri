@@ -24,6 +24,9 @@ export const folderPathAtom = atomWithStorage<string | null>(STORAGE_KEY, null);
 
 export const activeNoteIdAtom = atom<string | null>(null);
 
+// Liste des notes ouvertes en onglets
+export const openTabIdsAtom = atom<string[]>([]);
+
 // Dérivé : toujours synchronisé avec l'arbre, jamais de snapshot
 export const activeNoteAtom = atom((get) => {
     const id = get(activeNoteIdAtom);

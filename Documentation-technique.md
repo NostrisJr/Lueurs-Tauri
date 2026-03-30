@@ -9,7 +9,8 @@ Lueurs est une application desktop construite avec **Tauri 2** (Rust + WKWebView
 L'état de l'application est géré par des atomes Jotai (`src/lib/atoms.ts`) :
 
 - `treeAtom` — l'arbre complet du vault (source de vérité pour les données des notes)
-- `activeNoteIdAtom` — chemin de la note ouverte
+- `activeNoteIdAtom` — chemin de la note active (= onglet actif)
+- `openTabIdsAtom` — liste ordonnée des chemins des onglets ouverts
 - `activeNoteAtom` — atome dérivé : note courante extraite du tree
 - `folderPathAtom` — chemin du vault (persisté en localStorage)
 
@@ -33,6 +34,47 @@ Les modifications sont appliquées immédiatement en mémoire (mise à jour opti
 | `update_note(id, raw_content)` | Écrit une note sur le disque et émet `vault:patch` |
 | `get_titlebar_height(window)` | Hauteur physique de la titlebar macOS (`inner_position.y - outer_position.y`) |
 | `get_scale_factor(window)` | DPR de la fenêtre (identique à `window.devicePixelRatio`) |
+
+---
+
+## Navigation multi-onglets
+
+### État
+
+`activeNoteIdAtom` reste la source de vérité de l'onglet actif. `openTabIdsAtom` est un `atom<string[]>` contenant les chemins des onglets ouverts dans l'ordre d'affichage. Le composant éditeur garde `key={activeNote.id}` : il se remonte à chaque changement d'onglet, ce qui réinitialise l'historique ProseMirror. Ce comportement est intentionnel — la complexité de préserver les états ProseMirror par onglet ne justifie pas le gain.
+
+### Logique d'ouverture (`useNote.handleSelectNote`)
+
+Un clic simple remplace l'onglet actif dans `openTabIds` (`map` sur l'id actif). Cmd+clic ajoute la note en fin de liste si absente. Dans les deux cas, si la note est déjà dans `openTabIds`, seul `activeNoteIdAtom` est mis à jour. Cette logique garantit qu'une note n'apparaît jamais deux fois dans la barre.
+
+### Fermeture (`handleCloseTab`)
+
+```ts
+const idx = openTabIds.indexOf(id);
+const newActive = openTabIds[idx - 1] ?? openTabIds[idx + 1] ?? null;
+```
+
+La suppression (`handleDeleteNote`, `handleDeleteFolder`) et le renommage (`handleRename`) maintiennent `openTabIds` en cohérence : les paths sont retirés ou remplacés selon l'opération.
+
+### TabBar (`src/components/TabBar/TabBar.tsx`)
+
+Implémenté avec `@dnd-kit/sortable` (`horizontalListSortingStrategy`) pour le réordonnement par drag & drop. Points techniques :
+
+- **Hooks-before-return** : tous les hooks (`useSensors`, `useCallback`, etc.) sont déclarés avant le `if (openTabIds.length === 0) return null` pour respecter les règles React. Ne jamais mettre de retour conditionnel avant un appel de hook.
+- **Pattern DragOverlay** : pendant le drag, l'onglet original est rendu avec `visibility: hidden` (prop `isGhost`) pour conserver son espace dans le layout. Un `DragOverlay` flotte séparément avec l'apparence finale, évitant les changements de taille causés par la translation @dnd-kit.
+- **Filtrage avant render** : les tabs sont filtrés (`filter((item): item is ...`) avant de mapper pour éviter un nombre variable d'appels à `useSortable` (violation des règles de hooks).
+
+### Hook `useCmdHeld`
+
+`src/hooks/useCmdHeld.ts` expose un booléen indiquant si la touche Cmd (Meta) est enfoncée. Écoute `keydown`/`keyup` sur `window` avec cleanup dans `useEffect`. Utilisé dans `NoteChip`, `KanbanCard`, et `TableRow` pour conditionner le curseur et le comportement au clic.
+
+### KanbanCard : édition inline + drag & drop
+
+`useSortable` place ses listeners sur le conteneur de la carte. Pour que le double-clic sur le titre déclenche l'édition sans interférer avec le drag :
+
+- `onDoubleClick` appelle `e.stopPropagation()` avant de passer en mode édition
+- Le `<input>` d'édition a un `onClick` avec `e.stopPropagation()` pour empêcher les clicks de remonter aux listeners dnd-kit
+- `onKeyDown` avec `e.stopPropagation()` sur l'input empêche les touches (notamment Escape) d'être capturées par @dnd-kit
 
 ---
 

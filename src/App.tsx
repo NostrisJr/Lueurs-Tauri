@@ -3,6 +3,7 @@ import { useFileTree } from "./components/FileTree/hooks/useFileTree";
 import { sfCheckmark, sfFolder } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { SideBar } from "./components/SideBar";
+import { TabBar } from "./components/TabBar/TabBar";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   activeNoteAtom,
@@ -77,7 +78,7 @@ export default function App() {
       <SettingsModal />
       <SideBar />
 
-      <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">
+      <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white pt-2">
         {activeNote && (
           <div className="flex items-center justify-end px-4 h-8 border-b border-gray-100 shrink-0">
             <span
@@ -96,6 +97,7 @@ export default function App() {
             </span>
           </div>
         )}
+        <TabBar />
 
         <div className="flex-1 overflow-auto">
           {activeNote ? (

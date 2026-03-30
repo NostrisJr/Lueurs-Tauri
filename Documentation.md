@@ -146,7 +146,23 @@ Une fois configurée, la vue affiche une colonne par valeur distincte trouvée p
 
 **Colonne "Sans valeur".** Les notes dont la propriété clé est absente ou vide apparaissent automatiquement dans une colonne virtuelle **Sans valeur**, affichée en dernier. Cette colonne n'est pas persistée dans `__KanbanColumns__` : elle apparaît uniquement si au moins une note est dans ce cas, et disparaît dès qu'elles ont toutes une valeur. Déplacer une carte vers cette colonne efface la valeur de la propriété clé dans le frontmatter de la note (la clé reste présente avec une valeur vide). Son titre n'est pas éditable.
 
-**Cartes.** Chaque note enfant est représentée par une carte affichant son titre et sa valeur pour la propriété clé. Les cartes sont déplaçables par glisser-déposer entre colonnes, ce qui met à jour le frontmatter de la note correspondante.
+**Cartes.** Chaque note enfant est représentée par une carte affichant son titre et sa valeur pour la propriété clé. Les cartes sont déplaçables par glisser-déposer entre colonnes, ce qui met à jour le frontmatter de la note correspondante. Le titre d'une carte est éditable par double-clic — le renommage met à jour le fichier et propage le changement de chemin partout dans le vault (même comportement que le renommage du titre dans la vue tableau). Un **Cmd+clic** sur une carte ouvre la note dans un nouvel onglet.
+
+---
+
+## Navigation par onglets
+
+Plusieurs notes peuvent être ouvertes simultanément dans des onglets affichés en haut de l'éditeur.
+
+**Ouvrir une note dans un onglet.** Un clic simple sur une note dans l'explorateur remplace la note active dans l'onglet courant. Un **Cmd+clic** ouvre la note dans un nouvel onglet sans fermer les onglets existants. Si la note est déjà ouverte dans un onglet, elle est simplement activée dans les deux cas.
+
+**Fermer un onglet.** Le bouton **×** visible au survol d'un onglet le ferme. Si l'onglet fermé était actif, l'onglet voisin de gauche est activé (ou celui de droite si c'est le premier). La fermeture d'un onglet ne supprime pas la note — elle reste sur le disque.
+
+**Réorganiser les onglets.** Les onglets sont réorganisables par glisser-déposer.
+
+**Historique d'annulation.** L'historique d'annulation (Cmd+Z) de chaque note est préservé pendant la durée de vie de l'onglet. Il est perdu à la fermeture de l'onglet.
+
+**Liens entre notes (NoteChip).** Dans le frontmatter, les références à d'autres notes (affichées sous forme de chips) s'ouvrent dans un nouvel onglet par **Cmd+clic**.
 
 ---
 

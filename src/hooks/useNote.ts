@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { activeNoteAtom, activeNoteIdAtom, folderPathAtom, savingAtom, searchAtom, treeAtom } from "../lib/atoms";
+import { activeNoteAtom, activeNoteIdAtom, folderPathAtom, savingAtom, searchAtom, treeAtom, openTabIdsAtom } from "../lib/atoms";
 import { flattenTree, type NoteFile, type TreeNode, type FolderNode, useFileTree, type Frontmatter } from "../components/FileTree/hooks/useFileTree";
 import { useMemo } from "react";
 import { createLogger } from "../lib/logger";
@@ -13,6 +13,8 @@ const log = createLogger("useNote");
 export function useNote() {
     const activeNote = useAtomValue(activeNoteAtom);
     const setActiveNoteId = useSetAtom(activeNoteIdAtom);
+    const openTabIds = useAtomValue(openTabIdsAtom);
+    const setOpenTabIds = useSetAtom(openTabIdsAtom);
     const setSaving = useSetAtom(savingAtom);
     const setSearch = useSetAtom(searchAtom);
     const tree = useAtomValue(treeAtom);
@@ -51,19 +53,44 @@ export function useNote() {
         setTimeout(() => setSaving(false), 1200);
     }
 
-    function handleSelectNote(note: NoteFile) {
+    function handleSelectNote(note: NoteFile, openInNewTab = false) {
+        if (openInNewTab) {
+            // Cmd+clic : ajouter un nouvel onglet si pas déjà présent
+            if (!openTabIds.includes(note.id)) {
+                setOpenTabIds([...openTabIds, note.id]);
+            }
+        } else if (openTabIds.includes(note.id)) {
+            // Note déjà ouverte : juste l'activer
+        } else if (activeNote) {
+            // Remplacer l'onglet actif
+            setOpenTabIds(openTabIds.map((id) => (id === activeNote.id ? note.id : id)));
+        } else {
+            // Aucun onglet actif : créer le premier
+            setOpenTabIds([note.id]);
+        }
         setActiveNoteId(note.id);
         setSearch("");
     }
 
     async function handleOpenFolder(folderNode: FolderNode) {
         const note = await openFolderNote(folderNode);
+        if (!openTabIds.includes(note.id)) {
+            setOpenTabIds([...openTabIds, note.id]);
+        }
         setActiveNoteId(note.id);
         setSearch("");
     }
 
     async function handleDeleteNote(fileId: string) {
-        if (activeNote?.id === fileId) setActiveNoteId(null);
+        const newTabIds = openTabIds.filter((id) => id !== fileId);
+        setOpenTabIds(newTabIds);
+
+        if (activeNote?.id === fileId) {
+            const idx = openTabIds.indexOf(fileId);
+            const newActive = newTabIds[idx - 1] ?? newTabIds[idx] ?? null;
+            setActiveNoteId(newActive);
+        }
+
         log.info("suppression note", { fileId });
         await cleanupNoteFromBases(fileId);
         await deleteNote(fileId);
@@ -87,10 +114,18 @@ export function useNote() {
             });
             if (answer) {
                 const notesInFolder = allNotes.filter((n) => n.id.startsWith(`${node.id}/`));
+                const newTabIds = openTabIds.filter((id) => !id.startsWith(`${node.id}/`));
+                setOpenTabIds(newTabIds);
+
                 for (const n of notesInFolder) {
                     await cleanupNoteFromBases(n.id);
                 }
-                if (activeNote?.id.startsWith(node.id)) setActiveNoteId(null);
+
+                if (activeNote?.id.startsWith(node.id)) {
+                    const newActive = newTabIds.length > 0 ? newTabIds[0] : null;
+                    setActiveNoteId(newActive);
+                }
+
                 await deleteFolder(node.id, true);
             }
         }
@@ -99,6 +134,7 @@ export function useNote() {
     async function handleCreateNote() {
         if (!folderPath) return;
         const newNote = await createNote(folderPath);
+        setOpenTabIds([...openTabIds, newNote.id]);
         setActiveNoteId(newNote.id);
     }
 
@@ -121,8 +157,17 @@ export function useNote() {
         if (!isFolder) {
             await propagateNoteRename(oldPath, newPath);
             if (activeNote?.id === oldPath) setActiveNoteId(newPath);
+            // Mettre à jour les onglets ouverts
+            if (openTabIds.includes(oldPath)) {
+                setOpenTabIds(openTabIds.map((id) => id === oldPath ? newPath : id));
+            }
         } else {
             await propagateFolderRename(oldPath, newPath);
+            // Mettre à jour les onglets des notes du dossier
+            const newTabIds = openTabIds.map((id) =>
+                id.startsWith(`${oldPath}/`) ? id.replace(oldPath, newPath) : id
+            );
+            setOpenTabIds(newTabIds);
         }
 
         if (isFolder && activeNote) {
@@ -139,6 +184,18 @@ export function useNote() {
         return newPath;
     }
 
+    function handleCloseTab(tabId: string) {
+        const idx = openTabIds.indexOf(tabId);
+        const newTabIds = openTabIds.filter((id) => id !== tabId);
+        setOpenTabIds(newTabIds);
+
+        // Si c'est l'onglet actif, basculer sur un onglet voisin
+        if (activeNote?.id === tabId) {
+            const newActive = newTabIds[idx - 1] ?? newTabIds[idx] ?? null;
+            setActiveNoteId(newActive);
+        }
+    }
+
     return {
         handleChange,
         handleSelectNote,
@@ -148,5 +205,6 @@ export function useNote() {
         handleCreateNote,
         handleCreateFolder,
         handleRename,
+        handleCloseTab,
     };
 }

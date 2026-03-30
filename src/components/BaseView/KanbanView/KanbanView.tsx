@@ -29,7 +29,6 @@ interface Props {
   ) => Promise<void>;
   onRenameColumn: (colId: string, newLabel: string) => Promise<void>;
   onAddColumn: (label: string) => void;
-  onCardClick: (note: NoteFile) => void;
 }
 
 export function KanbanView({
@@ -39,7 +38,6 @@ export function KanbanView({
   onMoveCard,
   onRenameColumn,
   onAddColumn,
-  onCardClick,
 }: Props) {
   const [activeNote, setActiveNote] = useState<NoteFile | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
@@ -131,7 +129,6 @@ export function KanbanView({
             notes={cards[col.id] ?? []}
             kanbanKey={kanbanKey}
             onRename={onRenameColumn}
-            onCardClick={onCardClick}
           />
         ))}
 
@@ -143,7 +140,6 @@ export function KanbanView({
             notes={cards[NO_VALUE_COLUMN_ID]}
             kanbanKey={kanbanKey}
             onRename={() => {}}
-            onCardClick={onCardClick}
             virtual
           />
         )}
