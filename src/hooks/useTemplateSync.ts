@@ -1,6 +1,7 @@
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { treeAtom, folderPathAtom, writingPathsRegistry, skipPropagationAtom } from "../lib/atoms";
-import { flattenTree, type Frontmatter } from "../components/FileTree/hooks/useFileTree";
+import { flattenTree, type Frontmatter, type NoteFile } from "../components/FileTree/hooks/useFileTree";
+import { parseTableAggregations, serializeTableAggregations } from "../lib/aggregations";
 import { toArray, isSystemField, updateNodeInTree } from "../components/FileTree/lib/fileTreeHelpers";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
@@ -87,6 +88,11 @@ export function useTemplateSync() {
         } finally {
             for (const p of allPaths) writingPathsRegistry.delete(p);
         }
+
+        // Agrégations des bases héritières — exclues du renommage Rust, à patcher séparément
+        for (const base of resolveHeirBases(templateId)) {
+            await renameBaseAggregations(base, oldKey, newKey);
+        }
     }
 
     /**
@@ -132,6 +138,32 @@ export function useTemplateSync() {
     }
 
     // ── Helpers privés ─────────────────────────────────────────────────────
+
+    async function renameBaseAggregations(base: NoteFile, oldKey: string, newKey: string) {
+        const raw = base.frontmatter[SystemField.TABLE_AGGREGATIONS] as string | undefined;
+        const aggs = parseTableAggregations(raw);
+        const op = aggs[oldKey];
+        if (!op || op === "none") return;
+
+        const newAggs = Object.fromEntries(
+            Object.entries(aggs).map(([k, v]) => [k === oldKey ? newKey : k, v])
+        );
+
+        const newFm: Frontmatter = Object.fromEntries(
+            Object.entries(base.frontmatter).map(([k, v]) => {
+                if (k === `__Agg_${oldKey}_${op}__`) {
+                    return [`__Agg_${newKey}_${op}__`, `$$agg(${newKey},${op})$$`];
+                }
+                if (k === SystemField.TABLE_AGGREGATIONS) {
+                    return [k, serializeTableAggregations(newAggs)];
+                }
+                return [k, v];
+            })
+        ) as Frontmatter;
+
+        log.info("renommage agrégations base", { baseId: base.id, oldKey, newKey, op });
+        await persistPatch(base.id, newFm, base.body);
+    }
 
     async function propagate(templateId: string, change: TemplateChange) {
         if (!folderPath) return;

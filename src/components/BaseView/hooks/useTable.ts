@@ -6,6 +6,12 @@ import { SystemField } from "../../../lib/noteTypes";
 import type { NoteFile, Frontmatter } from "../../FileTree/hooks/useFileTree";
 import { createLogger } from "../../../lib/logger";
 import { usePersistNote } from "../../../hooks/usePersistNote";
+import {
+    type AggregationOp,
+    type TableAggregations,
+    parseTableAggregations,
+    serializeTableAggregations,
+} from "../../../lib/aggregations";
 
 const log = createLogger("useTable");
 
@@ -72,6 +78,64 @@ export function useTable({ base, onBaseChange }: UseTableProps) {
         .map((p) => allNotes.find((n) => n.id === p))
         .filter((n): n is NoteFile => !!n);
 
+    // ── Agrégations ───────────────────────────────────────────────────────
+
+    const savedAggregations = parseTableAggregations(
+        base.frontmatter[SystemField.TABLE_AGGREGATIONS] as string | undefined,
+    );
+    const [aggregations, setAggregationsState] = useState<TableAggregations>(savedAggregations);
+
+    const setAggregation = useCallback((key: string, op: AggregationOp) => {
+        const updated = { ...aggregations, [key]: op };
+        setAggregationsState(updated);
+        log.info("agrégation modifiée", { baseId: base.id, key, op });
+
+        let newFrontmatter: Frontmatter = {
+            ...base.frontmatter,
+            [SystemField.TABLE_AGGREGATIONS]: serializeTableAggregations(updated),
+        };
+
+        // Retirer l'ancienne propriété résultat si une op différente existait
+        const oldOp = aggregations[key];
+        if (oldOp && oldOp !== "none") {
+            const oldPropKey = `__Agg_${key}_${oldOp}__`;
+            newFrontmatter = Object.fromEntries(
+                Object.entries(newFrontmatter).filter(([k]) => k !== oldPropKey)
+            ) as Frontmatter;
+        }
+
+        // Ajouter la nouvelle propriété résultat comme formule dynamique
+        if (op !== "none") {
+            newFrontmatter = { ...newFrontmatter, [`__Agg_${key}_${op}__`]: `$$agg(${key},${op})$$` };
+        }
+
+        onBaseChange(newFrontmatter);
+    }, [aggregations, base, onBaseChange]);
+
+    const renameAggregationKey = useCallback((oldKey: string, newKey: string) => {
+        const op = aggregations[oldKey];
+        if (!op || op === "none") return;
+
+        const newAggs: TableAggregations = Object.fromEntries(
+            Object.entries(aggregations).map(([k, v]) => [k === oldKey ? newKey : k, v])
+        );
+
+        const newFm: Frontmatter = Object.fromEntries(
+            Object.entries(base.frontmatter).map(([k, v]) => {
+                if (k === `__Agg_${oldKey}_${op}__`) {
+                    return [`__Agg_${newKey}_${op}__`, `$$agg(${newKey},${op})$$`];
+                }
+                if (k === SystemField.TABLE_AGGREGATIONS) {
+                    return [k, serializeTableAggregations(newAggs)];
+                }
+                return [k, v];
+            })
+        ) as Frontmatter;
+
+        setAggregationsState(newAggs);
+        onBaseChange(newFm);
+    }, [aggregations, base.frontmatter, onBaseChange]);
+
     // ── Resize ────────────────────────────────────────────────────────────
 
     const [colWidths, setColWidths] = useState<Record<string, number>>(savedWidths);
@@ -115,6 +179,9 @@ export function useTable({ base, onBaseChange }: UseTableProps) {
         columns: columns.map((c) => ({ ...c, width: colWidths[c.key] ?? c.width })),
         childNotes,
         titleColWidth: TITLE_COL_WIDTH,
+        aggregations,
+        setAggregation,
+        renameAggregationKey,
         onResizeStart,
         onResizeMove,
         onResizeEnd,

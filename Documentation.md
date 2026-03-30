@@ -122,6 +122,17 @@ Les colonnes affichées sont l'union dédupliquée de toutes les propriétés no
 
 **Titre.** La première colonne affiche le titre de chaque note enfant, éditable par double-clic. Le renommage met à jour le fichier et le chemin dans `__Children__` de la base.
 
+**Agrégations.** Une ligne de pied de tableau permet de calculer une agrégation par colonne. Cliquer sur une cellule du pied ouvre un sélecteur avec les opérations disponibles : Comptage, Somme, Moyenne, Min, Max. Le résultat est recalculé en temps réel à partir des valeurs des notes enfant. L'agrégation active est persistée dans `__TableAggregations__` et expose son résultat comme propriété de la base via une formule automatique (`__Agg_<col>_<op>__`). Le renommage d'une colonne met à jour les agrégations associées.
+
+**Formules.** Une propriété peut contenir une formule de la forme `$$expression$$`. Les formules sont recalculées à l'affichage et ne sont jamais persistées sous leur forme évaluée. Syntaxe disponible :
+
+- `self.prop` — référence la valeur d'une autre propriété de la note
+- `agg(col, op)` — agrégation sur les notes enfant de la base (opérations : `count`, `sum`, `avg`, `min`, `max`)
+- `round(n, décimales?)`, `iif(condition, alors, sinon)` — utilitaires
+- Opérateurs arithmétiques et de comparaison : `+ - * / > < >= <= === !==`
+
+Exemple : `$$round(self.recettes - self.charges, 2)$$` ou `$$agg(montant, sum)$$`.
+
 ### Vue Kanban
 
 Affiche les notes enfant sous forme de tableau Kanban, groupées par les valeurs d'une propriété choisie. Pour activer la vue Kanban :

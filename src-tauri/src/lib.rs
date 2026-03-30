@@ -223,6 +223,8 @@ fn apply_change(
         }
         TemplateChange::RemoveProp { key } => fm.shift_remove(key.as_str()).is_some(),
         TemplateChange::RenameProp { old_key, new_key, template_value } => {
+            let mut modified = false;
+
             if let Some(old_val) = fm.shift_remove(old_key.as_str()) {
                 if fm.contains_key(new_key.as_str()) {
                     // Conflit : new_key existe déjà dans la note
@@ -248,10 +250,23 @@ fn apply_change(
                     // Pas de conflit : renommage simple, préserver la valeur de old_key
                     fm.insert(new_key.clone(), old_val);
                 }
-                true
-            } else {
-                false
+                modified = true;
             }
+
+            // Mettre à jour les références self.old_key et agg(old_key,...) dans les formules
+            for value in fm.values_mut() {
+                if let serde_yaml::Value::String(s) = value {
+                    if s.starts_with("$$") && s.ends_with("$$") {
+                        let updated = update_formula_refs(s, old_key, new_key);
+                        if updated != *s {
+                            *s = updated;
+                            modified = true;
+                        }
+                    }
+                }
+            }
+
+            modified
         }
         TemplateChange::ForceValue { key, value } => {
             let new_val = serde_yaml::Value::String(value.clone());
@@ -337,6 +352,42 @@ fn yaml_value_to_str(value: &serde_yaml::Value) -> String {
         }
         _ => String::new(),
     }
+}
+
+/// Remplace toutes les occurrences de `from` dans `s` qui ne sont pas suivies d'un caractère
+/// de mot (`[A-Za-z0-9_]`), pour éviter les faux positifs sur des noms préfixés.
+fn replace_with_boundary(s: &str, from: &str, to: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut remaining = s;
+    while let Some(idx) = remaining.find(from) {
+        let after = &remaining[idx + from.len()..];
+        let next_is_word = after.chars().next().map_or(false, |c| c.is_alphanumeric() || c == '_');
+        if next_is_word {
+            // Faux positif (préfixe) — avancer d'un caractère et réessayer
+            result.push_str(&remaining[..idx + 1]);
+            remaining = &remaining[idx + 1..];
+        } else {
+            result.push_str(&remaining[..idx]);
+            result.push_str(to);
+            remaining = after;
+        }
+    }
+    result.push_str(remaining);
+    result
+}
+
+/// Met à jour les références à old_key dans une formule $$...$$.
+/// Cible : `self.old_key` et `agg(old_key,`.
+fn update_formula_refs(formula: &str, old_key: &str, new_key: &str) -> String {
+    let self_old = format!("self.{}", old_key);
+    let self_new = format!("self.{}", new_key);
+    let agg_old = format!("agg({},", old_key);
+    let agg_new = format!("agg({},", new_key);
+
+    // self.old_key : vérification de frontière (évite self.oldKey2)
+    let s = replace_with_boundary(formula, &self_old, &self_new);
+    // agg(old_key, : la virgule est déjà un délimiteur, pas de faux positif possible
+    s.replace(&agg_old, &agg_new)
 }
 
 fn maybe_cleanup_tmp(path: String) {

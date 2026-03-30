@@ -110,7 +110,15 @@ La commande reçoit un `TemplateChange` :
 - `renameProp { old_key, new_key, template_value }` — renomme avec résolution de conflit
 - `forceValue` — impose une valeur
 
-Pour le renommage, Rust parse le frontmatter YAML, détecte si `new_key` est déjà présent (conflit), et applique la règle : valeur du template si propriété imposée ; pour une propriété contraignante, la valeur de `old_key` prime si non vide (prop héritée > prop personnalisée), sinon la valeur existante de `new_key` est conservée.
+Pour le renommage, Rust parse le frontmatter YAML, détecte si `new_key` est déjà présent (conflit), et applique la règle : valeur du template si propriété imposée ; pour une propriété contraignante, la valeur de `old_key` prime si non vide (prop héritée > prop personnalisée), sinon la valeur existante de `new_key` est conservée. En plus du renommage de clé, Rust met à jour les références à `old_key` dans toutes les formules `$$...$$` des autres propriétés de la même note : `self.old_key` → `self.new_key` et `agg(old_key,` → `agg(new_key,` (avec vérification de frontière de mot pour éviter les faux positifs sur les noms préfixés).
+
+Les bases héritières d'un template sont exclues du batch Rust (elles ne reçoivent pas les propriétés du template). Après le reload du tree, `renameTemplateProperty` les patch séparément via `renameBaseAggregations` : renommage de la clé dans `__TableAggregations__` (JSON) et de la propriété `__Agg_<col>_<op>__` avec sa formule. Cela couvre le cas du renommage depuis le frontmatter du template ; le renommage depuis le header du tableau passe par `renameAggregationKey` (dans `useTable`) qui met aussi à jour l'état local React.
+
+### Agrégations et formules (vue tableau)
+
+**Stockage.** `__TableAggregations__` est un JSON `{colKey: op}` persisté dans la base. Pour chaque agrégation active, une propriété `__Agg_<col>_<op>__` est ajoutée à la base avec pour valeur la formule `$$agg(col,op)$$`. Cette propriété est visible dans le frontmatter de la base et peut être référencée par d'autres formules via `self.__Agg_col_op__`.
+
+**Évaluation.** Les formules `$$...$$` sont évaluées côté frontend à l'affichage (jamais persistées). `computeFormula` (`formulas.ts`) substitue les références `self.prop`, injecte les helpers `round`, `iif`, `agg`, et exécute l'expression dans une `Function` sandbox. `agg(col, op)` délègue à `computeAggregation` (`aggregations.ts`) avec un `ValueResolver` pour évaluer récursivement les formules des notes enfant. L'imbrication de formules est supportée (`self.x` où `x` est lui-même une formule), mais `agg()` imbriqué dans `agg()` renvoie `"—"` (pas de contexte enfant au deuxième niveau).
 
 ### Résolution des propriétés template (frontend)
 
