@@ -104,11 +104,9 @@ export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; 
         // Valeur entre crochets : JSON ou array YAML inline
         if (value.startsWith("[") && value.endsWith("]")) {
             try {
-                // Tenter JSON d'abord — préserve les objets et types complexes
-                JSON.parse(value);
-                frontmatter[key] = value;
+                const parsed = JSON.parse(value);
+                frontmatter[key] = Array.isArray(parsed) ? parsed : value;
             } catch {
-                // Fallback : array YAML simple key: [a, b, c]
                 frontmatter[key] = value.slice(1, -1).split(",").map((v) => v.trim()).filter(Boolean);
             }
             i++;

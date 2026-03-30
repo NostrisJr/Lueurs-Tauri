@@ -6,6 +6,13 @@ import {
   sfFolder,
   sfPlus,
   sfFolderBadgePlus,
+  sfCylinderSplit1x2Fill,
+  sfArchivebox,
+  sfArchiveboxFill,
+  sfLockDocument,
+  sfAppendPage,
+  sfTextDocument,
+  sfCylinderSplit1x2,
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useState } from "react";
@@ -20,6 +27,7 @@ import {
 import { useNote } from "../../hooks/useNote";
 import { EditableText } from "../EditableText";
 import { useFileDragCtx } from "./FileDragCtx";
+import { NoteType, SystemField } from "../../lib/noteTypes";
 
 // ── Rendu récursif ─────────────────────────────────────────────────────────────
 
@@ -87,11 +95,42 @@ function FileNodeComponent({
       style={{ paddingLeft: `${depth * 12 + 8}px` }}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <SFIcon
-          icon={sfDocument}
-          className="size-4 text-gray-400 shrink-0"
-          aria-hidden="true"
-        />
+        {node.type === NoteType.NOTE &&
+          (() => {
+            const hasContent =
+              node.body?.trim() ||
+              Object.keys(node.frontmatter ?? {}).some((k) => k !== "__Type__");
+
+            return (
+              <SFIcon
+                icon={hasContent ? sfTextDocument : sfDocument}
+                className="size-4 text-gray-400 shrink-0"
+                aria-hidden="true"
+              />
+            );
+          })()}
+
+        {node.type === NoteType.BASE &&
+          (() => {
+            const children = node.frontmatter?.[SystemField.CHILDREN];
+            const hasChildren = Array.isArray(children) && children.length > 0;
+
+            return (
+              <SFIcon
+                icon={hasChildren ? sfCylinderSplit1x2Fill : sfCylinderSplit1x2}
+                className="size-4 text-gray-400 shrink-0"
+                aria-hidden="true"
+              />
+            );
+          })()}
+
+        {node.type === NoteType.TEMPLATE && (
+          <SFIcon
+            icon={sfAppendPage}
+            className="size-4 text-gray-400 shrink-0"
+            aria-hidden="true"
+          />
+        )}
         <EditableText
           value={node.name}
           onSave={async (newName) => {
@@ -146,10 +185,7 @@ function FolderNodeComponent({
   );
 
   return (
-    <div
-      data-dropzone={node.id}
-      className={isDragging ? "opacity-40" : ""}
-    >
+    <div data-dropzone={node.id} className={isDragging ? "opacity-40" : ""}>
       {/* En-tête du dossier */}
       <div
         onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
@@ -158,7 +194,7 @@ function FolderNodeComponent({
                       isActive
                         ? "bg-white shadow-sm border border-gray-200 text-gray-700"
                         : isOver
-                          ? "bg-amber-200/50 text-gray-700"
+                          ? "bg-amber-400/20 text-gray-700"
                           : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                     }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
@@ -250,7 +286,7 @@ function FolderNodeComponent({
       {/* Enfants */}
       {open && visibleChildren.length > 0 && (
         <div
-          className="border-l border-gray-200 select-none"
+          className={`border-l select-none transition-colors ${isOver ? "border-amber-300/70 bg-amber-100/30" : "border-gray-200"}`}
           style={{ marginLeft: `${depth * 12 + 16}px` }}
         >
           <TreeNodes
@@ -264,7 +300,7 @@ function FolderNodeComponent({
       {/* Dossier vide */}
       {open && visibleChildren.length === 0 && (
         <p
-          className="text-xs text-gray-300 py-1"
+          className={`text-xs py-1 transition-colors ${isOver ? "text-amber-400" : "text-gray-300"}`}
           style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
         >
           Vide

@@ -131,6 +131,8 @@ export function useFileDrop(): FileDrop {
         tauriUnlisten = null;
         let cancelled = false;
         let pendingMdPaths: string[] = [];
+        // Dernière cible vue en "over" — utilisée en fallback si le drop arrive hors viewport
+        let lastOverTargetId: string | null = null;
 
         import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => {
             getCurrentWebview().onDragDropEvent(async (event) => {
@@ -142,6 +144,7 @@ export function useFileDrop(): FileDrop {
                     const mdPaths = paths.filter((p) => p.endsWith(".md"));
                     if (mdPaths.length > 0) {
                         pendingMdPaths = mdPaths;
+                        lastOverTargetId = null;
                         log.info("drop externe .md entré", { count: mdPaths.length });
                     }
 
@@ -151,16 +154,22 @@ export function useFileDrop(): FileDrop {
                         const { physical, dpr } = await getTitlebarInfo();
                         const { x: rawX, y: rawY } = payload.position;
                         const { cssX, cssY } = toViewportCoords(rawX, rawY, physical, dpr);
-                        if (cssY >= 0) setDragOver(dropzoneIdFromPoint(cssX, cssY));
+                        if (cssY >= 0) {
+                            const targetId = dropzoneIdFromPoint(cssX, cssY);
+                            lastOverTargetId = targetId;
+                            setDragOver(targetId);
+                        }
                     }
 
                 } else if (payload.type === "leave") {
                     pendingMdPaths = [];
+                    lastOverTargetId = null;
                     setDragOver(null);
 
                 } else if (payload.type === "drop" && pendingMdPaths.length > 0) {
                     // Les coordonnées Tauri sont dans le frame fenêtre macOS.
                     // Correction selon le mode titlebar via toViewportCoords.
+                    // Si le drop arrive hors viewport (cssY < 0), on utilise la dernière cible vue en "over".
                     let targetId: string | null = null;
                     if (payload.position) {
                         const { physical, dpr } = await getTitlebarInfo();
@@ -168,10 +177,11 @@ export function useFileDrop(): FileDrop {
                         const { cssX, cssY } = toViewportCoords(rawX, rawY, physical, dpr);
                         if (cssY >= 0) {
                             targetId = dropzoneIdFromPoint(cssX, cssY);
-                            if (targetId) log.info("drop position résolue", { targetId });
                         }
                     }
+                    targetId ??= lastOverTargetId;
                     targetId ??= store.get(folderPathAtom);
+                    if (targetId) log.info("drop position résolue", { targetId });
                     setDragOver(null);
                     if (targetId) {
                         log.info("drop externe", { targetId, count: pendingMdPaths.length });

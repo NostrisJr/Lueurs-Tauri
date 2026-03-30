@@ -77,6 +77,7 @@ export function TableRow({
           value={(note.frontmatter[col.key] as string) ?? ""}
           isImposed={col.isImposed}
           width={col.width}
+          frontmatter={note.frontmatter}
           onCommit={(val) => onCellCommit(note, col.key, val)}
         />
       ))}

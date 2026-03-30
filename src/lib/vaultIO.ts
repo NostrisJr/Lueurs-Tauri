@@ -51,7 +51,8 @@ export function absolutifyPathFields(frontmatter: Frontmatter, vaultPath: string
     for (const field of PATH_FIELDS) {
         const val = result[field];
         if (!val) continue;
-        result[field] = toArray(val).map((p) => toAbsolute(p as string, vaultPath));
+        const paths = toArray(val).filter((p) => p && !(p as string).startsWith("["));
+        result[field] = paths.map((p) => toAbsolute(p as string, vaultPath));
     }
     return result;
 }

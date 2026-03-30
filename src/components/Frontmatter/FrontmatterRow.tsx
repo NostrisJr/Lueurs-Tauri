@@ -1,8 +1,10 @@
 import { useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { treeAtom } from "../../lib/atoms";
+import { treeAtom, activeNoteAtom } from "../../lib/atoms";
 import { flattenTree } from "../FileTree/hooks/useFileTree";
-import { getFieldDef, SystemField } from "../../lib/noteTypes";
+import type { NoteFile } from "../FileTree/hooks/useFileTree";
+import { getFieldDef, NoteType, SystemField } from "../../lib/noteTypes";
+import { toArray } from "../FileTree/lib/fileTreeHelpers";
 import type { Row } from "./lib/frontmatterUtils";
 import {
   rowsAtom,
@@ -19,6 +21,7 @@ import {
   sfXCircle,
   sfArrowRight,
 } from "@bradleyhodges/sfsymbols";
+import { isFormula, computeFormula } from "../../lib/formulas";
 
 interface Props {
   row: Row;
@@ -65,6 +68,15 @@ export function FrontmatterRow({
   const isSelectorOpen = selectorOpen === row.key;
 
   const allNotes = flattenTree(useAtomValue(treeAtom));
+  const activeNote = useAtomValue(activeNoteAtom);
+
+  // Notes enfant de la base active — pour évaluer agg() dans les formules
+  const formulaChildren: NoteFile[] | undefined =
+    activeNote?.type === NoteType.BASE
+      ? toArray(activeNote.frontmatter[SystemField.CHILDREN])
+          .map((p) => allNotes.find((n) => n.id === p))
+          .filter((n): n is NoteFile => !!n)
+      : undefined;
 
   function noteName(path: string) {
     const note = allNotes.find((n) => n.id === path);
@@ -123,6 +135,22 @@ export function FrontmatterRow({
   // Sur le template lui-même, les props sont toujours renommables.
   // Sur les enfants, isKeyLocked bloque le renommage.
   const canRename = !row.isSystem && (isTemplate || !isKeyLocked);
+
+  const formulaVars = Object.fromEntries(
+    rows.map((r) => {
+      if (isFormula(r.value)) {
+        return [
+          r.key,
+          computeFormula(
+            r.value as string,
+            Object.fromEntries(rows.map((r2) => [r2.key, r2.value])),
+            formulaChildren
+          ),
+        ];
+      }
+      return [r.key, r.value];
+    })
+  );
 
   return (
     <div
@@ -187,6 +215,8 @@ export function FrontmatterRow({
         isNoteArray={row.isNoteArray}
         isSystem={row.isSystem}
         isValueLocked={isValueLocked}
+        formulaVars={formulaVars}
+        formulaChildren={formulaChildren}
         onTextChange={updateText}
         onTextBlur={() => commit(rows)}
         onRemoveNote={removeNote}

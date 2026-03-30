@@ -1,6 +1,9 @@
+import { useRef, useState } from "react";
 import { NoteChip } from "./NoteChip";
 import { SystemField, type NoteTypeValue } from "../../lib/noteTypes";
 import { TypeSelector } from "./TypeSelector";
+import { isFormula, computeFormula } from "../../lib/formulas";
+import type { NoteFile } from "../FileTree/hooks/useFileTree";
 
 interface Props {
   fieldKey: string;
@@ -8,6 +11,10 @@ interface Props {
   isNoteArray: boolean;
   isSystem: boolean;
   isValueLocked: boolean;
+  // Propriétés de la note courante — nécessaires pour évaluer les formules
+  formulaVars?: Record<string, unknown>;
+  // Notes enfant de la base — nécessaires pour agg()
+  formulaChildren?: NoteFile[];
   onTextChange: (value: string) => void;
   onTextBlur: () => void;
   onRemoveNote: (path: string) => void;
@@ -20,11 +27,16 @@ export function FrontmatterValue({
   isNoteArray,
   isSystem,
   isValueLocked,
+  formulaVars,
+  formulaChildren,
   onTextChange,
   onTextBlur,
   onRemoveNote,
   noteName,
 }: Props) {
+  const [editingFormula, setEditingFormula] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   if (fieldKey === SystemField.TYPE) {
     return (
       <TypeSelector
@@ -54,9 +66,60 @@ export function FrontmatterValue({
     );
   }
 
+  const strValue = value as string;
+
+  // ── Propriété calculée ────────────────────────────────────────────────────
+  if (isFormula(strValue)) {
+    const computed = computeFormula(
+      strValue,
+      formulaVars ?? {},
+      formulaChildren
+    );
+    const isError = computed === "#ERREUR";
+
+    if (editingFormula && !isValueLocked) {
+      return (
+        <input
+          ref={inputRef}
+          // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture de l'édition formule
+          autoFocus
+          value={strValue}
+          onChange={(e) => onTextChange(e.target.value)}
+          onBlur={() => setEditingFormula(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === "Escape") {
+              setEditingFormula(false);
+            }
+          }}
+          className="flex-1 mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-300 transition-colors font-mono text-xs"
+        />
+      );
+    }
+
+    return (
+      // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
+      <span
+        className={`flex items-center gap-1 flex-1 mt-0.5 text-xs select-none ${
+          isValueLocked ? "cursor-default" : "cursor-pointer"
+        }`}
+        title={isValueLocked ? strValue : "Cliquer pour éditer la formule"}
+        onClick={() => !isValueLocked && setEditingFormula(true)}
+      >
+        {/* Badge formule */}
+        <span className="text-gray-300 font-mono text-[10px] leading-none">
+          ƒ
+        </span>
+        <span className={isError ? "text-red-400" : "text-gray-600"}>
+          {computed || "—"}
+        </span>
+      </span>
+    );
+  }
+
+  // ── Valeur texte standard ─────────────────────────────────────────────────
   return (
     <input
-      value={value as string}
+      value={strValue}
       onChange={(e) => !isValueLocked && onTextChange(e.target.value)}
       onBlur={onTextBlur}
       disabled={isValueLocked}

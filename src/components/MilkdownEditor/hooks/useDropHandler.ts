@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { createLogger } from "../../../lib/logger";
 
 const log = createLogger("useDropHandler");
@@ -78,7 +78,7 @@ export function useDropHandler({
                     log.info("drop image détecté", { srcPath });
                     try {
                         const destPath = await copyToVault(srcPath, vaultPath, "images", safeName);
-                        insertImageBlock(destPath, title);
+                        insertImageBlock(convertFileSrc(destPath), title);
                         log.info("image déposée", { destPath });
                     } catch (err) {
                         log.error("échec drop image", err);

@@ -5,6 +5,7 @@ import type { Frontmatter } from "../../FileTree/hooks/useFileTree";
 import { useTable } from "../hooks/useTable";
 import { TableHeader } from "./TableHeader";
 import { TableRow } from "./TableRow";
+import { TableFooter } from "./TableFooter";
 import { createLogger } from "../../../lib/logger";
 
 const log = createLogger("TableView");
@@ -22,6 +23,9 @@ export function TableView({ base, onBaseChange }: Props) {
     columns,
     childNotes,
     titleColWidth,
+    aggregations,
+    setAggregation,
+    renameAggregationKey,
     onResizeStart,
     onResizeMove,
     onResizeEnd,
@@ -40,10 +44,10 @@ export function TableView({ base, onBaseChange }: Props) {
     templatePaths: string[]
   ) {
     log.info("renommage colonne tableau", { oldKey, newKey, templatePaths });
-    // Propager le renommage dans tous les templates qui définissent cette propriété
     for (const templateId of templatePaths) {
       await renameTemplateProperty(templateId, oldKey, newKey);
     }
+    renameAggregationKey(oldKey, newKey); // après, sans await
   }
 
   return (
@@ -79,6 +83,16 @@ export function TableView({ base, onBaseChange }: Props) {
                 onTitleCommit={renameNote}
               />
             ))
+          )}
+
+          {childNotes.length > 0 && (
+            <TableFooter
+              columns={columns}
+              titleColWidth={titleColWidth}
+              childNotes={childNotes}
+              aggregations={aggregations}
+              onAggregationChange={setAggregation}
+            />
           )}
         </div>
       </div>

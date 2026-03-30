@@ -23,6 +23,7 @@ export const SystemField = {
     KANBAN_KEY: "__KanbanKey__",
     KANBAN_COLUMNS: "__KanbanColumns__",
     TABLE_COLUMNS: "__TableColumns__",
+    TABLE_AGGREGATIONS: "__TableAggregations__",
 } as const;
 
 export type SystemFieldKey = typeof SystemField[keyof typeof SystemField];
@@ -127,11 +128,11 @@ export function getFieldDef(key: string): SystemFieldDef | null {
     return SYSTEM_FIELDS.find((f) => f.key === key) ?? null;
 }
 
-// Retourne true si la clé est un champ système Kanban (non éditable manuellement)
+// Retourne true si la clé est un champ système fonctionnel (non éditable manuellement)
 export function isFunctionalBaseField(key: string): boolean {
     return key === SystemField.VIEW
         || key === SystemField.KANBAN_KEY
         || key === SystemField.KANBAN_COLUMNS
-        || key === SystemField.TABLE_COLUMNS;
-
+        || key === SystemField.TABLE_COLUMNS
+        || key === SystemField.TABLE_AGGREGATIONS;
 }

@@ -2,13 +2,24 @@
 - [x] Faire en sorte que renommer un template ne casse pas le lien avec la base. Plus précisément : quand j'ai renommé le dossier contenant les templates, ça a cassé le path... donc ça va être un peu touchy a gérer
 - [ ] dans le note header, le nom ne se troncature pas si il est trop long
 - [x] régler le pb des __ dans les types. Les proposer en dropdown
-- [ ] quand on supprime un template (la note), le fait qu'il soit répertorié comme template dans les notes enfants n'est pas propagé
 - [ ] vérifier l'appartenance automatique à une base via l'héritage d'un template. Je sais pas si c'est pertinent
 - [ ] Rajouter un .lueurs.config à la racine pour marquer la version et avoir une ancre de relativisation des paths.
+- [ ] Dans les aggrégations et calculs : 
+  - [ ] implémenter les références cross notes
+  - [ ] rendre le self optionnel
+  - [x] arrondir de manière raisonnable les résultats des formules
 - [ ] points UI : 
   - [ ] un resize pour la sidebar (avec idéalement une icone de collapse à la Apple)
-  - [ ] changer les icones en fonction du type de la note
+  - [x] changer les icones en fonction du type de la note
   - [ ] diminuer l'indentation des strates de dossier
+  - [ ] Rajouter dans la doc le fait que le template qui reste dans la note est un comportement fait exprès, proposer de supprimer les références à la supression d'un tempalte, et le marquer en barré dans le cas contraire
+    - [ ] idem à la supression d'une base
+  - [ ] renommer la colonne d'un tableau ne fonctionne mais ça casse le frontmatter des aggrégation
+  - [ ] réfléchir à si c'est pertinent d'afficher le calcul dans le frontmatter (et nommer le type d'aggrégation qui est effectué...) Mais de toute façon c'est une dynamique qui sera utile pour les références croisées. et en tout cas mettre à jour la doc pour pouvoir appeler les aggrégations sans paniquer si elles ne sont plus affichées dans le frontmatter
+  - [ ] On me parle d'un bug en cas de référence croisée (A = self.B et B = self.A)
+  - [ ] Se noter qqp que ce qui provoquait les bugs dans le dnd externe était le fait d'avoir les outils développeurs ouverts... et vérifier que claude a pas overkill le patch pour un problème aussi basique
+- [x] Nettoyer les logs en logger
+- [ ] Vérifier l'usage presque systématique des usecallback par claude
 
 # Roadmap précise
 - [x] intégration modules divers:
@@ -37,7 +48,7 @@
   - [x] Faire attention aux cas de renommage extérieur à l'application. Fonctions de re-typage automatique avec invite utilisateur => Si on modifie en dehors de l'application, on casse tout et c'est de notre faute
 - [ ] pour les notes __base__
   - [x] gérer l'héritage automatique de la propriété __Children__ pour les notes de __base__
-  - [ ] gérer la mise à jour des chemins en cas de déplacement des notes enfant.
+  - [x] gérer la mise à jour des chemins en cas de déplacement des notes enfant.
   - [ ] fonction de rafraichissement des enfants en reparsing complet du coffre
   - [ ] gérer la résolution des notes introuvables en cas de refresh
   - [ ] donner la possibilité de cliquer sur la note dans le frontmatter yaml, pour l'ouvrir dans un nouvel ongler
@@ -53,6 +64,7 @@
 - [x] drag and drop
 - [ ] multi-sélection
 - [ ] menu local
+- [ ] rajouter le support des documents non .Md (images, pdf, audios, vidéos)
 - [x] Vérifier ce qu'il se passe quand on donne un nom déjà donné
 
 # Fonctionnalités plus (voire trop) larges
