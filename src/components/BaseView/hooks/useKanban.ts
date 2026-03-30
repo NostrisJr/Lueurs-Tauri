@@ -1,12 +1,12 @@
 import { useState, useCallback, useRef } from "react";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { message } from "@tauri-apps/plugin-dialog";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { treeAtom, kanbanCardsAtom, parseColumns, serializeColumns, generateColumnId, NO_VALUE_COLUMN_ID, type KanbanCards } from "../../../lib/atoms";
-import { flattenTree, serializeFrontmatter, updateNodeInTree, getFreeProps } from "../../FileTree/lib/fileTreeHelpers";
+import { flattenTree, getFreeProps } from "../../FileTree/lib/fileTreeHelpers";
 import { SystemField, type KanbanColumn } from "../../../lib/noteTypes";
 import type { NoteFile, Frontmatter } from "../../FileTree/hooks/useFileTree";
 import { createLogger } from "../../../lib/logger";
+import { usePersistNote } from "../../../hooks/usePersistNote";
 
 const log = createLogger("useKanban");
 
@@ -55,7 +55,7 @@ export function getTemplateValues(base: NoteFile, allNotes: NoteFile[], key: str
 
 export function useKanban({ base, onBaseChange }: UseKanbanProps) {
     const allNotes = flattenTree(useAtomValue(treeAtom));
-    const setTree = useSetAtom(treeAtom);
+    const persistPatch = usePersistNote();
 
     const kanbanKey = base.frontmatter[SystemField.KANBAN_KEY] as string | undefined;
     const persistedColumns = parseColumns(base.frontmatter[SystemField.KANBAN_COLUMNS]);
@@ -149,18 +149,16 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
 
         try {
             const updatedFrontmatter: Frontmatter = { ...note.frontmatter, [kanbanKey]: toCol.label };
-            // biome-ignore lint/suspicious/noExplicitAny: baseDir null requis par Tauri
-            await writeTextFile(note.id, serializeFrontmatter(updatedFrontmatter, note.body), { baseDir: null } as any);
-            log.info("frontmatter note persisté", { noteId, key: kanbanKey, value: toCol.label });
-            // Mise à jour treeAtom immédiate — kanbanCardsAtom se recalcule, puis on relâche l'optimistic
-            setTree((prev) => updateNodeInTree(prev, note.id, { frontmatter: updatedFrontmatter }));
+            await persistPatch(note.id, updatedFrontmatter, note.body);
+            log.info("carte déplacée", { noteId, key: kanbanKey, value: toCol.label });
+            // kanbanCardsAtom se recalcule depuis treeAtom, on relâche l'optimistic
             setOptimisticCards(null);
         } catch (err) {
-            log.error("échec persistance déplacement carte — rollback UI", { noteId, err });
+            log.error("échec déplacement carte — rollback UI", { noteId, err });
             setOptimisticCards(null);
             await message(`Impossible de déplacer la carte "${note.name}".`, { title: "Erreur", kind: "error" });
         }
-    }, [kanbanKey, persistedColumns, childNotes, setTree]);
+    }, [kanbanKey, persistedColumns, childNotes, persistPatch]);
 
     // ── Gestion des colonnes ──────────────────────────────────────────────
 
@@ -197,8 +195,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
             notesToPatch.map(async (note) => {
                 try {
                     const updatedFrontmatter = { ...note.frontmatter, [kanbanKey]: newLabel };
-                    // biome-ignore lint/suspicious/noExplicitAny: baseDir null requis par Tauri
-                    await writeTextFile(note.id, serializeFrontmatter(updatedFrontmatter, note.body), { baseDir: null } as any);
+                    await persistPatch(note.id, updatedFrontmatter, note.body);
                 } catch (err) {
                     log.error("échec patch note lors renommage colonne", { noteId: note.id, err });
                     errors.push(note.name);
@@ -209,7 +206,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
         if (errors.length > 0) {
             await message(`Impossible de mettre à jour : ${errors.join(", ")}.`, { title: "Erreur", kind: "error" });
         }
-    }, [base, persistedColumns, kanbanKey, childNotes, onBaseChange]);
+    }, [base, persistedColumns, kanbanKey, childNotes, onBaseChange, persistPatch]);
 
     const reorderColumns = useCallback((newOrder: KanbanColumn[]) => {
         log.info("réordonnancement colonnes", { baseId: base.id });

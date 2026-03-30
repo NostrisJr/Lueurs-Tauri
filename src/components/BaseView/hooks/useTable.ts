@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { useAtomValue } from "jotai";
 import { treeAtom, parseTableColumns, serializeTableColumns } from "../../../lib/atoms";
-import { flattenTree, serializeFrontmatter, updateNodeInTree, isSystemField } from "../../FileTree/lib/fileTreeHelpers";
+import { flattenTree, isSystemField } from "../../FileTree/lib/fileTreeHelpers";
 import { SystemField } from "../../../lib/noteTypes";
 import type { NoteFile, Frontmatter } from "../../FileTree/hooks/useFileTree";
 import { createLogger } from "../../../lib/logger";
+import { usePersistNote } from "../../../hooks/usePersistNote";
 
 const log = createLogger("useTable");
 
@@ -29,7 +29,7 @@ interface UseTableProps {
 
 export function useTable({ base, onBaseChange }: UseTableProps) {
     const allNotes = flattenTree(useAtomValue(treeAtom));
-    const setTree = useSetAtom(treeAtom);
+    const persistPatch = usePersistNote();
 
     const savedWidths = parseTableColumns(base.frontmatter[SystemField.TABLE_COLUMNS] as string | undefined);
 
@@ -107,12 +107,9 @@ export function useTable({ base, onBaseChange }: UseTableProps) {
     const editCell = useCallback(async (note: NoteFile, key: string, value: string) => {
         if (note.frontmatter[key] === value) return;
         const updated: Frontmatter = { ...note.frontmatter, [key]: value };
-        const raw = serializeFrontmatter(updated, note.body);
-        // biome-ignore lint/suspicious/noExplicitAny: baseDir null requis par Tauri
-        await writeTextFile(note.id, raw, { baseDir: null } as any);
-        setTree((prev) => updateNodeInTree(prev, note.id, { frontmatter: updated }));
+        await persistPatch(note.id, updated, note.body);
         log.info("cellule éditée", { noteId: note.id, key, value });
-    }, [setTree]);
+    }, [persistPatch]);
 
     return {
         columns: columns.map((c) => ({ ...c, width: colWidths[c.key] ?? c.width })),

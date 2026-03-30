@@ -1,7 +1,9 @@
 import { useRef, useEffect, useCallback } from "react";
 import { readDir, writeTextFile, mkdir, rename } from "@tauri-apps/plugin-fs";
+import { useStore } from "jotai";
 import { watchImmediate } from "@tauri-apps/plugin-fs";
 import { useAtom, useSetAtom } from "jotai";
+
 import { activeNoteIdAtom, errorAtom, folderPathAtom, loadingAtom, treeAtom, writingPathsRegistry } from "../../../lib/atoms";
 import {
     serializeFrontmatter,
@@ -19,7 +21,7 @@ import {
     type Frontmatter,
 } from "../lib/fileTreeHelpers";
 import { NoteType } from "../../../lib/noteTypes";
-import { loadTree, allowVaultScope, applyAllTemplates } from "../../../lib/vaultIO";
+import { loadTree, allowVaultScope, applyAllTemplates, resolveDestName } from "../../../lib/vaultIO";
 import { open } from "@tauri-apps/plugin-dialog";
 import { createLogger } from "../../../lib/logger";
 
@@ -59,6 +61,7 @@ const log = createLogger("useFileTree");
 export function useFileTree() {
     const [folderPath, setFolderPath] = useAtom(folderPathAtom);
     const setTree = useSetAtom(treeAtom);
+    const store = useStore();
     const setLoading = useSetAtom(loadingAtom);
     const setError = useSetAtom(errorAtom);
     const setActiveNoteId = useSetAtom(activeNoteIdAtom);
@@ -120,8 +123,8 @@ export function useFileTree() {
         setLoading(true);
         setError(null);
         try {
-            const nodes = await loadTree(path);
-            const finalNodes = await applyAllTemplates(nodes);
+            const nodes = await loadTree(path, path);
+            const finalNodes = await applyAllTemplates(nodes, path);
             setTree(finalNodes);
         } catch (e) {
             setError(`Impossible de lire le dossier : ${e instanceof Error ? e.message : String(e)}`);
@@ -302,7 +305,7 @@ export function useFileTree() {
             }
             // biome-ignore lint/suspicious/noExplicitAny: <explanation>
             await rename(oldPath, newPath, { baseDir: null } as any);
-            const updatedChildren = await loadTree(newPath);
+            const updatedChildren = await loadTree(newPath, folderPath ?? undefined);
             setTree((prev) => updateFolderInTree(prev, oldPath, newPath, newName, updatedChildren));
         } else {
             // biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -310,6 +313,46 @@ export function useFileTree() {
             setTree((prev) => renameNodeInTree(prev, oldPath, newPath, newName));
         }
 
+        return newPath;
+    }
+
+    // ── Déplacement d'un nœud vers un autre dossier ────────────────────────
+
+    async function moveNode(sourceId: string, targetFolderPath: string): Promise<string | null> {
+        // Guards
+        if (sourceId === targetFolderPath) return null;
+        if (targetFolderPath.startsWith(`${sourceId}/`)) return null;
+        const currentParent = sourceId.split("/").slice(0, -1).join("/");
+        if (currentParent === targetFolderPath) return null;
+
+        const sourceName = sourceId.split("/").pop()!;
+        const destName = await resolveDestName(targetFolderPath, sourceName);
+        const newPath = `${targetFolderPath}/${destName}`;
+
+        writingPathsRegistry.add(sourceId);
+        try {
+            // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+            await rename(sourceId, newPath, { baseDir: null } as any);
+        } finally {
+            writingPathsRegistry.delete(sourceId);
+        }
+
+        const isFolder = !sourceId.endsWith(".md");
+
+        if (!isFolder) {
+            const note = flattenTree(store.get(treeAtom)).find((n) => n.id === sourceId);
+            if (note) {
+                const movedNote: NoteFile = { ...note, id: newPath };
+                setTree((prev) =>
+                    addNodeInTree(deleteNodeInTree(prev, sourceId), targetFolderPath, movedNote, folderPath ?? undefined)
+                );
+            }
+        } else if (folderPath) {
+            // Recharger l'arbre complet : plus sûr pour les déplacements de dossiers
+            await reload(folderPath);
+        }
+
+        log.info("nœud déplacé", { sourceId, newPath, isFolder });
         return newPath;
     }
 
@@ -326,5 +369,6 @@ export function useFileTree() {
         deleteFolder,
         renameNode,
         openFolderNote,
+        moveNode,
     };
 }

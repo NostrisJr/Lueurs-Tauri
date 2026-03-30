@@ -30,24 +30,47 @@ export function ensureType(
     return { "__Type__": inferredType, ...frontmatter };
 }
 
-export function applyMissingTemplateProps(
+/**
+ * Convertit une valeur frontmatter en tableau de strings.
+ * Gère les cas : undefined, string unique, string[], array YAML.
+ */
+export function toArray(value: unknown): string[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as string[];
+    if (typeof value === "string") return [value];
+    return [];
+}
+
+/**
+ * Calcule les propriétés à appliquer depuis les templates vers une note.
+ * - applyForced: false → ajoute seulement les props absentes (chargement initial)
+ * - applyForced: true  → ajoute les absentes + écrase si le template impose une valeur non vide (édition live)
+ */
+export function computeTemplateProps(
     frontmatter: Frontmatter,
-    templates: Frontmatter[]
-): { updated: Frontmatter; added: string[] } {
-    const added: string[] = [];
+    templates: Frontmatter[],
+    options: { applyForced: boolean }
+): { updated: Frontmatter; changed: string[] } {
+    const changed: string[] = [];
     const updated = { ...frontmatter };
 
     for (const template of templates) {
         for (const [key, value] of Object.entries(template)) {
-            if (/^__[A-Za-z]+__$/.test(key)) continue;
-            if (!(key in updated)) {
+            if (isSystemField(key)) continue;
+            const isMissing = !(key in updated);
+            const templateHasValue = value !== "" && value !== null && value !== undefined;
+
+            if (isMissing) {
                 updated[key] = value ?? "";
-                added.push(key);
+                changed.push(key);
+            } else if (options.applyForced && templateHasValue && updated[key] !== value) {
+                updated[key] = value;
+                changed.push(key);
             }
         }
     }
 
-    return { updated, added };
+    return { updated, changed };
 }
 
 // ── Frontmatter ───────────────────────────────────────────────────────────────

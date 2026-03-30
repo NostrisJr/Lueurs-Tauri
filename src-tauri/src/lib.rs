@@ -41,12 +41,30 @@ pub fn run() {
             copy_resource_to_vault,
             propagate_template_change,
             update_note,
+            get_titlebar_height,
+            get_scale_factor,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
 // ── Commandes ──────────────────────────────────────────────────────────────
+
+/// Hauteur de la titlebar macOS en pixels physiques.
+/// Permet au frontend de corriger les coordonnées du drop externe (wry les exprime
+/// dans le frame de la fenêtre macOS, title bar incluse, et non dans le viewport WebView).
+#[tauri::command]
+fn get_titlebar_height(window: tauri::Window) -> f64 {
+    let outer = window.outer_position().unwrap_or_default();
+    let inner = window.inner_position().unwrap_or_default();
+    (inner.y - outer.y) as f64
+}
+
+/// DPR (device pixel ratio) de la fenêtre, identique à window.devicePixelRatio côté JS.
+#[tauri::command]
+fn get_scale_factor(window: tauri::Window) -> f64 {
+    window.scale_factor().unwrap_or(1.0)
+}
 
 /// Écrit une note sur le disque et émet un événement vault:patch pour que le frontend
 /// réconcilie son état sans recharger tout l'arbre.

@@ -9,12 +9,8 @@ import { FrontmatterEditor } from "../Frontmatter/FrontmatterEditor";
 import { CrepeEditor } from "./CrepeEditor";
 import { BaseView } from "../BaseView/BaseView";
 
-interface Props {
-  className?: string;
-}
-
-export function MilkdownEditor({ className }: Props) {
-  const { handleRename, handleChange, refreshBaseChildren } = useNote();
+export function MilkdownEditor() {
+  const { handleRename, handleChange } = useNote();
   const activeNote = useAtomValue(activeNoteAtom);
   const folderPath = useAtomValue(folderPathAtom);
 
@@ -31,31 +27,34 @@ export function MilkdownEditor({ className }: Props) {
   const isBase = activeNote?.type === NoteType.BASE;
 
   return (
-    <div className={className}>
+    <div className="h-full">
       {activeNote && folderPath && (
-        <>
-          <NoteHeader
-            onRename={async (newName) => {
-              await handleRename(activeNote.id, newName, false);
-            }}
-            onRefresh={() => refreshBaseChildren(activeNote)}
-          />
-          <FrontmatterEditor onChange={handleFrontmatterChange} />
-          {isBase ? (
-            <BaseView
-              base={activeNote}
-              onBaseChange={handleFrontmatterChange}
+        <div className="overflow-x-clip">
+          <div className="fixed bg-white z-10 w-full">
+            <NoteHeader
+              onRename={async (newName) => {
+                await handleRename(activeNote.id, newName, false);
+              }}
             />
-          ) : (
-            <MilkdownProvider key={activeNote.id}>
-              <CrepeEditor
-                node={activeNote}
-                vaultPath={folderPath}
-                onChange={handleBodyChange}
+          </div>
+          <div className="pt-16">
+            <FrontmatterEditor onChange={handleFrontmatterChange} />
+            {isBase ? (
+              <BaseView
+                base={activeNote}
+                onBaseChange={handleFrontmatterChange}
               />
-            </MilkdownProvider>
-          )}
-        </>
+            ) : (
+              <MilkdownProvider key={activeNote.id}>
+                <CrepeEditor
+                  node={activeNote}
+                  vaultPath={folderPath}
+                  onChange={handleBodyChange}
+                />
+              </MilkdownProvider>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

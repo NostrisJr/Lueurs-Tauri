@@ -6,6 +6,7 @@ import { createLogger } from "../lib/logger";
 import { ask } from '@tauri-apps/plugin-dialog';
 import { useFrontmatter } from '../components/Frontmatter/hooks/useFrontmatter';
 import { useTemplateSync } from './useTemplateSync';
+import { usePathPropagation } from './usePathPropagation';
 
 const log = createLogger("useNote");
 
@@ -18,8 +19,9 @@ export function useNote() {
     const folderPath = useAtomValue(folderPathAtom);
 
     const { updateNote, deleteNote, deleteFolder, createNote, createFolder, renameNode, openFolderNote } = useFileTree();
-    const { onFrontmatterChange, refreshBaseChildren, cleanupNoteFromBases, renameNoteInBases } = useFrontmatter();
+    const { onFrontmatterChange, cleanupNoteFromBases } = useFrontmatter();
     const { onTemplateChange } = useTemplateSync();
+    const { propagateNoteRename, propagateFolderRename } = usePathPropagation();
 
     const allNotes = useMemo(() => flattenTree(tree), [tree]);
 
@@ -117,10 +119,13 @@ export function useNote() {
         const newPath = await renameNode(oldPath, newName, isFolder);
 
         if (!isFolder) {
-            // Mettre à jour __Children__ des bases qui référencent cette note
-            await renameNoteInBases(oldPath, newPath);
+            await propagateNoteRename(oldPath, newPath);
             if (activeNote?.id === oldPath) setActiveNoteId(newPath);
-        } else if (activeNote) {
+        } else {
+            await propagateFolderRename(oldPath, newPath);
+        }
+
+        if (isFolder && activeNote) {
             const oldFolderNoteId = `${oldPath}/${oldPath.split("/").pop()}.md`;
             const newFolderNoteId = `${newPath}/${newName}.md`;
 
@@ -136,7 +141,6 @@ export function useNote() {
 
     return {
         handleChange,
-        refreshBaseChildren,
         handleSelectNote,
         handleOpenFolder,
         handleDeleteNote,

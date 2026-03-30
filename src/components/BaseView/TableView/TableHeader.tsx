@@ -27,11 +27,11 @@ export function TableHeader({
   const anchorRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   return (
-    <div className="flex items-center border-b border-gray-200 bg-gray-50 sticky top-0 z-10 select-none">
+    <div className="flex items-center border-b border-gray-200 bg-gray-100 sticky top-0 z-10 select-none rounded-t-lg">
       {/* Colonne titre — non renommable */}
       <div
         style={{ width: titleColWidth }}
-        className="relative shrink-0 border-r border-gray-200 px-3 py-2 text-xs font-semibold text-gray-500 font-body truncate"
+        className="relative border-r border-gray-200 last:border-none px-3 py-2 text-xs font-semibold text-gray-500 font-body truncate"
       >
         Titre
       </div>
@@ -43,10 +43,10 @@ export function TableHeader({
             anchorRefs.current[col.key] = el;
           }}
           style={{ width: col.width }}
-          className="relative shrink-0 border-r border-gray-200 px-3 py-2 text-xs font-semibold truncate font-body"
+          className="relative border-r border-gray-200 last:border-none px-3 py-2 text-xs font-semibold font-body overflow-hidden"
         >
           <span
-            className="text-amber-500/70 cursor-pointer hover:text-amber-600 transition-colors"
+            className="text-gray-500 cursor-pointer hover:text-gray-400 transition-colors truncate block"
             onDoubleClick={() => setEditingKey(col.key)}
             title="Double-cliquer pour renommer"
           >

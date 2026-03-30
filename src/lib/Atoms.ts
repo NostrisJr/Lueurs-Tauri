@@ -10,6 +10,10 @@ const log = createLogger("atoms");
 
 export const writingPathsRegistry = new Set<string>();
 export const searchAtom = atom("");
+export const settingsOpenAtom = atom(false);
+// État du drag & drop dans le file tree
+export const dragSourceAtom = atom<string | null>(null);
+export const dragOverAtom = atom<string | null>(null);
 export const savingAtom = atom(false);
 export const loadingAtom = atom(false);
 export const treeAtom = atom<TreeNode[]>([]);

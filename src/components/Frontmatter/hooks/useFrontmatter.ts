@@ -1,21 +1,16 @@
-import { useSetAtom, useStore } from "jotai";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
-import { message } from "@tauri-apps/plugin-dialog";
+import { useStore } from "jotai";
+
 import { treeAtom } from "../../../lib/atoms";
-import { isSystemField, serializeFrontmatter, updateNodeInTree } from "../../FileTree/lib/fileTreeHelpers";
+import { toArray, computeTemplateProps } from "../../FileTree/lib/fileTreeHelpers";
 import { createLogger } from "../../../lib/logger";
 import { NoteType } from "../../../lib/noteTypes";
 import { flattenTree, type Frontmatter, type NoteFile } from "../../FileTree/hooks/useFileTree";
+import { usePersistNote } from "../../../hooks/usePersistNote";
 
 const log = createLogger("useFrontmatter");
 //TODO : régler tous les types any
-// ── Helpers ────────────────────────────────────────────────────────────────
 
-function toArray(value: string | string[] | undefined): string[] {
-    if (!value) return [];
-    if (Array.isArray(value)) return value;
-    return value.split(",").map((v) => v.trim()).filter(Boolean);
-}
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function arraysEqual(a: string[], b: string[]): boolean {
     if (a.length !== b.length) return false;
@@ -28,73 +23,42 @@ function arraysEqual(a: string[], b: string[]): boolean {
 
 export function useFrontmatter() {
     const store = useStore();
-    const setTree = useSetAtom(treeAtom);
+    const persistPatch = usePersistNote();
 
     function getCurrentNotes() {
         return flattenTree(store.get(treeAtom));
     }
 
-    /**
-     * Calcule les propriétés à appliquer depuis les templates applicables à une note.
-     * - Propriété absente → ajoutée avec la valeur du template (vide ou non)
-     * - Propriété présente + template a une valeur non vide → écrasée
-     * - Propriété présente + template a une valeur vide → laissée intacte
-     */
-    function computeTemplateOverrides(noteFrontmatter: Frontmatter): Frontmatter {
-        const allNotes = getCurrentNotes();
-        const overrides: Frontmatter = {};
+    async function applyTemplateProps(noteId: string, frontmatter: Frontmatter): Promise<Frontmatter | null> {
+        // Les bases ne sont pas contraintes par leurs propres templates
+        if (frontmatter.__Type__ === NoteType.BASE) return null;
 
-        const directTemplates = toArray(noteFrontmatter.__Template__);
-        const parentBases = toArray(noteFrontmatter.__Base__);
+        const allNotes = getCurrentNotes();
+        const directTemplates = toArray(frontmatter.__Template__);
+        const parentBases = toArray(frontmatter.__Base__);
         const inheritedTemplates = parentBases.flatMap((basePath) => {
             const base = allNotes.find((n) => n.id === basePath);
             return base ? toArray(base.frontmatter.__Template__) : [];
         });
+        const allTemplatePaths = [...new Set([...directTemplates, ...inheritedTemplates])];
+        const templates = allTemplatePaths
+            .map((p) => {
+                const t = allNotes.find((n) => n.id === p);
+                if (!t) log.warn("template introuvable", { templatePath: p });
+                return t?.frontmatter;
+            })
+            .filter((f): f is Frontmatter => !!f);
 
-        const allTemplates = [...new Set([...directTemplates, ...inheritedTemplates])];
+        if (templates.length === 0) return null;
 
-        for (const templatePath of allTemplates) {
-            const template = allNotes.find((n) => n.id === templatePath);
-            if (!template) {
-                log.warn("template introuvable", { templatePath });
-                continue;
-            }
-            for (const [key, value] of Object.entries(template.frontmatter)) {
-                if (isSystemField(key)) continue;
-                const isMissing = !(key in noteFrontmatter);
-                const templateHasValue = value !== "" && value !== null && value !== undefined;
-                // Ajouter si absent, écraser si le template impose une valeur non vide
-                if (isMissing || templateHasValue) {
-                    overrides[key] = value ?? "";
-                }
-            }
-        }
+        const { updated, changed } = computeTemplateProps(frontmatter, templates, { applyForced: true });
+        if (changed.length === 0) return null;
 
-        return overrides;
-    }
-
-    async function applyTemplateProps(noteId: string, frontmatter: Frontmatter): Promise<Frontmatter | null> {
-        console.log(frontmatter.__Type__, NoteType.BASE, frontmatter.__Type__ === NoteType.BASE)
-        // Les bases ne sont pas contraintes par leurs propres templates
-        if (frontmatter.__Type__ === NoteType.BASE) return null;
-
-        const overrides = computeTemplateOverrides(frontmatter);
-        if (Object.keys(overrides).length === 0) return null;
-
-        // Ne persister que si quelque chose change réellement
-        const hasChanges = Object.entries(overrides).some(([k, v]) => frontmatter[k] !== v);
-        if (!hasChanges) return null;
-
-        const updated: Frontmatter = { ...frontmatter, ...overrides };
-        const note = getCurrentNotes().find((n) => n.id === noteId);
+        const note = allNotes.find((n) => n.id === noteId);
         if (!note) return updated;
 
-        const raw = serializeFrontmatter(updated, note.body);
-        // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
-        await writeTextFile(noteId, raw, { baseDir: null } as any);
-        setTree((prev) => updateNodeInTree(prev, noteId, { frontmatter: updated }));
-        log.info("propriétés template appliquées", { noteId, overrides });
-
+        await persistPatch(noteId, updated, note.body);
+        log.info("propriétés template appliquées", { noteId, changed });
         return updated;
     }
 
@@ -202,72 +166,18 @@ export function useFrontmatter() {
 
     async function writeNoteBase(note: NoteFile, bases: string[]): Promise<Frontmatter> {
         const updatedFrontmatter: Frontmatter = { ...note.frontmatter, "__Base__": bases };
-        const raw = serializeFrontmatter(updatedFrontmatter, note.body);
-        // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
-        await writeTextFile(note.id, raw, { baseDir: null } as any);
-        setTree((prev) => updateNodeInTree(prev, note.id, { frontmatter: updatedFrontmatter }));
+        await persistPatch(note.id, updatedFrontmatter, note.body);
         log.info("__Base__ persisté", { noteId: note.id, count: bases.length });
         return updatedFrontmatter;
     }
 
-    async function renameNoteInBases(oldNoteId: string, newNoteId: string) {
-        const allNotes = getCurrentNotes();
-        const bases = allNotes.filter((n) =>
-            toArray(n.frontmatter.__Children__).includes(oldNoteId)
-        );
-        if (bases.length === 0) return;
-        log.info("mise à jour __Children__ après renommage", { oldNoteId, newNoteId, baseCount: bases.length });
-        for (const base of bases) {
-            const updated = toArray(base.frontmatter.__Children__).map((c) =>
-                c === oldNoteId ? newNoteId : c
-            );
-            writeBaseChildren(base, updated);
-        }
-    }
-
-    /** Arbre mis à jour immédiatement, persistance disque en arrière-plan. */
+    /** Persistance fire-and-forget — l'arbre est mis à jour après l'écriture disque. */
     function writeBaseChildren(base: NoteFile, children: string[]) {
         const updatedFrontmatter: Frontmatter = { ...base.frontmatter, "__Children__": children };
-        setTree((prev) => updateNodeInTree(prev, base.id, { frontmatter: updatedFrontmatter }));
-        const raw = serializeFrontmatter(updatedFrontmatter, base.body);
-        // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
-        writeTextFile(base.id, raw, { baseDir: null } as any).catch((err) =>
+        persistPatch(base.id, updatedFrontmatter, base.body).catch((err) =>
             log.error("échec persistance __Children__", { baseId: base.id, err })
         );
         log.info("__Children__ mis à jour", { baseId: base.id, count: children.length });
-    }
-
-    async function refreshBaseChildren(base: NoteFile) {
-        log.info("refresh __Children__", { baseId: base.id });
-        const allNotes = getCurrentNotes();
-        const found: string[] = [];
-        const orphans: string[] = [];
-
-        for (const note of allNotes) {
-            if (note.id === base.id) continue;
-            if (toArray(note.frontmatter.__Base__).includes(base.id)) {
-                found.push(note.id);
-            }
-        }
-
-        const currentChildren = toArray(base.frontmatter.__Children__);
-        for (const childPath of currentChildren) {
-            if (!allNotes.find((n) => n.id === childPath) && !found.includes(childPath)) {
-                orphans.push(childPath);
-            }
-        }
-
-        if (orphans.length > 0) {
-            log.warn("enfants introuvables au refresh", { orphans });
-            await message(
-                `${orphans.length} note(s) introuvable(s) dans le vault :\n${orphans.join("\n")}\n\nElles ont été retirées de la base.`,
-                { title: "Refresh — notes introuvables", kind: "warning" }
-            );
-        }
-
-        await writeBaseChildren(base, found);
-        log.info("refresh terminé", { baseId: base.id, childCount: found.length, orphanCount: orphans.length });
-        return found;
     }
 
     async function cleanupNoteFromBases(noteId: string) {
@@ -286,9 +196,7 @@ export function useFrontmatter() {
 
     return {
         onFrontmatterChange,
-        refreshBaseChildren,
         applyTemplateProps,
         cleanupNoteFromBases,
-        renameNoteInBases,
     };
 }

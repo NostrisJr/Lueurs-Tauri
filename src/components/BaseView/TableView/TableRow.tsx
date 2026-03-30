@@ -43,12 +43,12 @@ export function TableRow({
   }
 
   return (
-    <div className="flex items-center border-b border-gray-100 hover:bg-gray-50/50 transition-colors group">
+    <div className="flex items-center border-b min-h-8 border-gray-100 hover:bg-gray-50/50 transition-colors group">
       {/* Colonne titre */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: édition inline */}
       <div
         style={{ width: titleColWidth }}
-        className="shrink-0 border-r border-gray-100 px-3 py-1.5"
+        className="border-r border-gray-100 px-3 last:border-none"
         onDoubleClick={startTitleEdit}
         onClick={(e) => e.stopPropagation()}
       >
@@ -61,7 +61,7 @@ export function TableRow({
             onChange={(e) => setTitleDraft(e.target.value)}
             onBlur={commitTitle}
             onKeyDown={handleTitleKeyDown}
-            className="w-full text-xs bg-transparent outline-none text-gray-700 font-body"
+            className="w-full text-xs bg-transparent outline-none text-gray-700"
           />
         ) : (
           <span className="text-xs text-gray-700 truncate block font-body">

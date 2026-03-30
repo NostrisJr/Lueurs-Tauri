@@ -5,8 +5,9 @@ import { toArray, isSystemField, updateNodeInTree } from "../components/FileTree
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { createLogger } from "../lib/logger";
-import { loadTree, applyAllTemplates, persistNotePatch } from "../lib/vaultIO";
+import { loadTree, applyAllTemplates } from "../lib/vaultIO";
 import { NoteType, SystemField } from "../lib/noteTypes";
+import { usePersistNote } from "./usePersistNote";
 
 const log = createLogger("useTemplateSync");
 
@@ -31,6 +32,7 @@ export function useTemplateSync() {
     const setTree = useSetAtom(treeAtom);
     const folderPath = useAtomValue(folderPathAtom);
     const setSkipPropagation = useSetAtom(skipPropagationAtom);
+    const persistPatch = usePersistNote();
 
     async function onTemplateChange(templateId: string, prev: Frontmatter, next: Frontmatter) {
         if (!folderPath) return;
@@ -79,8 +81,8 @@ export function useTemplateSync() {
             });
             log.info("renommage Rust terminé", { modified: result.modified, errors: result.errors });
 
-            const nodes = await loadTree(folderPath);
-            const finalNodes = await applyAllTemplates(nodes);
+            const nodes = await loadTree(folderPath, folderPath);
+            const finalNodes = await applyAllTemplates(nodes, folderPath);
             setTree(finalNodes);
         } finally {
             for (const p of allPaths) writingPathsRegistry.delete(p);
@@ -116,7 +118,7 @@ export function useTemplateSync() {
             const { [SystemField.VIEW]: _v, [SystemField.KANBAN_KEY]: _k, [SystemField.KANBAN_COLUMNS]: _c, ...rest } = base.frontmatter;
             writingPathsRegistry.add(base.id);
             try {
-                await persistNotePatch(base.id, rest, base.body, setTree);
+                await persistPatch(base.id, rest, base.body);
                 log.info("vue Kanban supprimée de la base", { baseId: base.id });
             } catch (err) {
                 log.error("échec suppression vue Kanban", { baseId: base.id, err });

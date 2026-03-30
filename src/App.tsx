@@ -3,15 +3,18 @@ import { useFileTree } from "./components/FileTree/hooks/useFileTree";
 import { sfCheckmark, sfFolder } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { SideBar } from "./components/SideBar";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   activeNoteAtom,
   folderPathAtom,
   loadingAtom,
   savingAtom,
+  settingsOpenAtom,
 } from "./lib/atoms";
 import { useNote } from "./hooks/useNote";
+import { useVaultSync } from "./hooks/useVaultSync";
 import { useEffect } from "react";
+import { SettingsModal } from "./components/Settings/SettingsModal";
 
 function WelcomeScreen({ onPick }: { onPick: () => void }) {
   return (
@@ -42,22 +45,36 @@ function WelcomeScreen({ onPick }: { onPick: () => void }) {
 
 export default function App() {
   const { pickFolder, initFolder } = useFileTree();
-  const { handleCreateNote, handleChange } = useNote();
+  const { handleCreateNote } = useNote();
+  useVaultSync();
 
   const activeNote = useAtomValue(activeNoteAtom);
   const saving = useAtomValue(savingAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const loading = useAtomValue(loadingAtom);
+  const setSettingsOpen = useSetAtom(settingsOpenAtom);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     if (folderPath) initFolder();
   }, [folderPath]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "," && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSettingsOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setSettingsOpen]);
+
   if (!folderPath) return <WelcomeScreen onPick={pickFolder} />;
 
   return (
     <div className="h-screen flex bg-white text-gray-900 overflow-hidden text-sm">
+      <SettingsModal />
       <SideBar />
 
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">
@@ -82,11 +99,7 @@ export default function App() {
 
         <div className="flex-1 overflow-auto">
           {activeNote ? (
-            <MilkdownEditor
-              key={activeNote.id}
-              onChange={handleChange}
-              className="h-full"
-            />
+            <MilkdownEditor key={activeNote.id} />
           ) : (
             <div className="h-full flex flex-col items-center justify-center gap-3">
               <p className="text-sm text-gray-400">

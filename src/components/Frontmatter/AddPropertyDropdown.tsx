@@ -32,7 +32,7 @@ export function AddPropertyDropdown({
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="text-xs text-gray-300 hover:text-gray-500 text-left transition-colors cursor-pointer mt-0.5"
+        className="text-xs text-gray-300 hover:text-gray-500 text-left transition-colors cursor-pointer mt-0.5 select-none"
       >
         + propriété
       </button>

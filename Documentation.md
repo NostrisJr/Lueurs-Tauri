@@ -1,4 +1,4 @@
-# Lueurs — Documentation
+# Lueurs — Documentation utilisateur
 
 ## Conventions de notation
 
@@ -139,6 +139,24 @@ Une fois configurée, la vue affiche une colonne par valeur distincte trouvée p
 
 ---
 
+## Glisser-déposer
+
+### Réorganisation interne (drag & drop dans le vault)
+
+Les notes et dossiers du vault sont réorganisables par glisser-déposer directement dans l'explorateur de fichiers. Pour déplacer un élément :
+
+1. Maintenir le clic sur une note ou un dossier et commencer à glisser — un aperçu flottant apparaît avec le nom de l'élément.
+2. Glisser vers le dossier de destination, qui se colore en ambre au survol.
+3. Relâcher pour effectuer le déplacement.
+
+Le renommage des chemins est automatiquement propagé : les références à la note dans les autres notes (`__Base__`, `__Children__`, etc.) sont mises à jour. Si une note déplacée était ouverte, elle reste active à son nouveau chemin. Appuyer sur **Échap** pendant le glisser annule l'opération.
+
+### Import depuis l'explorateur de fichiers (Finder)
+
+Il est possible de faire glisser des fichiers `.md` depuis le Finder directement dans la fenêtre Lueurs pour les importer dans le vault. Glisser le fichier sur un dossier dans l'explorateur le copie dans ce dossier ; glisser sur la zone vide le copie à la racine du vault. Les champs système (`__Type__`, etc.) sont ajoutés automatiquement au frontmatter lors de l'import.
+
+---
+
 ## Propagation des templates
 
 Lorsque le frontmatter d'un template est modifié, les changements sont automatiquement propagés à toutes les notes héritières (directement via `__Template__`, ou indirectement via une base dont le `__Template__` inclut ce template). Les règles de propagation sont les suivantes :
@@ -165,55 +183,3 @@ Les types utilisateur sont des notes de type `__template__` stockées dans `conf
 ## Compatibilité Obsidian
 
 Les frontmatters générés par Lueurs sont du YAML standard, lisibles nativement par Obsidian. `__Children__` est un array YAML, pas un objet JSON. `__KanbanColumns__` et `__TableColumns__` sont stockés comme des chaînes JSON entre guillemets simples sur une seule ligne — Obsidian les affiche comme des propriétés texte. Les champs système (`__Type__`, `__Base__`, etc.) apparaissent tels quels dans Obsidian, tirets bas inclus.
-
----
-
-## Architecture technique
-
-### Vue d'ensemble
-
-Lueurs est une application desktop construite avec **Tauri 2** (Rust + WebView) et **React** côté frontend. Les notes sont des fichiers `.md` stockés dans un dossier vault choisi par l'utilisateur. Toute la persistance est locale : pas de serveur, pas de base de données.
-
-### État global (Jotai)
-
-L'état de l'application est géré par des atomes Jotai (`src/lib/atoms.ts`) :
-
-- `treeAtom` — l'arbre complet du vault (source de vérité pour les données des notes)
-- `activeNoteIdAtom` — chemin de la note ouverte
-- `activeNoteAtom` — atome dérivé : note courante extraite du tree
-- `folderPathAtom` — chemin du vault (persisté en localStorage)
-
-### Flux de données
-
-```
-Vault (disque) → useFileTree → treeAtom → activeNoteAtom → Éditeur
-      ↑                                                         |
-      └──── FS watcher (débounce 500 ms) ←── Rust update_note ─┘
-```
-
-Les modifications sont appliquées immédiatement en mémoire (mise à jour optimiste de `treeAtom`), puis envoyées à Rust via `invoke("update_note")`. Rust écrit le fichier sur le disque et émet l'événement `vault:patch`. `useVaultSync` écoute cet événement et réconcilie `treeAtom` avec les données Rust. Un registre `writingPathsRegistry` (Set module-level dans `vaultIO.ts`) liste les chemins en cours d'écriture : le watcher FS ignore ces chemins pour éviter de traiter ses propres modifications.
-
-### Propagation de templates (Rust)
-
-Lorsque le frontmatter d'un template change, le frontend (`useTemplateSync`) calcule la liste des notes héritières et invoque la commande Rust `propagate_template_change`. Rust traite les fichiers en parallèle (Tokio) et les écrit directement sur le disque sans passer par l'événement `vault:patch`. Le frontend recharge ensuite l'arbre entier ou applique une mise à jour chirurgicale de `treeAtom`.
-
-La commande Rust reçoit un `TemplateChange` décrivant la modification :
-
-- `addProp` — ajouter une propriété si absente
-- `removeProp` — supprimer une propriété
-- `renameProp { old_key, new_key, template_value }` — renommer une propriété avec résolution de conflit
-- `forceValue` — imposer une valeur
-
-Pour le renommage, Rust parse le frontmatter YAML, détecte si `new_key` est déjà présent dans la note (conflit), et applique la règle de résolution : valeur du template si imposée ; pour une propriété contraignante, la valeur de `old_key` prime si elle était non vide (prop héritée > prop personnalisée), sinon la valeur existante de `new_key` est conservée.
-
-### Résolution des propriétés template
-
-`computeTemplateProps` (dans `fileTreeHelpers.ts`) calcule les propriétés qu'une note doit recevoir d'après ses templates. Elle distingue les propriétés imposées (valeur non vide dans le template) des propriétés contraignantes (valeur vide), et ne modifie jamais une valeur déjà renseignée par la note pour une propriété contraignante.
-
-### Choix de conception
-
-**Stockage YAML plat.** Les propriétés système utilisent des clés avec doubles tirets bas (`__Type__`, `__Template__`, etc.) pour éviter les collisions avec les propriétés utilisateur tout en restant lisibles dans n'importe quel éditeur Markdown.
-
-**Propagation via Rust.** Le traitement parallèle des fichiers à la modification d'un template aurait été difficile à faire de manière fiable depuis le frontend (contraintes du FS scope Tauri, concurrence). Rust gère cela proprement avec Tokio et `JoinSet`.
-
-**Local-first.** Aucune donnée ne quitte la machine. Le vault est un dossier de fichiers `.md` standard, modifiable depuis n'importe quel éditeur externe (Obsidian, VS Code, etc.). Lueurs détecte les changements externes via le watcher FS et reconcile son état.

@@ -1,9 +1,14 @@
 # Bugs/TODO actuels à soumettre à Claude : 
-- [ ] Faire en sorte que renommer un template ne casse pas le lien avec la base. Plus précisément : quand j'ai renommé le dossier contenant les templates, ça a cassé le path... donc ça va être un peu touchy a gérer
+- [x] Faire en sorte que renommer un template ne casse pas le lien avec la base. Plus précisément : quand j'ai renommé le dossier contenant les templates, ça a cassé le path... donc ça va être un peu touchy a gérer
 - [ ] dans le note header, le nom ne se troncature pas si il est trop long
-- [ ] régler le pb des __ dans les types. Les proposer en dropdown
+- [x] régler le pb des __ dans les types. Les proposer en dropdown
 - [ ] quand on supprime un template (la note), le fait qu'il soit répertorié comme template dans les notes enfants n'est pas propagé
 - [ ] vérifier l'appartenance automatique à une base via l'héritage d'un template. Je sais pas si c'est pertinent
+- [ ] Rajouter un .lueurs.config à la racine pour marquer la version et avoir une ancre de relativisation des paths.
+- [ ] points UI : 
+  - [ ] un resize pour la sidebar (avec idéalement une icone de collapse à la Apple)
+  - [ ] changer les icones en fonction du type de la note
+  - [ ] diminuer l'indentation des strates de dossier
 
 # Roadmap précise
 - [x] intégration modules divers:
@@ -45,10 +50,10 @@
 - [x] régler la disparité entre nom du fichier et première ligne
 - [x] rendre invisible les fichiers destinés à la présentation du dossier (Make.md like)
 - [ ] rendre invisible le vault racine
-- [ ] drag and drop
+- [x] drag and drop
 - [ ] multi-sélection
 - [ ] menu local
-- [ ] Vérifier ce qu'il se passe quand on donne un nom déjà donné
+- [x] Vérifier ce qu'il se passe quand on donne un nom déjà donné
 
 # Fonctionnalités plus (voire trop) larges
 - [x] Gestion des propriétés
@@ -64,4 +69,3 @@
   - [x] templates
   - [x] héritage
   - [ ] recherche par type
-

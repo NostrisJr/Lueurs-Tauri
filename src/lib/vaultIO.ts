@@ -4,6 +4,7 @@
  */
 import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
+import { writingPathsRegistry } from "./atoms";
 import {
     sortNodes,
     parseFrontmatter,
@@ -11,26 +12,70 @@ import {
     ensureType,
     extractTitle,
     extractTags,
-    applyMissingTemplateProps,
+    computeTemplateProps,
+    toArray,
     flattenTree,
     updateNodeInTree,
     type Frontmatter,
 } from "../components/FileTree/lib/fileTreeHelpers";
-import { NoteType } from "./noteTypes";
+import { NoteType, SystemField } from "./noteTypes";
 import { createLogger } from "./logger";
 import type { NoteFile, TreeNode } from "../components/FileTree/hooks/useFileTree";
 
+
 const log = createLogger("vaultIO");
+
+// ── Chemins relatifs ───────────────────────────────────────────────────────
+//
+// Sur disque : paths relatifs depuis la racine du vault (ex: "Templates/Mon Template.md")
+// En mémoire : paths absolus (ex: "/Users/.../vault/Templates/Mon Template.md")
+// Migration automatique : les paths absolus déjà stockés sont reconvertis à la lecture.
+
+const PATH_FIELDS = [SystemField.TEMPLATE, SystemField.BASE, SystemField.CHILDREN] as const;
+
+function toRelative(absolutePath: string, vaultPath: string): string {
+    if (absolutePath.startsWith(`${vaultPath}/`)) {
+        return absolutePath.slice(vaultPath.length + 1);
+    }
+    return absolutePath;
+}
+
+function toAbsolute(path: string, vaultPath: string): string {
+    // Chemin déjà absolu → tel quel (ancien format ou chemin hors vault)
+    if (path.startsWith("/")) return path;
+    return `${vaultPath}/${path}`;
+}
+
+export function absolutifyPathFields(frontmatter: Frontmatter, vaultPath: string): Frontmatter {
+    const result = { ...frontmatter };
+    for (const field of PATH_FIELDS) {
+        const val = result[field];
+        if (!val) continue;
+        result[field] = toArray(val).map((p) => toAbsolute(p as string, vaultPath));
+    }
+    return result;
+}
+
+export function relativizePathFields(frontmatter: Frontmatter, vaultPath: string): Frontmatter {
+    const result = { ...frontmatter };
+    for (const field of PATH_FIELDS) {
+        const val = result[field];
+        if (!val) continue;
+        result[field] = toArray(val).map((p) => toRelative(p as string, vaultPath));
+    }
+    return result;
+}
 
 // ── Parsing d'une note ─────────────────────────────────────────────────────
 
-export function noteFromRaw(fullPath: string, fileName: string, rawContent: string): NoteFile {
+export function noteFromRaw(fullPath: string, fileName: string, rawContent: string, vaultPath?: string): NoteFile {
     const noteName = fileName.replace(/\.md$/, "");
     const pathParts = fullPath.split("/");
     const parentFolderName = pathParts[pathParts.length - 2] ?? "";
 
     const { frontmatter: rawFrontmatter, body } = parseFrontmatter(rawContent);
-    const frontmatter = ensureType(rawFrontmatter, noteName, parentFolderName);
+    const baseFrontmatter = ensureType(rawFrontmatter, noteName, parentFolderName);
+    const frontmatter = vaultPath ? absolutifyPathFields(baseFrontmatter, vaultPath) : baseFrontmatter;
 
     if (!rawFrontmatter.__Type__ && frontmatter.__Type__) {
         log.info("__Type__ injecté automatiquement", { path: fullPath, type: frontmatter.__Type__ });
@@ -51,7 +96,7 @@ export function noteFromRaw(fullPath: string, fileName: string, rawContent: stri
 
 // ── Chargement récursif ────────────────────────────────────────────────────
 
-export async function loadTree(dirPath: string): Promise<TreeNode[]> {
+export async function loadTree(dirPath: string, vaultPath?: string): Promise<TreeNode[]> {
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     const entries = await readDir(dirPath, { baseDir: null } as any);
     const nodes: TreeNode[] = [];
@@ -64,16 +109,17 @@ export async function loadTree(dirPath: string): Promise<TreeNode[]> {
             const fullPath = `${dirPath}/${entry.name}`;
 
             if (entry.isDirectory) {
-                const children = await loadTree(fullPath);
+                const children = await loadTree(fullPath, vaultPath);
                 nodes.push({ kind: "folder", id: fullPath, name: entry.name, children: sortNodes(children) });
             } else if (entry.name.endsWith(".md")) {
                 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
                 const rawContent = await readTextFile(fullPath, { baseDir: null } as any);
-                const note = noteFromRaw(fullPath, entry.name, rawContent);
+                const note = noteFromRaw(fullPath, entry.name, rawContent, vaultPath);
 
                 // Persister __Type__ si absent
                 if (!parseFrontmatter(rawContent).frontmatter.__Type__) {
-                    const raw = serializeFrontmatter(note.frontmatter, note.body);
+                    const diskFrontmatter = vaultPath ? relativizePathFields(note.frontmatter, vaultPath) : note.frontmatter;
+                    const raw = serializeFrontmatter(diskFrontmatter, note.body);
                     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
                     writeTextFile(fullPath, raw, { baseDir: null } as any).catch((err) =>
                         log.error("échec persistance __Type__", { path: fullPath, err })
@@ -96,7 +142,7 @@ export async function loadTree(dirPath: string): Promise<TreeNode[]> {
  * les templates des bases sont résolus avant d'être appliqués aux enfants.
  * Retourne l'arbre final et écrit les fichiers modifiés sur le disque.
  */
-export async function applyAllTemplates(nodes: TreeNode[]): Promise<TreeNode[]> {
+export async function applyAllTemplates(nodes: TreeNode[], vaultPath?: string): Promise<TreeNode[]> {
     const allNotes = flattenTree(nodes);
 
     // Ordre de résolution : __template__ d'abord, puis __base__, puis le reste
@@ -117,11 +163,11 @@ export async function applyAllTemplates(nodes: TreeNode[]): Promise<TreeNode[]> 
     for (const note of sorted) {
         const fm = resolved.get(note.id) ?? {};
 
-        const directTemplates = toStringArray(fm.__Template__);
-        const parentBases = toStringArray(fm.__Base__);
+        const directTemplates = toArray(fm.__Template__);
+        const parentBases = toArray(fm.__Base__);
         const inheritedTemplates = parentBases.flatMap((basePath) => {
             const baseFm = resolved.get(basePath);
-            return baseFm ? toStringArray(baseFm.__Template__) : [];
+            return baseFm ? toArray(baseFm.__Template__) : [];
         });
 
         const allTemplatePaths = [...new Set([...directTemplates, ...inheritedTemplates])];
@@ -134,20 +180,21 @@ export async function applyAllTemplates(nodes: TreeNode[]): Promise<TreeNode[]> 
             .map((tp) => resolved.get(tp))
             .filter((f): f is Frontmatter => !!f);
 
-        const { updated, added } = applyMissingTemplateProps(fm, templates);
-        if (added.length === 0) continue;
+        const { updated, changed } = computeTemplateProps(fm, templates, { applyForced: false });
+        if (changed.length === 0) continue;
 
-        log.info("propriétés template appliquées", { noteId: note.id, added });
+        log.info("propriétés template appliquées", { noteId: note.id, changed });
         resolved.set(note.id, updated);
         toWrite.push({ path: note.id, frontmatter: updated, body: note.body });
     }
 
     if (toWrite.length === 0) return nodes;
 
-    // Persister sur le disque
+    // Persister sur le disque avec paths relatifs
     await Promise.all(
         toWrite.map(({ path, frontmatter, body }) => {
-            const raw = serializeFrontmatter(frontmatter, body);
+            const diskFrontmatter = vaultPath ? relativizePathFields(frontmatter, vaultPath) : frontmatter;
+            const raw = serializeFrontmatter(diskFrontmatter, body);
             // biome-ignore lint/suspicious/noExplicitAny: <explanation>
             return writeTextFile(path, raw, { baseDir: null } as any).catch((err) =>
                 log.error("échec persistance props template", { path, err })
@@ -155,12 +202,66 @@ export async function applyAllTemplates(nodes: TreeNode[]): Promise<TreeNode[]> 
         })
     );
 
-    // Mettre à jour l'arbre en mémoire
+    // Mettre à jour l'arbre en mémoire (paths absolus conservés)
     let finalNodes = nodes;
     for (const { path, frontmatter } of toWrite) {
         finalNodes = updateNodeInTree(finalNodes, path, { frontmatter }) as TreeNode[];
     }
     return finalNodes;
+}
+
+// ── Écriture unitaire ──────────────────────────────────────────────────────
+
+/**
+ * Écrit un patch frontmatter via Rust, avec mise à jour optimiste immédiate.
+ * Rust confirme l'écriture via l'événement vault:patch — useVaultSync réconcilie treeAtom.
+ * vaultPath : si fourni, les champs path sont stockés en relatif sur disque.
+ */
+export async function persistNotePatch(
+    noteId: string,
+    frontmatter: Frontmatter,
+    body: string,
+    setTree: (updater: (prev: TreeNode[]) => TreeNode[]) => void,
+    vaultPath?: string,
+): Promise<void> {
+    // Optimistic — UI immédiat, frontmatter avec paths absolus
+    setTree((prev) => updateNodeInTree(prev, noteId, { frontmatter }));
+
+    const diskFrontmatter = vaultPath ? relativizePathFields(frontmatter, vaultPath) : frontmatter;
+    const raw = serializeFrontmatter(diskFrontmatter, body);
+    // Empêcher le watcher FS de recharger ce que Rust va écrire
+    writingPathsRegistry.add(noteId);
+    try {
+        await invoke("update_note", { id: noteId, rawContent: raw });
+        log.info("patch envoyé à Rust", { noteId });
+    } finally {
+        writingPathsRegistry.delete(noteId);
+    }
+}
+
+// ── Résolution de conflits de nom ─────────────────────────────────────────
+
+/**
+ * Retourne un nom sans conflit dans destFolderPath.
+ * Si "note.md" existe déjà → "note (2).md", "note (3).md", etc.
+ */
+export async function resolveDestName(destFolderPath: string, name: string): Promise<string> {
+    let entries: { name?: string | null }[] = [];
+    try {
+        // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+        entries = await readDir(destFolderPath, { baseDir: null } as any);
+    } catch {
+        return name;
+    }
+    const existing = new Set(entries.map((e) => e.name).filter(Boolean));
+    if (!existing.has(name)) return name;
+
+    const isNote = name.endsWith(".md");
+    const base = isNote ? name.slice(0, -3) : name;
+    const ext = isNote ? ".md" : "";
+    let i = 2;
+    while (existing.has(`${base} (${i})${ext}`)) i++;
+    return `${base} (${i})${ext}`;
 }
 
 // ── Scope Tauri ────────────────────────────────────────────────────────────
@@ -174,12 +275,4 @@ export async function allowVaultScope(vaultPath: string): Promise<void> {
         log.error("échec allow_vault_path", err);
         throw err;
     }
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function toStringArray(value: unknown): string[] {
-    if (!value) return [];
-    if (Array.isArray(value)) return value as string[];
-    return [value as string];
 }

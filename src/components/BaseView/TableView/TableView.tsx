@@ -52,8 +52,8 @@ export function TableView({ base, onBaseChange }: Props) {
       onPointerMove={onResizeMove}
       onPointerUp={onResizeEnd}
     >
-      <div className="flex-1 overflow-auto px-4">
-        <div className="inline-block min-w-full">
+      <div className="flex-1 overflow-auto px-4 justify-center">
+        <div className="inline-block">
           <TableHeader
             columns={columns}
             titleColWidth={titleColWidth}

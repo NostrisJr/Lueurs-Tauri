@@ -1,53 +1,32 @@
-import type { TreeNode } from "./hooks/useFileTree";
-import { FolderNodeComponent, FileNodeComponent } from "./FileNode";
+import { useAtomValue } from "jotai";
+import { folderPathAtom, dragOverAtom } from "../../lib/atoms";
+import { useFileDrop } from "../../hooks/useFileDrop";
+import { FileDragCtx } from "./FileDragCtx";
+import { TreeNodes } from "./FileNode";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface FileTreeProps {
-  nodes: TreeNode[];
+  nodes: import("./hooks/useFileTree").TreeNode[];
   activeId: string | null;
-}
-
-// ── Rendu récursif des nœuds ──────────────────────────────────────────────────
-
-export function TreeNodes({
-  nodes,
-  activeId,
-  depth,
-}: {
-  nodes: TreeNode[];
-  activeId: string | null;
-  depth: number;
-}) {
-  return (
-    <div className="overflow-hidden">
-      {nodes.map((node) =>
-        node.kind === "folder" ? (
-          <FolderNodeComponent
-            key={node.id}
-            node={node}
-            activeId={activeId}
-            depth={depth}
-          />
-        ) : (
-          <FileNodeComponent
-            key={node.id}
-            node={node}
-            activeId={activeId}
-            depth={depth}
-          />
-        )
-      )}
-    </div>
-  );
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export function FileTree({ nodes, activeId }: FileTreeProps) {
+  const dnd = useFileDrop();
+  const folderPath = useAtomValue(folderPathAtom);
+  const dragOver = useAtomValue(dragOverAtom);
+  const isRootOver = folderPath ? dragOver === folderPath : false;
+
   return (
-    <div className="px-2 py-1 overflow-scroll">
-      <TreeNodes nodes={nodes} activeId={activeId} depth={0} />
-    </div>
+    <FileDragCtx.Provider value={dnd}>
+      <div
+        data-dropzone={folderPath ?? undefined}
+        className={`px-2 py-1 overflow-scroll min-h-full transition-colors ${isRootOver ? "bg-amber-50" : ""}`}
+      >
+        <TreeNodes nodes={nodes} activeId={activeId} depth={0} />
+      </div>
+    </FileDragCtx.Provider>
   );
 }

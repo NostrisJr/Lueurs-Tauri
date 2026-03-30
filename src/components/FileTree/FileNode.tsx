@@ -1,5 +1,3 @@
-// ── Nœud fichier ──────────────────────────────────────────────────────────────
-
 import {
   sfDocument,
   sfTrash,
@@ -11,14 +9,53 @@ import {
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useState } from "react";
+import { useAtomValue } from "jotai";
+import { dragSourceAtom, dragOverAtom } from "../../lib/atoms";
 import {
   type NoteFile,
   type FolderNode,
+  type TreeNode,
   useFileTree,
 } from "./hooks/useFileTree";
 import { useNote } from "../../hooks/useNote";
 import { EditableText } from "../EditableText";
-import { TreeNodes } from "./FileTree";
+import { useFileDragCtx } from "./FileDragCtx";
+
+// ── Rendu récursif ─────────────────────────────────────────────────────────────
+
+export function TreeNodes({
+  nodes,
+  activeId,
+  depth,
+}: {
+  nodes: TreeNode[];
+  activeId: string | null;
+  depth: number;
+}) {
+  return (
+    <div className="overflow-hidden">
+      {nodes.map((node) =>
+        node.kind === "folder" ? (
+          <FolderNodeComponent
+            key={node.id}
+            node={node}
+            activeId={activeId}
+            depth={depth}
+          />
+        ) : (
+          <FileNodeComponent
+            key={node.id}
+            node={node}
+            activeId={activeId}
+            depth={depth}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+// ── Nœud fichier ──────────────────────────────────────────────────────────────
 
 function FileNodeComponent({
   node,
@@ -30,19 +67,23 @@ function FileNodeComponent({
   depth: number;
 }) {
   const isActive = activeId === node.id;
-  const { handleSelectNote, handleDeleteNote } = useNote();
-  const { handleRename } = useNote();
+  const { handleSelectNote, handleDeleteNote, handleRename } = useNote();
+  const dnd = useFileDragCtx();
+  const dragSource = useAtomValue(dragSourceAtom);
+  const isDragging = dragSource === node.id;
 
   return (
     <div
+      onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
       onClick={() => handleSelectNote(node)}
       onKeyDown={(e) => e.key === "Enter" && handleSelectNote(node)}
-      className={`group flex justify-between items-center gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors
+      className={`select-none group flex justify-between items-center gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors
                  ${
                    isActive
                      ? "bg-white shadow-sm border border-gray-200 text-gray-900"
                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
-                 }`}
+                 }
+                 ${isDragging ? "opacity-40" : ""}`}
       style={{ paddingLeft: `${depth * 12 + 8}px` }}
     >
       <div className="flex items-center gap-2 min-w-0">
@@ -89,6 +130,11 @@ function FolderNodeComponent({
 
   const { createNote, createFolder } = useFileTree();
   const { handleRename, handleDeleteFolder, handleOpenFolder } = useNote();
+  const dnd = useFileDragCtx();
+  const dragSource = useAtomValue(dragSourceAtom);
+  const dragOver = useAtomValue(dragOverAtom);
+  const isDragging = dragSource === node.id;
+  const isOver = dragOver === node.id;
 
   // La note __folder__ est celle qui porte exactement le même nom que ce dossier
   const folderNoteId = `${node.id}/${node.name}.md`;
@@ -100,14 +146,20 @@ function FolderNodeComponent({
   );
 
   return (
-    <div>
+    <div
+      data-dropzone={node.id}
+      className={isDragging ? "opacity-40" : ""}
+    >
       {/* En-tête du dossier */}
       <div
-        className={`group flex items-center justify-between gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors
+        onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
+        className={`select-none group flex items-center justify-between gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors
                     ${
                       isActive
                         ? "bg-white shadow-sm border border-gray-200 text-gray-700"
-                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                        : isOver
+                          ? "bg-amber-200/50 text-gray-700"
+                          : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                     }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
@@ -198,7 +250,7 @@ function FolderNodeComponent({
       {/* Enfants */}
       {open && visibleChildren.length > 0 && (
         <div
-          className="border-l border-gray-200"
+          className="border-l border-gray-200 select-none"
           style={{ marginLeft: `${depth * 12 + 16}px` }}
         >
           <TreeNodes

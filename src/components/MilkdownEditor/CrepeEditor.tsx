@@ -25,8 +25,11 @@ getCurrentWebview()
   .onDragDropEvent((event) => {
     if (event.payload.type !== "drop") return;
     if (!dropHandlerRef.current) return;
-    log.info("drop natif reçu", { paths: event.payload.paths });
-    dropHandlerRef.current(event.payload.paths);
+    // Les .md sont gérés par useFileDrop — ne traiter que audio/images
+    const paths = (event.payload.paths ?? []).filter((p: string) => !p.endsWith(".md"));
+    if (!paths.length) return;
+    log.info("drop natif reçu", { paths });
+    dropHandlerRef.current(paths);
   })
   .then(() => log.info("listener drop singleton enregistré"))
   .catch((err) => log.error("échec enregistrement listener drop", err));

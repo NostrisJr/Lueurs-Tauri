@@ -36,8 +36,12 @@ export function TableCell({ value, isImposed, width, onCommit }: Props) {
   return (
     <div
       style={{ width }}
-      className={`shrink-0 border-r border-gray-100 px-3 py-1.5 text-xs truncate ${
-        isImposed ? "cursor-default" : "cursor-text"
+      className={`shrink-0 border-r border-gray-100 px-3 text-xs truncate last:border-none ${
+        isImposed
+          ? "cursor-default text-gray-300"
+          : value
+            ? "text-gray-700 cursor-text"
+            : "text-gray-300 cursor-text"
       }`}
       onDoubleClick={startEdit}
     >
@@ -54,17 +58,7 @@ export function TableCell({ value, isImposed, width, onCommit }: Props) {
         />
       ) : (
         // Imposée → ambre grisé comme dans FrontmatterEditor, contraignante → gris normal
-        <span
-          className={
-            isImposed
-              ? "text-gray-300"
-              : value
-                ? "text-gray-700"
-                : "text-gray-300"
-          }
-        >
-          {value || "—"}
-        </span>
+        <span>{value || "—"}</span>
       )}
     </div>
   );
