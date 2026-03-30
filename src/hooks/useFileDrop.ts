@@ -50,6 +50,17 @@ async function getTitlebarInfo(): Promise<{ physical: number; dpr: number }> {
     return titlebarCache;
 }
 
+// Convertit les coordonnées brutes wry en CSS px relatifs au viewport.
+// titleBarStyle "Overlay" (physical=0) : wry donne des pixels logiques directement.
+// Titlebar native (physical>0) : wry donne des pixels physiques depuis le frame fenêtre,
+// avec un bug d'offset titlebar → correction (rawY + physical) / dpr.
+function toViewportCoords(rawX: number, rawY: number, physical: number, dpr: number) {
+    if (physical === 0) {
+        return { cssX: rawX, cssY: rawY };
+    }
+    return { cssX: rawX / dpr, cssY: (rawY + physical) / dpr };
+}
+
 // État du drag interne via pointer events
 interface PointerDragState {
     sourceId: string;
@@ -134,19 +145,27 @@ export function useFileDrop(): FileDrop {
                         log.info("drop externe .md entré", { count: mdPaths.length });
                     }
 
+                } else if (payload.type === "over" && pendingMdPaths.length > 0) {
+                    // "over" fire de manière fiable pour les drags Finder (pas pour les drags internes).
+                    if (payload.position) {
+                        const { physical, dpr } = await getTitlebarInfo();
+                        const { x: rawX, y: rawY } = payload.position;
+                        const { cssX, cssY } = toViewportCoords(rawX, rawY, physical, dpr);
+                        if (cssY >= 0) setDragOver(dropzoneIdFromPoint(cssX, cssY));
+                    }
+
                 } else if (payload.type === "leave") {
                     pendingMdPaths = [];
                     setDragOver(null);
 
                 } else if (payload.type === "drop" && pendingMdPaths.length > 0) {
-                    // Les coordonnées Tauri sont dans le frame fenêtre macOS (title bar incluse).
-                    // Correction via l'offset Rust pour obtenir des CSS pixels relatifs au viewport.
+                    // Les coordonnées Tauri sont dans le frame fenêtre macOS.
+                    // Correction selon le mode titlebar via toViewportCoords.
                     let targetId: string | null = null;
                     if (payload.position) {
                         const { physical, dpr } = await getTitlebarInfo();
                         const { x: rawX, y: rawY } = payload.position;
-                        const cssX = rawX / dpr;
-                        const cssY = (rawY + physical) / dpr;
+                        const { cssX, cssY } = toViewportCoords(rawX, rawY, physical, dpr);
                         if (cssY >= 0) {
                             targetId = dropzoneIdFromPoint(cssX, cssY);
                             if (targetId) log.info("drop position résolue", { targetId });
