@@ -19,6 +19,7 @@ import {
     type Frontmatter,
 } from "../components/FileTree/lib/fileTreeHelpers";
 import { NoteType, SystemField } from "./noteTypes";
+import { isFormula } from "./formulas";
 import { createLogger } from "./logger";
 import type { NoteFile, TreeNode } from "../components/FileTree/hooks/useFileTree";
 
@@ -32,6 +33,9 @@ const log = createLogger("vaultIO");
 // Migration automatique : les paths absolus déjà stockés sont reconvertis à la lecture.
 
 const PATH_FIELDS = [SystemField.TEMPLATE, SystemField.BASE, SystemField.CHILDREN] as const;
+
+// Détecte les ref() dans les formules pour la conversion de chemins
+const FORMULA_REF_RE = /ref\("([^"]+)"\)/g;
 
 function toRelative(absolutePath: string, vaultPath: string): string {
     if (absolutePath.startsWith(`${vaultPath}/`)) {
@@ -54,6 +58,13 @@ export function absolutifyPathFields(frontmatter: Frontmatter, vaultPath: string
         const paths = toArray(val).filter((p) => p && !(p as string).startsWith("["));
         result[field] = paths.map((p) => toAbsolute(p as string, vaultPath));
     }
+    // Absolutifier les chemins ref() dans les formules
+    for (const [key, val] of Object.entries(result)) {
+        if (typeof val === "string" && isFormula(val)) {
+            FORMULA_REF_RE.lastIndex = 0;
+            result[key] = val.replace(FORMULA_REF_RE, (_, p: string) => `ref("${toAbsolute(p, vaultPath)}")`);
+        }
+    }
     return result;
 }
 
@@ -63,6 +74,13 @@ export function relativizePathFields(frontmatter: Frontmatter, vaultPath: string
         const val = result[field];
         if (!val) continue;
         result[field] = toArray(val).map((p) => toRelative(p as string, vaultPath));
+    }
+    // Relativiser les chemins ref() dans les formules
+    for (const [key, val] of Object.entries(result)) {
+        if (typeof val === "string" && isFormula(val)) {
+            FORMULA_REF_RE.lastIndex = 0;
+            result[key] = val.replace(FORMULA_REF_RE, (_, p: string) => `ref("${toRelative(p, vaultPath)}")`);
+        }
     }
     return result;
 }

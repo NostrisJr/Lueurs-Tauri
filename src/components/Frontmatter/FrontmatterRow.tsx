@@ -136,6 +136,8 @@ export function FrontmatterRow({
   // Sur les enfants, isKeyLocked bloque le renommage.
   const canRename = !row.isSystem && (isTemplate || !isKeyLocked);
 
+  const noteResolver = (path: string) => allNotes.find((n) => n.id === path);
+
   const formulaVars = Object.fromEntries(
     rows.map((r) => {
       if (isFormula(r.value)) {
@@ -144,7 +146,8 @@ export function FrontmatterRow({
           computeFormula(
             r.value as string,
             Object.fromEntries(rows.map((r2) => [r2.key, r2.value])),
-            formulaChildren
+            formulaChildren,
+            noteResolver,
           ),
         ];
       }
@@ -217,6 +220,8 @@ export function FrontmatterRow({
         isValueLocked={isValueLocked}
         formulaVars={formulaVars}
         formulaChildren={formulaChildren}
+        noteResolver={noteResolver}
+        allNotes={allNotes}
         onTextChange={updateText}
         onTextBlur={() => commit(rows)}
         onRemoveNote={removeNote}

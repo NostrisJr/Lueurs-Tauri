@@ -2,6 +2,7 @@
 //
 // Syntaxe : $$expression$$
 // Variables : self.prop (référence une propriété de la note courante)
+//             ref("chemin/note.md").prop (référence une propriété d'une autre note)
 // Fonctions disponibles :
 //   round(n, decimals?)         — arrondi
 //   iif(cond, alors, sinon)     — conditionnel
@@ -20,16 +21,45 @@ export function isFormula(value: unknown): value is string {
     return typeof value === "string" && FORMULA_RE.test(value);
 }
 
+/** Remplace les chemins absolus dans ref() par les noms de notes pour l'affichage. */
+export function humanizeFormula(
+    raw: string,
+    noteResolver: (path: string) => NoteFile | undefined,
+): string {
+    return raw.replace(/ref\("([^"]+)"\)/g, (_, path: string) => {
+        const note = noteResolver(path);
+        return note ? `ref("${note.name}")` : `ref("${path}")`;
+    });
+}
+
+/**
+ * Inverse de humanizeFormula : remplace ref("NomNote") par ref("/chemin/absolu").
+ * Utilisé pour convertir ce que l'utilisateur voit/tape vers le format stocké.
+ */
+export function dehumanizeFormula(
+    humanized: string,
+    notesByName: Map<string, string>,
+): string {
+    return humanized.replace(/ref\("([^"]+)"\)/g, (match, nameOrPath: string) => {
+        // Déjà un chemin absolu → inchangé
+        if (nameOrPath.startsWith("/")) return match;
+        const id = notesByName.get(nameOrPath);
+        return id ? `ref("${id}")` : match;
+    });
+}
+
 /**
  * Évalue une formule $$...$$ dans le contexte des propriétés d'une note.
  * Le résultat n'est jamais persisté — recalculé à l'affichage.
  *
- * @param children  Notes enfant de la base — nécessaire pour agg()
+ * @param children       Notes enfant de la base — nécessaire pour agg()
+ * @param noteResolver   Résolution d'une note par chemin absolu — nécessaire pour ref()
  */
 export function computeFormula(
     raw: string,
     vars: Record<string, unknown>,
     children?: NoteFile[],
+    noteResolver?: (path: string) => NoteFile | undefined,
 ): string {
     const match = FORMULA_RE.exec(raw);
     if (!match) return raw;
@@ -42,7 +72,7 @@ export function computeFormula(
     const substituted = expr
         .replace(SELF_REF_RE, (_, key: string) => {
             let val = vars[key];
-            if (isFormula(val)) val = computeFormula(val as string, vars, children);
+            if (isFormula(val)) val = computeFormula(val as string, vars, children, noteResolver);
             if (val === undefined || val === null || val === "") return "0";
             const num = Number(val);
             return Number.isNaN(num) ? JSON.stringify(String(val)) : String(num);
@@ -55,6 +85,7 @@ export function computeFormula(
             "round",
             "iif",
             "agg",
+            "ref",
             `"use strict"; return (${substituted});`,
         );
         const result = fn(
@@ -67,10 +98,40 @@ export function computeFormula(
                 if (!children) return "—";
                 return computeAggregation(children, col, op as AggregationOp, (frontmatter, key) => {
                     const val = frontmatter[key];
-                    if (isFormula(val)) return computeFormula(val as string, frontmatter as Record<string, unknown>, undefined);
+                    if (isFormula(val)) return computeFormula(val as string, frontmatter as Record<string, unknown>, undefined, noteResolver);
                     return String(val ?? "");
                 });
-            });
+            },
+            // ref("chemin") — accès aux propriétés d'une autre note
+            (path: string) => {
+                const note = noteResolver?.(path);
+                if (!note) return {};
+                const fm = note.frontmatter as Record<string, unknown>;
+                // Récupérer les enfants de la note référencée (nécessaire si c'est une base avec agg())
+                const rawChildren = fm["__Children__"];
+                const childPaths: string[] = Array.isArray(rawChildren)
+                    ? rawChildren as string[]
+                    : typeof rawChildren === "string" && rawChildren ? [rawChildren] : [];
+                const refChildren = childPaths
+                    .map((p) => noteResolver!(p))
+                    .filter((n): n is NoteFile => n !== undefined);
+                // Objet pré-calculé (pas de Proxy — compatibilité WKWebView)
+                return Object.fromEntries(
+                    Object.entries(fm).map(([k, v]) => {
+                        if (isFormula(v)) {
+                            return [k, computeFormula(
+                                v as string,
+                                fm,
+                                refChildren.length > 0 ? refChildren : undefined,
+                                noteResolver,
+                            )];
+                        }
+                        const num = Number(v ?? "");
+                        return [k, Number.isNaN(num) ? String(v ?? "") : num];
+                    })
+                );
+            },
+        );
         if (result === null || result === undefined) return "";
         // Arrondir les résultats numériques pour éviter les flottants à 15 décimales
         const round_result = typeof result === "number" ? Math.round(result * 1e6) / 1e6 : result;

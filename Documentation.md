@@ -127,11 +127,14 @@ Les colonnes affichées sont l'union dédupliquée de toutes les propriétés no
 **Formules.** Une propriété peut contenir une formule de la forme `$$expression$$`. Les formules sont recalculées à l'affichage et ne sont jamais persistées sous leur forme évaluée. Syntaxe disponible :
 
 - `self.prop` — référence la valeur d'une autre propriété de la note
+- `ref("NomNote").prop` — référence la valeur d'une propriété d'une autre note du vault
 - `agg(col, op)` — agrégation sur les notes enfant de la base (opérations : `count`, `sum`, `avg`, `min`, `max`)
 - `round(n, décimales?)`, `iif(condition, alors, sinon)` — utilitaires
 - Opérateurs arithmétiques et de comparaison : `+ - * / > < >= <= === !==`
 
-Exemple : `$$round(self.recettes - self.charges, 2)$$` ou `$$agg(montant, sum)$$`.
+Exemples : `$$round(self.recettes - self.charges, 2)$$`, `$$agg(montant, sum)$$`, `$$ref("Budget").revenu * 0.2$$`.
+
+**Saisie des formules.** Taper `$$` dans un champ texte insère automatiquement la paire fermante (`$$`) et bascule en mode édition de formule. En mode édition, taper `ref(` ouvre un sélecteur de notes — sélectionner une note insère `ref("NomNote")` et positionne le curseur après. Taper ensuite `.` ouvre un sélecteur de propriétés pour compléter la référence. Le chemin absolu de la note est stocké dans le frontmatter ; l'interface n'affiche que le nom de la note.
 
 ### Vue Kanban
 

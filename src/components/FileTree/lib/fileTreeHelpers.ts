@@ -120,7 +120,13 @@ export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; 
                 items.push(lines[i].replace(/^\s+-\s+/, "").trim());
                 i++;
             }
-            frontmatter[key] = items.length > 0 ? items : "";
+            if (items.length > 0) {
+                // Formule cassée par le YAML sur une virgule → réassembler
+                const joined = items.join(", ");
+                frontmatter[key] = (joined.startsWith("$$") && joined.endsWith("$$")) ? joined : items;
+            } else {
+                frontmatter[key] = "";
+            }
             continue;
         }
 
@@ -149,6 +155,10 @@ export function serializeFrontmatter(frontmatter: Frontmatter, body: string): st
         if (value === "" || value === null || value === undefined) return `${key}:`;
         // String JSON (commence par [ ou {) → guillemets pour éviter que YAML la parse comme structure
         if (typeof value === "string" && (value.startsWith("[") || value.startsWith("{"))) {
+            return `${key}: '${value}'`;
+        }
+        // Formule → guillemets pour éviter que la virgule soit interprétée comme séparateur YAML
+        if (typeof value === "string" && value.startsWith("$$") && value.endsWith("$$")) {
             return `${key}: '${value}'`;
         }
         return `${key}: ${value}`;

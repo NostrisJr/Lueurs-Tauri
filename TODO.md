@@ -15,14 +15,14 @@
   - [ ] Rajouter dans la doc le fait que le template qui reste dans la note est un comportement fait exprès, proposer de supprimer les références à la suppression d'un tempalte, et le marquer en barré dans le cas contraire
     - [ ] idem à la suppression d'une base
   - [x] renommer la colonne d'un tableau ne fonctionne mais ça casse le frontmatter des agrégation
-  - [ ] réfléchir à si c'est pertinent d'afficher le calcul dans le frontmatter (et nommer le type d'agrégation qui est effectué...) Mais de toute façon c'est une dynamique qui sera utile pour les références croisées. et en tout cas mettre à jour la doc pour pouvoir appeler les agrégations sans paniquer si elles ne sont plus affichées dans le frontmatter
+  - [ ] réfléchir à si c'est pertinent d'afficher le calcul dans le frontmatter (et nommer le type d'agrégation qui est effectué...) Mais de toute façon c'est une dynamique qui sera utile pour les références croisées. et en tout cas mettre à jour la doc pour pouvoir appeler les agrégations sans paniquer si elles ne sont plus affichées dans le frontmatter => si elles sont affichées, devraient-elles être modifiables ?
   - [ ] On me parle d'un bug en cas de référence croisée (A = self.B et B = self.A)
   - [ ] Se noter qqp que ce qui provoquait les bugs dans le dnd externe était le fait d'avoir les outils développeurs ouverts... et vérifier que claude a pas overkill le patch pour un problème aussi basique
 - [x] Nettoyer les logs en logger
 - [ ] Vérifier l'usage presque systématique des usecallback par claude
 - [ ] quand on crée une prop sans renommage et sans valeur, on passe dans l'éditeur et ça supprime la prop
-- [ ] des raccourcis clavier
 - [ ] rajouter le fait que fermer un onglet nous ramène au précédent utilisé ouvert, et non au plus proche
+- [ ] faire un fichier de setup, pour les gens qui voudraient le setup eux même (big up à notre ami veilleur)
 
 # Roadmap précise
 - [x] intégration modules divers:
@@ -85,3 +85,5 @@
   - [x] héritage
   - [ ] ~~recherche par type~~ => ça date de mes délires de prise de note orienté objet, mais je suis pas certain que ça soit utile.
     - [ ] Recherche par héritage de tempalte ?
+- [ ] Mode sombre
+- [ ] des raccourcis clavier

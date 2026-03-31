@@ -1,4 +1,7 @@
 import { useRef, useState } from "react";
+import { useAtomValue } from "jotai";
+import { treeAtom } from "../../../lib/atoms";
+import { flattenTree } from "../../FileTree/hooks/useFileTree";
 import type { NoteFile } from "../../FileTree/hooks/useFileTree";
 import type { TableColumn } from "../hooks/useTable";
 import { TableCell } from "./TableCell";
@@ -22,6 +25,8 @@ export function TableRow({
 }: Props) {
   const { handleSelectNote } = useNote();
   const cmdHeld = useCmdHeld();
+  const allNotes = flattenTree(useAtomValue(treeAtom));
+  const noteResolver = (path: string) => allNotes.find((n) => n.id === path);
   const [titleDraft, setTitleDraft] = useState(note.name);
   const [editingTitle, setEditingTitle] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -85,6 +90,8 @@ export function TableRow({
           isImposed={col.isImposed}
           width={col.width}
           frontmatter={note.frontmatter}
+          noteResolver={noteResolver}
+          allNotes={allNotes}
           onCommit={(val) => onCellCommit(note, col.key, val)}
         />
       ))}

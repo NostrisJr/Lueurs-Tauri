@@ -160,7 +160,27 @@ Les bases héritières d'un template sont exclues du batch Rust (elles ne reçoi
 
 **Stockage.** `__TableAggregations__` est un JSON `{colKey: op}` persisté dans la base. Pour chaque agrégation active, une propriété `__Agg_<col>_<op>__` est ajoutée à la base avec pour valeur la formule `$$agg(col,op)$$`. Cette propriété est visible dans le frontmatter de la base et peut être référencée par d'autres formules via `self.__Agg_col_op__`.
 
-**Évaluation.** Les formules `$$...$$` sont évaluées côté frontend à l'affichage (jamais persistées). `computeFormula` (`formulas.ts`) substitue les références `self.prop`, injecte les helpers `round`, `iif`, `agg`, et exécute l'expression dans une `Function` sandbox. `agg(col, op)` délègue à `computeAggregation` (`aggregations.ts`) avec un `ValueResolver` pour évaluer récursivement les formules des notes enfant. L'imbrication de formules est supportée (`self.x` où `x` est lui-même une formule), mais `agg()` imbriqué dans `agg()` renvoie `"—"` (pas de contexte enfant au deuxième niveau).
+**Évaluation.** Les formules `$$...$$` sont évaluées côté frontend à l'affichage (jamais persistées). `computeFormula` (`formulas.ts`) substitue les références `self.prop`, injecte les helpers `round`, `iif`, `agg`, `ref`, et exécute l'expression dans une `Function` sandbox. `agg(col, op)` délègue à `computeAggregation` (`aggregations.ts`) avec un `ValueResolver` pour évaluer récursivement les formules des notes enfant. L'imbrication de formules est supportée (`self.x` où `x` est lui-même une formule), mais `agg()` imbriqué dans `agg()` renvoie `"—"` (pas de contexte enfant au deuxième niveau).
+
+### Références cross-notes dans les formules (`ref()`)
+
+**Syntaxe.** `$$ref("NomNote").propriété$$` — `ref()` est injectée dans le sandbox au même titre que `round`/`iif`/`agg`. En mémoire, les chemins sont absolus (`ref("/vault/Note.md")`). Sur disque, relatifs au vault. Dans l'UI, seul le nom de la note est affiché (jamais le chemin).
+
+**Implémentation de `ref()`.** `ref()` reçoit le chemin absolu, résout la note via `noteResolver`, et retourne un objet pré-calculé (`Object.fromEntries`) avec toutes les propriétés du frontmatter. Les propriétés qui sont elles-mêmes des formules sont évaluées récursivement. Pas de `Proxy` — WKWebView ne supporte pas les Proxy dans les `new Function()` sandbox, ce qui provoque `#ERREUR`. Pour que `agg()` fonctionne dans une note référencée, ses enfants sont extraits depuis `__Children__` et résolus via `noteResolver` avant d'être passés à `computeFormula`.
+
+**Conversion de chemins.** `absolutifyPathFields` et `relativizePathFields` (`vaultIO.ts`) scannent toutes les valeurs frontmatter qui sont des formules (`isFormula(val)`) et convertissent les chemins dans les `ref()` via un regex `FORMULA_REF_RE = /ref\("([^"]+)"\)/g`. Même mécanique que pour `__Base__`/`__Children__`/`__Template__`.
+
+**Humanisation / déshumanisation.** `humanizeFormula(raw, noteResolver)` remplace `ref("/chemin/absolu")` par `ref("NomNote")` pour l'affichage. `dehumanizeFormula(humanized, notesByName)` fait l'inverse avant persistance. Ces deux fonctions sont appliquées à la volée dans `FrontmatterValue` et `TableCell` : l'input affiche le nom, `onTextChange` reçoit le chemin absolu.
+
+**UX de saisie.** La détection des triggers est basée sur la position du curseur (`e.target.selectionStart`), pas sur la fin de chaîne — ce qui permet d'insérer une référence en milieu de formule. Les triggers :
+- `ref(` au curseur → ouvre `NoteSelector` ; la note sélectionnée insère `ref("NomNote")` et positionne le curseur après le `)`.
+- `ref("NomNote").` au curseur → ouvre `PropertySelector` ; la propriété sélectionnée est insérée après le `.`.
+
+`selectorOpenRef` (useRef, toujours à jour) est utilisé dans `onBlur` pour éviter le problème de stale closure : l'état React `refSelectorOpen` est `false` au moment où `onBlur` capture la closure, ce qui provoquerait un commit prématuré.
+
+**Auto-pair `$$`.** En mode texte standard (hors formule), taper le premier `$` insère automatiquement le `$` fermant et positionne le curseur entre les deux paires. `autoPairedRef` (useRef) marque l'intention ; un `useEffect` qui s'exécute à chaque render détecte la transition `texte → formule` et bascule en mode édition de formule si `autoPairedRef` est armé.
+
+**Sérialisation YAML.** Les formules contenant des virgules (ex : `$$agg(montant, sum)$$`) étaient parsées par le sérialiseur YAML comme des tableaux multi-lignes. Fix dans `parseFrontmatter` : si la réassemblage des items donne une chaîne `$$...$$`, elle est stockée comme une chaîne unique. Fix dans `serializeFrontmatter` : les valeurs `$$...$$` sont quotées avec `'...'` pour empêcher l'interprétation YAML.
 
 ### Résolution des propriétés template (frontend)
 
