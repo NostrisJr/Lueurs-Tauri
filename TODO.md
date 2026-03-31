@@ -4,8 +4,8 @@
 - [x] régler le pb des __ dans les types. Les proposer en dropdown
 - [ ] vérifier l'appartenance automatique à une base via l'héritage d'un template. Je sais pas si c'est pertinent
 - [ ] Rajouter un .lueurs.config à la racine pour marquer la version et avoir une ancre de relativisation des paths.
-- [ ] Dans les agrégations et calculs : 
-  - [ ] implémenter les références cross notes
+- [x] Dans les agrégations et calculs : 
+  - [x] implémenter les références cross notes
   - [ ] ~~rendre le self optionnel~~ => je ne sais pas pourquoi mais ça casse tout 
   - [x] arrondir de manière raisonnable les résultats des formules
 - [ ] points UI : 
@@ -20,9 +20,10 @@
   - [ ] Se noter qqp que ce qui provoquait les bugs dans le dnd externe était le fait d'avoir les outils développeurs ouverts... et vérifier que claude a pas overkill le patch pour un problème aussi basique
 - [x] Nettoyer les logs en logger
 - [ ] Vérifier l'usage presque systématique des usecallback par claude
-- [ ] quand on crée une prop sans renommage et sans valeur, on passe dans l'éditeur et ça supprime la prop
-- [ ] rajouter le fait que fermer un onglet nous ramène au précédent utilisé ouvert, et non au plus proche
-- [ ] faire un fichier de setup, pour les gens qui voudraient le setup eux même (big up à notre ami veilleur)
+- [x] quand on crée une prop sans renommage et sans valeur, on passe dans l'éditeur et ça supprime la prop
+- [x] rajouter le fait que fermer un onglet nous ramène au précédent utilisé ouvert, et non au plus proche
+- [x] faire un fichier de setup, pour les gens qui voudraient le setup eux même (big up à notre ami veilleur)
+- [ ] je pense que la sauvegarde se fait trop vite (notamment quand on est en train d'effacer... peut-être un debounce à revoir)
 
 # Roadmap précise
 - [x] intégration modules divers:

@@ -97,7 +97,7 @@ export function TabBar() {
   const tree = useAtomValue(treeAtom);
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
-  const { handleCloseTab } = useNote();
+  const { handleCloseTab, pushHistory } = useNote();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -157,7 +157,7 @@ export function TabBar() {
               note={note}
               isActive={tabId === activeNoteId}
               isGhost={tabId === draggingId}
-              onSelect={() => setActiveNoteId(tabId)}
+              onSelect={() => { setActiveNoteId(tabId); pushHistory(tabId); }}
               onClose={() => handleCloseTab(tabId)}
             />
           ))}

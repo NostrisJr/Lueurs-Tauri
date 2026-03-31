@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { activeNoteAtom, activeNoteIdAtom, folderPathAtom, savingAtom, searchAtom, treeAtom, openTabIdsAtom } from "../lib/atoms";
+import { activeNoteAtom, activeNoteIdAtom, folderPathAtom, savingAtom, searchAtom, treeAtom, openTabIdsAtom, tabHistoryAtom } from "../lib/atoms";
 import { flattenTree, type NoteFile, type TreeNode, type FolderNode, useFileTree, type Frontmatter } from "../components/FileTree/hooks/useFileTree";
 import { useMemo } from "react";
 import { createLogger } from "../lib/logger";
@@ -20,10 +20,18 @@ export function useNote() {
     const tree = useAtomValue(treeAtom);
     const folderPath = useAtomValue(folderPathAtom);
 
+    const tabHistory = useAtomValue(tabHistoryAtom);
+    const setTabHistory = useSetAtom(tabHistoryAtom);
+
     const { updateNote, deleteNote, deleteFolder, createNote, createFolder, renameNode, openFolderNote } = useFileTree();
     const { onFrontmatterChange, cleanupNoteFromBases } = useFrontmatter();
     const { onTemplateChange } = useTemplateSync();
     const { propagateNoteRename, propagateFolderRename } = usePathPropagation();
+
+    // Enregistre une visite dans l'historique (dédupliqué, plus récent en dernier)
+    function pushHistory(id: string) {
+        setTabHistory((prev) => [...prev.filter((x) => x !== id), id]);
+    }
 
     const allNotes = useMemo(() => flattenTree(tree), [tree]);
 
@@ -69,6 +77,7 @@ export function useNote() {
             setOpenTabIds([note.id]);
         }
         setActiveNoteId(note.id);
+        pushHistory(note.id);
         setSearch("");
     }
 
@@ -78,6 +87,7 @@ export function useNote() {
             setOpenTabIds([...openTabIds, note.id]);
         }
         setActiveNoteId(note.id);
+        pushHistory(note.id);
         setSearch("");
     }
 
@@ -136,6 +146,7 @@ export function useNote() {
         const newNote = await createNote(folderPath);
         setOpenTabIds([...openTabIds, newNote.id]);
         setActiveNoteId(newNote.id);
+        pushHistory(newNote.id);
     }
 
     async function handleCreateFolder() {
@@ -185,13 +196,15 @@ export function useNote() {
     }
 
     function handleCloseTab(tabId: string) {
-        const idx = openTabIds.indexOf(tabId);
         const newTabIds = openTabIds.filter((id) => id !== tabId);
         setOpenTabIds(newTabIds);
 
-        // Si c'est l'onglet actif, basculer sur un onglet voisin
+        const newHistory = tabHistory.filter((id) => id !== tabId);
+        setTabHistory(newHistory);
+
+        // Si c'est l'onglet actif, revenir au dernier onglet visité encore ouvert
         if (activeNote?.id === tabId) {
-            const newActive = newTabIds[idx - 1] ?? newTabIds[idx] ?? null;
+            const newActive = [...newHistory].reverse().find((id) => newTabIds.includes(id)) ?? null;
             setActiveNoteId(newActive);
         }
     }
@@ -206,5 +219,6 @@ export function useNote() {
         handleCreateFolder,
         handleRename,
         handleCloseTab,
+        pushHistory,
     };
 }
