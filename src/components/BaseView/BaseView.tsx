@@ -1,18 +1,27 @@
+import { sfPlusCircle } from "@bradleyhodges/sfsymbols";
+import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
-import { useNote } from "../../hooks/useNote";
+import {
+  activeNoteIdAtom,
+  folderPathAtom,
+  openTabIdsAtom,
+} from "../../lib/atoms";
+import { createLogger } from "../../lib/logger";
 import {
   BaseViewEnum,
-  SystemField,
   type BaseViewType,
+  SystemField,
 } from "../../lib/noteTypes";
+import { useFileTree } from "../FileTree/hooks/useFileTree";
 import type { NoteFile } from "../FileTree/hooks/useFileTree";
+import { toArray } from "../FileTree/lib/fileTreeHelpers";
 import type { Frontmatter } from "../FileTree/lib/fileTreeHelpers";
-import { useKanban } from "./hooks/useKanban";
 import { KanbanKeySelector } from "./KanbanView/KanbanKeySelector";
 import { KanbanView } from "./KanbanView/KanbanView";
 import { TableView } from "./TableView/TableView";
 import { ViewSelector } from "./ViewSelector";
-import { createLogger } from "../../lib/logger";
+import { useKanban } from "./hooks/useKanban";
 
 const log = createLogger("BaseView");
 
@@ -22,7 +31,11 @@ interface Props {
 }
 
 export function BaseView({ base, onBaseChange }: Props) {
-  const { handleSelectNote } = useNote();
+  const { createNote } = useFileTree();
+  const folderPath = useAtomValue(folderPathAtom);
+  const openTabIds = useAtomValue(openTabIdsAtom);
+  const setOpenTabIds = useSetAtom(openTabIdsAtom);
+  const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const [selectingKey, setSelectingKey] = useState(false);
 
   const {
@@ -67,14 +80,45 @@ export function BaseView({ base, onBaseChange }: Props) {
     initKanban(key);
   }
 
+  async function handleCreateChild() {
+    const defaultFolder = base.frontmatter[SystemField.DEFAULT_FOLDER] as
+      | string
+      | undefined;
+    const targetDir = defaultFolder || folderPath;
+    if (!targetDir) return;
+
+    const newNote = await createNote(targetDir);
+    const children = toArray(base.frontmatter[SystemField.CHILDREN]);
+    onBaseChange({
+      ...base.frontmatter,
+      [SystemField.CHILDREN]: [...children, newNote.id],
+    });
+    setOpenTabIds([...openTabIds, newNote.id]);
+    setActiveNoteId(newNote.id);
+    log.info("note enfant créée depuis la base", {
+      baseId: base.id,
+      noteId: newNote.id,
+      targetDir,
+    });
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex absolute flex-col h-full overflow-y-scroll w-full">
       <div className="flex items-center gap-3 px-4 py-2 ">
         <ViewSelector
           currentView={currentView}
           kanbanAvailable={availableKeys.length > 0}
           onChange={handleViewChange}
         />
+        <button
+          type="button"
+          onClick={handleCreateChild}
+          className="flex items-center gap-1 font-body text-xs text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
+          title="Nouvelle note dans la base"
+        >
+          <SFIcon icon={sfPlusCircle} className="size-3.5" />
+          <span>Nouvelle note</span>
+        </button>
         {currentView === BaseViewEnum.KANBAN && kanbanKey && (
           <button
             type="button"
@@ -93,7 +137,11 @@ export function BaseView({ base, onBaseChange }: Props) {
         )}
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div
+        className={
+          currentView === BaseViewEnum.TABLE ? "" : "flex-1 overflow-hidden"
+        }
+      >
         {selectingKey ? (
           <KanbanKeySelector
             availableKeys={availableKeys}

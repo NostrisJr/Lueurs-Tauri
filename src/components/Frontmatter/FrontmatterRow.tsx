@@ -1,27 +1,27 @@
-import { useRef } from "react";
+import {
+  sfArrowRight,
+  sfPlusCircle,
+  sfXCircle,
+} from "@bradleyhodges/sfsymbols";
+import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { treeAtom, activeNoteAtom } from "../../lib/atoms";
+import { useRef } from "react";
+import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
+import { activeNoteAtom, treeAtom } from "../../lib/atoms";
+import { computeFormula, isFormula } from "../../lib/formulas";
+import { NoteType, SystemField, getFieldDef } from "../../lib/noteTypes";
 import { flattenTree } from "../FileTree/hooks/useFileTree";
 import type { NoteFile } from "../FileTree/hooks/useFileTree";
-import { getFieldDef, NoteType, SystemField } from "../../lib/noteTypes";
 import { toArray } from "../FileTree/lib/fileTreeHelpers";
-import type { Row } from "./lib/frontmatterUtils";
-import {
-  rowsAtom,
-  editingKeyAtom,
-  selectorOpenAtom,
-} from "./lib/frontMatterAtoms";
 import { FrontmatterValue } from "./FrontmatterValue";
 import { NoteSelector } from "./NoteSelector";
 import { PropertyEditModal } from "./PropertyEditModal";
-import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import {
-  sfPlusCircle,
-  sfXCircle,
-  sfArrowRight,
-} from "@bradleyhodges/sfsymbols";
-import { isFormula, computeFormula } from "../../lib/formulas";
+  editingKeyAtom,
+  rowsAtom,
+  selectorOpenAtom,
+} from "./lib/frontMatterAtoms";
+import type { Row } from "./lib/frontmatterUtils";
 
 interface Props {
   row: Row;
@@ -88,9 +88,25 @@ export function FrontmatterRow({
   function getCandidates() {
     const def = getFieldDef(row.key);
     if (!def || def.kind !== "noteArray") return [];
-    if (!def.noteFilter) return allNotes;
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    return allNotes.filter((n) => def.noteFilter?.includes(n.type as any));
+
+    let candidates = allNotes;
+
+    if (def.noteFilter) {
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      candidates = candidates.filter((n) =>
+        def.noteFilter?.includes(n.type as any)
+      );
+    }
+
+    // Exclure les dossiers du sélecteur d'enfants
+    if (row.key === SystemField.CHILDREN) {
+      const current = new Set(row.value as string[]);
+      candidates = candidates.filter(
+        (n) => n.type !== NoteType.FOLDER && !current.has(n.id)
+      );
+    }
+
+    return candidates;
   }
 
   function updateText(value: string) {
@@ -147,7 +163,7 @@ export function FrontmatterRow({
             r.value as string,
             Object.fromEntries(rows.map((r2) => [r2.key, r2.value])),
             formulaChildren,
-            noteResolver,
+            noteResolver
           ),
         ];
       }

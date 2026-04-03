@@ -1,13 +1,13 @@
 import { MilkdownProvider } from "@milkdown/react";
 import { useAtomValue } from "jotai";
-import { activeNoteAtom, folderPathAtom } from "../../lib/atoms";
-import type { Frontmatter } from "../FileTree/hooks/useFileTree";
-import { NoteType } from "../../lib/noteTypes";
 import { useNote } from "../../hooks/useNote";
-import { NoteHeader } from "./NoteHeader";
+import { activeNoteAtom, folderPathAtom } from "../../lib/atoms";
+import { NoteType } from "../../lib/noteTypes";
+import { BaseView } from "../BaseView/BaseView";
+import type { Frontmatter } from "../FileTree/hooks/useFileTree";
 import { FrontmatterEditor } from "../Frontmatter/FrontmatterEditor";
 import { CrepeEditor } from "./CrepeEditor";
-import { BaseView } from "../BaseView/BaseView";
+import { NoteHeader } from "./NoteHeader";
 
 export function MilkdownEditor() {
   const { handleRename, handleChange } = useNote();
@@ -29,16 +29,18 @@ export function MilkdownEditor() {
   return (
     <div className="h-full">
       {activeNote && folderPath && (
-        <div className="overflow-x-clip">
-          <div className="fixed bg-white z-10 w-full">
+        <div>
+          <div className="fixed bg-white z-20 w-full">
             <NoteHeader
               onRename={async (newName) => {
                 await handleRename(activeNote.id, newName, false);
               }}
             />
           </div>
-          <div className="pt-16">
+          <div className="pt-16 relative">
             <FrontmatterEditor onChange={handleFrontmatterChange} />
+            <div className="bg-white h-2 w-full" />
+
             {isBase ? (
               <BaseView
                 base={activeNote}

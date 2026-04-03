@@ -24,6 +24,17 @@
 - [x] rajouter le fait que fermer un onglet nous ramène au précédent utilisé ouvert, et non au plus proche
 - [x] faire un fichier de setup, pour les gens qui voudraient le setup eux même (big up à notre ami veilleur)
 - [ ] je pense que la sauvegarde se fait trop vite (notamment quand on est en train d'effacer... peut-être un debounce à revoir)
+- [x] dans les enfants d'une base, ça propose tout le monde, y compris ceux qui sont déjà enfants
+  - [ ] ça propose aussi les dossiers, je pense pas que ça soit pertinent
+    - [ ] garder le comportement, mais ajouter le type à coté de la proposition de note
+  - [x] ajouter un bouton nouvelle note dans la base, et un champ système pour le dossier par défaut
+    - [ ] affiner le comportement : je suis pas certain qu'il faille jump à l'onglet de la note...
+  - [ ] la navigation dans la vue table de la base avec entrée et tab
+  - [x] le header du tableau passe au dessus du titre de la note
+  - [x] que le champ children soit scrollable au bout d'un moment (3 lignes ?)
+  - [ ] avoir un bouton de tri sur les colonnes
+  - [ ] que les headers du tableau soient fixés
+  - [ ] pouvoir choisir des couleurs pour les valeurs des propriétés ?
 
 # Roadmap précise
 - [x] intégration modules divers:

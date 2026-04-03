@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NoteChip } from "./NoteChip";
-import { SystemField, type NoteTypeValue } from "../../lib/noteTypes";
-import { TypeSelector } from "./TypeSelector";
-import { isFormula, computeFormula, humanizeFormula, dehumanizeFormula } from "../../lib/formulas";
+import {
+  computeFormula,
+  dehumanizeFormula,
+  humanizeFormula,
+  isFormula,
+} from "../../lib/formulas";
+import { type NoteTypeValue, SystemField } from "../../lib/noteTypes";
 import type { NoteFile } from "../FileTree/hooks/useFileTree";
+import { NoteChip } from "./NoteChip";
 import { NoteSelector } from "./NoteSelector";
-import { PropertySelector, type PropertyOption } from "./PropertySelector";
+import { type PropertyOption, PropertySelector } from "./PropertySelector";
+import { TypeSelector } from "./TypeSelector";
 
 interface Props {
   fieldKey: string;
@@ -49,7 +54,9 @@ export function FrontmatterValue({
 }: Props) {
   const [editingFormula, setEditingFormula] = useState(false);
   const [refSelectorOpen, setRefSelectorOpen] = useState(false);
-  const [propSelectorNote, setPropSelectorNote] = useState<NoteFile | null>(null);
+  const [propSelectorNote, setPropSelectorNote] = useState<NoteFile | null>(
+    null
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const selectorOpenRef = useRef(false);
   const triggerCursorRef = useRef(0);
@@ -69,7 +76,7 @@ export function FrontmatterValue({
 
   const notesByName = useMemo(
     () => new Map(allNotes?.map((n) => [n.name, n.id]) ?? []),
-    [allNotes],
+    [allNotes]
   );
 
   function toRaw(displayed: string): string {
@@ -120,7 +127,9 @@ export function FrontmatterValue({
     const propMatch = REF_PROP_TRIGGER_RE.exec(toCursor);
     if (propMatch && allNotes) {
       const nameOrPath = propMatch[1];
-      const note = allNotes.find((n) => n.name === nameOrPath || n.id === nameOrPath);
+      const note = allNotes.find(
+        (n) => n.name === nameOrPath || n.id === nameOrPath
+      );
       if (note) {
         openPropSelector(note, cursorPos);
         return;
@@ -135,7 +144,7 @@ export function FrontmatterValue({
     displayed: string,
     cursorPos: number,
     inserted: string,
-    charsToRemoveBefore: number,
+    charsToRemoveBefore: number
   ): { newDisplayed: string; newCursor: number } {
     const before = displayed.slice(0, cursorPos - charsToRemoveBefore);
     const after = displayed.slice(cursorPos);
@@ -156,8 +165,11 @@ export function FrontmatterValue({
 
   if (isNoteArray) {
     const paths = value as string[];
+    const scrollable = fieldKey === SystemField.CHILDREN;
     return (
-      <div className="flex flex-wrap gap-1 flex-1">
+      <div
+        className={`flex flex-wrap gap-1 flex-1 ${scrollable ? "max-h-[4.5rem] overflow-y-auto" : ""}`}
+      >
         {paths.map((path) => (
           <NoteChip
             key={path}
@@ -167,7 +179,9 @@ export function FrontmatterValue({
           />
         ))}
         {paths.length === 0 && (
-          <span className="text-gray-300 italic text-xs mt-0.5">aucune note</span>
+          <span className="text-gray-300 italic text-xs mt-0.5">
+            aucune note
+          </span>
         )}
       </div>
     );
@@ -177,7 +191,12 @@ export function FrontmatterValue({
 
   // ── Propriété calculée ────────────────────────────────────────────────────
   if (isFormula(strValue)) {
-    const computed = computeFormula(strValue, formulaVars ?? {}, formulaChildren, noteResolver);
+    const computed = computeFormula(
+      strValue,
+      formulaVars ?? {},
+      formulaChildren,
+      noteResolver
+    );
     const isError = computed === "#ERREUR";
 
     if (editingFormula && !isValueLocked) {
@@ -204,7 +223,8 @@ export function FrontmatterValue({
                 if (selectorOpenRef.current) closeSelectors();
                 else setEditingFormula(false);
               }
-              if (e.key === "Enter" && !selectorOpenRef.current) setEditingFormula(false);
+              if (e.key === "Enter" && !selectorOpenRef.current)
+                setEditingFormula(false);
             }}
             autoCorrect="off"
             autoCapitalize="none"
@@ -219,11 +239,18 @@ export function FrontmatterValue({
                 const cursor = triggerCursorRef.current;
                 const current = inputRef.current?.value ?? displayValue;
                 const { newDisplayed, newCursor } = insertAtCursor(
-                  current, cursor, `ref("${note.name}")`, 4 /* "ref(" */
+                  current,
+                  cursor,
+                  `ref("${note.name}")`,
+                  4 /* "ref(" */
                 );
                 onTextChange(toRaw(newDisplayed));
                 closeSelectors();
-                setTimeout(() => inputRef.current?.setSelectionRange(newCursor, newCursor), 0);
+                setTimeout(
+                  () =>
+                    inputRef.current?.setSelectionRange(newCursor, newCursor),
+                  0
+                );
               }}
               onClose={closeSelectors}
               anchorRef={inputRef}
@@ -238,11 +265,18 @@ export function FrontmatterValue({
                 const cursor = triggerCursorRef.current;
                 const current = inputRef.current?.value ?? displayValue;
                 const { newDisplayed, newCursor } = insertAtCursor(
-                  current, cursor, key, 0 /* après le "." déjà là */
+                  current,
+                  cursor,
+                  key,
+                  0 /* après le "." déjà là */
                 );
                 onTextChange(toRaw(newDisplayed));
                 closeSelectors();
-                setTimeout(() => inputRef.current?.setSelectionRange(newCursor, newCursor), 0);
+                setTimeout(
+                  () =>
+                    inputRef.current?.setSelectionRange(newCursor, newCursor),
+                  0
+                );
               }}
               onClose={closeSelectors}
               anchorRef={inputRef}
@@ -258,11 +292,19 @@ export function FrontmatterValue({
         className={`flex items-center gap-1 flex-1 mt-0.5 text-xs select-none ${
           isValueLocked ? "cursor-default" : "cursor-pointer"
         }`}
-        title={isValueLocked ? toDisplay(strValue) : `${toDisplay(strValue)} — Cliquer pour éditer`}
+        title={
+          isValueLocked
+            ? toDisplay(strValue)
+            : `${toDisplay(strValue)} — Cliquer pour éditer`
+        }
         onClick={() => !isValueLocked && setEditingFormula(true)}
       >
-        <span className="text-gray-300 font-mono text-[10px] leading-none">ƒ</span>
-        <span className={isError ? "text-red-400" : "text-gray-600"}>{computed || "—"}</span>
+        <span className="text-gray-300 font-mono text-[10px] leading-none">
+          ƒ
+        </span>
+        <span className={isError ? "text-red-400" : "text-gray-600"}>
+          {computed || "—"}
+        </span>
       </span>
     );
   }
@@ -285,7 +327,10 @@ export function FrontmatterValue({
             autoPairedRef.current = true;
             const paired = `${toCursor}$$${afterCursor}`;
             onTextChange(paired);
-            setTimeout(() => inputRef.current?.setSelectionRange(cursorPos, cursorPos), 0);
+            setTimeout(
+              () => inputRef.current?.setSelectionRange(cursorPos, cursorPos),
+              0
+            );
             return;
           }
 
@@ -323,7 +368,10 @@ export function FrontmatterValue({
             onTextChange(`${before}${inserted}${after}`);
             closeSelectors();
             const newCursor = before.length + inserted.length;
-            setTimeout(() => inputRef.current?.setSelectionRange(newCursor, newCursor), 0);
+            setTimeout(
+              () => inputRef.current?.setSelectionRange(newCursor, newCursor),
+              0
+            );
           }}
           onClose={closeSelectors}
           anchorRef={inputRef}

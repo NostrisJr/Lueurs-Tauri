@@ -52,11 +52,11 @@ export function TableView({ base, onBaseChange }: Props) {
 
   return (
     <div
-      className="flex flex-col h-full overflow-hidden"
+      className="w-full"
       onPointerMove={onResizeMove}
       onPointerUp={onResizeEnd}
     >
-      <div className="flex-1 overflow-auto px-4 justify-center">
+      <div className="px-4 justify-center">
         <div className="inline-block">
           <TableHeader
             columns={columns}
