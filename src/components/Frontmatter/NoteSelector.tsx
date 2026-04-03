@@ -29,7 +29,11 @@ export function NoteSelector({
   );
 
   return (
-    <AnchoredDropdown anchorRef={anchorRef} onClose={onClose}>
+    <AnchoredDropdown
+      anchorRef={anchorRef}
+      onClose={onClose}
+      className="max-w-130"
+    >
       <div className="px-2 py-1.5 border-b border-gray-100">
         <input
           ref={inputRef}
@@ -58,6 +62,9 @@ export function NoteSelector({
               <span className="font-medium">{note.name}</span>
               <span className="ml-1.5 text-gray-400 text-[10px]">
                 {note.id.split("/").slice(-2, -1)[0]}
+              </span>
+              <span className="ml-1.5 text-gray-400 italic text-[10px]">
+                ({note.type?.replace(/^__|__$/g, "")})
               </span>
             </button>
           ))

@@ -6,7 +6,7 @@ import {
   activeNoteIdAtom,
   folderPathAtom,
   openTabIdsAtom,
-} from "../../lib/atoms";
+} from "../../lib/atoms.ts";
 import { createLogger } from "../../lib/logger";
 import {
   BaseViewEnum,
@@ -80,7 +80,7 @@ export function BaseView({ base, onBaseChange }: Props) {
     initKanban(key);
   }
 
-  async function handleCreateChild() {
+  async function handleCreateChild(e: React.MouseEvent) {
     const defaultFolder = base.frontmatter[SystemField.DEFAULT_FOLDER] as
       | string
       | undefined;
@@ -94,7 +94,7 @@ export function BaseView({ base, onBaseChange }: Props) {
       [SystemField.CHILDREN]: [...children, newNote.id],
     });
     setOpenTabIds([...openTabIds, newNote.id]);
-    setActiveNoteId(newNote.id);
+    if (e.metaKey) setActiveNoteId(newNote.id);
     log.info("note enfant créée depuis la base", {
       baseId: base.id,
       noteId: newNote.id,
@@ -103,22 +103,13 @@ export function BaseView({ base, onBaseChange }: Props) {
   }
 
   return (
-    <div className="flex absolute flex-col h-full overflow-y-scroll w-full">
-      <div className="flex items-center gap-3 px-4 py-2 ">
+    <div className="flex flex-col w-full">
+      <div className="flex items-center gap-3 px-4 py-2 sticky top-12 bg-white z-30">
         <ViewSelector
           currentView={currentView}
           kanbanAvailable={availableKeys.length > 0}
           onChange={handleViewChange}
         />
-        <button
-          type="button"
-          onClick={handleCreateChild}
-          className="flex items-center gap-1 font-body text-xs text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
-          title="Nouvelle note dans la base"
-        >
-          <SFIcon icon={sfPlusCircle} className="size-3.5" />
-          <span>Nouvelle note</span>
-        </button>
         {currentView === BaseViewEnum.KANBAN && kanbanKey && (
           <button
             type="button"
@@ -135,13 +126,18 @@ export function BaseView({ base, onBaseChange }: Props) {
             </span>
           </button>
         )}
+        <button
+          type="button"
+          onClick={(e) => handleCreateChild(e)}
+          className="flex items-center gap-1 font-body text-xs text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
+          title="Nouvelle note dans la base"
+        >
+          <SFIcon icon={sfPlusCircle} className="size-3.5" />
+          <span>Nouvelle note</span>
+        </button>
       </div>
 
-      <div
-        className={
-          currentView === BaseViewEnum.TABLE ? "" : "flex-1 overflow-hidden"
-        }
-      >
+      <div className="">
         {selectingKey ? (
           <KanbanKeySelector
             availableKeys={availableKeys}

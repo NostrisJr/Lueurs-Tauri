@@ -27,7 +27,7 @@ export function TableHeader({
   const anchorRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   return (
-    <div className="flex items-center border-b border-gray-200 bg-gray-100 sticky top-0 z-10 select-none rounded-t-lg">
+    <div className="flex items-center border-b border-gray-200 bg-gray-100 sticky top-23 z-10 select-none rounded-t-lg">
       {/* Colonne titre — non renommable */}
       <div
         style={{ width: titleColWidth }}

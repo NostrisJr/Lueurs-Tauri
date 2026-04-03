@@ -17,11 +17,11 @@ import {
   loadingAtom,
   searchAtom,
   treeAtom,
-} from "../lib/atoms";
+} from "../lib/atoms.ts";
 import { FileTree } from "./FileTree/FileTree";
 import { useState, useRef, useCallback } from "react";
 
-function SideBarInside() {
+function SideBarResizable() {
   const [search, setSearch] = useAtom(searchAtom);
   const loading = useAtomValue(loadingAtom);
   const tree = useAtomValue(treeAtom);
@@ -49,7 +49,7 @@ function SideBarInside() {
       {/* ── Partie haute fixe ────────────────────────────── */}
       <div className="shrink-0">
         {/* En-tête */}
-        <div className="flex items-center justify-between px-4 h-11 border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 h-11">
           {/* Dossier actif */}
           <div className="flex items-center -ml-2">
             <button
@@ -61,7 +61,7 @@ function SideBarInside() {
             >
               <SFIcon
                 icon={sfArrowClockwise}
-                className="size-4"
+                className="size-4 select-none"
                 aria-hidden="true"
               />
             </button>
@@ -72,7 +72,11 @@ function SideBarInside() {
               title="Changer de dossier"
               className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
             >
-              <SFIcon icon={sfFolder} className="size-4" aria-hidden="true" />
+              <SFIcon
+                icon={sfFolder}
+                className="size-4 select-none"
+                aria-hidden="true"
+              />
             </button>
 
             <p
@@ -93,7 +97,7 @@ function SideBarInside() {
             >
               <SFIcon
                 icon={sfDocumentBadgePlus}
-                className="size-4"
+                className="size-4 select-none"
                 aria-hidden="true"
               />
             </button>
@@ -106,7 +110,7 @@ function SideBarInside() {
             >
               <SFIcon
                 icon={sfFolderBadgePlus}
-                className="size-4"
+                className="size-4 select-none"
                 aria-hidden="true"
               />
             </button>
@@ -114,7 +118,7 @@ function SideBarInside() {
         </div>
 
         {/* Recherche */}
-        <div className="px-3 py-2 border-b border-gray-200">
+        <div className="px-3 py-2">
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-2.5 py-1.5 text-gray-400 focus-within:border-gray-400 transition-colors">
             <SFIcon
               icon={sfMagnifyingglass}
@@ -222,10 +226,10 @@ function SideBar() {
       className="relative shrink-0 flex flex-col bg-gray-50 border-r border-gray-200 overflow-hidden"
       style={{ width }}
     >
-      <SideBarInside />
+      <SideBarResizable />
       <div
         onMouseDown={startResize}
-        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-200 transition-colors z-10 rounded-full my-3"
+        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-gray-300 transition-colors z-50 rounded-full my-3"
       />
     </aside>
   );

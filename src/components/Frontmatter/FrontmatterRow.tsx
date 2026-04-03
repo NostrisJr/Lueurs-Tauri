@@ -7,7 +7,7 @@ import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef } from "react";
 import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
-import { activeNoteAtom, treeAtom } from "../../lib/atoms";
+import { activeNoteAtom, treeAtom } from "../../lib/atoms.ts";
 import { computeFormula, isFormula } from "../../lib/formulas";
 import { NoteType, SystemField, getFieldDef } from "../../lib/noteTypes";
 import { flattenTree } from "../FileTree/hooks/useFileTree";

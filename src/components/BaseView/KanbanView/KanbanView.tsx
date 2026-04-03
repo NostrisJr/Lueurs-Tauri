@@ -13,7 +13,7 @@ import type { NoteFile } from "../../FileTree/hooks/useFileTree";
 import type { KanbanColumn as KanbanColumnType } from "../../../lib/noteTypes";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
-import { NO_VALUE_COLUMN_ID, type KanbanCards } from "../../../lib/atoms";
+import { NO_VALUE_COLUMN_ID, type KanbanCards } from "../../../lib/atoms.ts";
 import { createLogger } from "../../../lib/logger";
 
 const log = createLogger("KanbanView");
@@ -121,7 +121,7 @@ export function KanbanView({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 p-4 overflow-x-auto h-full items-start">
+      <div className="flex gap-4 p-4 h-full overflow-x-scroll">
         {columns.map((col) => (
           <KanbanColumn
             key={col.id}
@@ -173,13 +173,7 @@ export function KanbanView({
 
       {/* Carte fantôme pendant le drag */}
       <DragOverlay>
-        {activeNote && (
-          <KanbanCard
-            note={activeNote}
-            kanbanKey={kanbanKey}
-            onClick={() => {}}
-          />
-        )}
+        {activeNote && <KanbanCard note={activeNote} kanbanKey={kanbanKey} />}
       </DragOverlay>
     </DndContext>
   );

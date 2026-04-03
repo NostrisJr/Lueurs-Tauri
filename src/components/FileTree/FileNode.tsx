@@ -1,23 +1,15 @@
 import {
-  sfDocument,
   sfTrash,
   sfChevronDown,
   sfChevronRight,
   sfFolder,
   sfPlus,
   sfFolderBadgePlus,
-  sfCylinderSplit1x2Fill,
-  sfArchivebox,
-  sfArchiveboxFill,
-  sfLockDocument,
-  sfAppendPage,
-  sfTextDocument,
-  sfCylinderSplit1x2,
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
-import { dragSourceAtom, dragOverAtom } from "../../lib/atoms";
+import { dragSourceAtom, dragOverAtom } from "../../lib/atoms.ts";
 import {
   type NoteFile,
   type FolderNode,
@@ -27,7 +19,7 @@ import {
 import { useNote } from "../../hooks/useNote";
 import { EditableText } from "../EditableText";
 import { useFileDragCtx } from "./FileDragCtx";
-import { NoteType, SystemField } from "../../lib/noteTypes";
+import { NodeIconProvider } from "./NodeIconProvider.tsx";
 
 // ── Rendu récursif ─────────────────────────────────────────────────────────────
 
@@ -85,52 +77,20 @@ function FileNodeComponent({
       onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
       onClick={(e) => handleSelectNote(node, e.metaKey)}
       onKeyDown={(e) => e.key === "Enter" && handleSelectNote(node)}
-      className={`select-none group flex justify-between items-center gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors
+      className={`select-none group flex justify-between items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors
                  ${
                    isActive
-                     ? "bg-white shadow-sm border border-gray-200 text-gray-900"
+                     ? "bg-white shadow-sm inset-ring inset-ring-gray-200"
                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
                  }
                  ${isDragging ? "opacity-40" : ""}`}
       style={{ paddingLeft: `${depth * 12 + 8}px` }}
     >
       <div className="flex items-center gap-2 min-w-0">
-        {node.type === NoteType.NOTE &&
-          (() => {
-            const hasContent =
-              node.body?.trim() ||
-              Object.keys(node.frontmatter ?? {}).some((k) => k !== "__Type__");
-
-            return (
-              <SFIcon
-                icon={hasContent ? sfTextDocument : sfDocument}
-                className="size-4 text-gray-400 shrink-0"
-                aria-hidden="true"
-              />
-            );
-          })()}
-
-        {node.type === NoteType.BASE &&
-          (() => {
-            const children = node.frontmatter?.[SystemField.CHILDREN];
-            const hasChildren = Array.isArray(children) && children.length > 0;
-
-            return (
-              <SFIcon
-                icon={hasChildren ? sfCylinderSplit1x2Fill : sfCylinderSplit1x2}
-                className="size-4 text-gray-400 shrink-0"
-                aria-hidden="true"
-              />
-            );
-          })()}
-
-        {node.type === NoteType.TEMPLATE && (
-          <SFIcon
-            icon={sfAppendPage}
-            className="size-4 text-gray-400 shrink-0"
-            aria-hidden="true"
-          />
-        )}
+        <NodeIconProvider
+          node={node}
+          className="size-4 text-gray-400 shrink-0"
+        />
         <EditableText
           value={node.name}
           onSave={async (newName) => {
@@ -189,10 +149,10 @@ function FolderNodeComponent({
       {/* En-tête du dossier */}
       <div
         onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
-        className={`select-none group flex items-center justify-between gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors
+        className={`select-none group flex items-center justify-between gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors
                     ${
                       isActive
-                        ? "bg-white shadow-sm border border-gray-200 text-gray-700"
+                        ? "bg-white shadow-sm inset-ring inset-ring-gray-200 text-gray-700"
                         : isOver
                           ? "bg-amber-400/20 text-gray-700"
                           : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"

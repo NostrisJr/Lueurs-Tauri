@@ -96,11 +96,7 @@ export function KanbanColumn({
           strategy={verticalListSortingStrategy}
         >
           {notes.map((note) => (
-            <KanbanCard
-              key={note.id}
-              note={note}
-              kanbanKey={kanbanKey}
-            />
+            <KanbanCard key={note.id} note={note} kanbanKey={kanbanKey} />
           ))}
         </SortableContext>
       </div>

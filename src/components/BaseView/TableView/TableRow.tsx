@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useAtomValue } from "jotai";
-import { treeAtom } from "../../../lib/atoms";
+import { treeAtom } from "../../../lib/atoms.ts";
 import { flattenTree } from "../../FileTree/hooks/useFileTree";
 import type { NoteFile } from "../../FileTree/hooks/useFileTree";
 import type { TableColumn } from "../hooks/useTable";
@@ -76,7 +76,9 @@ export function TableRow({
             className="w-full text-xs bg-transparent outline-none text-gray-700"
           />
         ) : (
-          <span className={`text-xs text-gray-700 truncate block font-body ${cmdHeld ? "cursor-pointer" : ""}`}>
+          <span
+            className={`text-xs text-gray-700 truncate block font-body ${cmdHeld ? "cursor-pointer" : ""}`}
+          >
             {note.name || <span className="text-gray-300">Sans titre</span>}
           </span>
         )}

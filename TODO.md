@@ -28,12 +28,13 @@
   - [ ] ça propose aussi les dossiers, je pense pas que ça soit pertinent
     - [ ] garder le comportement, mais ajouter le type à coté de la proposition de note
   - [x] ajouter un bouton nouvelle note dans la base, et un champ système pour le dossier par défaut
-    - [ ] affiner le comportement : je suis pas certain qu'il faille jump à l'onglet de la note...
+    - [x] affiner le comportement : je suis pas certain qu'il faille jump à l'onglet de la note...
   - [ ] la navigation dans la vue table de la base avec entrée et tab
   - [x] le header du tableau passe au dessus du titre de la note
   - [x] que le champ children soit scrollable au bout d'un moment (3 lignes ?)
   - [ ] avoir un bouton de tri sur les colonnes
-  - [ ] que les headers du tableau soient fixés
+  - [x] que les headers du tableau soient fixés
+  - [ ] les headers des kanban aussi
   - [ ] pouvoir choisir des couleurs pour les valeurs des propriétés ?
 
 # Roadmap précise

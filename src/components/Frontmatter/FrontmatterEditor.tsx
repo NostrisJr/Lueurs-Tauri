@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { activeNoteAtom, skipPropagationAtom } from "../../lib/atoms";
+import { activeNoteAtom, skipPropagationAtom } from "../../lib/atoms.ts";
 import type { Frontmatter } from "../FileTree/hooks/useFileTree";
 import {
   getAddableFields,

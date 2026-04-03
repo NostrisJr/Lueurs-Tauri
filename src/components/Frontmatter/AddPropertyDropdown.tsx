@@ -41,7 +41,7 @@ export function AddPropertyDropdown({
         <AnchoredDropdown
           anchorRef={buttonRef}
           onClose={() => setOpen(false)}
-          className="w-56"
+          className="w-70"
         >
           {addableFields.length > 0 && (
             <div>
@@ -70,7 +70,10 @@ export function AddPropertyDropdown({
             onClick={handleAddUser}
             className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
           >
-            Propriété personnalisée
+            <span className="font-bold text-gray-600">
+              Propriété personnalisée
+            </span>
+            <span className="ml-2 text-gray-400">Ce que vous voulez...</span>
           </button>
         </AnchoredDropdown>
       )}
