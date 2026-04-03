@@ -188,6 +188,40 @@ Les bases héritières d'un template sont exclues du batch Rust (elles ne reçoi
 
 ---
 
+## iOS — Sélection du vault
+
+### Problème : `open({ directory: true })` non implémenté sur iOS
+
+Le plugin Tauri `plugin-dialog` ne supporte pas la sélection de dossier sur iOS (issue plugins-workspace #933, ouverte depuis février 2024, sans ETA). L'appel est silencieux : aucune erreur, aucune UI. Il est donc impossible de laisser l'utilisateur choisir un dossier arbitraire via le dialog standard.
+
+Par ailleurs, le sandbox iOS interdit l'accès libre au système de fichiers — même avec un picker natif (`UIDocumentPickerViewController`), seuls les chemins explicitement accordés par l'utilisateur sont accessibles, et les URLs obtenues sont security-scoped (session-bound, doivent être bookmarkées pour survivre aux relances).
+
+### Solution retenue : `documentDir()` + iCloud Documents
+
+Sur iOS, le vault est fixé au dossier Documents de l'app, qui est automatiquement synchronisé avec iCloud Drive quand la capability *iCloud Documents* est activée. C'est le modèle standard des apps de notes iOS (Obsidian, Bear, etc.).
+
+**Détection de plateforme et init automatique :**
+
+- `pickFolder()` (`useFileTree.ts`) détecte iOS via `platform()` (`@tauri-apps/plugin-os`) et utilise `documentDir()` (`@tauri-apps/api/path`) au lieu du dialog.
+- `App.tsx` appelle `pickFolder()` automatiquement au montage si `folderPath` est null et la plateforme est iOS — aucun WelcomeScreen n'est affiché.
+- Sur desktop, le comportement est inchangé.
+
+**Entitlements iOS** (`src-tauri/gen/apple/lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements`) :
+
+```xml
+com.apple.developer.icloud-container-identifiers → iCloud.com.theophiledonato.lueurs-tauri
+com.apple.developer.icloud-services             → CloudDocuments
+com.apple.developer.ubiquity-kvstore-identifier → $(TeamIdentifierPrefix)com.theophiledonato.lueurs-tauri
+```
+
+**Point d'attention :** `src-tauri/gen/` est regénéré par `pnpm tauri ios init`. Si cette commande est relancée, les entitlements et le `PrivacyInfo.xcprivacy` sont écrasés et doivent être réappliqués manuellement.
+
+**Limitation simulateur :** iCloud ne se synchronise pas dans le simulateur iOS. Le chemin `documentDir()` est valide et utilisable pour tester la navigation et la création de notes, mais la synchro réelle n'est testable que sur un vrai device connecté à un compte iCloud.
+
+**Sélection d'un sous-dossier (non implémenté) :** Si le besoin se présente, la seule voie viable est un plugin Swift custom wrappant `UIDocumentPickerViewController` avec `UTType.folder`, en gérant les security-scoped URLs (`startAccessingSecurityScopedResource` + bookmark persisté).
+
+---
+
 ## Choix de conception
 
 **Stockage YAML plat.** Les propriétés système utilisent des clés avec doubles tirets bas (`__Type__`, `__Template__`, etc.) pour éviter les collisions avec les propriétés utilisateur tout en restant lisibles dans n'importe quel éditeur Markdown.

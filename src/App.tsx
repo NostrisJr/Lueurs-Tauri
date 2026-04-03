@@ -12,6 +12,7 @@ import {
 import { useNote } from "./hooks/useNote";
 import { useVaultSync } from "./hooks/useVaultSync";
 import { useEffect } from "react";
+import { platform } from "@tauri-apps/plugin-os";
 import { SettingsModal } from "./components/Settings/SettingsModal";
 import { WelcomeScreen } from "./components/WelcomeScreen.tsx";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
@@ -30,6 +31,15 @@ export default function App() {
   useEffect(() => {
     if (folderPath) initFolder();
   }, [folderPath]);
+
+  // Sur iOS : init avec documentDir() à chaque démarrage — ignore le chemin persisté
+  // (qui peut être un chemin desktop invalide, et le sandbox iOS n'a pas besoin de picker)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    platform().then((p) => {
+      if (p === "ios") pickFolder();
+    });
+  }, []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

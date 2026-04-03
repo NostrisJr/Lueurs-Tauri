@@ -35,6 +35,8 @@ import {
   resolveDestName,
 } from "../../../lib/vaultIO";
 import { open } from "@tauri-apps/plugin-dialog";
+import { platform } from "@tauri-apps/plugin-os";
+import { documentDir } from "@tauri-apps/api/path";
 import { createLogger } from "../../../lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -163,9 +165,20 @@ export function useFileTree() {
   }
 
   async function pickFolder() {
-    const selected = await open({ directory: true, multiple: false });
-    if (!selected || typeof selected !== "string") return;
-    await allowVaultScope(selected);
+    let selected: string;
+
+    const currentPlatform = await platform();
+    if (currentPlatform === "ios") {
+      selected = await documentDir();
+      log.info("vault iOS : dossier Documents iCloud", { selected });
+    } else {
+      const result = await open({ directory: true, multiple: false });
+      if (!result || typeof result !== "string") return;
+      selected = result;
+      // allowVaultScope est un mécanisme desktop (FS scope Tauri), inutile sur iOS
+      await allowVaultScope(selected);
+    }
+
     setActiveNoteId(null);
     setError(null);
     setFolderPath(selected);

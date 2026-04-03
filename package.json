@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "ios:build": "sh scripts/ios-build.sh",
+    "ios:dev": "pnpm tauri ios dev"
   },
   "dependencies": {
     "@bradleyhodges/sfsymbols": "^7.0.4",
