@@ -53,7 +53,8 @@ export function PropertyEditModal({
           if (e.key === "Enter") handleSave();
           if (e.key === "Escape") onClose();
         }}
-        className={`w-full text-xs border rounded px-2 py-1 mb-2 outline-none transition-colors
+        style={{ fontSize: 16 }}
+        className={`w-full border rounded px-2 py-1 mb-2 outline-none transition-colors
           ${isDuplicate ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`}
       />
       {isDuplicate && (

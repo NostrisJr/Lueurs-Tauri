@@ -1,0 +1,1 @@
+export { MobileTableView } from "./MobileTableView";

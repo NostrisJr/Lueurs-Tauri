@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { platform } from "@tauri-apps/plugin-os";
 import { AnchoredDropdown } from "./AnchoredDropdown";
 import type { getAddableFields } from "../../lib/noteTypes";
 
@@ -13,6 +14,7 @@ export function AddPropertyDropdown({
   onAddSystem,
   onAddUser,
 }: Props) {
+  const isMobile = platform() === "ios";
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -32,7 +34,7 @@ export function AddPropertyDropdown({
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="text-xs text-gray-300 hover:text-gray-500 text-left transition-colors cursor-pointer mt-0.5 select-none"
+        className={`text-gray-300 hover:text-gray-500 text-left transition-colors cursor-pointer select-none ${isMobile ? "text-sm mt-1 py-1" : "text-xs mt-0.5"}`}
       >
         + propriété
       </button>
@@ -54,7 +56,7 @@ export function AddPropertyDropdown({
                   type="button"
                   onClick={() => handleAddSystem(field.key)}
                   title={field.description}
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors"
+                  className={`w-full text-left hover:bg-gray-50 active:bg-gray-50 transition-colors ${isMobile ? "px-4 py-3 text-sm" : "px-3 py-1.5 text-xs"}`}
                 >
                   <span className="font-bold text-gray-600">{field.label}</span>
                   <span className="ml-2 text-gray-400">
@@ -68,7 +70,7 @@ export function AddPropertyDropdown({
           <button
             type="button"
             onClick={handleAddUser}
-            className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+            className={`w-full text-left text-gray-600 hover:bg-gray-50 active:bg-gray-50 transition-colors ${isMobile ? "px-4 py-3 text-sm" : "px-3 py-1.5 text-xs"}`}
           >
             <span className="font-bold text-gray-600">
               Propriété personnalisée

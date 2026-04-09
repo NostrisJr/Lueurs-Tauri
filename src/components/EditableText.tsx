@@ -4,16 +4,22 @@ interface EditableTextProps {
   value: string;
   onSave: (newValue: string) => Promise<void>;
   className?: string;
+  clickToEdit?: boolean;
 }
 
 export function EditableText({
   value,
   onSave,
   className = "",
+  clickToEdit = false,
 }: EditableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Ref toujours à jour — permet au cleanup de lire les valeurs courantes
+  const stateRef = useRef({ isEditing, editValue, value, onSave });
+  stateRef.current = { isEditing, editValue, value, onSave };
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -21,6 +27,19 @@ export function EditableText({
       inputRef.current.select();
     }
   }, [isEditing]);
+
+  // Sur mobile, swipe arrière démonte le composant sans déclencher onBlur.
+  // On flush le rename en attente au démontage.
+  useEffect(() => {
+    return () => {
+      const { isEditing: editing, editValue: val, value: orig, onSave: save } = stateRef.current;
+      if (!editing) return;
+      const trimmed = val.trim();
+      if (trimmed && trimmed !== orig) {
+        save(trimmed).catch(() => {});
+      }
+    };
+  }, []);
 
   async function handleSave() {
     const trimmed = editValue.trim();
@@ -66,12 +85,15 @@ export function EditableText({
     );
   }
 
+  function startEditing() {
+    setEditValue(value);
+    setIsEditing(true);
+  }
+
   return (
     <span
-      onDoubleClick={() => {
-        setEditValue(value);
-        setIsEditing(true);
-      }}
+      onClick={clickToEdit ? startEditing : undefined}
+      onDoubleClick={!clickToEdit ? startEditing : undefined}
       className={`cursor-pointer hover:bg-gray-100 truncate ${className} items-baseline`}
       title="Cliquer pour renommer"
     >

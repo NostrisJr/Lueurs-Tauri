@@ -1,8 +1,10 @@
 /**
- * AnchoredDropdown — dropdown positionné en fixed sous son ancre,
- * avec détection de débordement bas → bascule au-dessus si nécessaire.
+ * AnchoredDropdown — dropdown positionné en fixed sous son ancre (desktop),
+ * ou BottomSheet clavier-aware (iOS).
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { platform } from "@tauri-apps/plugin-os";
+import { BottomSheet } from "../Mobile/BottomSheet";
 
 interface AnchoredDropdownProps {
     anchorRef: { current: HTMLElement | null };
@@ -12,6 +14,18 @@ interface AnchoredDropdownProps {
 }
 
 export function AnchoredDropdown({ anchorRef, onClose, children, className = "" }: AnchoredDropdownProps) {
+    const isMobile = platform() === "ios";
+
+    if (isMobile) {
+        return <BottomSheet onClose={onClose}>{children}</BottomSheet>;
+    }
+
+    return <DesktopDropdown anchorRef={anchorRef} onClose={onClose} className={className}>{children}</DesktopDropdown>;
+}
+
+// ── Dropdown desktop ───────────────────────────────────────────────────────
+
+function DesktopDropdown({ anchorRef, onClose, children, className }: AnchoredDropdownProps) {
     const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
     const [openUpward, setOpenUpward] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);

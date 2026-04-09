@@ -1,9 +1,10 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Crepe } from "@milkdown/crepe";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
 import "../../lib/MilkdownStyle.css";
 import { editorViewCtx, schemaCtx } from "@milkdown/kit/core";
+import { toggleMark } from "@milkdown/kit/prose/commands";
 import { Milkdown, useEditor } from "@milkdown/react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -12,6 +13,13 @@ import { createAudioBlockPlugin } from "../../plugins/audio-block/audioBlockPlug
 import { useDropHandler } from "./hooks/useDropHandler";
 import { useCrepeConfig } from "./hooks/useCrepeConfig";
 import { createLogger } from "../../lib/logger";
+
+export interface CrepeHandle {
+  bold: () => void;
+  italic: () => void;
+  strike: () => void;
+  heading: (level: 1 | 2 | 3) => void;
+}
 
 const log = createLogger("CrepeEditor");
 
@@ -42,7 +50,10 @@ interface Props {
   onChange: (body: string) => void;
 }
 
-export function CrepeEditor({ node, vaultPath, onChange }: Props) {
+export const CrepeEditor = forwardRef<CrepeHandle, Props>(function CrepeEditor(
+  { node, vaultPath, onChange },
+  ref
+) {
   const crepeRef = useRef<Crepe | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { featureConfigs } = useCrepeConfig(vaultPath);
@@ -108,6 +119,55 @@ export function CrepeEditor({ node, vaultPath, onChange }: Props) {
     dropHandlerRef,
   });
 
+  useImperativeHandle(ref, () => ({
+    bold() {
+      crepeRef.current?.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        const schema = ctx.get(schemaCtx);
+        const mark = schema.marks.strong;
+        if (!mark) return;
+        toggleMark(mark)(view.state, view.dispatch);
+        view.focus();
+      });
+    },
+    italic() {
+      crepeRef.current?.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        const schema = ctx.get(schemaCtx);
+        const mark = schema.marks.em;
+        if (!mark) return;
+        toggleMark(mark)(view.state, view.dispatch);
+        view.focus();
+      });
+    },
+    strike() {
+      crepeRef.current?.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        const schema = ctx.get(schemaCtx);
+        const mark = schema.marks.strike_through ?? schema.marks.strikethrough;
+        if (!mark) return;
+        toggleMark(mark)(view.state, view.dispatch);
+        view.focus();
+      });
+    },
+    heading(level) {
+      crepeRef.current?.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        const schema = ctx.get(schemaCtx);
+        const headingType = schema.nodes.heading;
+        if (!headingType) return;
+        const { state, dispatch } = view;
+        const { $from, $to } = state.selection;
+        const range = $from.blockRange($to);
+        if (!range) return;
+        dispatch(
+          state.tr.setBlockType(range.start, range.end, headingType, { level })
+        );
+        view.focus();
+      });
+    },
+  }));
+
   useEditor((root) => {
     log.info("initialisation Crepe", {
       noteId: node.id,
@@ -153,4 +213,4 @@ export function CrepeEditor({ node, vaultPath, onChange }: Props) {
       <Milkdown />
     </div>
   );
-}
+});

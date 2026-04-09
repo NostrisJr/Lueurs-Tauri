@@ -4,6 +4,7 @@
  */
 import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
+import { platform } from "@tauri-apps/plugin-os";
 import { writingPathsRegistry } from "./atoms";
 import {
     sortNodes,
@@ -286,6 +287,8 @@ export async function resolveDestName(destFolderPath: string, name: string): Pro
 // ── Scope Tauri ────────────────────────────────────────────────────────────
 
 export async function allowVaultScope(vaultPath: string): Promise<void> {
+    // FS scope = mécanisme desktop uniquement ; le sandbox iOS accorde déjà l'accès au vault
+    if (platform() === "ios") return;
     log.info("autorisation scope vault", { vaultPath });
     try {
         await invoke("allow_vault_path", { vaultPath });

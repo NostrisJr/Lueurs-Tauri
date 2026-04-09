@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 
-import type { NoteFile, TreeNode } from "../components/FileTree/hooks/useFileTree";
+import type { NoteFile, TreeNode, FolderNode } from "../components/FileTree/hooks/useFileTree";
 import { flattenTree } from "../components/FileTree/hooks/useFileTree";
 import { SystemField, type KanbanColumn } from "./noteTypes";
 import { createLogger } from "./logger";
@@ -29,6 +29,26 @@ export const openTabIdsAtom = atom<string[]>([]);
 
 // Historique de navigation : IDs des onglets par ordre de dernière activation (le plus récent en dernier)
 export const tabHistoryAtom = atom<string[]>([]);
+
+// Pile de navigation intra-éditeur (ex. base → enfant via tableau/kanban)
+export const noteBackStackAtom = atom<string[]>([]);
+
+// ── Navigation mobile ─────────────────────────────────────────────────────
+
+export type MobileView = "filetree" | "editor" | "tabs";
+export const mobileViewAtom = atom<MobileView>("filetree");
+
+// null = racine du vault, FolderNode = sous-dossier actif
+export const folderStackAtom = atom<(FolderNode | null)[]>([null]);
+
+// Action : navigue vers noteId en empilant la note courante
+export const navigateToNoteAtom = atom(null, (get, set, noteId: string) => {
+    const currentId = get(activeNoteIdAtom);
+    if (currentId && currentId !== noteId) {
+        set(noteBackStackAtom, (prev) => [...prev, currentId]);
+    }
+    set(activeNoteIdAtom, noteId);
+});
 
 // Dérivé : toujours synchronisé avec l'arbre, jamais de snapshot
 export const activeNoteAtom = atom((get) => {

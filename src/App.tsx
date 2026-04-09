@@ -13,12 +13,20 @@ import { useNote } from "./hooks/useNote";
 import { useVaultSync } from "./hooks/useVaultSync";
 import { useEffect } from "react";
 import { platform } from "@tauri-apps/plugin-os";
+import { MobileApp } from "./components/Mobile/MobileApp";
 import { SettingsModal } from "./components/Settings/SettingsModal";
 import { WelcomeScreen } from "./components/WelcomeScreen.tsx";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
 
 export default function App() {
-  const { pickFolder, initFolder } = useFileTree();
+  if (platform() === "ios")
+    return (
+      <div className="w-screen h-screen">
+        <MobileApp />
+      </div>
+    );
+
+  const { pickFolder, initFolder, autoInitFolder } = useFileTree();
   const { handleCreateNote } = useNote();
   useVaultSync();
 
@@ -33,12 +41,12 @@ export default function App() {
   }, [folderPath]);
 
   // Sur iOS : init avec documentDir() à chaque démarrage — ignore le chemin persisté
-  // (qui peut être un chemin desktop invalide, et le sandbox iOS n'a pas besoin de picker)
+  // Sur macOS : si aucun vault persisté, auto-init sur le dossier iCloud dédié
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
-    platform().then((p) => {
-      if (p === "ios") pickFolder();
-    });
+    const p = platform();
+    if (p === "ios") pickFolder();
+    else if (p === "macos" && !folderPath) autoInitFolder();
   }, []);
 
   useEffect(() => {

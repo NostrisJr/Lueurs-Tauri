@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { platform } from "@tauri-apps/plugin-os";
 import {
   computeFormula,
   dehumanizeFormula,
@@ -52,6 +53,7 @@ export function FrontmatterValue({
   onRemoveNote,
   noteName,
 }: Props) {
+  const isMobile = platform() === "ios";
   const [editingFormula, setEditingFormula] = useState(false);
   const [refSelectorOpen, setRefSelectorOpen] = useState(false);
   const [propSelectorNote, setPropSelectorNote] = useState<NoteFile | null>(
@@ -229,7 +231,8 @@ export function FrontmatterValue({
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
-            className="w-full mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-300 transition-colors font-mono text-xs"
+            style={isMobile ? { fontSize: 14 } : undefined}
+            className="w-full mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-300 transition-colors font-mono"
           />
 
           {refSelectorOpen && allNotes && (
@@ -351,6 +354,7 @@ export function FrontmatterValue({
         autoCorrect="off"
         autoCapitalize="none"
         spellCheck={false}
+        style={isMobile ? { fontSize: 14 } : undefined}
         className={`w-full mt-0.5 bg-transparent outline-none border-b border-transparent
                   ${isSystem ? "font-bold" : ""}
                   ${isValueLocked ? "text-gray-300 select-none" : "text-gray-600 focus:border-gray-300"}

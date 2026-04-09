@@ -31,6 +31,7 @@ struct NotePatch {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -43,6 +44,7 @@ pub fn run() {
             update_note,
             get_titlebar_height,
             get_scale_factor,
+            get_icloud_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -388,6 +390,49 @@ fn update_formula_refs(formula: &str, old_key: &str, new_key: &str) -> String {
     let s = replace_with_boundary(formula, &self_old, &self_new);
     // agg(old_key, : la virgule est déjà un délimiteur, pas de faux positif possible
     s.replace(&agg_old, &agg_new)
+}
+
+// ── iCloud (iOS uniquement) ────────────────────────────────────────────────
+
+/// Retourne le chemin du dossier Documents dans le conteneur iCloud ubiquity,
+/// ou None si iCloud est indisponible (simulateur, non connecté, entitlements absents).
+#[tauri::command]
+async fn get_icloud_path() -> Option<String> {
+    icloud_path_impl().await
+}
+
+#[cfg(target_os = "ios")]
+async fn icloud_path_impl() -> Option<String> {
+    extern "C" {
+        fn get_icloud_documents_path(buffer: *mut std::os::raw::c_char, max_len: i32) -> i32;
+    }
+
+    tokio::task::spawn_blocking(|| {
+        // Appel potentiellement bloquant — doit être hors du thread principal et du thread Tokio
+        let mut buffer = vec![0i8; 4096];
+        let len = unsafe { get_icloud_documents_path(buffer.as_mut_ptr(), 4096) };
+        if len <= 0 {
+            return None;
+        }
+        let cstr = unsafe { std::ffi::CStr::from_ptr(buffer.as_ptr()) };
+        Some(cstr.to_string_lossy().into_owned())
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
+#[cfg(target_os = "macos")]
+async fn icloud_path_impl() -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let path = format!("{}/Library/Mobile Documents/iCloud~com~theophiledonato~lueurs/Documents", home);
+    std::fs::create_dir_all(&path).ok();
+    Some(path)
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "macos")))]
+async fn icloud_path_impl() -> Option<String> {
+    None
 }
 
 fn maybe_cleanup_tmp(path: String) {

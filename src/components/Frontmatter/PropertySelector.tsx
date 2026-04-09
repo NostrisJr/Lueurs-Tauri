@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { platform } from "@tauri-apps/plugin-os";
 import { AnchoredDropdown } from "./AnchoredDropdown";
 
 export interface PropertyOption {
@@ -16,9 +17,12 @@ interface Props {
 export function PropertySelector({ options, onSelect, onClose, anchorRef }: Props) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const isMobile = platform() === "ios";
 
   useEffect(() => {
-    inputRef.current?.focus();
+    // Délai pour laisser l'animation BottomSheet démarrer avant le focus
+    const t = setTimeout(() => inputRef.current?.focus(), 300);
+    return () => clearTimeout(t);
   }, []);
 
   const filtered = options.filter((o) =>
@@ -38,19 +42,24 @@ export function PropertySelector({ options, onSelect, onClose, anchorRef }: Prop
           autoCorrect="off"
           autoCapitalize="none"
           spellCheck={false}
-          className="w-full text-xs text-gray-700 outline-none placeholder:text-gray-400"
+          style={isMobile ? { fontSize: 16 } : undefined}
+          className="w-full text-gray-700 outline-none placeholder:text-gray-400"
         />
       </div>
-      <div className="max-h-48 overflow-y-auto">
+      <div className="overflow-y-auto" style={{ maxHeight: isMobile ? "50vh" : 192 }}>
         {filtered.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-gray-400">Aucune propriété</p>
+          <p className={`px-4 text-gray-400 ${isMobile ? "py-4 text-base" : "py-2 text-xs"}`}>
+            Aucune propriété
+          </p>
         ) : (
           filtered.map((opt) => (
             <button
               key={opt.key}
               type="button"
               onClick={() => { onSelect(opt.key); onClose(); }}
-              className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors font-mono"
+              className={`w-full text-left text-gray-700 font-mono active:bg-gray-50 transition-colors border-b border-gray-50 last:border-none ${
+                isMobile ? "px-4 py-3.5 text-base" : "px-3 py-1.5 text-xs hover:bg-gray-50"
+              }`}
             >
               {opt.displayName}
             </button>

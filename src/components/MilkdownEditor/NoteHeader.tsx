@@ -1,9 +1,12 @@
 import { useAtomValue } from "jotai";
+import { platform } from "@tauri-apps/plugin-os";
 import { activeNoteAtom } from "../../lib/atoms.ts";
 import { EditableText } from "../EditableText";
 interface Props {
   onRename: (newName: string) => Promise<void>;
 }
+
+const isMobile = platform() === "ios" || platform() === "android";
 
 export function NoteHeader({ onRename }: Props) {
   const activeNote = useAtomValue(activeNoteAtom);
@@ -15,6 +18,7 @@ export function NoteHeader({ onRename }: Props) {
         className=""
         value={activeNote.name}
         onSave={async (newName: string) => onRename(newName)}
+        clickToEdit={isMobile}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "lueurs-tauri",
+  "productName": "Lueurs",
   "version": "0.1.0",
   "identifier": "com.theophiledonato.lueurs",
   "build": {
@@ -24,6 +24,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "macOS": {
+      "entitlements": "./Entitlements.plist",
+      "signingIdentity": "Developer ID Application: JUBILATE POP LOUANGE (TBX8DPCBL9)"
+    },
     "iOS": {
       "developmentTeam": "TBX8DPCBL9"
     },

@@ -37,6 +37,7 @@ import {
 import { open } from "@tauri-apps/plugin-dialog";
 import { platform } from "@tauri-apps/plugin-os";
 import { documentDir } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 import { createLogger } from "../../../lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -80,9 +81,10 @@ export function useFileTree() {
   const setError = useSetAtom(errorAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
 
-  const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map()
-  );
+  const debounceTimers = useRef<
+    Map<string, { timer: ReturnType<typeof setTimeout>; flush: () => Promise<void> }>
+  >(new Map());
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unwatchRef = useRef<(() => void) | null>(null);
 
   // ── Watcher FS ──────────────────────────────────────────────────────────
@@ -112,15 +114,11 @@ export function useFileTree() {
 
           log.info("changement FS détecté", { paths: relevant });
           // Debounce le reload pour ne pas spammer si plusieurs fichiers changent
-          const existing = debounceTimers.current.get("__reload__");
-          if (existing) clearTimeout(existing);
-          debounceTimers.current.set(
-            "__reload__",
-            setTimeout(() => {
-              reload(path);
-              debounceTimers.current.delete("__reload__");
-            }, 300)
-          );
+          if (reloadTimer.current) clearTimeout(reloadTimer.current);
+          reloadTimer.current = setTimeout(() => {
+            reloadTimer.current = null;
+            reload(path);
+          }, 300);
         },
         { recursive: true }
       );
@@ -164,21 +162,33 @@ export function useFileTree() {
     await startWatcher(folderPath);
   }
 
+  async function autoInitFolder() {
+    const icloudPath = await invoke<string | null>("get_icloud_path");
+    if (!icloudPath) return;
+    log.info("vault macOS iCloud auto-initialisé", { icloudPath });
+    await allowVaultScope(icloudPath);
+    setActiveNoteId(null);
+    setError(null);
+    setFolderPath(icloudPath);
+    await reload(icloudPath);
+    await startWatcher(icloudPath);
+  }
+
   async function pickFolder() {
     let selected: string;
 
-    const currentPlatform = await platform();
+    const currentPlatform = platform();
     if (currentPlatform === "ios") {
-      selected = await documentDir();
-      log.info("vault iOS : dossier Documents iCloud", { selected });
+      const icloudPath = await invoke<string | null>("get_icloud_path");
+      selected = icloudPath ?? (await documentDir());
+      log.info("vault iOS", { selected, icloud: !!icloudPath });
     } else {
       const result = await open({ directory: true, multiple: false });
       if (!result || typeof result !== "string") return;
       selected = result;
-      // allowVaultScope est un mécanisme desktop (FS scope Tauri), inutile sur iOS
-      await allowVaultScope(selected);
     }
 
+    await allowVaultScope(selected); // no-op sur iOS (géré dans allowVaultScope)
     setActiveNoteId(null);
     setError(null);
     setFolderPath(selected);
@@ -248,20 +258,23 @@ export function useFileTree() {
     );
 
     // Persistance debouncée — absorbe les frappes clavier dans le corps de la note
+    const flush = async () => {
+      writingPathsRegistry.add(fileId);
+      // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+      await writeTextFile(fileId, raw, { baseDir: null } as any);
+      writingPathsRegistry.delete(fileId);
+      log.info("note persistée", { fileId });
+      onPersisted?.();
+    };
     const existing = debounceTimers.current.get(fileId);
-    if (existing) clearTimeout(existing);
-    debounceTimers.current.set(
-      fileId,
-      setTimeout(async () => {
-        writingPathsRegistry.add(fileId);
-        // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
-        await writeTextFile(fileId, raw, { baseDir: null } as any);
-        writingPathsRegistry.delete(fileId);
+    if (existing) clearTimeout(existing.timer);
+    debounceTimers.current.set(fileId, {
+      timer: setTimeout(async () => {
         debounceTimers.current.delete(fileId);
-        log.info("note persistée", { fileId });
-        onPersisted?.();
-      }, DEBOUNCE_MS)
-    );
+        await flush();
+      }, DEBOUNCE_MS),
+      flush,
+    });
   }
 
   // ── Création ────────────────────────────────────────────────────────────
@@ -348,6 +361,15 @@ export function useFileTree() {
 
   // ── Renommage ────────────────────────────────────────────────────────────
 
+  // Flush immédiat d'un write en attente — à appeler avant tout rename/move
+  async function flushPendingWrite(fileId: string) {
+    const entry = debounceTimers.current.get(fileId);
+    if (!entry) return;
+    clearTimeout(entry.timer);
+    debounceTimers.current.delete(fileId);
+    await entry.flush();
+  }
+
   async function renameNode(
     oldPath: string,
     newName: string,
@@ -357,6 +379,12 @@ export function useFileTree() {
     const oldName = parts[parts.length - 1];
     parts[parts.length - 1] = isFolder ? newName : `${newName}.md`;
     const newPath = parts.join("/");
+
+    // Flush tout write en attente avant de renommer — sinon le debounce
+    // recrée le fichier à l'ancien chemin après le rename disque.
+    if (!isFolder) {
+      await flushPendingWrite(oldPath);
+    }
 
     if (isFolder) {
       // Renommer la note __folder__ avant le dossier (oldPath encore valide)
@@ -437,6 +465,7 @@ export function useFileTree() {
   return {
     pickFolder,
     initFolder,
+    autoInitFolder,
     reload: () => folderPath && reload(folderPath),
     createNote,
     createFolder,
@@ -446,5 +475,6 @@ export function useFileTree() {
     renameNode,
     openFolderNote,
     moveNode,
+    flushPendingWrite,
   };
 }

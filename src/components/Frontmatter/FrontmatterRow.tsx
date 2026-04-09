@@ -4,6 +4,7 @@ import {
   sfXCircle,
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef } from "react";
 import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
@@ -51,6 +52,7 @@ export function FrontmatterRow({
   commit,
   onRenameTemplateKey,
 }: Props) {
+  const isMobile = platform() === "ios";
   const rowRef = useRef<HTMLDivElement>(null);
   const selectorAnchorRef = useRef<HTMLButtonElement>(null);
 
@@ -92,7 +94,6 @@ export function FrontmatterRow({
     let candidates = allNotes;
 
     if (def.noteFilter) {
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       candidates = candidates.filter((n) =>
         def.noteFilter?.includes(n.type as any)
       );
@@ -174,13 +175,13 @@ export function FrontmatterRow({
   return (
     <div
       ref={rowRef}
-      className="flex items-center gap-2 text-xs min-h-5 group transition duration-300 select-none"
+      className={`flex items-center gap-2 group transition duration-300 select-none ${isMobile ? "text-sm min-h-10" : "text-xs min-h-5"}`}
     >
       {row.key !== SystemField.TYPE ? (
         <SFIcon
           icon={sfXCircle}
           onClick={canDelete ? removeRow : undefined}
-          className={`size-3 transition-all
+          className={`shrink-0 transition-all ${isMobile ? "size-4" : "size-3"}
             ${
               canDelete
                 ? "text-transparent hover:text-red-400 group-hover:text-gray-300 cursor-pointer"
@@ -189,21 +190,23 @@ export function FrontmatterRow({
           title={canDelete ? "Supprimer la propriété" : undefined}
         />
       ) : (
-        <span className="shrink-0 w-3" />
+        <span className={`shrink-0 ${isMobile ? "w-4" : "w-3"}`} />
       )}
 
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
       <span
-        className={`shrink-0 w-28 mt-0.5 truncate text-xs
+        className={`shrink-0 mt-0.5 truncate ${isMobile ? "w-24 text-sm" : "w-28 text-xs"}
           ${row.isSystem ? "font-bold text-gray-500 select-none" : ""}
           ${!row.isSystem && canRename ? "text-gray-500 cursor-pointer hover:text-gray-700" : ""}
           ${isKeyLocked && !isTemplate ? "text-amber-500/70 select-none" : ""}`}
-        onDoubleClick={() => canRename && setEditingKey(row.key)}
+        onDoubleClick={() => !isMobile && canRename && setEditingKey(row.key)}
+        onClick={() => isMobile && canRename && setEditingKey(row.key)}
         title={
           isKeyLocked && !isTemplate
             ? isValueLocked
               ? "Propriété imposée par le template"
               : "Propriété contraignante — valeur éditable"
-            : "Double-cliquer pour renommer"
+            : undefined
         }
       >
         {row.key.replace(/^__|__$/g, "")}
@@ -211,7 +214,7 @@ export function FrontmatterRow({
 
       <SFIcon
         icon={sfArrowRight}
-        className="size-3 text-gray-300 select-none"
+        className={`shrink-0 text-gray-300 select-none ${isMobile ? "size-4" : "size-3"}`}
         aria-hidden="true"
       />
 
@@ -219,13 +222,13 @@ export function FrontmatterRow({
         <span ref={selectorAnchorRef}>
           <SFIcon
             icon={sfPlusCircle}
-            className="size-3 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
+            className={`text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
             title="Ajouter une note"
             onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
           />
         </span>
       ) : (
-        <span className="shrink-0 w-3" />
+        <span className={`shrink-0 ${isMobile ? "w-4" : "w-3"}`} />
       )}
 
       <FrontmatterValue

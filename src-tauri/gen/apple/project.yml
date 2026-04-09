@@ -1,6 +1,6 @@
 name: lueurs-tauri
 options:
-  bundleIdPrefix: com.theophiledonato.lueurs-tauri
+  bundleIdPrefix: com.theophiledonato.lueurs
   deploymentTarget:
     iOS: 14.0
 fileGroups: [../../src]
@@ -10,8 +10,9 @@ configs:
 settingGroups:
   app:
     base:
-      PRODUCT_NAME: lueurs-tauri
-      PRODUCT_BUNDLE_IDENTIFIER: com.theophiledonato.lueurs-tauri
+      PRODUCT_NAME: Lueurs
+      PRODUCT_BUNDLE_IDENTIFIER: com.theophiledonato.lueurs
+      DEVELOPMENT_TEAM: TBX8DPCBL9
 targetTemplates:
   app:
     type: application
@@ -31,6 +32,8 @@ targets:
       - path: Sources
       - path: Assets.xcassets
       - path: Externals
+        excludes:
+          - "**/*.a"
       - path: lueurs-tauri_iOS
       - path: assets
         buildPhase: resources
@@ -53,13 +56,18 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         CFBundleShortVersionString: 0.1.0
         CFBundleVersion: "0.1.0"
-        NSLocalNetworkUsageDescription: "Utilisé pour la connexion au serveur de développement Tauri."
+        NSLocalNetworkUsageDescription: "Lueurs a besoin d'accéder au réseau local pour communiquer avec le serveur de développement."
+        NSBonjourServices:
+          - _http._tcp
     entitlements:
       path: lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements
-    scheme:
-      environmentVariables:
-        RUST_BACKTRACE: full
-        RUST_LOG: info
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.theophiledonato.lueurs
+        com.apple.developer.icloud-services:
+          - CloudDocuments
+        com.apple.developer.ubiquity-container-identifiers:
+          - iCloud.com.theophiledonato.lueurs
     settings:
       base:
         ENABLE_BITCODE: false
@@ -81,9 +89,22 @@ targets:
       - sdk: UIKit.framework
       - sdk: WebKit.framework
     preBuildScripts:
-      - script: pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" --header-search-paths "${HEADER_SEARCH_PATHS:?}" --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}
+      - script: |
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" --header-search-paths "${HEADER_SEARCH_PATHS:?}" --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}
         name: Build Rust Code
         basedOnDependencyAnalysis: false
         outputFiles:
           - $(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a
           - $(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a
+
+schemes:
+  lueurs-tauri_iOS:
+    build:
+      targets:
+        lueurs-tauri_iOS: all
+    run:
+      config: debug
+      environmentVariables:
+        RUST_BACKTRACE: full
+        RUST_LOG: info
