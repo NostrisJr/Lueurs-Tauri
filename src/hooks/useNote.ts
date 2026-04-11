@@ -1,15 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import {
-  activeNoteAtom,
-  activeNoteIdAtom,
-  folderPathAtom,
-  savingAtom,
-  searchAtom,
-  treeAtom,
-  openTabIdsAtom,
-  tabHistoryAtom,
-} from "../lib/atoms.ts";
-import {
   flattenTree,
   type NoteFile,
   type TreeNode,
@@ -23,6 +13,16 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { useFrontmatter } from "../components/Frontmatter/hooks/useFrontmatter";
 import { useTemplateSync } from "./useTemplateSync";
 import { usePathPropagation } from "./usePathPropagation";
+import {
+  activeNoteAtom,
+  activeNoteIdAtom,
+  openTabIdsAtom,
+  savingAtom,
+  searchAtom,
+  treeAtom,
+  folderPathAtom,
+  tabHistoryAtom,
+} from "../lib/atoms";
 
 const log = createLogger("useNote");
 

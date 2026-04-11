@@ -5,14 +5,6 @@ import { watchImmediate } from "@tauri-apps/plugin-fs";
 import { useAtom, useSetAtom } from "jotai";
 
 import {
-  activeNoteIdAtom,
-  errorAtom,
-  folderPathAtom,
-  loadingAtom,
-  treeAtom,
-  writingPathsRegistry,
-} from "../../../lib/atoms.ts";
-import {
   serializeFrontmatter,
   ensureType,
   extractTitle,
@@ -39,6 +31,14 @@ import { platform } from "@tauri-apps/plugin-os";
 import { documentDir } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import { createLogger } from "../../../lib/logger";
+import {
+  activeNoteIdAtom,
+  errorAtom,
+  folderPathAtom,
+  loadingAtom,
+  treeAtom,
+  writingPathsRegistry,
+} from "../../../lib/atoms";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -82,7 +82,10 @@ export function useFileTree() {
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
 
   const debounceTimers = useRef<
-    Map<string, { timer: ReturnType<typeof setTimeout>; flush: () => Promise<void> }>
+    Map<
+      string,
+      { timer: ReturnType<typeof setTimeout>; flush: () => Promise<void> }
+    >
   >(new Map());
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unwatchRef = useRef<(() => void) | null>(null);
@@ -391,6 +394,7 @@ export function useFileTree() {
       try {
         await rename(`${oldPath}/${oldName}.md`, `${oldPath}/${newName}.md`, {
           baseDir: null,
+          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
         } as any);
       } catch {
         log.info("pas de note __folder__ à renommer", { folder: oldPath });
@@ -422,6 +426,7 @@ export function useFileTree() {
     const currentParent = sourceId.split("/").slice(0, -1).join("/");
     if (currentParent === targetFolderPath) return null;
 
+    // biome-ignore lint/style/noNonNullAssertion: <explanation>
     const sourceName = sourceId.split("/").pop()!;
     const destName = await resolveDestName(targetFolderPath, sourceName);
     const newPath = `${targetFolderPath}/${destName}`;
