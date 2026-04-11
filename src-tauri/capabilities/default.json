@@ -18,6 +18,10 @@
           "name": "osascript",
           "cmd": "osascript",
           "args": true
+        },
+        {
+          "name": "grammalecte-sidecar",
+          "sidecar": true
         }
       ]
     },

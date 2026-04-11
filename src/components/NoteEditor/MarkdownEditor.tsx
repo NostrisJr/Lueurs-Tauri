@@ -23,6 +23,7 @@ import type { NoteFile } from "../FileTree/hooks/useFileTree";
 import { createAudioBlockPlugin } from "../../plugins/audio-block/audioBlockPlugin";
 import { taskListPlugin } from "../../plugins/task-list/taskListPlugin";
 import { headingFoldPlugin, headingNodeViewPlugin } from "../../plugins/heading-fold";
+import { spellcheckPlugin } from "../../plugins/spellcheck/spellcheckPlugin";
 import { useDropHandler } from "./hooks/useDropHandler";
 import { useContextMenu } from "./hooks/useContextMenu";
 import {
@@ -304,7 +305,8 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
         .use(toggleHeadingCommand)
         .use(toggleCodeBlockCommand)
         .use(customKeymapPlugin)
-        .use(codeBasedShortcutsPlugin);
+        .use(codeBasedShortcutsPlugin)
+        .use(spellcheckPlugin);
 
       editorRef.current = editor;
       log.info("Editor initialisé");

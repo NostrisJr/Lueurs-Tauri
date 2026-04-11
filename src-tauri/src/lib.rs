@@ -1,3 +1,5 @@
+mod commands;
+
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::{Emitter, Manager};
@@ -45,6 +47,7 @@ pub fn run() {
             get_titlebar_height,
             get_scale_factor,
             get_icloud_path,
+            commands::spellcheck::check_grammar,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -31,6 +31,9 @@
     "active": true,
     "category": "Productivity",
     "targets": "all",
+    "externalBin": [
+      "binaries/grammalecte-sidecar"
+    ],
     "macOS": {
       "entitlements": "./Entitlements.plist",
       "signingIdentity": "Developer ID Application: JUBILATE POP LOUANGE (TBX8DPCBL9)"

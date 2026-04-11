@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { settingsOpenAtom, folderPathAtom } from "../../lib/atoms.ts";
 import { useFileTree } from "../FileTree/hooks/useFileTree";
+import { SpellcheckSettings } from "./SpellcheckSettings";
 
 export function SettingsModal() {
   const [open, setOpen] = useAtom(settingsOpenAtom);
@@ -58,6 +59,8 @@ export function SettingsModal() {
               </div>
             </div>
           </section>
+
+          <SpellcheckSettings />
         </div>
       </div>
     </div>

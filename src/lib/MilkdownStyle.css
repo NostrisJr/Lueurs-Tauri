@@ -2,6 +2,20 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Grammalecte — soulignements d'erreurs
+   ───────────────────────────────────────────────────────────────────────── */
+
+.spell-error {
+  text-decoration: underline wavy #e53e3e;
+  text-decoration-thickness: 1.5px;
+}
+
+.grammar-error {
+  text-decoration: underline wavy #d69e2e;
+  text-decoration-thickness: 1.5px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Conteneur ProseMirror — base
    ───────────────────────────────────────────────────────────────────────── */
 

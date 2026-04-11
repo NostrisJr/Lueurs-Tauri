@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { RefObject } from "react";
 import type { Editor } from "@milkdown/kit/core";
-import { commandsCtx } from "@milkdown/kit/core";
+import { commandsCtx, editorViewCtx } from "@milkdown/kit/core";
 import {
   toggleStrongCommand,
   toggleEmphasisCommand,
@@ -23,6 +23,8 @@ import {
 import { Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { open } from "@tauri-apps/plugin-dialog";
 import { createLogger } from "../../../lib/logger";
+import { suggestionCache } from "../../../plugins/spellcheck/spellcheckPlugin";
+import type { SpellError } from "../../../types/spellcheck";
 
 const log = createLogger("useContextMenu");
 
@@ -45,7 +47,46 @@ export function useContextMenu(
           ctx.get(commandsCtx).call(cmdKey, payload)
         );
 
+      // Chercher une erreur Grammalecte sous le curseur
+      let spellErr: SpellError | undefined;
+      editorRef.current?.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        const pmPos = view.posAtCoords({ left: e.clientX, top: e.clientY });
+        if (!pmPos) return;
+        for (const [from, err] of suggestionCache.entries()) {
+          if (from <= pmPos.pos && pmPos.pos <= err.to) {
+            spellErr = err;
+            break;
+          }
+        }
+      });
+
       try {
+        // Items de correction orthographique/grammaticale en tête de menu
+        const suggestionItems: MenuItem[] = spellErr?.suggestions.length
+          ? await Promise.all(
+              spellErr.suggestions.slice(0, 5).map((suggestion) =>
+                MenuItem.new({
+                  text: suggestion,
+                  action: () => {
+                    const err = spellErr;
+                    if (!err) return;
+                    editorRef.current?.action((ctx) => {
+                      const view = ctx.get(editorViewCtx);
+                      const tr = view.state.tr.replaceWith(
+                        err.from,
+                        err.to,
+                        view.state.schema.text(suggestion)
+                      );
+                      view.dispatch(tr);
+                      view.focus();
+                    });
+                  },
+                })
+              )
+            )
+          : [];
+
         const [formatSubmenu, structureSubmenu, insertSubmenu] = await Promise.all([
           Submenu.new({
             text: "Format",
@@ -115,18 +156,27 @@ export function useContextMenu(
           }),
         ]);
 
+        const standardItems = [
+          await PredefinedMenuItem.new({ item: "Cut" }),
+          await PredefinedMenuItem.new({ item: "Copy" }),
+          await PredefinedMenuItem.new({ item: "Paste" }),
+          await PredefinedMenuItem.new({ item: "Separator" }),
+          formatSubmenu,
+          structureSubmenu,
+          insertSubmenu,
+          await PredefinedMenuItem.new({ item: "Separator" }),
+          await PredefinedMenuItem.new({ item: "SelectAll" }),
+        ];
+
         const menu = await Menu.new({
-          items: [
-            await PredefinedMenuItem.new({ item: "Cut" }),
-            await PredefinedMenuItem.new({ item: "Copy" }),
-            await PredefinedMenuItem.new({ item: "Paste" }),
-            await PredefinedMenuItem.new({ item: "Separator" }),
-            formatSubmenu,
-            structureSubmenu,
-            insertSubmenu,
-            await PredefinedMenuItem.new({ item: "Separator" }),
-            await PredefinedMenuItem.new({ item: "SelectAll" }),
-          ],
+          items:
+            suggestionItems.length > 0
+              ? [
+                  ...suggestionItems,
+                  await PredefinedMenuItem.new({ item: "Separator" }),
+                  ...standardItems,
+                ]
+              : standardItems,
         });
 
         await menu.popup();
