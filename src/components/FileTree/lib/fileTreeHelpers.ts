@@ -198,7 +198,7 @@ export function getFreeProps(templateFrontmatter: Frontmatter): string[] {
 export function sortNodes(nodes: TreeNode[]): TreeNode[] {
     return [...nodes].sort((a, b) => {
         if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
-        return a.name.localeCompare(b.name, "fr");
+        return a.name.localeCompare(b.name, "fr", { numeric: true });
     });
 }
 
@@ -213,11 +213,13 @@ export function updateNodeInTree(nodes: TreeNode[], fileId: string, patch: Parti
 }
 
 export function renameNodeInTree(nodes: TreeNode[], oldPath: string, newPath: string, newName: string): TreeNode[] {
-    return nodes.map((node) => {
+    const renamed = nodes.map((node) => {
         if (node.id === oldPath) return { ...node, id: newPath, name: newName };
         if (node.kind === "folder") return { ...node, children: renameNodeInTree(node.children, oldPath, newPath, newName) };
         return node;
     });
+    // Re-trier après le rename pour maintenir l'ordre alphabétique
+    return sortNodes(renamed);
 }
 
 export function deleteNodeInTree(nodes: TreeNode[], id: string): TreeNode[] {

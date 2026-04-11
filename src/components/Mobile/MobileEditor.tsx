@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   activeNoteAtom,
@@ -7,7 +7,7 @@ import {
   activeNoteIdAtom,
   noteBackStackAtom,
 } from "../../lib/atoms.ts";
-import { MilkdownEditor, type CrepeHandle } from "../MilkdownEditor/MilkdownEditor";
+import { NoteEditor, type EditorHandle } from "../NoteEditor/NoteEditor.tsx";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import {
   sfChevronLeft,
@@ -23,7 +23,28 @@ export function MobileEditor() {
   const setMobileView = useSetAtom(mobileViewAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const setNoteBackStack = useSetAtom(noteBackStackAtom);
-  const editorRef = useRef<CrepeHandle | null>(null);
+  const editorRef = useRef<EditorHandle | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositions = useRef(new Map<string, number>());
+
+  const handleScroll = useCallback(() => {
+    if (activeNote && scrollContainerRef.current) {
+      scrollPositions.current.set(
+        activeNote.id,
+        scrollContainerRef.current.scrollTop
+      );
+    }
+  }, [activeNote]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !activeNote) return;
+    const saved = scrollPositions.current.get(activeNote.id) ?? 0;
+    const raf = requestAnimationFrame(() => {
+      container.scrollTop = saved;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeNote?.id]);
 
   const handleBack = useCallback(() => {
     if (noteBackStack.length > 0) {
@@ -95,11 +116,13 @@ export function MobileEditor() {
 
       {/* Éditeur */}
       <div
+        ref={scrollContainerRef}
         className="flex-1 overflow-auto mobile-prose"
         data-scrollable
+        onScroll={handleScroll}
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 16px)" }}
       >
-        <MilkdownEditor ref={editorRef} defaultCollapsedFrontmatter />
+        <NoteEditor ref={editorRef} defaultCollapsedFrontmatter />
       </div>
     </div>
   );

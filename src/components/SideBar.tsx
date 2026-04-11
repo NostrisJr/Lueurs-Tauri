@@ -4,6 +4,7 @@ import {
   sfFolder,
   sfFolderBadgePlus,
   sfMagnifyingglass,
+  sfSidebarLeft,
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useMemo } from "react";
@@ -45,19 +46,26 @@ function SideBarResizable() {
   const isSearching = search.trim().length > 0;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden pt-7">
+    <div className="relative flex flex-col h-full pt-7 overflow-hidden">
       {/* ── Partie haute fixe ────────────────────────────── */}
       <div className="shrink-0">
+        <button
+          className="absolute z-100 top-2 right-3 text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full"
+          type="button"
+        >
+          <SFIcon icon={sfSidebarLeft} className="size-5" aria-hidden="true" />
+        </button>
         {/* En-tête */}
         <div className="flex items-center justify-between px-4 h-11">
           {/* Dossier actif */}
           <div className="flex items-center -ml-2">
+            {/* TODO: extraire un composant */}
             <button
               type="button"
               onClick={reload}
               aria-label="Recharger"
               title="Recharger"
-              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+              className="w-auto h-6 flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-colors cursor-pointer"
             >
               <SFIcon
                 icon={sfArrowClockwise}
@@ -70,7 +78,7 @@ function SideBarResizable() {
               onClick={pickFolder}
               aria-label="Changer de dossier"
               title="Changer de dossier"
-              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+              className="w-auto h-6 flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-colors cursor-pointer"
             >
               <SFIcon
                 icon={sfFolder}
@@ -93,7 +101,7 @@ function SideBarResizable() {
               onClick={handleCreateNote}
               aria-label="Nouvelle note à la racine"
               title="Nouvelle note"
-              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+              className="w-auto h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 transition-colors cursor-pointer"
             >
               <SFIcon
                 icon={sfDocumentBadgePlus}
@@ -106,7 +114,7 @@ function SideBarResizable() {
               onClick={handleCreateFolder}
               aria-label="Nouveau dossier à la racine"
               title="Nouveau dossier"
-              className="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+              className="w-auto h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 transition-colors cursor-pointer"
             >
               <SFIcon
                 icon={sfFolderBadgePlus}

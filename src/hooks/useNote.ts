@@ -123,11 +123,26 @@ export function useNote() {
     setSearch("");
   }
 
-  async function handleOpenFolder(folderNode: FolderNode) {
+  async function handleOpenFolder(
+    folderNode: FolderNode,
+    openInNewTab = false
+  ) {
     const note = await openFolderNote(folderNode);
-    if (!openTabIds.includes(note.id)) {
-      setOpenTabIds([...openTabIds, note.id]);
+
+    if (openInNewTab) {
+      if (!openTabIds.includes(note.id)) {
+        setOpenTabIds([...openTabIds, note.id]);
+      }
+    } else if (openTabIds.includes(note.id)) {
+      // Déjà ouverte : juste l'activer
+    } else if (activeNote) {
+      setOpenTabIds(
+        openTabIds.map((id) => (id === activeNote.id ? note.id : id))
+      );
+    } else {
+      setOpenTabIds([note.id]);
     }
+
     setActiveNoteId(note.id);
     pushHistory(note.id);
     setSearch("");

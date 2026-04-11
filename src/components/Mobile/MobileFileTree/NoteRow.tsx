@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { useAtomValue } from "jotai";
+/* import { useAtomValue } from "jotai";
 import { activeNoteAtom } from "../../../lib/atoms.ts";
-import type { NoteFile } from "../../FileTree/hooks/useFileTree";
+ */ import type { NoteFile } from "../../FileTree/hooks/useFileTree";
 import { NodeIconProvider } from "../../FileTree/NodeIconProvider";
 import { useLongPress } from "../../../hooks/mobile/useLongPress";
 import { getPreviewLines } from "./helpers";
@@ -13,8 +13,8 @@ interface Props {
 }
 
 export function NoteRow({ note, onSelect, onLongPress }: Props) {
-  const activeNote = useAtomValue(activeNoteAtom);
-  const isActive = activeNote?.id === note.id;
+  /*   const activeNote = useAtomValue(activeNoteAtom);
+  const isActive = activeNote?.id === note.id; */
   const previewLines = useMemo(() => getPreviewLines(note.body), [note.body]);
   const longPress = useLongPress(onLongPress);
 

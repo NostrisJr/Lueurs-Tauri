@@ -169,6 +169,34 @@ Plusieurs notes peuvent être ouvertes simultanément dans des onglets affichés
 
 ---
 
+## Éditeur
+
+### Mise en forme
+
+Une barre de mise en forme apparaît au-dessus de l'éditeur markdown. Elle propose les actions suivantes :
+
+- **B** — Gras (⌘B)
+- **I** — Italique (⌘I)
+- **S** — Barré
+- **H1 / H2 / H3** — Transforme le bloc courant en titre de niveau 1, 2 ou 3
+
+Les raccourcis clavier standards fonctionnent également directement dans l'éditeur (⌘B, ⌘I).
+
+### Listes de tâches
+
+Les listes de tâches Markdown (syntaxe `- [ ] tâche` et `- [x] tâche`) sont rendues avec des cases à cocher interactives. Cocher ou décocher une case met à jour le fichier Markdown immédiatement — sans modifier manuellement le `[x]`.
+
+### Repliement de sections
+
+Chaque titre (H1 à H6) affiche un chevron à sa gauche au survol. Cliquer sur ce chevron replie ou déplie la section correspondante :
+
+- **Replié** — tous les blocs entre ce titre et le prochain titre de niveau supérieur ou égal sont masqués. Le chevron pointe vers la droite et reste visible en permanence pour indiquer qu'une section est cachée.
+- **Déplié** — le contenu est visible, le chevron pointe vers le bas.
+
+Le repliement est purement visuel : il ne modifie pas le markdown et est réinitialisé à l'ouverture d'une note. Si le curseur se trouve dans une zone sur le point d'être repliée, il est automatiquement déplacé juste avant.
+
+---
+
 ## Glisser-déposer
 
 ### Réorganisation interne (drag & drop dans le vault)

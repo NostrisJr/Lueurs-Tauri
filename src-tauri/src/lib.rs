@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 use tokio::task::JoinSet;
 
@@ -90,7 +90,12 @@ async fn update_note(
 #[tauri::command]
 async fn allow_vault_path(app: tauri::AppHandle, vault_path: String) -> Result<(), String> {
     let path = PathBuf::from(&vault_path);
+    // Scope filesystem (lecture/écriture via plugin-fs)
     app.fs_scope()
+        .allow_directory(&path, true)
+        .map_err(|e| e.to_string())?;
+    // Scope asset:// (chargement d'images et d'audio dans la webview)
+    app.asset_protocol_scope()
         .allow_directory(&path, true)
         .map_err(|e| e.to_string())?;
     println!("[allow_vault_path] ✓ {}", vault_path);

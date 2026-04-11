@@ -13,8 +13,8 @@ import type {
   NoteFile,
   TreeNode,
 } from "../../FileTree/hooks/useFileTree";
-import { useMobileSwipeBack } from "../../../hooks/mobile/useMobileSwipeBack";
-import { FileTreeHeader } from "./FileTreeHeader";
+/* import { useMobileSwipeBack } from "../../../hooks/mobile/useMobileSwipeBack";
+ */ import { FileTreeHeader } from "./FileTreeHeader";
 import { FileTreeBottomBar } from "./FileTreeBottomBar";
 import { NoteRow } from "./NoteRow";
 import { FolderRow } from "./FolderRow";
@@ -54,15 +54,15 @@ export function MobileFileTree({
   const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
 
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
-  const canGoBack = folderStack.length > 1;
-
+  /*   const canGoBack = folderStack.length > 1;
+   */
   function handleDrillIn(folder: FolderNode) {
     setFolderStack((prev) => [...prev, folder]);
   }
 
-  function handleDrillOut() {
+  /*   function handleDrillOut() {
     setFolderStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
-  }
+  } */
 
   function handleSelectNote(note: NoteFile) {
     setNoteBackStack([]);
@@ -97,10 +97,10 @@ export function MobileFileTree({
     await onCreateFolder(folderPath);
   }
 
-  const { swipeTranslate, isTransitioning, touchHandlers } = useMobileSwipeBack(
+  /*   const { swipeTranslate, isTransitioning, touchHandlers } = useMobileSwipeBack(
     handleDrillOut,
     { condition: canGoBack }
-  );
+  ); */
 
   const currentNodes: TreeNode[] = currentFolder
     ? currentFolder.children
@@ -108,22 +108,24 @@ export function MobileFileTree({
   const sortedNodes = useMemo(
     () =>
       [...currentNodes].sort((a, b) => {
-        if (a.kind === b.kind) return a.name.localeCompare(b.name);
+        if (a.kind === b.kind) return a.name.localeCompare(b.name, "fr", { numeric: true });
         return a.kind === "folder" ? -1 : 1;
       }),
     [currentNodes]
   );
 
   return (
-    <div className="flex flex-col pt-10 w-full h-screen overflow-hidden">
-      <FileTreeHeader
-        onRenameCurrentFolder={() =>
-          currentFolder &&
-          openRename(currentFolder.id, currentFolder.name, true)
-        }
-        onCreateNote={handleCreateNote}
-        onCreateFolder={handleCreateFolder}
-      />
+    <div className="flex flex-col pt-20 w-full h-screen overflow-hidden">
+      <div className="absolute top-0 w-full h-fit pt-10 bg-white shadow-lg shadow-gray-500/5">
+        <FileTreeHeader
+          onRenameCurrentFolder={() =>
+            currentFolder &&
+            openRename(currentFolder.id, currentFolder.name, true)
+          }
+          onCreateNote={handleCreateNote}
+          onCreateFolder={handleCreateFolder}
+        />
+      </div>
 
       <div className="flex flex-col gap-2 p-4 bg-gray-100 h-full overflow-y-scroll pb-20">
         {sortedNodes.length === 0 && (

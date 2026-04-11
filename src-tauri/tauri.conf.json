@@ -19,7 +19,13 @@
         "hiddenTitle": true,
         "acceptFirstMouse": true
       }
-    ]
+    ],
+    "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      }
+    }
   },
   "bundle": {
     "active": true,

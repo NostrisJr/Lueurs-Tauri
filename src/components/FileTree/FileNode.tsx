@@ -180,9 +180,9 @@ function FolderNodeComponent({
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
         <div
           className="flex items-center gap-2 min-w-0 flex-1"
-          onClick={() => {
+          onClick={(e) => {
             setOpen(true);
-            handleOpenFolder(node);
+            handleOpenFolder(node, e.metaKey);
           }}
         >
           <SFIcon

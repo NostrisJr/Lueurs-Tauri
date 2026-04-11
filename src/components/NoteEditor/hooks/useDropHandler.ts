@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { createLogger } from "../../../lib/logger";
 
 const log = createLogger("useDropHandler");
@@ -14,15 +14,26 @@ export function isImagePath(p: string) {
     return IMAGE_EXTENSIONS.test(p);
 }
 
+// Dérive l'extension depuis le MIME type du fichier
+function extFromMime(mime: string): string {
+    const map: Record<string, string> = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+        "image/svg+xml": ".svg",
+    };
+    return map[mime] ?? ".png";
+}
+
 // Matérialise un File JS en tmp avant invoke (nécessaire pour paste — le blob n'a pas de chemin)
-async function writeTmp(file: File): Promise<string> {
+async function writeTmp(file: File, fileName: string): Promise<string> {
     const { appDataDir } = await import("@tauri-apps/api/path");
     const { writeFile, mkdir } = await import("@tauri-apps/plugin-fs");
     const appData = await appDataDir();
     const tmpDir = `${appData}lueurs-tmp`;
     await mkdir(tmpDir, { recursive: true });
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const tmpPath = `${tmpDir}/${safeName}`;
+    const tmpPath = `${tmpDir}/${fileName}`;
     await writeFile(tmpPath, new Uint8Array(await file.arrayBuffer()));
     return tmpPath;
 }
@@ -46,7 +57,7 @@ interface Params {
     vaultPath: string;
     insertAudioBlock: (path: string, title: string) => void;
     insertImageBlock: (path: string, alt: string) => void;
-    // Ref partagée avec CrepeEditor pour connecter le handler drop natif
+    // Ref partagée avec MarkdownEditor pour connecter le handler drop natif
     dropHandlerRef: React.MutableRefObject<((paths: string[]) => void) | null>;
 }
 
@@ -77,8 +88,9 @@ export function useDropHandler({
                 } else if (isImagePath(srcPath)) {
                     log.info("drop image détecté", { srcPath });
                     try {
+                        // destPath = chemin absolu stocké dans le markdown ; le NodeView convertit en asset://
                         const destPath = await copyToVault(srcPath, vaultPath, "images", safeName);
-                        insertImageBlock(convertFileSrc(destPath), title);
+                        insertImageBlock(destPath, title);
                         log.info("image déposée", { destPath });
                     } catch (err) {
                         log.error("échec drop image", err);
@@ -94,37 +106,58 @@ export function useDropHandler({
         };
     }, [vaultPath, insertAudioBlock, insertImageBlock, dropHandlerRef]);
 
-    // ── Paste audio ────────────────────────────────────────────────────────
+    // ── Paste audio + images ───────────────────────────────────────────────
     useEffect(() => {
         const el = wrapperRef.current;
         if (!el) return;
 
         const onPaste = async (e: ClipboardEvent) => {
             const files = Array.from(e.clipboardData?.files ?? []);
+            if (!files.length) return;
+
             const audioFiles = files.filter(
                 (f) => AUDIO_EXTENSIONS.test(f.name) || f.type.startsWith("audio/")
             );
-            if (!audioFiles.length) return;
+            const imageFiles = files.filter(
+                (f) => IMAGE_EXTENSIONS.test(f.name) || f.type.startsWith("image/")
+            );
+            if (!audioFiles.length && !imageFiles.length) return;
 
             e.preventDefault();
             e.stopPropagation();
-            log.info("paste audio détecté", { count: audioFiles.length });
 
-            for (const file of audioFiles) {
+            for (const [i, file] of audioFiles.entries()) {
+                log.info("paste audio détecté", { name: file.name });
                 try {
-                    // Le File n'a pas de chemin — on passe par tmp avant invoke
-                    const tmpPath = await writeTmp(file);
-                    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-                    const destPath = await copyToVault(tmpPath, vaultPath, "audio", safeName);
+                    // Nom unique : évite les collisions si plusieurs fichiers collés simultanément
+                    const ext = file.name.match(/\.[^.]+$/)?.[0] ?? ".mp3";
+                    const uniqueName = `audio_${Date.now()}_${i}${ext}`;
+                    const tmpPath = await writeTmp(file, uniqueName);
+                    const destPath = await copyToVault(tmpPath, vaultPath, "audio", uniqueName);
                     insertAudioBlock(destPath, file.name.replace(/\.[^.]+$/, ""));
                     log.info("audio collé", { destPath });
                 } catch (err) {
                     log.error("échec paste audio", err);
                 }
             }
+
+            for (const [i, file] of imageFiles.entries()) {
+                log.info("paste image détecté", { name: file.name });
+                try {
+                    // Nom unique basé sur timestamp+index — file.name vaut toujours "image.png" depuis le presse-papiers
+                    const uniqueName = `image_${Date.now()}_${i}${extFromMime(file.type)}`;
+                    const tmpPath = await writeTmp(file, uniqueName);
+                    const destPath = await copyToVault(tmpPath, vaultPath, "images", uniqueName);
+                    // chemin absolu → markdown ; le NodeView convertit en asset:// à l'affichage
+                    insertImageBlock(destPath, uniqueName.replace(/\.[^.]+$/, ""));
+                    log.info("image collée", { destPath });
+                } catch (err) {
+                    log.error("échec paste image", err);
+                }
+            }
         };
 
         el.addEventListener("paste", onPaste, true);
         return () => el.removeEventListener("paste", onPaste, true);
-    }, [vaultPath, insertAudioBlock, wrapperRef]);
+    }, [vaultPath, insertAudioBlock, insertImageBlock, wrapperRef]);
 }

@@ -222,6 +222,91 @@ com.apple.developer.ubiquity-kvstore-identifier → $(TeamIdentifierPrefix)com.t
 
 ---
 
+## Raccourcis clavier et menu contextuel de l'éditeur
+
+### Architecture
+
+Les raccourcis et le menu contextuel sont implémentés en dehors du preset Milkdown, dans deux fichiers :
+
+- `src/plugins/customKeymap.ts` — commandes ProseMirror et plugins keymap
+- `src/components/NoteEditor/hooks/useContextMenu.ts` — menu contextuel natif macOS via Tauri
+
+### Commandes toggle (`$command` Milkdown)
+
+Toutes les commandes structurelles sont exportées depuis `customKeymap.ts` et enregistrées dans l'éditeur via `.use()`. Chaque commande implémente un comportement **toggle** : réappuyer sur le raccourci dans une structure l'enlève.
+
+| Commande | Toggle off | Transition cross-structure |
+|---|---|---|
+| `toggleBlockquoteCommand` | `lift` | oui |
+| `toggleBulletListCommand` | `liftListItem` | oui |
+| `toggleOrderedListCommand` | `liftListItem` | oui |
+| `toggleTaskListCommand` | `liftListItem` | oui |
+| `toggleHeadingCommand` | `setBlockType(paragraph)` | oui (escape depuis liste) |
+| `toggleCodeBlockCommand` | `setBlockType(paragraph)` | oui |
+
+**Détection de la structure courante** : remontée des ancêtres ProseMirror via `$from.depth` — pas de parsing markdown.
+
+**Transitions cross-structure** (ex. titre → liste, citation → checkbox) : deux helpers composent plusieurs commandes ProseMirror en **une seule transaction** pour que l'opération soit atomique (un seul undo) :
+
+- `buildEscapeCommand(state, schema)` — retourne la commande de sortie adaptée à la structure courante (liste → `liftListItem`, blockquote → `lift`, heading/code_block → `setBlockType(paragraph)`)
+- `applyThenApply(state, dispatch, first, second)` — exécute `first` sans dispatcher, applique son résultat sur un état intermédiaire, exécute `second` sur cet état intermédiaire, puis accumule tous les steps dans une transaction combinée. Les positions restent correctes car chaque jeu de steps est calculé relatif au document issu des steps précédents.
+
+### Désactivation du keymap du preset pour les titres
+
+Le preset `commonmark` enregistre `Mod-Alt-1` à `Mod-Alt-6` via `$useKeymap` / `headingKeymap`, appelant `wrapInHeadingCommand` (sans toggle, prioritaire sur notre keymap). Pour prendre la main, on vide ces shortcuts dans la config de l'éditeur :
+
+```ts
+ctx.set(headingKeymap.key, {
+  TurnIntoH1: { shortcuts: "" },
+  // ...
+  DowngradeHeading: { shortcuts: ["Delete", "Backspace"] }, // conservé
+});
+```
+
+Seul les `shortcuts` sont configurables via `ctx.set(headingKeymap.key, ...)` — les commandes associées sont capturées dans la closure de `$useKeymap` à la création et ne sont pas remplaçables par cette voie.
+
+### Problème AZERTY : event.key vs event.code
+
+**Symptôme** : les raccourcis `Mod-Alt-3`, `Mod-Alt-4`, `Mod-Alt-5` ne fonctionnaient pas sur clavier AZERTY macOS, alors que les niveaux 1, 2 et 6 fonctionnaient.
+
+**Cause** : `keymap()` de ProseMirror utilise `event.key` (le caractère produit) pour matcher les raccourcis. Sur AZERTY macOS, certaines combinaisons `Cmd+Option+chiffre` produisent un caractère spécial :
+
+| Combinaison | `event.key` sur AZERTY | Attendu par keymap |
+|---|---|---|
+| Cmd+Option+3 | `"#"` | `"3"` |
+| Cmd+Option+4 | `"{"` | `"4"` |
+| Cmd+Option+5 | `"["` | `"5"` |
+
+Les niveaux 1, 2, 6 fonctionnaient car leurs combinaisons Option sur AZERTY macOS ne produisent pas de caractères interférents quand Cmd est simultanément tenu.
+
+**Fix** : `codeBasedShortcutsPlugin` — plugin ProseMirror avec `handleKeyDown` qui utilise `event.code` (position physique de la touche, indépendante du layout) :
+
+```ts
+handleKeyDown(_view, event) {
+  const isMod = event.metaKey || event.ctrlKey;
+  if (!isMod || !event.altKey || event.shiftKey) return false;
+
+  if (event.code in digitLevel) {
+    event.preventDefault();
+    commands.call(toggleHeadingCommand.key, { level: digitLevel[event.code] });
+    return true;
+  }
+  if (event.code === "KeyC") { /* toggle code block */ }
+}
+```
+
+`event.code` est `"Digit3"` quelle que soit la langue du clavier. Ce plugin remplace entièrement les entrées `"Mod-Alt-*"` dans `customKeymapPlugin` pour les raccourcis concernés.
+
+### Menu contextuel natif (`useContextMenu`)
+
+Le hook `useContextMenu` construit un menu natif macOS via `@tauri-apps/api/menu` (`Menu`, `MenuItem`, `Submenu`, `PredefinedMenuItem`) et l'affiche avec `menu.popup()` (positionné automatiquement au curseur).
+
+Les labels incluent les raccourcis directement dans le texte (`"Gras\t⌘B"`) car Tauri 2 n'affiche pas les `accelerator` dans les menus contextuels popup.
+
+L'insertion de tableau utilise `insert()` de `@milkdown/kit/utils` qui parse du markdown et insère la tranche résultante à la position du curseur. L'insertion d'image et d'audio ouvre un dialog natif Tauri (`@tauri-apps/plugin-dialog`) puis délègue à `insertImageBlock` / `insertAudioBlock` déjà disponibles dans `MarkdownEditor`.
+
+---
+
 ## Choix de conception
 
 **Stockage YAML plat.** Les propriétés système utilisent des clés avec doubles tirets bas (`__Type__`, `__Template__`, etc.) pour éviter les collisions avec les propriétés utilisateur tout en restant lisibles dans n'importe quel éditeur Markdown.

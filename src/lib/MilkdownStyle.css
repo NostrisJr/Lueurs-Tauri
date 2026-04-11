@@ -1,17 +1,294 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Conteneur ProseMirror — base
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror {
+  outline: none;
+  word-break: break-word;
+  white-space: pre-wrap;
+
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 68px 96px;
+
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #1a1918;
+
+  caret-color: #f4af2f;
+}
+
+/* Sélection de texte */
+.milkdown .ProseMirror ::selection {
+  background-color: color-mix(in srgb, var(--color-amber-500) 15%, transparent);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Titres
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror h1,
+.milkdown .ProseMirror h2,
+.milkdown .ProseMirror h3,
+.milkdown .ProseMirror h4,
+.milkdown .ProseMirror h5,
+.milkdown .ProseMirror h6 {
+  font-family: 'EB Garamond', Garamond, Georgia, serif;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #1a1918;
+  margin-top: 1em;
+  margin-bottom: 0.4em;
+}
+
+.milkdown .ProseMirror h1 { font-size: 3em; }
+.milkdown .ProseMirror h2 { font-size: 2.5em; }
+.milkdown .ProseMirror h3 { font-size: 2em; font-weight: 600; }
+.milkdown .ProseMirror h4 { font-size: 1.75em;   font-weight: 600; }
+.milkdown .ProseMirror h5 { font-size: 1.5em; font-weight: 600; }
+.milkdown .ProseMirror h6 { font-size: 1.25em;    font-weight: 600; }
+
+/* Premier titre sans marge haute */
+.milkdown .ProseMirror > h1:first-child,
+.milkdown .ProseMirror > h2:first-child,
+.milkdown .ProseMirror > h3:first-child {
+  margin-top: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Paragraphe et inline
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror p {
+  margin: 0 0 0.6em;
+  text-align: justify;
+}
+
+.milkdown .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.milkdown .ProseMirror strong {
+  font-weight: 600;
+}
+
+.milkdown .ProseMirror em {
+  font-style: italic;
+}
+
+.milkdown .ProseMirror s,
+.milkdown .ProseMirror del {
+  text-decoration: line-through;
+  color: #6c6a5e;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Liens
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror a {
+  color: #b07d18;
+  text-decoration: underline;
+  text-decoration-color: rgba(176, 125, 24, 0.4);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.15s;
+}
+
+.milkdown .ProseMirror a:hover {
+  text-decoration-color: #b07d18;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Code
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror code {
+  font-family: 'Fira Code', 'Cascadia Code', Menlo, Monaco, monospace;
+  font-size: 0.875em;
+  background: #f5ede3;
+  color: #ba1a1a;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+/* Blocs de code (fallback si codeBlockComponent non monté) */
+.milkdown .ProseMirror pre {
+  font-family: 'Fira Code', 'Cascadia Code', Menlo, Monaco, monospace;
+  font-size: 0.875em;
+  background: #f5f4f2;
+  border: 1px solid #e9e7e4;
+  border-radius: 8px;
+  padding: 1em 1.25em;
+  overflow-x: auto;
+  margin: 1em 0;
+  line-height: 1.6;
+}
+
+.milkdown .ProseMirror pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: 1em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Citation
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror blockquote {
+  border-left: 4px solid var(--color-amber-400);
+  margin: 1em 0;
+  padding: 0.2em 1.1em 0.2em 1.1em;
+  color: #4f4539;
+  background-color: color-mix(in srgb, var(--color-amber-400) 7%, transparent);
+  border-radius: 2px 10px 10px 2px;
+}
+
+.milkdown .ProseMirror blockquote p {
+  margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Listes
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror ul,
+.milkdown .ProseMirror ol {
+  margin: 0.4em 0;
+  padding-left: 0; /* le tiret/numéro est géré via ::before ou list-style */
+}
+
+/* Listes à puces — tiret personnalisé */
+.milkdown .ProseMirror ul {
+  list-style: none;
+}
+
+.milkdown .ProseMirror ul li {
+  position: relative;
+  padding-left: 1.25em; /* indentation du texte */
+}
+
+.milkdown .ProseMirror ul li::before {
+  content: "–";
+  color: var(--color-gray-600);
+  position: absolute;
+  left: 0; /* tiret aligné au bord gauche du bloc */
+}
+
+/* Listes numérotées */
+.milkdown .ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+
+/* Espacement commun */
+.milkdown .ProseMirror li {
+  margin: 0.2em 0;
+}
+
+.milkdown .ProseMirror li > p {
+  margin: 0;
+}
+
+/* Listes imbriquées */
+.milkdown .ProseMirror li > ul,
+.milkdown .ProseMirror li > ol {
+  margin: 0.1em 0;
+}
+
+/* ── Task list ─────────────────────────────────────────────────────────── */
+
+/* Annule le tiret ::before sur les items task */
+.milkdown .ProseMirror li[data-item-type="task"]::before,
+.milkdown .ProseMirror li.task-list-item::before {
+  content: none;
+}
+
+.milkdown .ProseMirror li.task-list-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  padding-left: 0; /* pas de tiret, pas d'indent supplémentaire */
+  list-style: none;
+}
+
+.milkdown .ProseMirror .task-list-checkbox {
+  flex-shrink: 0;
+  width: 0.9em;
+  height: 0.9em;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--color-amber-400);
+}
+
+.milkdown .ProseMirror .task-list-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Texte atténué pour les items cochés */
+.milkdown .ProseMirror li.task-list-item[data-checked="true"] .task-list-item-content {
+  color: color-mix(in srgb, currentColor 40%, transparent);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Séparateur
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror hr {
+  border: none;
+  border-top: 1.5px solid #e9e7e4;
+  margin: 2em 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Tableaux
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  font-size: 0.9em;
+}
+
+.milkdown .ProseMirror th,
+.milkdown .ProseMirror td {
+  border: 1px solid #e9e7e4;
+  padding: 0.4em 0.75em;
+  text-align: left;
+}
+
+.milkdown .ProseMirror th {
+  background: #faf9f9;
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Images (si pas de composant image-block)
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Variables pour les composants Milkdown (audio-block, image-block, etc.)
+   ───────────────────────────────────────────────────────────────────────── */
 
 .milkdown {
   --crepe-color-background: #ffffff;
   --crepe-color-on-background: #1a1918;
-  /* Notamment la couleur du bloc audio*/
   --crepe-color-surface: #faf9f9;
   --crepe-color-surface-low: #fff5e5;
-  /* Notamment les écritures dans le bloc audio*/
   --crepe-color-on-surface: #39342b;
   --crepe-color-on-surface-variant: #4f4539;
-  /* Notamment les handles des images*/
   --crepe-color-outline: #6c6a5e;
-  /* Notamment la hover outline du bloc audio*/
   --crepe-color-primary: #f4af2f;
   --crepe-color-secondary: #fbdebc;
   --crepe-color-on-secondary: #271904;
@@ -20,21 +297,83 @@
   --crepe-color-inline-code: #ba1a1a;
   --crepe-color-error: #ba1a1a;
   --crepe-color-hover: #e9e9e9;
-  --crepe-color-selected: #f8bd3396;
+  --crepe-color-selected: rgba(244, 175, 47, 0.28);
   --crepe-color-inline-area: #e4d8cc;
-
   --crepe-font-title: 'EB Garamond', Garamond, Georgia, serif;
   --crepe-font-default: 'Inter', Arial, Helvetica, sans-serif;
-  --crepe-font-code:
-    Fira Code, Menlo, Monaco, 'Courier New', Courier, monospace;
-
-  --crepe-shadow-1:
-    0px 1px 3px 1px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
-  --crepe-shadow-2:
-    0px 2px 6px 2px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
+  --crepe-font-code: 'Fira Code', Menlo, Monaco, 'Courier New', monospace;
+  --crepe-shadow-1: 0px 1px 3px 1px rgba(0,0,0,0.05), 0px 1px 2px 0px rgba(0,0,0,0.1);
+  --crepe-shadow-2: 0px 2px 6px 2px rgba(0,0,0,0.05), 0px 1px 2px 0px rgba(0,0,0,0.1);
 }
 
-/* Padding réduit sur mobile (Crepe default : 60px 120px) */
+/* ─────────────────────────────────────────────────────────────────────────
+   Heading fold — bouton chevron SF dans le padding gauche
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Les headings ont besoin de position: relative pour ancrer le bouton absolu */
+.milkdown .ProseMirror h1,
+.milkdown .ProseMirror h2,
+.milkdown .ProseMirror h3,
+.milkdown .ProseMirror h4,
+.milkdown .ProseMirror h5,
+.milkdown .ProseMirror h6 {
+  position: relative;
+}
+
+.milkdown .ProseMirror .fold-btn {
+  position: absolute;
+  left: -0.9em;
+  top: 50%;
+  /* Déplié (data-folded="false") : rotation 90deg → chevron pointe vers le bas */
+  transform: translateY(-50%) rotate(90deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  cursor: pointer;
+  opacity: 0;
+  transition: transform 0.15s ease, opacity 0.15s;
+  user-select: none;
+  color: currentColor;
+}
+
+/* L'icône SVG hérite de la taille du bouton */
+.milkdown .ProseMirror .fold-btn svg {
+  width: 0.3em;
+  height: auto;
+}
+
+/* Replié (data-folded="true") : rotation 0deg → chevron pointe vers la droite */
+.milkdown .ProseMirror h1[data-folded="true"] .fold-btn,
+.milkdown .ProseMirror h2[data-folded="true"] .fold-btn,
+.milkdown .ProseMirror h3[data-folded="true"] .fold-btn,
+.milkdown .ProseMirror h4[data-folded="true"] .fold-btn,
+.milkdown .ProseMirror h5[data-folded="true"] .fold-btn,
+.milkdown .ProseMirror h6[data-folded="true"] .fold-btn {
+  transform: translateY(-50%) rotate(0deg);
+  /* Toujours visible quand replié */
+  opacity: 0.55;
+}
+
+/* Apparaît au survol du heading */
+.milkdown .ProseMirror h1:hover .fold-btn,
+.milkdown .ProseMirror h2:hover .fold-btn,
+.milkdown .ProseMirror h3:hover .fold-btn,
+.milkdown .ProseMirror h4:hover .fold-btn,
+.milkdown .ProseMirror h5:hover .fold-btn,
+.milkdown .ProseMirror h6:hover .fold-btn {
+  opacity: 0.45;
+}
+
+.milkdown .ProseMirror .fold-btn:hover {
+  opacity: 1 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Mobile
+   ───────────────────────────────────────────────────────────────────────── */
+
 .mobile-prose .ProseMirror {
-  padding: 24px 16px;
+  padding: 16px 16px 80px;
 }

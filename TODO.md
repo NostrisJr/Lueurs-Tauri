@@ -36,6 +36,8 @@
   - [x] que les headers du tableau soient fixés
   - [ ] les headers des kanban aussi
   - [ ] pouvoir choisir des couleurs pour les valeurs des propriétés ?
+- [ ] pouvoir nettoyer les attachments du vault (tous les médias qui ne sont plus rattachés à rien)
+- [ ] je sais pas si c'est pertinent d'avoir caché le dossier ressources... mais ça ne sera vraiment puls pertinent du out avec les spaces
 
 # Roadmap précise
 - [x] intégration modules divers:

@@ -1,4 +1,4 @@
-import { MilkdownEditor } from "./components/MilkdownEditor/MilkdownEditor";
+import { NoteEditor } from "./components/NoteEditor/NoteEditor.tsx";
 import { useFileTree } from "./components/FileTree/hooks/useFileTree";
 import { SideBar } from "./components/SideBar";
 import { TabBar } from "./components/TabBar/TabBar";
@@ -11,7 +11,7 @@ import {
 } from "./lib/atoms.ts";
 import { useNote } from "./hooks/useNote";
 import { useVaultSync } from "./hooks/useVaultSync";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { platform } from "@tauri-apps/plugin-os";
 import { MobileApp } from "./components/Mobile/MobileApp";
 import { SettingsModal } from "./components/Settings/SettingsModal";
@@ -34,6 +34,28 @@ export default function App() {
   const folderPath = useAtomValue(folderPathAtom);
   const loading = useAtomValue(loadingAtom);
   const setSettingsOpen = useSetAtom(settingsOpenAtom);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositions = useRef(new Map<string, number>());
+
+  const handleScroll = useCallback(() => {
+    if (activeNote && scrollContainerRef.current) {
+      scrollPositions.current.set(
+        activeNote.id,
+        scrollContainerRef.current.scrollTop
+      );
+    }
+  }, [activeNote]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !activeNote) return;
+    const saved = scrollPositions.current.get(activeNote.id) ?? 0;
+    const raf = requestAnimationFrame(() => {
+      container.scrollTop = saved;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeNote?.id]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
@@ -71,9 +93,13 @@ export default function App() {
         <SavingIndicator />
         <TabBar />
 
-        <div className="flex-1 overflow-auto">
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-auto"
+          onScroll={handleScroll}
+        >
           {activeNote ? (
-            <MilkdownEditor key={activeNote.id} />
+            <NoteEditor key={activeNote.id} />
           ) : (
             <div className="h-full flex flex-col items-center justify-center gap-3">
               <p className="text-sm text-gray-400">

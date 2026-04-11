@@ -32,7 +32,12 @@ export function EditableText({
   // On flush le rename en attente au démontage.
   useEffect(() => {
     return () => {
-      const { isEditing: editing, editValue: val, value: orig, onSave: save } = stateRef.current;
+      const {
+        isEditing: editing,
+        editValue: val,
+        value: orig,
+        onSave: save,
+      } = stateRef.current;
       if (!editing) return;
       const trimmed = val.trim();
       if (trimmed && trimmed !== orig) {
@@ -80,7 +85,7 @@ export function EditableText({
         onChange={(e) => setEditValue(e.target.value)}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
-        className={`outline-none truncate ${className} items-baseline`}
+        className={`outline-none w-full truncate ${className} items-baseline px-1`}
       />
     );
   }
@@ -91,10 +96,11 @@ export function EditableText({
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
     <span
       onClick={clickToEdit ? startEditing : undefined}
       onDoubleClick={!clickToEdit ? startEditing : undefined}
-      className={`cursor-pointer hover:bg-gray-100 truncate ${className} items-baseline`}
+      className={`cursor-pointer hover:bg-gray-100 truncate ${className} items-baseline px-1`}
       title="Cliquer pour renommer"
     >
       {value}
