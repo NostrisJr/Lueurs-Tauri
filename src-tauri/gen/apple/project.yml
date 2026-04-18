@@ -63,11 +63,11 @@ targets:
       path: lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements
       properties:
         com.apple.developer.icloud-container-identifiers:
-          - iCloud.com.theophiledonato.lueurs
+          - iCloud.com.md.lueurs
         com.apple.developer.icloud-services:
           - CloudDocuments
         com.apple.developer.ubiquity-container-identifiers:
-          - iCloud.com.theophiledonato.lueurs
+          - iCloud.com.md.lueurs
     settings:
       base:
         ENABLE_BITCODE: false

@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
+tauri = { version = "2", features = ["macos-private-api", "protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -31,4 +31,6 @@ base64 = "0.22.1"
 serde_yaml = "0.9.34"
 indexmap = { version = "2.13.0", features = ["serde"] }
 tokio = { version = "1.50.0", features = ["full"] }
-
+tauri-plugin-audio-recorder = { path = "../../tauri-plugin-audio-recorder" }
+tauri-plugin-native-audio = "1"
+window-vibrancy = "0.7.1"

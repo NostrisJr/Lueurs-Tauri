@@ -24,12 +24,12 @@
 
 /* Begin PBXFileReference section */
 		1718538B73CED607F462488A /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
-		2469553325AE9DEE2B1B68D9 /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
+		2469553325AE9DEE2B1B68D9 /* lib.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = lib.rs; sourceTree = "<group>"; };
 		572472EF93F0B9CA150F0020 /* lueurs-tauri_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "lueurs-tauri_iOS.entitlements"; sourceTree = "<group>"; };
 		5D25857CEE97C24BCAFEF981 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		61A0A6BD76FB296C65F78288 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		657F3EB5443EB8FB48B5782F /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
-		7412F9C251F67E555A10CD86 /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		7412F9C251F67E555A10CD86 /* main.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.rs; sourceTree = "<group>"; };
 		7E9FEE720313BAE34BC9F4F5 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		7EF1982E42D5A438EA827564 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
 		8563AA36E3B064406E23A477 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
@@ -38,7 +38,7 @@
 		CBC9C52A14FC9FE50A2DF2D9 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		CFED8D9C07914E45FB100DCD /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		D6E41D6C6143136750A3C39E /* ICloudPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudPath.swift; sourceTree = "<group>"; };
-		E6D4E0B69E5E8CA2926EDC4D /* lueurs-tauri_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "lueurs-tauri_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E6D4E0B69E5E8CA2926EDC4D /* Lueurs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lueurs.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E72B79A5CA73D7D261461241 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
 		F053A03ED254C700E6184C50 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		FD4A9066B521CD93414E631A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
@@ -130,7 +130,7 @@
 		CA59F6DE3FA4F235DBE1EC94 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				E6D4E0B69E5E8CA2926EDC4D /* lueurs-tauri_iOS.app */,
+				E6D4E0B69E5E8CA2926EDC4D /* Lueurs.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -153,20 +153,6 @@
 			path = bindings;
 			sourceTree = "<group>";
 		};
-		"TEMP_AFCE171B-1D4B-4693-BB56-2D0A93E32AC1" /* arm64 */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = arm64;
-			sourceTree = "<group>";
-		};
-		"TEMP_F20D67F7-E5F3-4CE7-A027-30FB08091B95" /* x86_64 */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = x86_64;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -187,7 +173,7 @@
 			packageProductDependencies = (
 			);
 			productName = "lueurs-tauri_iOS";
-			productReference = E6D4E0B69E5E8CA2926EDC4D /* lueurs-tauri_iOS.app */;
+			productReference = E6D4E0B69E5E8CA2926EDC4D /* Lueurs.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -198,11 +184,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-					B141B63099925E8781C9EBFF = {
-						DevelopmentTeam = TBX8DPCBL9;
-					};
-				};
 			};
 			buildConfigurationList = 8ED34B82F327DF83284B5FF6 /* Build configuration list for PBXProject "lueurs-tauri" */;
 			developmentRegion = en;
@@ -277,12 +258,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ARCHS = (
-					arm64,
-				);
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements";
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "TBX8DPCBL9";
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
@@ -291,16 +271,36 @@
 					"\".\"",
 				);
 				INFOPLIST_FILE = "lueurs-tauri_iOS/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Lueurs;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION)",
+					"$(SDKROOT)/usr/lib/swift",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION)",
+					"$(SDKROOT)/usr/lib/swift",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
+				);
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.theophiledonato.lueurs;
 				PRODUCT_NAME = "Lueurs";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
 				VALID_ARCHS = arm64;
 			};
 			name = debug;
@@ -428,12 +428,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ARCHS = (
-					arm64,
-				);
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements";
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "TBX8DPCBL9";
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
@@ -442,16 +441,36 @@
 					"\".\"",
 				);
 				INFOPLIST_FILE = "lueurs-tauri_iOS/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Lueurs;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION)",
+					"$(SDKROOT)/usr/lib/swift",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION)",
+					"$(SDKROOT)/usr/lib/swift",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
+				);
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.theophiledonato.lueurs;
 				PRODUCT_NAME = "Lueurs";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
 				VALID_ARCHS = arm64;
 			};
 			name = release;

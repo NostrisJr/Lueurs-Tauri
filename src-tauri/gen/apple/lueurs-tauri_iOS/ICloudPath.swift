@@ -9,7 +9,7 @@ public func getICloudDocumentsPath(
     buffer: UnsafeMutablePointer<CChar>,
     maxLen: Int32
 ) -> Int32 {
-    // nil = premier container listé dans les entitlements (iCloud.com.theophiledonato.lueurs)
+    // nil = premier container listé dans les entitlements (iCloud.com.md.lueurs)
     guard let containerURL = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
         return 0
     }

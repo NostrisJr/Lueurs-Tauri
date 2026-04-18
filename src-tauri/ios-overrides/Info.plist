@@ -17,9 +17,11 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>0.1.0</string>
+	<string>0.1.1</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Lueurs utilise le microphone pour enregistrer des notes vocales.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-<string>Utilisé pour la connexion au serveur de développement Tauri.</string>
+	<string>Utilisé pour la connexion au serveur de développement Tauri.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -42,5 +44,17 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.md.lueurs</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Lueurs</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

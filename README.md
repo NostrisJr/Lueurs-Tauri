@@ -24,6 +24,6 @@ pnpm tauri dev
 ```bash
 pnpm dev              # Frontend seul (Vite)
 pnpm build            # Build de production (TS check + Vite)
-pnpm tauri build      # Binaire desktop
+pnpm macos:build      # Binaire macOS (voir ci-dessous)
 pnpm biome check src/ # Lint
 ```

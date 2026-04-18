@@ -182,6 +182,22 @@ Une barre de mise en forme apparaît au-dessus de l'éditeur markdown. Elle prop
 
 Les raccourcis clavier standards fonctionnent également directement dans l'éditeur (⌘B, ⌘I).
 
+### Modes d'affichage
+
+Les notes disposent de deux modes d'affichage, sélectionnables via les icônes en haut à droite de l'éditeur. Le mode actif est persisté dans le frontmatter de la note (`__DisplayMode__`) et restauré à chaque ouverture.
+
+**Mode normal** — affichage par défaut. Police sans empattement (Inter), texte aligné à gauche, code rendu en blocs distincts avec fond grisé.
+
+**Mode livre** — adapté à la lecture de textes longs. Police serif (EB Garamond), texte justifié, indentation de première ligne à chaque paragraphe. Le code y est intégré au flux du texte (italique, sans fond) et délimité par des barres verticales (`| code |`). Les listes utilisent des tirets (`–`) en lieu de puces.
+
+Le mode livre n'est pas disponible pour les notes de type `__base__`.
+
+**Mode par défaut.** Un mode de lecture par défaut peut être défini dans les paramètres de l'application (section *Éditeur*). Ce mode s'applique :
+- aux nouvelles notes (aucun `__DisplayMode__` dans le frontmatter) ;
+- aux notes existantes qui n'ont jamais eu de mode défini.
+
+Les notes qui possèdent déjà un `__DisplayMode__` dans leur frontmatter conservent leur mode, indépendamment du réglage par défaut.
+
 ### Listes de tâches
 
 Les listes de tâches Markdown (syntaxe `- [ ] tâche` et `- [x] tâche`) sont rendues avec des cases à cocher interactives. Cocher ou décocher une case met à jour le fichier Markdown immédiatement — sans modifier manuellement le `[x]`.

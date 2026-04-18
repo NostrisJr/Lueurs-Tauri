@@ -3,16 +3,29 @@ use std::path::{Path, PathBuf};
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 use tokio::task::JoinSet;
+use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 enum TemplateChange {
-    AddProp { key: String, value: Option<String> },
-    RemoveProp { key: String },
-    RenameProp { old_key: String, new_key: String, template_value: Option<String> },
-    ForceValue { key: String, value: String },
+    AddProp {
+        key: String,
+        value: Option<String>,
+    },
+    RemoveProp {
+        key: String,
+    },
+    RenameProp {
+        old_key: String,
+        new_key: String,
+        template_value: Option<String>,
+    },
+    ForceValue {
+        key: String,
+        value: String,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -35,8 +48,24 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_audio_recorder::init())
+        .plugin(tauri_plugin_native_audio::init())
         .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            #[cfg(target_os = "macos")]
+            {
+                let window = app.get_webview_window("main").unwrap();
+                apply_vibrancy(&window, NSVisualEffectMaterial::FullScreenUI, None, None)
+                    .expect("Vibrancy non supportée");
+            }
+            #[cfg(target_os = "ios")]
+            tauri::async_runtime::spawn(async {
+                let path = get_icloud_path().await;
+                eprintln!("[icloud] container path: {:?}", path);
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             allow_vault_path,
             copy_resource_to_vault,
@@ -45,6 +74,7 @@ pub fn run() {
             get_titlebar_height,
             get_scale_factor,
             get_icloud_path,
+            get_icloud_path_macos
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -71,11 +101,7 @@ fn get_scale_factor(window: tauri::Window) -> f64 {
 /// Écrit une note sur le disque et émet un événement vault:patch pour que le frontend
 /// réconcilie son état sans recharger tout l'arbre.
 #[tauri::command]
-async fn update_note(
-    app: tauri::AppHandle,
-    id: String,
-    raw_content: String,
-) -> Result<(), String> {
+async fn update_note(app: tauri::AppHandle, id: String, raw_content: String) -> Result<(), String> {
     let path = std::path::PathBuf::from(&id);
     tokio::fs::write(&path, raw_content.as_bytes())
         .await
@@ -174,7 +200,11 @@ fn clone_change(change: &TemplateChange) -> TemplateChange {
             value: value.clone(),
         },
         TemplateChange::RemoveProp { key } => TemplateChange::RemoveProp { key: key.clone() },
-        TemplateChange::RenameProp { old_key, new_key, template_value } => TemplateChange::RenameProp {
+        TemplateChange::RenameProp {
+            old_key,
+            new_key,
+            template_value,
+        } => TemplateChange::RenameProp {
             old_key: old_key.clone(),
             new_key: new_key.clone(),
             template_value: template_value.clone(),
@@ -229,7 +259,11 @@ fn apply_change(
             true
         }
         TemplateChange::RemoveProp { key } => fm.shift_remove(key.as_str()).is_some(),
-        TemplateChange::RenameProp { old_key, new_key, template_value } => {
+        TemplateChange::RenameProp {
+            old_key,
+            new_key,
+            template_value,
+        } => {
             let mut modified = false;
 
             if let Some(old_val) = fm.shift_remove(old_key.as_str()) {
@@ -368,7 +402,10 @@ fn replace_with_boundary(s: &str, from: &str, to: &str) -> String {
     let mut remaining = s;
     while let Some(idx) = remaining.find(from) {
         let after = &remaining[idx + from.len()..];
-        let next_is_word = after.chars().next().map_or(false, |c| c.is_alphanumeric() || c == '_');
+        let next_is_word = after
+            .chars()
+            .next()
+            .map_or(false, |c| c.is_alphanumeric() || c == '_');
         if next_is_word {
             // Faux positif (préfixe) — avancer d'un caractère et réessayer
             result.push_str(&remaining[..idx + 1]);
@@ -395,6 +432,31 @@ fn update_formula_refs(formula: &str, old_key: &str, new_key: &str) -> String {
     let s = replace_with_boundary(formula, &self_old, &self_new);
     // agg(old_key, : la virgule est déjà un délimiteur, pas de faux positif possible
     s.replace(&agg_old, &agg_new)
+}
+
+// ── iCloud macOS ──────────────────────────────────────────────────────────
+
+/// Vérifie si le conteneur iCloud de l'app existe sur macOS (sans le créer).
+/// Retourne Some(chemin) si le dossier est présent, None sinon.
+#[tauri::command]
+async fn get_icloud_path_macos() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let home = std::env::var("HOME").ok()?;
+        let path = format!(
+            "{}/Library/Mobile Documents/iCloud~com~md~lueurs/Documents",
+            home
+        );
+        if std::path::Path::new(&path).exists() {
+            eprintln!("[icloud-mac] conteneur trouvé : {}", path);
+            Some(path)
+        } else {
+            eprintln!("[icloud-mac] conteneur absent : {}", path);
+            None
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    None
 }
 
 // ── iCloud (iOS uniquement) ────────────────────────────────────────────────
@@ -430,7 +492,10 @@ async fn icloud_path_impl() -> Option<String> {
 #[cfg(target_os = "macos")]
 async fn icloud_path_impl() -> Option<String> {
     let home = std::env::var("HOME").ok()?;
-    let path = format!("{}/Library/Mobile Documents/iCloud~com~theophiledonato~lueurs/Documents", home);
+    let path = format!(
+        "{}/Library/Mobile Documents/iCloud~com~theophiledonato~lueurs/Documents",
+        home
+    );
     std::fs::create_dir_all(&path).ok();
     Some(path)
 }

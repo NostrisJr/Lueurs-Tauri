@@ -34,6 +34,7 @@ Les modifications sont appliquées immédiatement en mémoire (mise à jour opti
 | `update_note(id, raw_content)` | Écrit une note sur le disque et émet `vault:patch` |
 | `get_titlebar_height(window)` | Hauteur physique de la titlebar macOS (`inner_position.y - outer_position.y`) |
 | `get_scale_factor(window)` | DPR de la fenêtre (identique à `window.devicePixelRatio`) |
+| `get_icloud_path()` | Retourne le chemin du container iCloud (iOS et macOS) |
 
 ---
 
@@ -122,8 +123,8 @@ La hauteur de la title bar en pixels physiques est obtenue côté Rust :
 
 ```rust
 fn get_titlebar_height(window: tauri::Window) -> f64 {
-    let outer = window.outer_position().unwrap_or_default(); // frame fenêtre
-    let inner = window.inner_position().unwrap_or_default(); // viewport WebView
+    let outer = window.outer_position().unwrap_or_default();
+    let inner = window.inner_position().unwrap_or_default();
     (inner.y - outer.y) as f64
 }
 ```
@@ -132,12 +133,197 @@ Côté JS, les coordonnées raw du drop sont corrigées :
 
 ```ts
 const cssX = rawX / dpr;
-const cssY = (rawY + titlebarPhysical) / dpr; // + car wry a soustrait le titlebar en trop
+const cssY = (rawY + titlebarPhysical) / dpr;
 ```
 
 Le signe est `+titlebar` (pas `-`) car wry soustrait déjà l'offset title bar lors de la conversion macOS → CSS, créant un décalage négatif qu'il faut compenser. Ces valeurs sont ensuite passées à `document.elementFromPoint` pour identifier le dossier cible.
 
 L'offset est mis en cache après le premier drop (un seul `invoke` Rust pour la durée de vie de l'application).
+
+---
+
+## iOS & macOS — Synchronisation iCloud
+
+### Architecture retenue
+
+La synchronisation des notes entre l'app iOS et l'app macOS repose sur un **ubiquity container iCloud** (`iCloud.com.md.lueurs`). Le container est créé et possédé par l'app iOS — l'app macOS y accède via le système de fichiers directement, sans entitlements iCloud.
+
+```
+iPhone (producteur)                iCloud              Mac (consommateur)
+~/Library/Mobile Documents/  ←─── bird ───→  ~/Library/Mobile Documents/
+iCloud~com~md~lueurs/                         iCloud~com~md~lueurs/
+Documents/                                    Documents/
+```
+
+### Pourquoi le container est côté iOS uniquement
+
+L'accès programmatique à un ubiquity container (`FileManager.url(forUbiquityContainerIdentifier:)`) nécessite des entitlements iCloud signés avec un provisioning profile. Côté iOS, c'est géré automatiquement par Xcode. Côté macOS avec une distribution **Developer ID** (hors App Store), embarquer ces entitlements dans le bundle Tauri nécessite un provisioning profile Developer ID avec la capability iCloud — possible mais complexe à intégrer dans le pipeline de build Tauri.
+
+Par ailleurs, même avec ce provisioning profile, `bird` retourne "Client zone not found" côté Mac tant que l'app n'est pas distribuée via l'App Store ou TestFlight — le container n'est pas reconnu comme zone de sync publique par Apple avant ça.
+
+**Conséquence** : le dossier n'apparaît pas dans la barre latérale du Finder sous iCloud Drive, et `brctl status` retourne "Client zone not found". Ce sont des limitations cosmétiques — la synchronisation fonctionne correctement.
+
+### Historique et pièges rencontrés
+
+Plusieurs container IDs ont été tentés avant d'arriver à `iCloud.com.md.lueurs` :
+
+- `iCloud.com.theophiledonato.lueurs` — créé puis supprimé accidentellement ; les identifiants supprimés sont **définitivement blacklistés par Apple**, impossible de les récupérer
+- `iCloud.com.theophiledonato.lueurs-tauri` — résidu d'une configuration initiale erronée, également perdu
+
+**À ne jamais faire** : supprimer un container iCloud dans le Developer Portal. L'identifiant est blacklisté définitivement, même si c'est vous qui l'avez créé.
+
+### iOS — Initialisation du container
+
+Au démarrage, l'app iOS appelle une fonction Swift via FFI pour initialiser le container et obtenir son chemin :
+
+**`src-tauri/gen/apple/lueurs-tauri_iOS/ICloudBridge.swift`**
+```swift
+/// Appel potentiellement bloquant — doit être hors du thread principal.
+/// Retourne : nombre d'octets écrits (null inclus), 0 si iCloud indisponible,
+/// -1 si buffer trop petit.
+@_cdecl("get_icloud_documents_path")
+public func getICloudDocumentsPath(
+    buffer: UnsafeMutablePointer<CChar>,
+    maxLen: Int32
+) -> Int32 {
+    // nil = premier container listé dans les entitlements
+    guard let containerURL = FileManager.default.url(
+        forUbiquityContainerIdentifier: nil
+    ) else { return 0 }
+
+    let docsURL = containerURL.appendingPathComponent("Documents")
+    try? FileManager.default.createDirectory(
+        at: docsURL,
+        withIntermediateDirectories: true,
+        attributes: nil
+    )
+    let bytes = docsURL.path.utf8CString
+    guard bytes.count <= Int(maxLen) else { return -1 }
+    bytes.withUnsafeBufferPointer { ptr in
+        buffer.initialize(from: ptr.baseAddress!, count: bytes.count)
+    }
+    return Int32(bytes.count)
+}
+```
+
+Côté Rust, l'appel est fait via `spawn_blocking` (potentiellement bloquant au premier lancement) :
+
+```rust
+#[cfg(target_os = "ios")]
+async fn icloud_path_impl() -> Option<String> {
+    extern "C" {
+        fn get_icloud_documents_path(
+            buffer: *mut std::os::raw::c_char,
+            max_len: i32
+        ) -> i32;
+    }
+    tokio::task::spawn_blocking(|| {
+        let mut buffer = vec![0i8; 4096];
+        let len = unsafe { get_icloud_documents_path(buffer.as_mut_ptr(), 4096) };
+        if len <= 0 { return None; }
+        let cstr = unsafe { std::ffi::CStr::from_ptr(buffer.as_ptr()) };
+        Some(cstr.to_string_lossy().into_owned())
+    })
+    .await.ok().flatten()
+}
+```
+
+Le chemin retourné (`/private/var/mobile/Library/Mobile Documents/iCloud~com~md~lueurs/Documents`) est utilisé comme vault path automatiquement au premier lancement — aucun WelcomeScreen n'est affiché sur iOS.
+
+### Entitlements iOS
+
+**`src-tauri/gen/apple/lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements`** :
+```xml
+<key>com.apple.developer.icloud-container-identifiers</key>
+<array>
+    <string>iCloud.com.md.lueurs</string>
+</array>
+<key>com.apple.developer.icloud-services</key>
+<array>
+    <string>CloudDocuments</string>
+</array>
+<key>com.apple.developer.ubiquity-container-identifiers</key>
+<array>
+    <string>iCloud.com.md.lueurs</string>
+</array>
+```
+
+**`Info.plist` iOS** — rend le dossier visible dans l'app Fichiers iOS (une fois distribué via App Store) :
+```xml
+<key>NSUbiquitousContainers</key>
+<dict>
+    <key>iCloud.com.md.lueurs</key>
+    <dict>
+        <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+        <true/>
+        <key>NSUbiquitousContainerName</key>
+        <string>Lueurs</string>
+        <key>NSUbiquitousContainerSupportedFolderLevels</key>
+        <string>Any</string>
+    </dict>
+</dict>
+```
+
+### macOS — Accès au container
+
+L'app macOS n'a pas d'entitlements iCloud. Elle accède au container via le chemin statique connu :
+
+```rust
+#[cfg(target_os = "macos")]
+fn get_icloud_path_macos() -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let path = format!(
+        "{}/Library/Mobile Documents/iCloud~com~md~lueurs/Documents",
+        home
+    );
+    if std::path::Path::new(&path).exists() {
+        Some(path)
+    } else {
+        None
+    }
+}
+```
+
+Au premier lancement sur Mac, si le dossier iCloud existe (l'app iOS a déjà été lancée), il est utilisé directement comme vault path. Si le dossier n'existe pas (l'utilisateur commence par le Mac), le file picker s'ouvre avec un message expliquant qu'il faut d'abord installer et lancer l'app iOS.
+
+### Limitations connues et résolution prévue
+
+| Limitation | Cause | Résolution prévue |
+|---|---|---|
+| Dossier absent du Finder | `bird` ne reconnaît pas le container comme zone publique hors App Store | Publication sur App Store / TestFlight |
+| `brctl status` retourne "Client zone not found" | Le Mac n'est pas producteur du container | Idem — cosmétique, n'affecte pas la sync |
+| Dossier absent de l'app Fichiers iOS | Même raison | Idem |
+| L'utilisateur doit commencer par iOS | Le container est initialisé par l'app iOS uniquement | Idem — une fois sur App Store, le container sera reconnu des deux côtés |
+
+### Points d'attention
+
+- `src-tauri/gen/` est regénéré par `pnpm tauri ios init` — les entitlements et le `PrivacyInfo.xcprivacy` sont écrasés et doivent être réappliqués manuellement si cette commande est relancée
+- iCloud ne se synchronise pas dans le simulateur iOS — les tests de sync nécessitent un vrai device
+- Le container iCloud `iCloud.com.md.lueurs` est enregistré dans le Apple Developer Portal sous l'App ID `com.theophiledonato.lueurs` — **ne jamais supprimer ce container**
+
+---
+
+## iOS — Spécificités WKWebView
+
+### Barre d'assistance clavier (`disableInputAccessoryView`)
+
+iOS affiche par défaut une barre de navigation au-dessus du clavier sur tout `<input>` focusé (boutons Précédent / Suivant / Valider). Cette barre est inutile dans Lueurs et perturbe le positionnement du `FloatingInput` ancré via `visualViewport`.
+
+**Fix** : `"disableInputAccessoryView": true` dans la config de la fenêtre (`src-tauri/tauri.conf.json`) :
+
+```json
+"app": {
+  "windows": [
+    {
+      "disableInputAccessoryView": true
+    }
+  ]
+}
+```
+
+Tauri transmet cette option à WKWebView à la création de la webview. Elle est ignorée silencieusement sur macOS/desktop.
+
+**Ce qui n'a pas fonctionné** : patcher `inputAssistantItem` via une catégorie ObjC dans `main.mm` (swizzle de `initWithFrame:configuration:`) — l'approche est correcte en théorie mais n'avait aucun effet visible, probablement parce que Wry recrée ou reconfigure la WKWebView après l'init.
 
 ---
 
@@ -188,40 +374,6 @@ Les bases héritières d'un template sont exclues du batch Rust (elles ne reçoi
 
 ---
 
-## iOS — Sélection du vault
-
-### Problème : `open({ directory: true })` non implémenté sur iOS
-
-Le plugin Tauri `plugin-dialog` ne supporte pas la sélection de dossier sur iOS (issue plugins-workspace #933, ouverte depuis février 2024, sans ETA). L'appel est silencieux : aucune erreur, aucune UI. Il est donc impossible de laisser l'utilisateur choisir un dossier arbitraire via le dialog standard.
-
-Par ailleurs, le sandbox iOS interdit l'accès libre au système de fichiers — même avec un picker natif (`UIDocumentPickerViewController`), seuls les chemins explicitement accordés par l'utilisateur sont accessibles, et les URLs obtenues sont security-scoped (session-bound, doivent être bookmarkées pour survivre aux relances).
-
-### Solution retenue : `documentDir()` + iCloud Documents
-
-Sur iOS, le vault est fixé au dossier Documents de l'app, qui est automatiquement synchronisé avec iCloud Drive quand la capability *iCloud Documents* est activée. C'est le modèle standard des apps de notes iOS (Obsidian, Bear, etc.).
-
-**Détection de plateforme et init automatique :**
-
-- `pickFolder()` (`useFileTree.ts`) détecte iOS via `platform()` (`@tauri-apps/plugin-os`) et utilise `documentDir()` (`@tauri-apps/api/path`) au lieu du dialog.
-- `App.tsx` appelle `pickFolder()` automatiquement au montage si `folderPath` est null et la plateforme est iOS — aucun WelcomeScreen n'est affiché.
-- Sur desktop, le comportement est inchangé.
-
-**Entitlements iOS** (`src-tauri/gen/apple/lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements`) :
-
-```xml
-com.apple.developer.icloud-container-identifiers → iCloud.com.theophiledonato.lueurs-tauri
-com.apple.developer.icloud-services             → CloudDocuments
-com.apple.developer.ubiquity-kvstore-identifier → $(TeamIdentifierPrefix)com.theophiledonato.lueurs-tauri
-```
-
-**Point d'attention :** `src-tauri/gen/` est regénéré par `pnpm tauri ios init`. Si cette commande est relancée, les entitlements et le `PrivacyInfo.xcprivacy` sont écrasés et doivent être réappliqués manuellement.
-
-**Limitation simulateur :** iCloud ne se synchronise pas dans le simulateur iOS. Le chemin `documentDir()` est valide et utilisable pour tester la navigation et la création de notes, mais la synchro réelle n'est testable que sur un vrai device connecté à un compte iCloud.
-
-**Sélection d'un sous-dossier (non implémenté) :** Si le besoin se présente, la seule voie viable est un plugin Swift custom wrappant `UIDocumentPickerViewController` avec `UTType.folder`, en gérant les security-scoped URLs (`startAccessingSecurityScopedResource` + bookmark persisté).
-
----
-
 ## Raccourcis clavier et menu contextuel de l'éditeur
 
 ### Architecture
@@ -267,35 +419,25 @@ Seul les `shortcuts` sont configurables via `ctx.set(headingKeymap.key, ...)` �
 
 ### Problème AZERTY : event.key vs event.code
 
-**Symptôme** : les raccourcis `Mod-Alt-3`, `Mod-Alt-4`, `Mod-Alt-5` ne fonctionnaient pas sur clavier AZERTY macOS, alors que les niveaux 1, 2 et 6 fonctionnaient.
-
-**Cause** : `keymap()` de ProseMirror utilise `event.key` (le caractère produit) pour matcher les raccourcis. Sur AZERTY macOS, certaines combinaisons `Cmd+Option+chiffre` produisent un caractère spécial :
+**Cause générale** : `keymap()` de ProseMirror utilise `event.key` (le caractère produit) pour matcher les raccourcis. Sur AZERTY macOS, certaines combinaisons produisent un caractère spécial au lieu du caractère attendu :
 
 | Combinaison | `event.key` sur AZERTY | Attendu par keymap |
 |---|---|---|
 | Cmd+Option+3 | `"#"` | `"3"` |
 | Cmd+Option+4 | `"{"` | `"4"` |
 | Cmd+Option+5 | `"["` | `"5"` |
+| Cmd+² (touche Backquote) | `"²"` | `` "`" `` |
 
-Les niveaux 1, 2, 6 fonctionnaient car leurs combinaisons Option sur AZERTY macOS ne produisent pas de caractères interférents quand Cmd est simultanément tenu.
+**Fix** : `codeBasedShortcutsPlugin` — plugin ProseMirror avec `handleKeyDown` qui utilise `event.code` (position physique de la touche, indépendante du layout). Tous les raccourcis sensibles au layout y sont centralisés :
 
-**Fix** : `codeBasedShortcutsPlugin` — plugin ProseMirror avec `handleKeyDown` qui utilise `event.code` (position physique de la touche, indépendante du layout) :
+- `Mod+Alt+Digit0..6` → paragraphe / titres 1–6
+- `Mod+Alt+KeyC` → bloc de code
+- `Mod+Backquote` → code inline (`toggleInlineCodeCommand`)
+- `Mod+Shift+KeyK` → lien (`toggleLinkCommand`)
 
-```ts
-handleKeyDown(_view, event) {
-  const isMod = event.metaKey || event.ctrlKey;
-  if (!isMod || !event.altKey || event.shiftKey) return false;
+Pour le code inline : le preset Milkdown enregistre `Mod-\`` nativement. Sur QWERTY il gère en priorité (plugin registeré avant le nôtre) ; sur AZERTY `event.key: "²"` ne matche pas le preset, notre handler `event.code: "Backquote"` prend le relais. Pas de double déclenchement.
 
-  if (event.code in digitLevel) {
-    event.preventDefault();
-    commands.call(toggleHeadingCommand.key, { level: digitLevel[event.code] });
-    return true;
-  }
-  if (event.code === "KeyC") { /* toggle code block */ }
-}
-```
-
-`event.code` est `"Digit3"` quelle que soit la langue du clavier. Ce plugin remplace entièrement les entrées `"Mod-Alt-*"` dans `customKeymapPlugin` pour les raccourcis concernés.
+`event.code` est la position physique (`"Digit3"`, `"Backquote"`, `"KeyK"`) quelle que soit la langue du clavier.
 
 ### Menu contextuel natif (`useContextMenu`)
 

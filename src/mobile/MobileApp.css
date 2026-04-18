@@ -1,0 +1,7 @@
+html, body {
+  touch-action: manipulation; /* désactive le double-tap zoom */
+}
+
+* {
+  touch-action: pan-x pan-y; /* autorise le scroll mais pas le pinch-zoom */
+}

@@ -74,6 +74,12 @@ importers:
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
+      tauri-plugin-audio-recorder-api:
+        specifier: github:NostrisJr/tauri-plugin-audio-recorder#main
+        version: https://codeload.github.com/NostrisJr/tauri-plugin-audio-recorder/tar.gz/f4e9cfbef94ff4c7c4e7ec1332b297a533e95504
+      tauri-plugin-native-audio-api:
+        specifier: ^1.0.5
+        version: 1.0.5(@tauri-apps/api@2.10.1)
       unified:
         specifier: ^11.0.5
         version: 11.0.5
@@ -1930,6 +1936,15 @@ packages:
   tapable@2.3.0:
     resolution: {integrity: sha512-g9ljZiwki/LfxmQADO3dEY1CbpmXT5Hm2fJ+QaGKwSXUylMybePR7/67YW7jOrrvjEgL1Fmz5kzyAjWVWLlucg==}
     engines: {node: '>=6'}
+
+  tauri-plugin-audio-recorder-api@https://codeload.github.com/NostrisJr/tauri-plugin-audio-recorder/tar.gz/f4e9cfbef94ff4c7c4e7ec1332b297a533e95504:
+    resolution: {tarball: https://codeload.github.com/NostrisJr/tauri-plugin-audio-recorder/tar.gz/f4e9cfbef94ff4c7c4e7ec1332b297a533e95504}
+    version: 0.1.0
+
+  tauri-plugin-native-audio-api@1.0.5:
+    resolution: {integrity: sha512-G1v9xEhdN0mLbVAIXflhCzqxiqB9gy9Gs1dV/lc2mlZTO0J11PVOhaxPLZgOSvIvXrq0iLT7cvP53dgG6mBGoQ==}
+    peerDependencies:
+      '@tauri-apps/api': '>=2.10.0'
 
   tinyglobby@0.2.15:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
@@ -4318,6 +4333,14 @@ snapshots:
   tailwindcss@4.1.18: {}
 
   tapable@2.3.0: {}
+
+  tauri-plugin-audio-recorder-api@https://codeload.github.com/NostrisJr/tauri-plugin-audio-recorder/tar.gz/f4e9cfbef94ff4c7c4e7ec1332b297a533e95504:
+    dependencies:
+      '@tauri-apps/api': 2.10.1
+
+  tauri-plugin-native-audio-api@1.0.5(@tauri-apps/api@2.10.1):
+    dependencies:
+      '@tauri-apps/api': 2.10.1
 
   tinyglobby@0.2.15:
     dependencies:

@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "macos:build": "sh scripts/macos-build.sh",
     "ios:build": "sh scripts/ios-build.sh",
     "ios:dev": "pnpm tauri ios dev"
   },
@@ -34,6 +35,8 @@
     "react-dom": "^19.1.0",
     "remark-directive": "^4.0.0",
     "tailwindcss": "^4.1.18",
+    "tauri-plugin-audio-recorder-api": "github:NostrisJr/tauri-plugin-audio-recorder#main",
+    "tauri-plugin-native-audio-api": "^1.0.5",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0"
   },

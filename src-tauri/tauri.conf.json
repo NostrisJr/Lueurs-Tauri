@@ -16,11 +16,16 @@
         "width": 1200,
         "height": 800,
         "titleBarStyle": "Overlay",
+        "trafficLightPosition": { "x": 18, "y": 29 },
         "hiddenTitle": true,
-        "acceptFirstMouse": true
+        "acceptFirstMouse": true,
+        "disableInputAccessoryView": true,
+        "transparent": true
       }
     ],
+    "macOSPrivateApi": true,
     "security": {
+      "csp": "default-src 'self' blob: data: asset: 'unsafe-inline'; connect-src ipc: http://ipc.localhost",
       "assetProtocol": {
         "enable": true,
         "scope": []
@@ -33,7 +38,8 @@
     "targets": "all",
     "macOS": {
       "entitlements": "./Entitlements.plist",
-      "signingIdentity": "Developer ID Application: JUBILATE POP LOUANGE (TBX8DPCBL9)"
+      "signingIdentity": "Developer ID Application: JUBILATE POP LOUANGE (TBX8DPCBL9)",
+      "infoPlist": "./Info.plist"
     },
     "iOS": {
       "developmentTeam": "TBX8DPCBL9"
