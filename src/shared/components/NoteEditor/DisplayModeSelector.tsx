@@ -16,10 +16,7 @@ export function DisplayModeSelector({ onModeChange }: Props) {
   }
 
   return (
-    <div
-      className="fixed z-50 top-3 right-4 flex gap-0.5 bg-gray-100/80 backdrop-blur rounded-full px-1.5 py-1"
-      style={{ transition: "opacity 0.2s" }}
-    >
+    <div className="flex gap-0.5 h-10 bg-gray-100/80 rounded-full p-0.75 transition">
       {DISPLAY_MODES.map(({ value, icon, label: title }) => (
         <button
           key={value}
@@ -27,7 +24,7 @@ export function DisplayModeSelector({ onModeChange }: Props) {
           title={title}
           onClick={() => handleSelect(value)}
           className={[
-            "px-3 py-1 rounded-full transition-all cursor-default",
+            "px-4 py-1 rounded-full transition-all cursor-default flex items-center justify-center",
             mode === value
               ? "bg-white shadow-sm text-gray-700"
               : "text-gray-400 hover:text-gray-500",

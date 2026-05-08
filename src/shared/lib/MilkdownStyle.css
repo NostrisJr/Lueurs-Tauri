@@ -15,8 +15,9 @@
   padding: 28px 68px 96px;
 
   font-family: 'Inter', Arial, Helvetica, sans-serif;
-  font-size: 16px; /* Attention, si moins, iOS fait un zoom automatique pour des questions d'accessibilité */
-  line-height: 1.75;
+  font-size: 16px;
+  /* Attention, si moins, iOS fait un zoom automatique pour des questions d'accessibilité */
+  line-height: 1.5;
   color: #1a1918;
 
   caret-color: #f4af2f;
@@ -41,23 +42,44 @@
 .milkdown .ProseMirror h6 {
   font-family: 'Inter', Arial, Helvetica, sans-serif;
   font-weight: 500;
-  line-height: 1.25;
+  line-height: 1;
   color: #1a1918;
-  margin-top: 1em;
+  margin-top: 0.5em;
   margin-bottom: 0.4em;
 }
 
-.milkdown .ProseMirror h1 { font-size: 3em; }
-.milkdown .ProseMirror h2 { font-size: 2.5em; }
-.milkdown .ProseMirror h3 { font-size: 2em; font-weight: 600; }
-.milkdown .ProseMirror h4 { font-size: 1.75em;   font-weight: 600; }
-.milkdown .ProseMirror h5 { font-size: 1.5em; font-weight: 600; }
-.milkdown .ProseMirror h6 { font-size: 1.25em;    font-weight: 600; }
+.milkdown .ProseMirror h1 {
+  font-size: 3em;
+}
+
+.milkdown .ProseMirror h2 {
+  font-size: 2.5em;
+}
+
+.milkdown .ProseMirror h3 {
+  font-size: 2em;
+  font-weight: 600;
+}
+
+.milkdown .ProseMirror h4 {
+  font-size: 1.75em;
+  font-weight: 600;
+}
+
+.milkdown .ProseMirror h5 {
+  font-size: 1.5em;
+  font-weight: 600;
+}
+
+.milkdown .ProseMirror h6 {
+  font-size: 1.25em;
+  font-weight: 600;
+}
 
 /* Premier titre sans marge haute */
-.milkdown .ProseMirror > h1:first-child,
-.milkdown .ProseMirror > h2:first-child,
-.milkdown .ProseMirror > h3:first-child {
+.milkdown .ProseMirror>h1:first-child,
+.milkdown .ProseMirror>h2:first-child,
+.milkdown .ProseMirror>h3:first-child {
   margin-top: 0;
 }
 
@@ -191,8 +213,8 @@
 }
 
 /* Listes imbriquées */
-.milkdown .ProseMirror li > ul,
-.milkdown .ProseMirror li > ol {
+.milkdown .ProseMirror li>ul,
+.milkdown .ProseMirror li>ol {
   margin: 0.1em 0;
 }
 
@@ -297,8 +319,8 @@
   --crepe-font-title: 'EB Garamond', Garamond, Georgia, serif;
   --crepe-font-default: 'Inter', Arial, Helvetica, sans-serif;
   --crepe-font-code: 'Fira Code', Menlo, Monaco, 'Courier New', monospace;
-  --crepe-shadow-1: 0px 1px 3px 1px rgba(0,0,0,0.05), 0px 1px 2px 0px rgba(0,0,0,0.1);
-  --crepe-shadow-2: 0px 2px 6px 2px rgba(0,0,0,0.05), 0px 1px 2px 0px rgba(0,0,0,0.1);
+  --crepe-shadow-1: 0px 1px 3px 1px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
+  --crepe-shadow-2: 0px 2px 6px 2px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -333,9 +355,8 @@
   color: currentColor;
 }
 
-/* L'icône SVG hérite de la taille du bouton */
 .milkdown .ProseMirror .fold-btn svg {
-  width: 0.3em;
+  width: 10px;
   height: auto;
 }
 
@@ -397,17 +418,6 @@
   padding-bottom: 0.8em;
 }
 
-/* Pas d'indentation après un titre ou en début de bloc */
-.mode-livre .milkdown .ProseMirror h1 + p,
-.mode-livre .milkdown .ProseMirror h2 + p,
-.mode-livre .milkdown .ProseMirror h3 + p,
-.mode-livre .milkdown .ProseMirror h4 + p,
-.mode-livre .milkdown .ProseMirror h5 + p,
-.mode-livre .milkdown .ProseMirror h6 + p,
-.mode-livre .milkdown .ProseMirror > p:first-child {
-  text-indent: 0;
-}
-
 /* Pas d'indentation dans les li ni les blockquotes */
 .mode-livre .milkdown .ProseMirror li p,
 .mode-livre .milkdown .ProseMirror blockquote p {
@@ -433,10 +443,14 @@
   color: var(--color-gray-600);
 }
 
+.mode-livre .milkdown .ProseMirror ul li.task-list-item::before {
+  content: none;
+}
+
 /* ── Code — didascalies ────────────────────────────────────────────────── */
 
 /* Code inline */
-.mode-livre .milkdown .ProseMirror :not(pre) > code {
+.mode-livre .milkdown .ProseMirror :not(pre)>code {
   font-family: 'EB Garamond', Garamond, Georgia, serif;
   font-style: italic;
   background: none;
@@ -445,8 +459,13 @@
   border-radius: 0;
 }
 
-.mode-livre .milkdown .ProseMirror :not(pre) > code::before { content: "| "; }
-.mode-livre .milkdown .ProseMirror :not(pre) > code::after  { content: " |"; }
+.mode-livre .milkdown .ProseMirror :not(pre)>code::before {
+  content: "| ";
+}
+
+.mode-livre .milkdown .ProseMirror :not(pre)>code::after {
+  content: " |";
+}
 
 /* Bloc de code */
 .mode-livre .milkdown .ProseMirror pre {
@@ -460,10 +479,18 @@
   line-height: inherit;
   text-indent: 0;
   overflow-x: visible;
+  white-space: pre-wrap;
+  /* ← préserve les sauts de ligne */
+  word-break: break-word;
 }
 
-.mode-livre .milkdown .ProseMirror pre::before { content: "| "; }
-.mode-livre .milkdown .ProseMirror pre::after  { content: " |"; }
+.mode-livre .milkdown .ProseMirror pre::before {
+  content: "| ";
+}
+
+.mode-livre .milkdown .ProseMirror pre::after {
+  content: " |";
+}
 
 .mode-livre .milkdown .ProseMirror pre code {
   font-family: 'EB Garamond', Garamond, Georgia, serif;

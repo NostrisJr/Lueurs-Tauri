@@ -51,7 +51,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
   return (
     <div className="relative flex flex-col h-full pt-7 overflow-clip [overflow-clip-margin:8px]">
       {/* ── Partie haute fixe ────────────────────────────── */}
-      <div className="shrink-0">
+      <div className="shrink-0 select-none">
         {/* collapse la sidebar */}
         <button
           className={`absolute z-100 top-1 right-3 text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-opacity duration-300 ${sideBarCollapsed ? "opacity-0" : "opacity-100"}`}

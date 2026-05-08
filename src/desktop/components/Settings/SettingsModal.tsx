@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { invoke } from "@tauri-apps/api/core";
-import { settingsOpenAtom, folderPathAtom, defaultDisplayModeAtom } from "../../../shared/lib/Atoms";
+import {
+  settingsOpenAtom,
+  folderPathAtom,
+  defaultDisplayModeAtom,
+} from "../../../shared/lib/Atoms";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
@@ -9,11 +13,15 @@ import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 export function SettingsModal() {
   const [open, setOpen] = useAtom(settingsOpenAtom);
   const folderPath = useAtomValue(folderPathAtom);
-  const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(defaultDisplayModeAtom);
+  const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(
+    defaultDisplayModeAtom
+  );
   const { pickFolder, switchVault } = useFileTree();
 
   // null = absent, undefined = en cours de vérification, string = chemin trouvé
-  const [icloudPath, setIcloudPath] = useState<string | null | undefined>(undefined);
+  const [icloudPath, setIcloudPath] = useState<string | null | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     invoke<string | null>("get_icloud_path_macos").then(setIcloudPath);
@@ -41,7 +49,7 @@ export function SettingsModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
+      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/20"
       onClick={() => setOpen(false)}
       onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
     >
@@ -55,14 +63,15 @@ export function SettingsModal() {
         </div>
 
         <div className="px-6 py-5 space-y-6">
-
           {/* Mode de lecture par défaut */}
           <section>
             <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
               Éditeur
             </h3>
             <div className="space-y-1.5">
-              <p className="text-xs text-gray-500">Mode de lecture par défaut</p>
+              <p className="text-xs text-gray-500">
+                Mode de lecture par défaut
+              </p>
               <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
                 {DISPLAY_MODES.map(({ value, icon, label }) => (
                   <button
@@ -75,7 +84,11 @@ export function SettingsModal() {
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    <SFIcon icon={icon} className="size-3.5" aria-hidden="true" />
+                    <SFIcon
+                      icon={icon}
+                      className="size-3.5"
+                      aria-hidden="true"
+                    />
                     {label}
                   </button>
                 ))}
@@ -91,7 +104,6 @@ export function SettingsModal() {
               Vault
             </h3>
             <div className="space-y-3">
-
               {/* Dossier courant */}
               <div className="space-y-1.5">
                 <p className="text-xs text-gray-500">Dossier racine</p>
@@ -114,7 +126,9 @@ export function SettingsModal() {
 
               {/* Option iCloud */}
               <div className="space-y-1.5">
-                <p className={`text-xs ${icloudAvailable ? "text-gray-500" : "text-gray-300"}`}>
+                <p
+                  className={`text-xs ${icloudAvailable ? "text-gray-500" : "text-gray-300"}`}
+                >
                   Vault iCloud (partagé avec l'app iOS)
                 </p>
                 {icloudAvailable ? (
@@ -145,7 +159,6 @@ export function SettingsModal() {
                   </div>
                 )}
               </div>
-
             </div>
           </section>
         </div>

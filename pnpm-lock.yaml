@@ -59,6 +59,9 @@ importers:
       '@tauri-apps/plugin-shell':
         specifier: ~2.3.5
         version: 2.3.5
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       jotai:
         specifier: ^2.17.1
         version: 2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4)

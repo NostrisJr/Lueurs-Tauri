@@ -4076,9 +4076,12 @@ dependencies = [
 name = "tauri-plugin-audio-recorder"
 version = "0.1.0"
 dependencies = [
+ "block2",
  "cpal",
  "hound",
  "log",
+ "objc2",
+ "objc2-foundation",
  "serde",
  "serde_json",
  "tauri",

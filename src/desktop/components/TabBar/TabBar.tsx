@@ -1,5 +1,9 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { activeNoteIdAtom, openTabIdsAtom, treeAtom } from "../../../shared/lib/Atoms";
+import {
+  activeNoteIdAtom,
+  openTabIdsAtom,
+  treeAtom,
+} from "../../../shared/lib/Atoms";
 import { flattenTree, type NoteFile } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
@@ -79,7 +83,7 @@ export function TabBar() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-1 h-8 bg-gray-100 inset-shadow-xs rounded-full p-0.75 mt-2 mx-2 overflow-x-auto shrink-0 scroll-hidden">
+      <div className="flex z-100 gap-1 h-8 bg-gray-100 inset-shadow-xs rounded-full p-0.75 mt-2 mx-2 overflow-x-auto shrink-0 scroll-hidden">
         <SortableContext
           items={openTabIds}
           strategy={horizontalListSortingStrategy}

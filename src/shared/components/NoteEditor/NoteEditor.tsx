@@ -1,9 +1,16 @@
-import React, { forwardRef, useRef, useCallback, useState, useEffect } from "react";
+import type React from "react";
+import { forwardRef, useRef, useCallback, useState, useEffect } from "react";
 import { MilkdownProvider } from "@milkdown/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { platform } from "@tauri-apps/plugin-os";
 import { useNote } from "../../hooks/useNote.ts";
-import { activeNoteAtom, displayModeAtom, defaultDisplayModeAtom, folderPathAtom, type DisplayMode } from "../../lib/Atoms";
+import {
+  activeNoteAtom,
+  displayModeAtom,
+  defaultDisplayModeAtom,
+  folderPathAtom,
+  type DisplayMode,
+} from "../../lib/Atoms";
 import { NoteType, SystemField } from "../../lib/noteTypes";
 import { BaseView } from "../../../desktop/components/BaseView/BaseView";
 import { MobileBaseView } from "../../../mobile/components/MobileBaseView";
@@ -12,7 +19,6 @@ import { FrontmatterEditor } from "../../../desktop/components/Frontmatter/Front
 import { MarkdownEditor, type EditorHandle } from "./MarkdownEditor.tsx";
 import { NoteHeader } from "./NoteHeader.tsx";
 import { EditorToolbar } from "./EditorToolbar.tsx";
-import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
 import { DesktopDictaphone } from "../../../desktop/components/Dictaphone/DesktopDictaphone";
 
 export type { EditorHandle };
@@ -20,11 +26,17 @@ export type { EditorHandle };
 interface Props {
   defaultCollapsedFrontmatter?: boolean;
   hideDisplayModeSelector?: boolean;
-  displayModeHandlerRef?: React.MutableRefObject<((mode: DisplayMode) => void) | null>;
+  displayModeHandlerRef?: React.MutableRefObject<
+    ((mode: DisplayMode) => void) | null
+  >;
 }
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  { defaultCollapsedFrontmatter = false, hideDisplayModeSelector = false, displayModeHandlerRef },
+  {
+    defaultCollapsedFrontmatter = false,
+    hideDisplayModeSelector = false,
+    displayModeHandlerRef,
+  },
   ref
 ) {
   const { handleRename, handleChange } = useNote();
@@ -38,9 +50,17 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
 
   // Sync atom depuis le frontmatter à chaque changement de note ; repli sur le défaut utilisateur
   useEffect(() => {
-    const saved = activeNote?.frontmatter[SystemField.DISPLAY_MODE] as DisplayMode | undefined;
-    setDisplayMode(saved === "livre" || saved === "normal" ? saved : defaultDisplayMode);
-  }, [activeNote?.id, setDisplayMode, defaultDisplayMode]);
+    const saved = activeNote?.frontmatter[SystemField.DISPLAY_MODE] as
+      | DisplayMode
+      | undefined;
+    setDisplayMode(
+      saved === "livre" || saved === "normal" ? saved : defaultDisplayMode
+    );
+  }, [
+    setDisplayMode,
+    defaultDisplayMode,
+    activeNote?.frontmatter[SystemField.DISPLAY_MODE],
+  ]);
 
   // Connecte à la fois le ref interne (pour la toolbar) et le ref externe (pour le parent)
   const setRef = useCallback(
@@ -62,18 +82,6 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     handleChange(activeNote.body, updated);
   }
 
-  function handleDisplayModeChange(mode: DisplayMode) {
-    if (!activeNote) return;
-    handleChange(activeNote.body, { ...activeNote.frontmatter, [SystemField.DISPLAY_MODE]: mode });
-  }
-
-  // Expose le handler au parent (mobile) via ref
-  useEffect(() => {
-    if (displayModeHandlerRef) {
-      displayModeHandlerRef.current = handleDisplayModeChange;
-    }
-  });
-
   const isBase = activeNote?.type === NoteType.BASE;
 
   return (
@@ -81,30 +89,29 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       {activeNote && folderPath && (
         <div className="">
           <NoteHeader
+            hideDisplayModeSelector={hideDisplayModeSelector}
             onRename={async (newName) => {
               await handleRename(activeNote.id, newName, false);
             }}
+            displayModeHandlerRef={displayModeHandlerRef}
           />
 
           {!isBase && (
-            <>
-              {!hideDisplayModeSelector && <DisplayModeSelector onModeChange={handleDisplayModeChange} />}
-              <div className="relative select-none">
-                <EditorToolbar
-                  editorRef={internalRef}
-                  onRecord={isDesktop ? () => setDictaphoneOpen(true) : undefined}
+            <div className="relative select-none">
+              <EditorToolbar
+                editorRef={internalRef}
+                onRecord={isDesktop ? () => setDictaphoneOpen(true) : undefined}
+              />
+              {dictaphoneOpen && (
+                <DesktopDictaphone
+                  onInsert={(path, title) => {
+                    internalRef.current?.insertAudioBlock(path, title);
+                    setDictaphoneOpen(false);
+                  }}
+                  onClose={() => setDictaphoneOpen(false)}
                 />
-                {dictaphoneOpen && (
-                  <DesktopDictaphone
-                    onInsert={(path, title) => {
-                      internalRef.current?.insertAudioBlock(path, title);
-                      setDictaphoneOpen(false);
-                    }}
-                    onClose={() => setDictaphoneOpen(false)}
-                  />
-                )}
-              </div>
-            </>
+              )}
+            </div>
           )}
 
           <div className="relative pb-10">

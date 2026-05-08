@@ -1,7 +1,11 @@
 import { $prose } from "@milkdown/kit/utils";
 import { Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
 import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
-import type { EditorView, NodeView, ViewMutationRecord } from "@milkdown/kit/prose/view";
+import type {
+  EditorView,
+  NodeView,
+  ViewMutationRecord,
+} from "@milkdown/kit/prose/view";
 import { sfChevronRight } from "@bradleyhodges/sfsymbols";
 import { headingFoldPluginKey, findSectionEnd } from "./headingFoldPlugin";
 import { createLogger } from "../../lib/logger";
@@ -19,6 +23,7 @@ function isHeadingFolded(view: EditorView, pos: number): boolean {
 
 /** Crée un SVG SF Symbols chevron.right réutilisable */
 function createChevronSVG(): SVGSVGElement {
+  /* TODO : pourquoi pas les symboles SF ? */
   const { viewBox, svgPathData } = sfChevronRight;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", viewBox);
