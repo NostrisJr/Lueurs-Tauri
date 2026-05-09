@@ -19,6 +19,9 @@ import {
   toggleHeadingCommand,
   toggleCodeBlockCommand,
   toggleLinkWithPromptCommand,
+  togglePoetryCommand,
+  toggleDidascalieInlineCommand,
+  toggleDidascalieBlockCommand,
 } from "../../../plugins/customKeymap";
 import {
   Menu,
@@ -73,6 +76,10 @@ export function useContextMenu(
                   action: () => call(toggleInlineCodeCommand.key),
                 }),
                 MenuItem.new({
+                  text: "Didascalie inline\t⌘D",
+                  action: () => call(toggleDidascalieInlineCommand.key),
+                }),
+                MenuItem.new({
                   text: "Lien\t⌘⇧K",
                   action: () => call(toggleLinkWithPromptCommand.key),
                 }),
@@ -110,24 +117,32 @@ export function useContextMenu(
                   action: () => call(toggleHeadingCommand.key, { level: 6 }),
                 }),
                 MenuItem.new({
-                  text: "Citation\t⌘⇧B",
-                  action: () => call(toggleBlockquoteCommand.key),
+                  text: "Liste numérotée\t⌘⇧7",
+                  action: () => call(toggleOrderedListCommand.key),
                 }),
                 MenuItem.new({
                   text: "Liste à puces\t⌘⇧8",
                   action: () => call(toggleBulletListCommand.key),
                 }),
                 MenuItem.new({
-                  text: "Liste numérotée\t⌘⇧7",
-                  action: () => call(toggleOrderedListCommand.key),
-                }),
-                MenuItem.new({
                   text: "Liste de tâches\t⌘⇧9",
                   action: () => call(toggleTaskListCommand.key),
                 }),
                 MenuItem.new({
-                  text: "Bloc de code\t⌘⌥E",
+                  text: "Citation\t⌘⇧B",
+                  action: () => call(toggleBlockquoteCommand.key),
+                }),
+                MenuItem.new({
+                  text: "Bloc de code\t⌘⇧E",
                   action: () => call(toggleCodeBlockCommand.key),
+                }),
+                MenuItem.new({
+                  text: "Poésie / Chanson\t⌘⇧P",
+                  action: () => call(togglePoetryCommand.key),
+                }),
+                MenuItem.new({
+                  text: "Bloc didascalie\t⌘⇧D",
+                  action: () => call(toggleDidascalieBlockCommand.key),
                 }),
                 MenuItem.new({
                   text: "Séparateur\t⌘⇧H",

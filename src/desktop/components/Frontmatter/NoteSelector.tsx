@@ -51,7 +51,7 @@ export function NoteSelector({
         />
       </div>
       <div
-        className="overflow-y-auto"
+        className="overflow-y-auto flex-col flex"
         style={{ maxHeight: isMobile ? "50vh" : 192 }}
       >
         {filtered.length === 0 ? (

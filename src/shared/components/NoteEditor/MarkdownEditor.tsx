@@ -41,9 +41,13 @@ import {
   toggleHeadingCommand,
   toggleCodeBlockCommand,
   toggleLinkWithPromptCommand,
+  togglePoetryCommand,
+  toggleDidascalieInlineCommand,
+  toggleDidascalieBlockCommand,
 } from "../../plugins/customKeymap";
+import { poetryBlockPlugin } from "../../plugins/poetry-block/poetryBlockPlugin";
+import { didascaliePlugin } from "../../plugins/didascalie/didascaliePlugin";
 import { createLogger } from "../../lib/logger";
-import "../../lib/MilkdownStyle.css";
 
 export interface EditorHandle {
   bold: () => void;
@@ -138,7 +142,9 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
     const insertAudioBlock = useCallback(
       (path: string, title: string) => {
         // Normalise en chemin relatif au vault pour la portabilité cross-platform
-        const vaultPrefix = vaultPath.endsWith("/") ? vaultPath : `${vaultPath}/`;
+        const vaultPrefix = vaultPath.endsWith("/")
+          ? vaultPath
+          : `${vaultPath}/`;
         const relativePath = path.startsWith(vaultPrefix)
           ? path.slice(vaultPrefix.length)
           : path;
@@ -305,7 +311,8 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
         .use(
           createAudioBlockPlugin({
             readAudioData: async (src: string) => {
-              const isAbsolute = src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
+              const isAbsolute =
+                src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
               const absolutePath = isAbsolute ? src : `${vaultPath}/${src}`;
               log.info("lecture fichier audio", { src, absolutePath });
               // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
@@ -313,12 +320,14 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
             },
             resolveAudioPath: async (src: string) => {
               // Conservé comme fallback (contexte sans Tauri FS, ex. dev web pur)
-              const isAbsolute = src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
+              const isAbsolute =
+                src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
               const absolutePath = isAbsolute ? src : `${vaultPath}/${src}`;
               return convertFileSrc(absolutePath);
             },
             resolveAbsolutePath: (src: string) => {
-              const isAbsolute = src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
+              const isAbsolute =
+                src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
               return isAbsolute ? src : `${vaultPath}/${src}`;
             },
           })
@@ -327,6 +336,8 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
         .use(taskListPlugin)
         .use(headingFoldPlugin)
         .use(headingNodeViewPlugin)
+        .use(poetryBlockPlugin)
+        .use(didascaliePlugin)
         .use(toggleBlockquoteCommand)
         .use(toggleBulletListCommand)
         .use(toggleOrderedListCommand)
@@ -334,6 +345,9 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
         .use(toggleHeadingCommand)
         .use(toggleCodeBlockCommand)
         .use(toggleLinkWithPromptCommand)
+        .use(togglePoetryCommand)
+        .use(toggleDidascalieInlineCommand)
+        .use(toggleDidascalieBlockCommand)
         .use(customKeymapPlugin)
         .use(codeBasedShortcutsPlugin);
 

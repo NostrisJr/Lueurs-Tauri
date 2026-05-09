@@ -243,6 +243,77 @@ export const toggleHeadingCommand = $command(
   }
 );
 
+export const toggleDidascalieInlineCommand = $command(
+  "ToggleDidascalieInline",
+  (ctx) => () => (state, dispatch) => {
+    const schema = ctx.get(schemaCtx);
+    const didascalieType = schema.nodes.didascalie_inline;
+    if (!didascalieType) return false;
+
+    const { from, to, empty } = state.selection;
+    const { $from } = state.selection;
+
+    // Curseur dans une didascalie : on déballe le nœud (texte seul restitué)
+    for (let d = $from.depth; d > 0; d--) {
+      if ($from.node(d).type === didascalieType) {
+        const before = $from.before(d);
+        const after = $from.after(d);
+        const text = $from.node(d).textContent;
+        if (dispatch) {
+          const tr = state.tr.replaceWith(
+            before,
+            after,
+            text ? schema.text(text) : []
+          );
+          dispatch(tr);
+        }
+        return true;
+      }
+    }
+
+    // Sélection vide hors didascalie : rien à faire
+    if (empty) return false;
+
+    // Wrap la sélection (texte uniquement — les marks sont perdus, le nœud
+    // n'autorise pas les marks pour éviter l'ambiguïté de parsing).
+    const text = state.doc.textBetween(from, to);
+    if (!text) return false;
+    const node = didascalieType.create(null, schema.text(text));
+    if (dispatch) dispatch(state.tr.replaceWith(from, to, node));
+    return true;
+  }
+);
+
+export const toggleDidascalieBlockCommand = $command(
+  "ToggleDidascalieBlock",
+  (ctx) => () => (state, dispatch) => {
+    const schema = ctx.get(schemaCtx);
+    const blockType = schema.nodes.didascalie_block;
+    if (!blockType) return false;
+
+    if (isInNodeType(state, schema, "didascalie_block")) {
+      return lift(state, dispatch);
+    }
+
+    return applyWithEscape(state, dispatch, schema, wrapIn(blockType));
+  }
+);
+
+export const togglePoetryCommand = $command(
+  "TogglePoetry",
+  (ctx) => () => (state, dispatch) => {
+    const schema = ctx.get(schemaCtx);
+    const poetryType = schema.nodes.poetry_block;
+    if (!poetryType) return false;
+
+    if (isInNodeType(state, schema, "poetry_block")) {
+      return lift(state, dispatch);
+    }
+
+    return applyWithEscape(state, dispatch, schema, wrapIn(poetryType));
+  }
+);
+
 export const toggleCodeBlockCommand = $command(
   "ToggleCodeBlock",
   (ctx) => () => (state, dispatch) => {
@@ -326,12 +397,19 @@ export const customKeymapPlugin = $prose((ctx) =>
     "Mod-Shift-s": () =>
       ctx.get(commandsCtx).call(toggleStrikethroughCommand.key),
     // Structures
-    "Mod-Shift-b": () => ctx.get(commandsCtx).call(toggleBlockquoteCommand.key),
+
     "Mod-Shift-7": () =>
       ctx.get(commandsCtx).call(toggleOrderedListCommand.key),
     "Mod-Shift-8": () => ctx.get(commandsCtx).call(toggleBulletListCommand.key),
     "Mod-Shift-9": () => ctx.get(commandsCtx).call(toggleTaskListCommand.key),
     "Mod-Shift-h": () => ctx.get(commandsCtx).call(insertHrCommand.key),
+    "Mod-Shift-b": () => ctx.get(commandsCtx).call(toggleBlockquoteCommand.key),
+    "Mod-Shift-e": () => ctx.get(commandsCtx).call(toggleCodeBlockCommand.key),
+    "Mod-Shift-p": () => ctx.get(commandsCtx).call(togglePoetryCommand.key),
+    "Mod-d": () =>
+      ctx.get(commandsCtx).call(toggleDidascalieInlineCommand.key),
+    "Mod-Shift-d": () =>
+      ctx.get(commandsCtx).call(toggleDidascalieBlockCommand.key),
   })
 );
 
@@ -352,19 +430,9 @@ export const codeBasedShortcutsPlugin = $prose(
           const isMod = event.metaKey || event.ctrlKey;
           if (!isMod) return false;
 
-          // Log diagnostic pour les touches sensibles au layout (KeyK+Shift)
-          if (event.shiftKey && event.code === "KeyK") {
-            log.info("touche sensible au layout interceptée", {
-              code: event.code,
-              key: event.key,
-              alt: event.altKey,
-              shift: event.shiftKey,
-            });
-          }
-
           const commands = ctx.get(commandsCtx);
 
-          // Mod+Alt (sans Shift) : paragraphe, titres, bloc de code
+          // Mod+Alt (sans Shift) : paragraphe, titres
           if (event.altKey && !event.shiftKey) {
             const digitLevel: Record<string, number> = {
               Digit0: 0,
@@ -385,11 +453,26 @@ export const codeBasedShortcutsPlugin = $prose(
               }
               return true;
             }
-            if (event.code === "KeyE") {
-              event.preventDefault();
-              commands.call(toggleCodeBlockCommand.key);
-              return true;
-            }
+          }
+
+          // Mod+Shift : poésie (KeyP)
+          if (!event.altKey && event.shiftKey && event.code === "KeyP") {
+            event.preventDefault();
+            commands.call(togglePoetryCommand.key);
+            return true;
+          }
+
+          // Mod (sans Shift) : didascalie inline (KeyD)
+          if (!event.altKey && !event.shiftKey && event.code === "KeyD") {
+            event.preventDefault();
+            commands.call(toggleDidascalieInlineCommand.key);
+            return true;
+          }
+          // Mod+Shift : bloc didascalie (KeyD)
+          if (!event.altKey && event.shiftKey && event.code === "KeyD") {
+            event.preventDefault();
+            commands.call(toggleDidascalieBlockCommand.key);
+            return true;
           }
 
           // Mod+Shift : lien (KeyK)
@@ -397,6 +480,12 @@ export const codeBasedShortcutsPlugin = $prose(
             log.info("lien déclenché via raccourci");
             event.preventDefault();
             commands.call(toggleLinkWithPromptCommand.key);
+            return true;
+          }
+          // Mod+Shift : bloc de code (KeyE)
+          if (event.code === "KeyE") {
+            event.preventDefault();
+            commands.call(toggleCodeBlockCommand.key);
             return true;
           }
 

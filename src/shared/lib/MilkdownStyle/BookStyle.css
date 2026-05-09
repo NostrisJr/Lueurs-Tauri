@@ -1,0 +1,84 @@
+/* =========================================================================
+============================================================================
+   Mode livre — overrides du mode normal
+============================================================================
+==========================================================================*/
+
+.mode-livre .milkdown .ProseMirror {
+    font-family: 'EB Garamond', Garamond, Georgia, serif;
+    font-size: 18px;
+}
+
+.mode-livre .milkdown .ProseMirror h1,
+.mode-livre .milkdown .ProseMirror h2,
+.mode-livre .milkdown .ProseMirror h3,
+.mode-livre .milkdown .ProseMirror h4,
+.mode-livre .milkdown .ProseMirror h5,
+.mode-livre .milkdown .ProseMirror h6 {
+    font-family: 'EB Garamond', Garamond, Georgia, serif;
+    line-height: normal;
+}
+
+.mode-livre .milkdown .ProseMirror p {
+    text-align: justify;
+    text-indent: 1.5em;
+    padding: 0.4em 0;
+    /* Typographie correcte : la dernière ligne (ou ligne unique) n'est pas étirée */
+    text-align-last: left;
+}
+
+/* Pas d'indentation dans les li ni les blockquotes */
+.mode-livre .milkdown .ProseMirror li p,
+.mode-livre .milkdown .ProseMirror blockquote p {
+    text-indent: 0;
+}
+
+.mode-livre .milkdown .ProseMirror ul {
+    list-style: none;
+    padding-left: 1.5em;
+}
+
+/* Flex pour que le tiret et le texte (li > p) soient sur la même ligne */
+.mode-livre .milkdown .ProseMirror ul li {
+    display: flex;
+    align-items: baseline;
+    padding-left: 0;
+}
+
+.mode-livre .milkdown .ProseMirror ul li::before {
+    content: "–";
+    flex-shrink: 0;
+    margin-right: 0.45em;
+    color: var(--color-gray-600);
+}
+
+.mode-livre .milkdown .ProseMirror ul li.task-list-item::before {
+    content: none;
+}
+
+/* ── Didascalies en mode livre ─────────────────────────────────────────── */
+
+/* Style serif + italique cohérent avec le mode livre */
+.mode-livre .milkdown .ProseMirror span[data-didascalie-inline] {
+    font-family: 'EB Garamond', Garamond, Georgia, serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--color-gray-500);
+}
+
+.mode-livre .milkdown .ProseMirror .didascalie-pipe {
+    font-family: 'EB Garamond', Garamond, Georgia, serif;
+    font-size: 18px;
+    color: var(--color-gray-400);
+}
+
+.mode-livre .milkdown .ProseMirror div[data-didascalie-block] {
+    font-family: 'EB Garamond', Garamond, Georgia, serif;
+    font-style: italic;
+    color: var(--color-gray-500);
+}
+
+/* Pas d'indentation des paragraphes dans le bloc didascalie */
+.mode-livre .milkdown .ProseMirror div[data-didascalie-block] p {
+    text-indent: 0;
+}

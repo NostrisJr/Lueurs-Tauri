@@ -1,35 +1,39 @@
+@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap");
 @import "tailwindcss";
+@import "./shared/lib/MilkdownStyle/DefaultStyle.css";
+@import "./shared/lib/MilkdownStyle/BookStyle.css";
 
 @theme {
-    --font-title: 'EB Garamond', Garamond, Georgia, serif;
-    --font-default: 'Inter', Arial, Helvetica, sans-serif;
-    --font-header: 'Libre Baskerville', Georgia, serif;
-    --font-code: Fira Code, Menlo, Monaco, 'Courier New', Courier, monospace;
+  --font-title: 'EB Garamond', Garamond, Georgia, serif;
+  --font-default: 'Inter', Arial, Helvetica, sans-serif;
+  --font-header: 'Libre Baskerville', Georgia, serif;
+  --font-code: Fira Code, Menlo, Monaco, 'Courier New', Courier, monospace;
 }
 
 :root {
-    overscroll-behavior: none;
+  overscroll-behavior: none;
 }
 
 .scroll-thin {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-gray-300) transparent;
-    z-index: 50;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+  z-index: 50;
 }
 
 .scroll-hidden {
-    scrollbar-width: none;
+  scrollbar-width: none;
 }
 
-body, html {
-    overflow: hidden;
-    background: transparent;
+body,
+html {
+  overflow: hidden;
+  background: transparent;
 }
 
 #root {
-    height: 100vh;
-    overflow: hidden;
-    background: transparent;
+  height: 100vh;
+  overflow: hidden;
+  background: transparent;
 }
 
 .liquid-glass {
@@ -39,10 +43,14 @@ body, html {
 
   /* Bezel shiny : rim light haut + reflet bas + ombre portée */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),   /* highlight haut */
-    inset 0 -1px 0 rgba(255, 255, 255, 0.3),  /* reflet bas */
-    inset 1px 0 rgba(255, 255, 255, 0.2),     /* reflet gauche */
-    inset -1px 0 rgba(255, 255, 255, 0.2);    /* reflet droite */
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    /* highlight haut */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+    /* reflet bas */
+    inset 1px 0 rgba(255, 255, 255, 0.2),
+    /* reflet gauche */
+    inset -1px 0 rgba(255, 255, 255, 0.2);
+  /* reflet droite */
 
   /* Bordure fine lumineuse */
   border: .5px solid rgba(255, 255, 255, 0.8);
@@ -55,11 +63,16 @@ body, html {
 
   /* Bezel shiny : rim light haut + reflet bas + ombre portée */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),   /* highlight haut */
-    inset 0 -1px 0 rgba(255, 255, 255, 0.3),  /* reflet bas */
-    inset 1px 0 rgba(255, 255, 255, 0.2),     /* reflet gauche */
-    inset -1px 0 rgba(255, 255, 255, 0.2),    /* reflet droite */
-    0 8px 32px rgba(0, 0, 0, 0.15);           /* ombre portée */
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    /* highlight haut */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+    /* reflet bas */
+    inset 1px 0 rgba(255, 255, 255, 0.2),
+    /* reflet gauche */
+    inset -1px 0 rgba(255, 255, 255, 0.2),
+    /* reflet droite */
+    0 8px 32px rgba(0, 0, 0, 0.15);
+  /* ombre portée */
 
   /* Bordure fine lumineuse */
   border: .5px solid rgba(255, 255, 255, 0.8);

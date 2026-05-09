@@ -170,7 +170,7 @@ export function FrontmatterValue({
     const scrollable = fieldKey === SystemField.CHILDREN;
     return (
       <div
-        className={`flex flex-wrap gap-1 flex-1 ${scrollable ? "max-h-[4.5rem] overflow-y-auto" : ""}`}
+        className={`flex flex-wrap gap-1 flex-1 ${scrollable ? "max-h-18 overflow-y-auto" : ""}`}
       >
         {paths.map((path) => (
           <NoteChip

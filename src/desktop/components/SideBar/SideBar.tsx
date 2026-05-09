@@ -4,6 +4,7 @@ import { useAtom } from "jotai";
 import { sidebarCollapsedAtom } from "../../../shared/lib/Atoms";
 import { useState, useRef, useCallback } from "react";
 import { SideBarResizable } from "./SideBarResizable";
+import { clsx } from "clsx";
 
 function SideBar() {
   const [collapsed, setCollapsed] = useAtom(sidebarCollapsedAtom);
@@ -49,11 +50,12 @@ function SideBar() {
       </button>
 
       <aside
-        className="relative shrink-0 flex flex-col rounded-[1.25rem] bg-white/60 outline-16 outline-white -outline-offset-8 overflow-hidden"
+        className={clsx(
+          "relative shrink-0 flex flex-col rounded-[1.25rem] box-content bg-white/60 outline-16 outline-white -outline-offset-8 overflow-hidden",
+          collapsed ? "p-0" : "p-2"
+        )}
         style={{
           width: collapsed ? 0 : width,
-          padding: collapsed ? 0 : 8,
-          boxSizing: "content-box",
           transition: "width 220ms ease, padding 220ms ease",
         }}
       >
