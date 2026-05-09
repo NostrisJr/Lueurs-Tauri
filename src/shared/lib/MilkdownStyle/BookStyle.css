@@ -1,7 +1,5 @@
 /* =========================================================================
-============================================================================
    Mode livre — overrides du mode normal
-============================================================================
 ==========================================================================*/
 
 .mode-livre .milkdown .ProseMirror {
@@ -38,11 +36,18 @@
     padding-left: 1.5em;
 }
 
-/* Flex pour que le tiret et le texte (li > p) soient sur la même ligne */
+/* Grid : col 1 = tiret (::before), col 2 = contenu — aligne la baseline sur la 1re ligne de texte */
 .mode-livre .milkdown .ProseMirror ul li {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr;
     align-items: baseline;
     padding-left: 0;
+}
+
+/* Les listes imbriquées se placent dans la colonne contenu, sous le texte */
+.mode-livre .milkdown .ProseMirror ul li > ul,
+.mode-livre .milkdown .ProseMirror ul li > ol {
+    grid-column: 2;
 }
 
 .mode-livre .milkdown .ProseMirror ul li::before {
@@ -58,25 +63,6 @@
 
 /* ── Didascalies en mode livre ─────────────────────────────────────────── */
 
-/* Style serif + italique cohérent avec le mode livre */
-.mode-livre .milkdown .ProseMirror span[data-didascalie-inline] {
-    font-family: 'EB Garamond', Garamond, Georgia, serif;
-    font-style: italic;
-    font-size: 18px;
-    color: var(--color-gray-500);
-}
-
-.mode-livre .milkdown .ProseMirror .didascalie-pipe {
-    font-family: 'EB Garamond', Garamond, Georgia, serif;
-    font-size: 18px;
-    color: var(--color-gray-400);
-}
-
-.mode-livre .milkdown .ProseMirror div[data-didascalie-block] {
-    font-family: 'EB Garamond', Garamond, Georgia, serif;
-    font-style: italic;
-    color: var(--color-gray-500);
-}
 
 /* Pas d'indentation des paragraphes dans le bloc didascalie */
 .mode-livre .milkdown .ProseMirror div[data-didascalie-block] p {

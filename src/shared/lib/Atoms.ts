@@ -1,10 +1,14 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import {
+  DEFAULT_DISTINGUISHED_TYPES,
+  type DocumentMapState,
+} from "./documentMapConfig";
 
-import type { NoteFile, TreeNode, FolderNode } from "../hooks/useFileTree";
+import type { FolderNode, NoteFile, TreeNode } from "../hooks/useFileTree";
 import { flattenTree } from "../hooks/useFileTree";
-import { SystemField, type KanbanColumn } from "./noteTypes";
 import { createLogger } from "./logger";
+import { type KanbanColumn, SystemField } from "./noteTypes";
 
 const log = createLogger("atoms");
 
@@ -53,14 +57,22 @@ export const noteBackStackAtom = atom<string[]>([]);
 
 // ── Navigation mobile ─────────────────────────────────────────────────────
 
-export type MobileView = "filetree" | "editor" | "tabs" | "search" | "dictaphone";
+export type MobileView =
+  | "filetree"
+  | "editor"
+  | "tabs"
+  | "search"
+  | "dictaphone";
 export const mobileViewAtom = atom<MobileView>("filetree");
 
 export type DictaphoneMode = "new-note" | "insert";
 export const dictaphoneModeAtom = atom<DictaphoneMode | null>(null);
 
 // Bloc audio en attente d'insertion après retour de la vue dictaphone (mobile insert-mode)
-export const pendingAudioInsertAtom = atom<{ path: string; title: string } | null>(null);
+export const pendingAudioInsertAtom = atom<{
+  path: string;
+  title: string;
+} | null>(null);
 
 // null = racine du vault, FolderNode = sous-dossier actif
 export const folderStackAtom = atom<(FolderNode | null)[]>([null]);
@@ -87,6 +99,45 @@ export const activeNoteAtom = atom((get) => {
   if (!id) return null;
   return flattenTree(get(treeAtom)).find((n) => n.id === id) ?? null;
 });
+
+// ── Navigateur de document ────────────────────────────────────────────────
+
+// Map calculée en temps réel par le plugin ProseMirror (non persistée)
+export const documentMapAtom = atom<DocumentMapState>({
+  blocks: [],
+  docSize: 0,
+});
+
+// Types de blocs à distinguer visuellement dans le navigateur (persistés)
+export const documentMapDistinguishedTypesAtom = atomWithStorage<string[]>(
+  "lueurs_document_map_types",
+  DEFAULT_DISTINGUISHED_TYPES,
+  undefined,
+  { getOnInit: true }
+);
+
+// Préférences d'affichage du navigateur
+export const documentMapShowNavigatorAtom = atomWithStorage<boolean>(
+  "lueurs_document_map_show_navigator",
+  true,
+  undefined,
+  { getOnInit: true }
+);
+export const documentMapShowListsAtom = atomWithStorage<boolean>(
+  "lueurs_document_map_show_lists",
+  false,
+  undefined,
+  { getOnInit: true }
+);
+export const documentMapShowTextAtom = atomWithStorage<boolean>(
+  "lueurs_document_map_show_text",
+  false,
+  undefined,
+  { getOnInit: true }
+);
+
+// Commande de scroll vers une position ProseMirror (non persistée)
+export const scrollToPosAtom = atom<number | null>(null);
 
 // ── Propagation template ──────────────────────────────────────────────────
 

@@ -128,6 +128,11 @@ export function useContextMenu(
                   text: "Liste de tâches\t⌘⇧9",
                   action: () => call(toggleTaskListCommand.key),
                 }),
+              ]),
+            }),
+            Submenu.new({
+              text: "Blocs",
+              items: await Promise.all([
                 MenuItem.new({
                   text: "Citation\t⌘⇧B",
                   action: () => call(toggleBlockquoteCommand.key),

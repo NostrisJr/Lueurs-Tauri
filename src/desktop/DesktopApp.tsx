@@ -1,20 +1,20 @@
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useRef } from "react";
 import { NoteEditor } from "../shared/components/NoteEditor/NoteEditor.tsx";
 import { useFileTree } from "../shared/hooks/useFileTree";
-import { SideBar } from "./components/SideBar/SideBar.tsx";
-import { TabBar } from "./components/TabBar/TabBar";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useNote } from "../shared/hooks/useNote";
+import { useVaultSync } from "../shared/hooks/useVaultSync";
 import {
   activeNoteAtom,
   folderPathAtom,
   loadingAtom,
   settingsOpenAtom,
 } from "../shared/lib/Atoms";
-import { useNote } from "../shared/hooks/useNote";
-import { useVaultSync } from "../shared/hooks/useVaultSync";
-import { useCallback, useEffect, useRef } from "react";
-import { SettingsModal } from "./components/Settings/SettingsModal";
-import { WelcomeScreen } from "./components/WelcomeScreen.tsx";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
+import { SettingsModal } from "./components/Settings/SettingsModal";
+import { SideBar } from "./components/SideBar/SideBar.tsx";
+import { TabBar } from "./components/TabBar/TabBar";
+import { WelcomeScreen } from "./components/WelcomeScreen.tsx";
 
 export function DesktopApp() {
   const { pickFolder, initFolder, autoInitFolder } = useFileTree();
@@ -80,29 +80,31 @@ export function DesktopApp() {
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">
         <TabBar />
 
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-auto overscroll-none"
-          onScroll={handleScroll}
-        >
-          {activeNote ? (
-            <NoteEditor key={activeNote.id} />
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center gap-3">
-              <p className="text-sm text-gray-400">
-                {loading ? "Chargement..." : "Sélectionne ou crée une note"}
-              </p>
-              {!loading && (
-                <button
-                  type="button"
-                  onClick={handleCreateNote}
-                  className="px-3 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 transition-colors cursor-pointer"
-                >
-                  Créer une note
-                </button>
-              )}
-            </div>
-          )}
+        <div className="flex-1 overflow-hidden">
+          <div
+            ref={scrollContainerRef}
+            className="w-full h-full overflow-auto overscroll-none"
+            onScroll={handleScroll}
+          >
+            {activeNote ? (
+              <NoteEditor key={activeNote.id} />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center gap-3">
+                <p className="text-sm text-gray-400">
+                  {loading ? "Chargement..." : "Sélectionne ou crée une note"}
+                </p>
+                {!loading && (
+                  <button
+                    type="button"
+                    onClick={handleCreateNote}
+                    className="px-3 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
+                    Créer une note
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <SavingIndicator />
       </main>

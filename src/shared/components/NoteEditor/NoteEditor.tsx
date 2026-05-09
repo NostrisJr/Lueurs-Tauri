@@ -1,25 +1,27 @@
-import type React from "react";
-import { forwardRef, useRef, useCallback, useState, useEffect } from "react";
 import { MilkdownProvider } from "@milkdown/react";
-import { useAtomValue, useSetAtom } from "jotai";
 import { platform } from "@tauri-apps/plugin-os";
-import { useNote } from "../../hooks/useNote.ts";
-import {
-  activeNoteAtom,
-  displayModeAtom,
-  defaultDisplayModeAtom,
-  folderPathAtom,
-  type DisplayMode,
-} from "../../lib/Atoms";
-import { NoteType, SystemField } from "../../lib/noteTypes";
+import { useAtomValue, useSetAtom } from "jotai";
+import type React from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { BaseView } from "../../../desktop/components/BaseView/BaseView";
+import { DesktopDictaphone } from "../../../desktop/components/Dictaphone/DesktopDictaphone";
+import { FrontmatterEditor } from "../../../desktop/components/Frontmatter/FrontmatterEditor";
 import { MobileBaseView } from "../../../mobile/components/MobileBaseView";
 import type { Frontmatter } from "../../hooks/useFileTree";
-import { FrontmatterEditor } from "../../../desktop/components/Frontmatter/FrontmatterEditor";
-import { MarkdownEditor, type EditorHandle } from "./MarkdownEditor.tsx";
-import { NoteHeader } from "./NoteHeader.tsx";
+import { useNote } from "../../hooks/useNote.ts";
+import {
+  type DisplayMode,
+  activeNoteAtom,
+  defaultDisplayModeAtom,
+  displayModeAtom,
+  documentMapAtom,
+  folderPathAtom,
+} from "../../lib/Atoms";
+import { NoteType, SystemField } from "../../lib/noteTypes";
+import { DocumentNavigator } from "./DocumentNavigator.tsx";
 import { EditorToolbar } from "./EditorToolbar.tsx";
-import { DesktopDictaphone } from "../../../desktop/components/Dictaphone/DesktopDictaphone";
+import { type EditorHandle, MarkdownEditor } from "./MarkdownEditor.tsx";
+import { NoteHeader } from "./NoteHeader.tsx";
 
 export type { EditorHandle };
 
@@ -43,10 +45,17 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const activeNote = useAtomValue(activeNoteAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const setDisplayMode = useSetAtom(displayModeAtom);
+  const setDocumentMap = useSetAtom(documentMapAtom);
   const defaultDisplayMode = useAtomValue(defaultDisplayModeAtom);
   const internalRef = useRef<EditorHandle | null>(null);
   const [dictaphoneOpen, setDictaphoneOpen] = useState(false);
   const isDesktop = platform() !== "ios";
+  const isBase = activeNote?.type === NoteType.BASE;
+
+  // Vide la carte quand on passe sur une base (pas de MarkdownEditor → plugin jamais déclenché)
+  useEffect(() => {
+    if (isBase) setDocumentMap({ blocks: [], docSize: 0 });
+  }, [isBase, setDocumentMap]);
 
   // Sync atom depuis le frontmatter à chaque changement de note ; repli sur le défaut utilisateur
   useEffect(() => {
@@ -82,17 +91,24 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     handleChange(activeNote.body, updated);
   }
 
-  const isBase = activeNote?.type === NoteType.BASE;
+  function handleDisplayModeChange(mode: DisplayMode) {
+    if (!activeNote) return;
+    handleChange(activeNote.body, {
+      ...activeNote.frontmatter,
+      [SystemField.DISPLAY_MODE]: mode,
+    });
+  }
 
   return (
-    <div className="h-full w-full">
+    <div className="min-h-full w-full">
       {activeNote && folderPath && (
-        <div className="">
+        <>
           <NoteHeader
             hideDisplayModeSelector={hideDisplayModeSelector}
             onRename={async (newName) => {
               await handleRename(activeNote.id, newName, false);
             }}
+            onDisplayModeChange={handleDisplayModeChange}
             displayModeHandlerRef={displayModeHandlerRef}
           />
 
@@ -120,6 +136,16 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
               defaultCollapsed={defaultCollapsedFrontmatter}
             />
 
+            {/* Ancre sticky — hauteur nulle, le navigateur sort en overflow-visible */}
+            {!isBase && (
+              <div
+                className="sticky top-10"
+                style={{ height: 0, overflow: "visible", zIndex: 10 }}
+              >
+                <DocumentNavigator />
+              </div>
+            )}
+
             {isBase ? (
               platform() === "ios" ? (
                 <MobileBaseView
@@ -143,7 +169,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
               </MilkdownProvider>
             )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

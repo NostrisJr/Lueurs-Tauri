@@ -1,53 +1,66 @@
-import { useRef, useCallback, useImperativeHandle, forwardRef } from "react";
-import { useAtomValue } from "jotai";
-import { displayModeAtom } from "../../lib/Atoms";
 import {
   Editor,
-  rootCtx,
   defaultValueCtx,
   editorViewCtx,
+  rootCtx,
   schemaCtx,
 } from "@milkdown/kit/core";
-import { commonmark, headingKeymap } from "@milkdown/kit/preset/commonmark";
-import { gfm } from "@milkdown/kit/preset/gfm";
-import { $prose } from "@milkdown/kit/utils";
-import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
-import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
-import { trailing } from "@milkdown/kit/plugin/trailing";
-import { history } from "@milkdown/kit/plugin/history";
 import { clipboard } from "@milkdown/kit/plugin/clipboard";
 import { cursor } from "@milkdown/kit/plugin/cursor";
+import { history } from "@milkdown/kit/plugin/history";
+import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
+import { trailing } from "@milkdown/kit/plugin/trailing";
+import { commonmark, headingKeymap } from "@milkdown/kit/preset/commonmark";
+import { gfm } from "@milkdown/kit/preset/gfm";
 import { toggleMark } from "@milkdown/kit/prose/commands";
+import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
+import { $prose } from "@milkdown/kit/utils";
 import { Milkdown, useEditor } from "@milkdown/react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { readFile } from "@tauri-apps/plugin-fs";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import type { NoteFile } from "../../hooks/useFileTree";
+import {
+  displayModeAtom,
+  documentMapAtom,
+  scrollToPosAtom,
+} from "../../lib/Atoms";
+import type { DocumentMapState } from "../../lib/documentMapConfig";
+import { createLogger } from "../../lib/logger";
 import { createAudioBlockPlugin } from "../../plugins/audio-block/audioBlockPlugin";
-import { taskListPlugin } from "../../plugins/task-list/taskListPlugin";
+import {
+  codeBasedShortcutsPlugin,
+  customKeymapPlugin,
+  toggleBlockquoteCommand,
+  toggleBulletListCommand,
+  toggleCodeBlockCommand,
+  toggleDidascalieBlockCommand,
+  toggleDidascalieInlineCommand,
+  toggleHeadingCommand,
+  toggleLinkWithPromptCommand,
+  toggleOrderedListCommand,
+  togglePoetryCommand,
+  toggleTaskListCommand,
+} from "../../plugins/customKeymap";
+import { didascaliePlugin } from "../../plugins/didascalie/didascaliePlugin";
+import { createDocumentMapPlugin } from "../../plugins/document-map/documentMapPlugin";
 import {
   headingFoldPlugin,
   headingNodeViewPlugin,
 } from "../../plugins/heading-fold";
-import { useDropHandler } from "./hooks/useDropHandler";
-import { useContextMenu } from "./hooks/useContextMenu";
-import {
-  customKeymapPlugin,
-  codeBasedShortcutsPlugin,
-  toggleBlockquoteCommand,
-  toggleBulletListCommand,
-  toggleOrderedListCommand,
-  toggleTaskListCommand,
-  toggleHeadingCommand,
-  toggleCodeBlockCommand,
-  toggleLinkWithPromptCommand,
-  togglePoetryCommand,
-  toggleDidascalieInlineCommand,
-  toggleDidascalieBlockCommand,
-} from "../../plugins/customKeymap";
 import { poetryBlockPlugin } from "../../plugins/poetry-block/poetryBlockPlugin";
-import { didascaliePlugin } from "../../plugins/didascalie/didascaliePlugin";
-import { createLogger } from "../../lib/logger";
+import { taskListPlugin } from "../../plugins/task-list/taskListPlugin";
+import { wordHighlightPlugin } from "../../plugins/word-highlight/wordHighlightPlugin";
+import { useContextMenu } from "./hooks/useContextMenu";
+import { useDropHandler } from "./hooks/useDropHandler";
 
 export interface EditorHandle {
   bold: () => void;
@@ -55,6 +68,7 @@ export interface EditorHandle {
   strike: () => void;
   heading: (level: 1 | 2 | 3) => void;
   insertAudioBlock: (path: string, title: string) => void;
+  scrollToPos: (pos: number) => void;
 }
 
 const log = createLogger("MarkdownEditor");
@@ -138,6 +152,35 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
     const editorRef = useRef<Editor | null>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const displayMode = useAtomValue(displayModeAtom);
+    const setDocumentMap = useSetAtom(documentMapAtom);
+    const posToScroll = useAtomValue(scrollToPosAtom);
+    const setScrollToPos = useSetAtom(scrollToPosAtom);
+    // Refs pour éviter les fermetures périmées dans les listeners Milkdown (capturés une seule fois)
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+    const documentMapCallbackRef = useRef<
+      ((map: DocumentMapState) => void) | null
+    >(null);
+    documentMapCallbackRef.current = setDocumentMap;
+
+    // Scroll déclenché depuis le navigateur via scrollToPosAtom
+    useEffect(() => {
+      if (posToScroll === null || !editorRef.current) return;
+      setScrollToPos(null);
+      editorRef.current.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        try {
+          const domPos = view.domAtPos(posToScroll + 1);
+          const el =
+            domPos.node instanceof Element
+              ? (domPos.node as Element)
+              : (domPos.node as Node).parentElement;
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch {
+          // pos hors limites
+        }
+      });
+    }, [posToScroll, setScrollToPos]);
 
     const insertAudioBlock = useCallback(
       (path: string, title: string) => {
@@ -264,6 +307,21 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
       insertAudioBlock(absolutePath, title) {
         insertAudioBlock(absolutePath, title);
       },
+      scrollToPos(pos) {
+        editorRef.current?.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          try {
+            const domPos = view.domAtPos(pos + 1);
+            const el =
+              domPos.node instanceof Element
+                ? (domPos.node as Element)
+                : (domPos.node as Node).parentElement;
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          } catch {
+            // pos hors limites, ignoré
+          }
+        });
+      },
     }));
 
     useEditor((root) => {
@@ -281,7 +339,7 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
           ctx.get(listenerCtx).markdownUpdated((_, markdown, prevMarkdown) => {
             if (markdown !== prevMarkdown) {
               log.info("markdown mis à jour", { length: markdown.length });
-              onChange(markdown);
+              onChangeRef.current(markdown);
             }
           });
         })
@@ -338,6 +396,8 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
         .use(headingNodeViewPlugin)
         .use(poetryBlockPlugin)
         .use(didascaliePlugin)
+        .use(wordHighlightPlugin)
+        .use(createDocumentMapPlugin(documentMapCallbackRef))
         .use(toggleBlockquoteCommand)
         .use(toggleBulletListCommand)
         .use(toggleOrderedListCommand)

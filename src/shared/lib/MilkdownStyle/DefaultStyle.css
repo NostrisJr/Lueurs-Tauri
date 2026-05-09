@@ -1,6 +1,22 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Navigateur de document — marks de la minimap
+   ───────────────────────────────────────────────────────────────────────── */
+
+[data-nav-mark] {
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 120ms ease, transform 120ms ease;
+  transform-origin: right center;
+}
+
+[data-nav-mark]:hover {
+  opacity: 1 !important;
+  transform: scaleX(3) scaleY(1.25);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Conteneur ProseMirror — base
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -163,12 +179,12 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 .milkdown .ProseMirror blockquote {
-  border-left: 4px solid var(--color-amber-400);
+  border-left: 3px solid var(--color-amber-400);
   margin: 1em 0;
   padding: 0.2em 1.1em 0.2em 1.1em;
   color: #4f4539;
   background-color: color-mix(in srgb, var(--color-amber-400) 7%, transparent);
-  border-radius: 2px 10px 10px 2px;
+  border-radius: 3px 0px 0px 3px;
 }
 
 .milkdown .ProseMirror blockquote p {
@@ -389,16 +405,17 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 .milkdown .ProseMirror div[data-poetry-block] {
-  border-left: 3px solid var(--color-slate-400);
+  border-left: 3px solid var(--color-lime-500);
   margin: 0.8em 0;
   padding: 0em .6em;
   font-style: normal;
+  border-radius: 3px 0 0 3px;
 }
 
 /* Supprime le padding vertical entre les lignes de vers */
 .milkdown .ProseMirror div[data-poetry-block] p {
   padding: 0;
-  line-height: normal;
+  line-height: 1.5;
   text-indent: 0;
 }
 
@@ -408,29 +425,38 @@
 
 .milkdown .ProseMirror span[data-didascalie-inline] {
   font-style: italic;
-  color: var(--color-gray-500);
+  color: var(--color-gray-400);
 }
 
 /* Pipes : non-éditables, légèrement décalées en couleur pour qu'on les voie
    bien comme des marqueurs et non comme du contenu. */
 .milkdown .ProseMirror .didascalie-pipe {
-  color: var(--color-gray-500);
+  color: var(--color-gray-400);
   user-select: none;
 }
 
 /* Bloc didascalie : bordures gauche et droite, fond très subtil */
 .milkdown .ProseMirror div[data-didascalie-block] {
-  border-left: 1px solid var(--color-gray-500);
-  border-right: 1px solid var(--color-gray-500);
+  border-left: 1.5px solid var(--color-gray-400);
+  border-right: 1.5px solid var(--color-gray-400);
   margin: 0.8em 0;
   padding: 0em .6em;
   font-style: italic;
-  color: #4f4539;
   width: fit-content;
 }
 
 .milkdown .ProseMirror div[data-didascalie-block] p {
   padding: 0.2em 0;
+  color: var(--color-gray-400);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Surlignage des occurrences du mot sous le curseur / sélectionné
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror .word-occurrence {
+  background-color: color-mix(in srgb, var(--color-amber-500) 10%, transparent);
+  border-radius: 2px;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

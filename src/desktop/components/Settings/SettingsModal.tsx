@@ -1,14 +1,23 @@
-import { useEffect, useState } from "react";
-import { useAtom, useAtomValue } from "jotai";
-import { invoke } from "@tauri-apps/api/core";
-import {
-  settingsOpenAtom,
-  folderPathAtom,
-  defaultDisplayModeAtom,
-} from "../../../shared/lib/Atoms";
-import { useFileTree } from "../../../shared/hooks/useFileTree";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { invoke } from "@tauri-apps/api/core";
+import { useAtom, useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
+import { useFileTree } from "../../../shared/hooks/useFileTree";
+import {
+  defaultDisplayModeAtom,
+  documentMapDistinguishedTypesAtom,
+  documentMapShowListsAtom,
+  documentMapShowNavigatorAtom,
+  documentMapShowTextAtom,
+  folderPathAtom,
+  settingsOpenAtom,
+} from "../../../shared/lib/Atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
+import {
+  ALL_MAP_BLOCK_TYPES,
+  BLOCK_TYPE_COLORS,
+  BLOCK_TYPE_LABELS,
+} from "../../../shared/lib/documentMapConfig";
 
 export function SettingsModal() {
   const [open, setOpen] = useAtom(settingsOpenAtom);
@@ -16,7 +25,21 @@ export function SettingsModal() {
   const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(
     defaultDisplayModeAtom
   );
+  const [distinguishedTypes, setDistinguishedTypes] = useAtom(
+    documentMapDistinguishedTypesAtom
+  );
+  const [showNavigator, setShowNavigator] = useAtom(
+    documentMapShowNavigatorAtom
+  );
+  const [showLists, setShowLists] = useAtom(documentMapShowListsAtom);
+  const [showText, setShowText] = useAtom(documentMapShowTextAtom);
   const { pickFolder, switchVault } = useFileTree();
+
+  function toggleBlockType(type: string) {
+    setDistinguishedTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  }
 
   // null = absent, undefined = en cours de vérification, string = chemin trouvé
   const [icloudPath, setIcloudPath] = useState<string | null | undefined>(
@@ -96,6 +119,87 @@ export function SettingsModal() {
               <p className="text-xs text-gray-400">
                 Appliqué aux nouvelles notes et aux notes sans mode défini.
               </p>
+            </div>
+          </section>
+
+          {/* Navigateur de hiérarchie */}
+          <section>
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+              Navigateur
+            </h3>
+            <div className="space-y-3">
+              {/* Visibilité globale */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showNavigator}
+                  onChange={() => setShowNavigator((v) => !v)}
+                  className="rounded accent-gray-800 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700">
+                  Afficher le navigateur
+                </span>
+              </label>
+
+              {showNavigator && (
+                <>
+                  {/* Affichage des blocs génériques */}
+                  <div className="space-y-1.5 pl-1">
+                    <p className="text-xs text-gray-400">Contenu général</p>
+                    <div className="space-y-2 pt-0.5">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={showLists}
+                          onChange={() => setShowLists((v) => !v)}
+                          className="rounded accent-gray-800 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Listes &amp; to-do
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={showText}
+                          onChange={() => setShowText((v) => !v)}
+                          className="rounded accent-gray-800 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700">Texte</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Types de blocs distingués */}
+                  <div className="space-y-1.5 pl-1">
+                    <p className="text-xs text-gray-400">
+                      Blocs à distinguer (les autres comptent comme du texte)
+                    </p>
+                    <div className="space-y-2 pt-0.5">
+                      {ALL_MAP_BLOCK_TYPES.map((type) => (
+                        <label
+                          key={type}
+                          className="flex items-center gap-3 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={distinguishedTypes.includes(type)}
+                            onChange={() => toggleBlockType(type)}
+                            className="rounded accent-gray-800 cursor-pointer"
+                          />
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ background: BLOCK_TYPE_COLORS[type] }}
+                          />
+                          <span className="text-sm text-gray-700">
+                            {BLOCK_TYPE_LABELS[type]}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </section>
 
