@@ -138,10 +138,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
 
             {/* Ancre sticky — hauteur nulle, le navigateur sort en overflow-visible */}
             {!isBase && (
-              <div
-                className="sticky top-10"
-                style={{ height: 0, overflow: "visible", zIndex: 10 }}
-              >
+              <div className="sticky top-10 h-0 overflow-visible z-10">
                 <DocumentNavigator />
               </div>
             )}

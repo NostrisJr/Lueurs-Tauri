@@ -449,6 +449,57 @@ L'insertion de tableau utilise `insert()` de `@milkdown/kit/utils` qui parse du 
 
 ---
 
+## Plugin audio-block (`src/shared/plugins/audio-block/`)
+
+### Intégration dans l'éditeur
+
+Un lien Markdown dont l'URL se termine par une extension audio (`mp3`, `m4a`, `wav`, `ogg`, `flac`, `aac`, `opus`, `webm`…) est converti en nœud ProseMirror `audio_block` par le plugin remark (`remark-plugin.ts`). La détection se fait sur un paragraphe à enfant unique de type `link`. Le nœud est sérialisé en `[titre](src)` — format Markdown standard, lisible dans tout autre éditeur.
+
+Le plugin exporte trois tranches Milkdown : `audioBlockRemark` (remark), `audioBlockSchema` (nœud ProseMirror), `$view(...)` (NodeView).
+
+### NodeView shell (`node-view.ts`)
+
+Le NodeView crée un `<div>` conteneur, y monte un arbre React via `createRoot`, et expose l'interface NodeView ProseMirror. Les refs mutables partagées entre le shell et le composant React permettent de ne pas remonter React à chaque mise à jour ProseMirror :
+
+- `nodeRef` — le nœud courant (muté avant chaque `render()`)
+- `selectedRef` — état de sélection ProseMirror
+- `titleEditingRef` — vrai quand l'input titre est actif (bloque `stopEvent`)
+- `playToggleRef` — fonction play/pause, mise à jour par le composant à chaque render pour capturer l'état React courant (`isPlaying`)
+
+`stopEvent` retourne `true` pour les éléments `[data-ab-interactive]` (waveform, contrôles) — ProseMirror ne traite pas leurs événements. Le header n'a pas cet attribut, laissant ProseMirror créer une `NodeSelection` au clic dessus.
+
+**Barre espace.** Quand le bloc est sélectionné, `selectNode` ajoute un listener `keydown` en **phase capture** sur `document` (pour intercepter avant ProseMirror, qui sinon remplacerait la sélection par un espace). Le listener est retiré dans `deselectNode` et `destroy`.
+
+### Chemin desktop : Web Audio API
+
+**Problème original.** L'utilisation d'un élément `<audio>` HTML5 avec un blob URL entraînait un délai ~1s entre le clic play et l'arrivée du son. Cause : macOS/WKWebView doit initialiser sa session audio (`AVAudioSession`) au premier play, ce qui prend ~1s. Pendant ce temps, l'élément signalait `currentTime` croissant mais ne produisait pas de son.
+
+**Solution.** On utilise `AudioContext` + `AudioBufferSourceNode` (Web Audio API) :
+
+1. Au chargement, `readAudioData` lit les octets du fichier. `drawWaveform` reçoit un `AudioContext` créé par le composant et appelle `decodeAudioData` — ce décodage initialise la session audio macOS. **L'`AudioContext` n'est pas fermé** après le décodage : `ctx.close()` libérerait la session, recréant le délai au play suivant.
+
+2. Au click play, `ctx.resume()` est appelé. Comme la session est déjà initialisée par le décodage, le résumé est quasi-instantané (quelques ms). Un `AudioBufferSourceNode` est créé depuis l'`AudioBuffer` en mémoire — aucun décodage supplémentaire — et `source.start(offset)` démarre la lecture immédiatement.
+
+3. La position courante est calculée en RAF : `pos = playOffset + (ctx.currentTime - playStartCtxTime)`. `ctx.currentTime` est l'horloge hardware du contexte audio, avec une résolution sub-milliseconde.
+
+**Seek.** `AudioBufferSourceNode` ne supporte pas le seek en place. La méthode correcte : `source.stop()`, créer un nouveau `BufferSourceNode`, `source.start(0, newOffset)`.
+
+**Coordination multi-blocs.** Un `_globalDesktopStop` module-level stocke la fonction d'arrêt du bloc actif. Quand un nouveau bloc démarre, il appelle `_globalDesktopStop()` puis enregistre sa propre fonction. Cela garantit qu'un seul bloc joue à la fois.
+
+**`waveform.ts`.** `drawWaveform(canvas, ctx, buffer, onDone, onError)` — l'`AudioContext` est passé en paramètre et non créé en interne. `onDone` reçoit l'`AudioBuffer` décodé, que le composant stocke pour la lecture. La fonction ne ferme jamais le contexte.
+
+### Chemin mobile : tauri-plugin-native-audio
+
+`nativeAudioPlayer.ts` expose une API unifiée (`nativeLoad`, `nativePlay`, `nativePause`, `nativeSeek`, `nativeSubscribe`). Sur mobile, ces fonctions délèguent à `tauri-plugin-native-audio` (lecteur système iOS/Android). Sur desktop, ces fonctions sont des no-ops — la lecture passe entièrement par Web Audio dans le composant.
+
+`nativeSubscribe(nodeId, callback)` enregistre un callback pour les mises à jour d'état (currentTime, duration, isPlaying, status). Le composant met à jour les DOM refs directement dans ce callback (sans passer par le state React) pour éviter les re-renders à 60 fps.
+
+### Sélection et focus
+
+Cliquer sur le bouton play ou la waveform appelle `view.dispatch(tr.setSelection(NodeSelection.create(...)))` + `view.focus()` explicitement — nécessaire parce que `stopEvent` retourne `true` pour ces éléments, empêchant ProseMirror de traiter le click et de créer la sélection lui-même.
+
+---
+
 ## Choix de conception
 
 **Stockage YAML plat.** Les propriétés système utilisent des clés avec doubles tirets bas (`__Type__`, `__Template__`, etc.) pour éviter les collisions avec les propriétés utilisateur tout en restant lisibles dans n'importe quel éditeur Markdown.

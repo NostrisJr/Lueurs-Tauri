@@ -9,10 +9,12 @@ import { clsx } from "clsx";
 function SideBar() {
   const [collapsed, setCollapsed] = useAtom(sidebarCollapsedAtom);
   const [width, setWidth] = useState(240);
+  const [resizing, setResizing] = useState(false);
   const isResizing = useRef(false);
 
   const startResize = useCallback((e: React.MouseEvent) => {
     isResizing.current = true;
+    setResizing(true);
     e.preventDefault();
 
     const onMouseMove = (e: MouseEvent) => {
@@ -23,6 +25,7 @@ function SideBar() {
 
     const onMouseUp = () => {
       isResizing.current = false;
+      setResizing(false);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
@@ -56,7 +59,7 @@ function SideBar() {
         )}
         style={{
           width: collapsed ? 0 : width,
-          transition: "width 220ms ease, padding 220ms ease",
+          transition: resizing ? "none" : "width 220ms ease, padding 220ms ease",
         }}
       >
         <SideBarResizable onToggle={() => setCollapsed(true)} />

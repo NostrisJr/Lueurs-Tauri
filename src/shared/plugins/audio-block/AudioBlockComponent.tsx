@@ -1,6 +1,8 @@
-// Composant React du bloc audio : waveform statique + lecture via tauri-plugin-native-audio.
-// Le NodeView shell (node-view.ts) est seul à appeler root.render() — ce composant
-// ne déclenche jamais de re-render pour les mises à jour haute-fréquence (progress, time).
+// Composant React du bloc audio.
+// Desktop : lecture via AudioBufferSourceNode (Web Audio API).
+//   L'AudioContext est créé lors du chargement de la waveform et reste ouvert —
+//   cela maintient la session audio macOS initialisée et élimine le délai ~1s.
+// Mobile : lecture via tauri-plugin-native-audio (nativeAudioPlayer).
 
 import { useEffect, useRef, useState } from "react";
 import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
@@ -29,8 +31,11 @@ import { NodeSelection } from "@milkdown/kit/prose/state";
 
 const log = createLogger("audio-block");
 
+// Coordination multi-bloc (desktop) : quand un bloc démarre, on arrête l'autre.
+let _globalDesktopStop: (() => void) | null = null;
+
 function fmtTime(s: number): string {
-  if (!Number.isFinite(s)) return "--:--";
+  if (!Number.isFinite(s) || s < 0) return "--:--";
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${sec.toString().padStart(2, "0")}`;
@@ -41,6 +46,8 @@ export type AudioBlockProps = {
   selectedRef: { current: boolean };
   // Partagé avec le shell pour que stopEvent puisse bloquer les events clavier
   titleEditingRef: { current: boolean };
+  // Partagé avec le shell pour que la barre espace déclenche play/pause
+  playToggleRef: { current: () => void };
   view: EditorView;
   getPos: () => number | undefined;
   config: AudioBlockConfig;
@@ -51,6 +58,7 @@ export function AudioBlockComponent({
   nodeRef,
   selectedRef,
   titleEditingRef,
+  playToggleRef,
   view,
   getPos,
   config,
@@ -70,13 +78,25 @@ export function AudioBlockComponent({
   const timeLeftRef = useRef<HTMLSpanElement>(null);
   const timeRightRef = useRef<HTMLSpanElement>(null);
   const waveformReadyRef = useRef(false);
+
+  // ── Refs Web Audio (desktop) ───────────────────────────────────────────────
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  // ctx.currentTime au moment où play() a démarré (pour calculer la position courante)
+  const playStartCtxTimeRef = useRef(0);
+  // Position dans l'audio au dernier play/seek (en secondes)
+  const playOffsetRef = useRef(0);
+  const webRafRef = useRef(0);
+  // Indique si ce bloc est le bloc desktop actif (pour la coordination multi-bloc)
+  const isActiveRef = useRef(false);
+
+  // ── Refs Mobile ────────────────────────────────────────────────────────────
   const nativeDurationRef = useRef(0);
+
   // Ref stable vers readAudioData pour éviter de le mettre en dépendance d'effet
   const readAudioDataRef = useRef(config.readAudioData);
   readAudioDataRef.current = config.readAudioData;
-  // Blob URL pré-créée depuis les octets de la waveform (desktop uniquement) :
-  // évite un fetch via le protocole asset:// au moment de play(), qui causait un stutter ~1s.
-  const playbackBlobUrlRef = useRef<string | null>(null);
 
   // ── Waveform : décode et dessine à chaque changement de src ────────────────
 
@@ -89,37 +109,73 @@ export function AudioBlockComponent({
     setWaveformStatus("loading");
     waveformReadyRef.current = false;
 
-    // Révoquer l'ancienne blob URL avant d'en créer une nouvelle
-    if (!isMobile && playbackBlobUrlRef.current) {
-      URL.revokeObjectURL(playbackBlobUrlRef.current);
-      playbackBlobUrlRef.current = null;
+    // Fermer le contexte précédent si src change pendant la lecture
+    if (!isMobile) {
+      if (sourceRef.current) {
+        sourceRef.current.onended = null;
+        try { sourceRef.current.stop(); } catch {}
+        sourceRef.current = null;
+      }
+      stopDesktopRaf();
+      audioCtxRef.current?.close();
+      audioCtxRef.current = null;
+      audioBufferRef.current = null;
+      isActiveRef.current = false;
+      setIsPlaying(false);
     }
 
     let cancelled = false;
 
     readAudioData(src)
       .then((data) => {
-        if (cancelled) return;
+        if (cancelled || !canvasRef.current) return;
 
-        // Créer la blob URL pendant le chargement de la waveform (données déjà en mémoire)
         if (!isMobile) {
-          playbackBlobUrlRef.current = URL.createObjectURL(new Blob([data]));
-        }
+          // Créer l'AudioContext ici et le garder ouvert :
+          // le décodage initialise la session audio macOS, ce qui évite
+          // le délai ~1s lors du premier play (ctx.close() libérerait la session).
+          const ctx = new AudioContext();
+          audioCtxRef.current = ctx;
 
-        if (!canvasRef.current) return;
-        drawWaveform(
-          canvasRef.current,
-          data.buffer.slice(0),
-          () => {
-            if (cancelled) return;
-            waveformReadyRef.current = true;
-            setWaveformStatus("ready");
-          },
-          (err) => {
-            log.error("waveform impossible", err);
-            if (!cancelled) setWaveformStatus("error");
-          }
-        );
+          drawWaveform(
+            canvasRef.current,
+            ctx,
+            data.buffer.slice(0),
+            (audioBuffer) => {
+              if (cancelled) return;
+              audioBufferRef.current = audioBuffer;
+              waveformReadyRef.current = true;
+              setWaveformStatus("ready");
+              // Afficher la durée dès le décodage
+              if (timeRightRef.current) {
+                timeRightRef.current.textContent = fmtTime(audioBuffer.duration);
+              }
+            },
+            (err) => {
+              log.error("waveform impossible", err);
+              if (!cancelled) setWaveformStatus("error");
+            }
+          );
+        } else {
+          // Mobile : décoder séparément pour la waveform uniquement
+          const tempCtx = new AudioContext();
+          drawWaveform(
+            canvasRef.current,
+            tempCtx,
+            data.buffer.slice(0),
+            () => {
+              if (cancelled) return;
+              tempCtx.close();
+              waveformReadyRef.current = true;
+              setWaveformStatus("ready");
+            },
+            (err) => {
+              tempCtx.close();
+              log.error("waveform impossible", err);
+              if (!cancelled) setWaveformStatus("error");
+            }
+          );
+        }
       })
       .catch((err) => {
         log.error("lecture fichier pour waveform échouée", err);
@@ -128,16 +184,18 @@ export function AudioBlockComponent({
 
     return () => {
       cancelled = true;
-      if (!isMobile && playbackBlobUrlRef.current) {
-        URL.revokeObjectURL(playbackBlobUrlRef.current);
-        playbackBlobUrlRef.current = null;
+      if (!isMobile) {
+        audioCtxRef.current?.close();
+        audioCtxRef.current = null;
+        audioBufferRef.current = null;
       }
     };
   }, [src]);
 
-  // ── Abonnement au lecteur natif : DOM direct pour éviter les re-renders ────
+  // ── Abonnement lecteur natif (mobile uniquement) ───────────────────────────
 
   useEffect(() => {
+    if (!isMobile) return;
     return nativeSubscribe(nodeId, (state) => {
       const { currentTime, duration, isPlaying: playing, status } = state;
       if (duration > 0) nativeDurationRef.current = duration;
@@ -159,11 +217,7 @@ export function AudioBlockComponent({
         canvasRef.current &&
         (canvasRef.current as any)._drawBars
       ) {
-        (canvasRef.current as any)._drawBars(
-          /* TODO : les couleurs ne fonctionnent pas */
-          "rgb(var(--color-amber-400))",
-          pct / 100
-        );
+        (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
       }
 
       if (status === "ended") {
@@ -176,10 +230,7 @@ export function AudioBlockComponent({
           canvasRef.current &&
           (canvasRef.current as any)._drawBars
         ) {
-          (canvasRef.current as any)._drawBars(
-            "rgb(var(--color-amber-400))",
-            0
-          );
+          (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
         }
       } else {
         setIsPlaying(playing);
@@ -187,58 +238,246 @@ export function AudioBlockComponent({
     });
   }, [nodeId]);
 
+  // ── Helpers desktop ────────────────────────────────────────────────────────
+
+  function stopDesktopRaf() {
+    if (webRafRef.current) {
+      cancelAnimationFrame(webRafRef.current);
+      webRafRef.current = 0;
+    }
+  }
+
+  function startDesktopRaf() {
+    if (webRafRef.current) return;
+    function tick() {
+      const ctx = audioCtxRef.current;
+      const buf = audioBufferRef.current;
+      if (!ctx || !buf || !sourceRef.current) {
+        webRafRef.current = 0;
+        return;
+      }
+      const pos = Math.min(
+        playOffsetRef.current + (ctx.currentTime - playStartCtxTimeRef.current),
+        buf.duration
+      );
+      const pct = (pos / buf.duration) * 100;
+      if (progressOverlayRef.current)
+        progressOverlayRef.current.style.width = `${pct}%`;
+      if (timeLeftRef.current)
+        timeLeftRef.current.textContent = fmtTime(pos);
+      if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
+        (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
+      webRafRef.current = requestAnimationFrame(tick);
+    }
+    webRafRef.current = requestAnimationFrame(tick);
+  }
+
+  // Arrête la lecture desktop et réinitialise l'UI (appelé aussi depuis _globalDesktopStop)
+  function stopDesktopPlayback(resetPosition: boolean) {
+    isActiveRef.current = false;
+    stopDesktopRaf();
+    if (sourceRef.current) {
+      sourceRef.current.onended = null;
+      try { sourceRef.current.stop(); } catch {}
+      sourceRef.current = null;
+    }
+    if (resetPosition) {
+      playOffsetRef.current = 0;
+      if (progressOverlayRef.current)
+        progressOverlayRef.current.style.width = "0%";
+      if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
+      if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
+        (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
+    }
+    setIsPlaying(false);
+  }
+
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  //TODO: rajouter la barre espace quand le bloc est sélectionné pour jouer/pause. actuellement ça supprime le bloc... (ça édite le texte)
   async function getPlaybackSrc(): Promise<string> {
-    if (isMobile) {
-      // Chemin absolu pour tauri-plugin-native-audio
-      if (config.resolveAbsolutePath) return config.resolveAbsolutePath(src);
-      return src;
-    }
-    // Blob URL préchargée (données déjà en mémoire depuis la waveform, pas de fetch)
-    if (playbackBlobUrlRef.current) return playbackBlobUrlRef.current;
-    // Fallback si la waveform n'a pas encore chargé
-    if (config.resolveAudioPath) return await config.resolveAudioPath(src);
     if (config.resolveAbsolutePath) return config.resolveAbsolutePath(src);
     return src;
   }
 
-  async function handlePlayClick(e: React.MouseEvent) {
-    /* TODO : rajouter le fait que ça sélectionne le bloc, et le handler pour la barre espace */
-    e.stopPropagation();
-    if (nativeIsActive(nodeId)) {
-      if (isPlaying) {
-        try {
-          const state = await nativePause();
-          setIsPlaying(state.isPlaying);
-        } catch (err) {
-          log.error("pause échouée", err);
+  async function togglePlayback() {
+    // ── Mobile ─────────────────────────────────────────────────────────────
+    if (isMobile) {
+      if (nativeIsActive(nodeId)) {
+        if (isPlaying) {
+          try {
+            const state = await nativePause();
+            setIsPlaying(state.isPlaying);
+          } catch (err) {
+            log.error("pause échouée", err);
+          }
+        } else {
+          try {
+            const state = await nativePlay(nodeId);
+            setIsPlaying(state.isPlaying);
+          } catch (err) {
+            log.error("reprise échouée", err);
+          }
         }
       } else {
-        // Reprendre depuis la position actuelle sans recharger la source
         try {
+          const playbackSrc = await getPlaybackSrc();
+          const title = (node.attrs.title as string) || undefined;
+          await nativeLoad(nodeId, playbackSrc, title);
           const state = await nativePlay(nodeId);
           setIsPlaying(state.isPlaying);
         } catch (err) {
-          log.error("reprise échouée", err);
+          log.error("lecture échouée", err);
         }
       }
-    } else {
-      try {
-        const title = (node.attrs.title as string) || undefined;
-        const playbackSrc = await getPlaybackSrc();
-        await nativeLoad(nodeId, playbackSrc, title);
-        const state = await nativePlay(nodeId);
-        setIsPlaying(state.isPlaying);
-      } catch (err) {
-        log.error("lecture échouée", err);
-      }
+      return;
     }
+
+    // ── Desktop : Web Audio API ─────────────────────────────────────────────
+    const ctx = audioCtxRef.current;
+    const buf = audioBufferRef.current;
+    if (!ctx || !buf) {
+      log.error("audio non prêt (waveform pas encore chargée ?)");
+      return;
+    }
+
+    if (isPlaying) {
+      // Pause : mémoriser la position pour la reprise
+      playOffsetRef.current +=
+        ctx.currentTime - playStartCtxTimeRef.current;
+      if (sourceRef.current) {
+        sourceRef.current.onended = null;
+        try { sourceRef.current.stop(); } catch {}
+        sourceRef.current = null;
+      }
+      stopDesktopRaf();
+      setIsPlaying(false);
+    } else {
+      // Play (ou reprise après pause)
+
+      // Arrêter un autre bloc s'il joue
+      if (!isActiveRef.current) {
+        _globalDesktopStop?.();
+        isActiveRef.current = true;
+        _globalDesktopStop = () => stopDesktopPlayback(true);
+      }
+
+      // Si le contexte est suspendu (première lecture), le reprendre.
+      // C'est ici que la session audio macOS est activée — mais le décodage
+      // préalable (decodeAudioData) l'a déjà initialisée, donc ctx.resume()
+      // revient en quelques ms au lieu de ~1s.
+      if (ctx.state === "suspended") await ctx.resume();
+      if (ctx.state === "closed") {
+        log.error("AudioContext fermé de façon inattendue");
+        return;
+      }
+
+      // Si on a joué jusqu'au bout, repartir du début
+      if (playOffsetRef.current >= buf.duration) {
+        playOffsetRef.current = 0;
+      }
+
+      const source = ctx.createBufferSource();
+      source.buffer = buf;
+      source.connect(ctx.destination);
+      source.onended = () => {
+        if (sourceRef.current !== source) return;
+        sourceRef.current = null;
+        isActiveRef.current = false;
+        _globalDesktopStop = null;
+        playOffsetRef.current = 0;
+        stopDesktopRaf();
+        setIsPlaying(false);
+        if (progressOverlayRef.current)
+          progressOverlayRef.current.style.width = "0%";
+        if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
+        if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
+          (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
+      };
+
+      playStartCtxTimeRef.current = ctx.currentTime;
+      source.start(0, playOffsetRef.current);
+      sourceRef.current = source;
+
+      setIsPlaying(true);
+      startDesktopRaf();
+    }
+  }
+
+  // Mis à jour à chaque render pour capturer isPlaying courant (pour la barre espace)
+  playToggleRef.current = togglePlayback;
+
+  async function handlePlayClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    const pos = getPos();
+    if (pos !== undefined) {
+      view.dispatch(
+        view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos))
+      );
+      view.focus();
+    }
+    await togglePlayback();
   }
 
   async function handleWaveformClick(e: React.MouseEvent<HTMLDivElement>) {
     e.stopPropagation();
+    const pos = getPos();
+    if (pos !== undefined) {
+      view.dispatch(
+        view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos))
+      );
+      view.focus();
+    }
+
+    if (!isMobile) {
+      // Desktop : seek via AudioBufferSourceNode
+      const ctx = audioCtxRef.current;
+      const buf = audioBufferRef.current;
+      if (!ctx || !buf) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const newOffset = ((e.clientX - rect.left) / rect.width) * buf.duration;
+
+      if (isPlaying && sourceRef.current) {
+        // Redémarrer depuis la nouvelle position
+        sourceRef.current.onended = null;
+        try { sourceRef.current.stop(); } catch {}
+        sourceRef.current = null;
+
+        const source = ctx.createBufferSource();
+        source.buffer = buf;
+        source.connect(ctx.destination);
+        source.onended = () => {
+          if (sourceRef.current !== source) return;
+          sourceRef.current = null;
+          isActiveRef.current = false;
+          _globalDesktopStop = null;
+          playOffsetRef.current = 0;
+          stopDesktopRaf();
+          setIsPlaying(false);
+          if (progressOverlayRef.current)
+            progressOverlayRef.current.style.width = "0%";
+          if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
+          if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
+            (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
+        };
+        playOffsetRef.current = newOffset;
+        playStartCtxTimeRef.current = ctx.currentTime;
+        source.start(0, newOffset);
+        sourceRef.current = source;
+      } else {
+        // Juste mettre à jour la position (lecture reprendra depuis là)
+        playOffsetRef.current = newOffset;
+        const pct = (newOffset / buf.duration) * 100;
+        if (progressOverlayRef.current)
+          progressOverlayRef.current.style.width = `${pct}%`;
+        if (timeLeftRef.current)
+          timeLeftRef.current.textContent = fmtTime(newOffset);
+        if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
+          (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
+      }
+      return;
+    }
+
+    // Mobile : seek natif
     if (!nativeIsActive(nodeId) || nativeDurationRef.current <= 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = (e.clientX - rect.left) / rect.width;
@@ -294,9 +533,8 @@ export function AudioBlockComponent({
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  const filename = src.split(/[/\\]/).pop() ?? "";
+  const filename = decodeURIComponent(src.split(/[/\\]/).pop() ?? "");
   const displayTitle = (node.attrs.title as string) || src || "Audio";
-  //TODO : que le bloc soit sélectionné au clic (sur le bloc, sur les boutons, sur tout. ça va simplifier la lecture avec la barre espace)
   const isSelected = selectedRef.current;
 
   return (
@@ -311,13 +549,11 @@ export function AudioBlockComponent({
           : "border-black/10 hover:border-black/18"
       )}
       onClick={() => {
-        /* TODO : vérifier que ça n'est pas n'importe quoi */
         const pos = getPos();
         if (pos === undefined) return;
-        const tr = view.state.tr.setSelection(
-          NodeSelection.create(view.state.doc, pos)
+        view.dispatch(
+          view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos))
         );
-        view.dispatch(tr);
       }}
     >
       {/* ── Header ── */}
@@ -327,7 +563,6 @@ export function AudioBlockComponent({
         </div>
 
         <div className="flex-1 min-w-0 ">
-          {/* TODO : remplacer pas un EditableText*/}
           {titleEditing ? (
             <input
               type="text"
@@ -348,7 +583,6 @@ export function AudioBlockComponent({
             </div>
           )}
           <div className="text-[11px] text-(--crepe-color-muted,#999) mt-px truncate">
-            {/* TODO : ça ne marche pas, le path complet est affiché */}
             {filename}
           </div>
         </div>
@@ -381,6 +615,7 @@ export function AudioBlockComponent({
         <div
           ref={progressOverlayRef}
           className="absolute top-0 left-0 h-full pointer-events-none w-full bg-amber-300/10 border-r-2 border-r-amber-400"
+          style={{ width: "0%" }}
         />
         {waveformStatus !== "ready" && (
           <div className="absolute inset-0 flex items-center justify-center text-[11px] text-gray-400 tracking-[0.02em]">

@@ -1,16 +1,19 @@
 // Décodage et rendu waveform via Web Audio API.
 // Aucune dépendance React ni lecteur audio — utilisable partout.
+//
+// L'AudioContext est fourni par le consommateur et N'EST PAS fermé ici :
+// le garder en vie maintient la session audio macOS initialisée, ce qui
+// évite le délai ~1s de réinitialisation au premier play.
 
 export async function drawWaveform(
   canvas: HTMLCanvasElement,
+  ctx: AudioContext,
   buffer: ArrayBuffer,
-  onDone: () => void,
+  onDone: (audioBuffer: AudioBuffer) => void,
   onError: (e: unknown) => void
 ): Promise<void> {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const decoded = await ctx.decodeAudioData(buffer);
-    ctx.close();
 
     const data = decoded.getChannelData(0);
     const W = canvas.width;
@@ -46,7 +49,7 @@ export async function drawWaveform(
         const x = i * step;
         const bh = Math.max(3, amp * (H - 4));
         const y = (H - bh) / 2;
-        c.fillStyle = x / W < progress ? "rgba(0,122,255,0.85)" : color;
+        c.fillStyle = x / W < progress ? "rgba(251,191,36,0.85)" : color;
         c.beginPath();
         c.roundRect(x, y, barW, bh, 1);
         c.fill();
@@ -55,7 +58,9 @@ export async function drawWaveform(
 
     drawBars("rgba(0,0,0,0.18)");
     (canvas as any)._drawBars = drawBars;
-    onDone();
+
+    // L'AudioBuffer décodé est retourné pour la lecture directe (AudioBufferSourceNode)
+    onDone(decoded);
   } catch (err) {
     onError(err);
   }

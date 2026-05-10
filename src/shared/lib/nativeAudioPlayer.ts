@@ -1,5 +1,8 @@
 // Lecteur audio unifié : tauri-plugin-native-audio sur iOS/Android, HTML5 sur desktop.
 // API identique dans les deux cas — les consommateurs n'ont pas à connaître la plateforme.
+//
+// Sur desktop, ce module n'est utilisé que pour le chemin mobile (isMobile === true).
+// La lecture desktop passe par AudioBufferSourceNode directement dans AudioBlockComponent.
 
 import {
   initialize,
@@ -54,62 +57,6 @@ async function ensureNativeReady() {
   log.info("lecteur natif initialisé");
 }
 
-// ── Backend desktop : HTML5 Audio ─────────────────────────────────────────────
-
-let htmlAudio: HTMLAudioElement | null = null;
-let htmlRafId = 0;
-
-function getHtmlAudio(): HTMLAudioElement {
-  if (htmlAudio) return htmlAudio;
-  htmlAudio = new Audio();
-
-  htmlAudio.addEventListener("play", () => startHtmlRaf());
-  htmlAudio.addEventListener("pause", () => {
-    stopHtmlRaf();
-    dispatch(htmlState());
-  });
-  htmlAudio.addEventListener("ended", () => {
-    stopHtmlRaf();
-    dispatch({ ...IDLE_STATE, status: "ended" });
-  });
-  htmlAudio.addEventListener("loadedmetadata", () => dispatch(htmlState()));
-  htmlAudio.addEventListener("error", () => {
-    stopHtmlRaf();
-    log.error("erreur HTML5 audio", htmlAudio?.error?.message);
-    dispatch({ ...IDLE_STATE, status: "error", error: htmlAudio?.error?.message });
-  });
-  return htmlAudio;
-}
-
-function htmlState(): NativeAudioState {
-  const a = htmlAudio;
-  if (!a) return IDLE_STATE;
-  return {
-    status: a.ended ? "ended" : a.paused ? "idle" : "playing",
-    currentTime: a.currentTime,
-    duration: Number.isFinite(a.duration) ? a.duration : 0,
-    isPlaying: !a.paused && !a.ended,
-    buffering: false,
-    rate: a.playbackRate,
-  };
-}
-
-// RAF à 60 fps pour un curseur fluide sur desktop (timeupdate ne fire qu'à ~4 Hz)
-function startHtmlRaf() {
-  function tick() {
-    dispatch(htmlState());
-    htmlRafId = requestAnimationFrame(tick);
-  }
-  if (!htmlRafId) htmlRafId = requestAnimationFrame(tick);
-}
-
-function stopHtmlRaf() {
-  if (htmlRafId) {
-    cancelAnimationFrame(htmlRafId);
-    htmlRafId = 0;
-  }
-}
-
 // ── API publique ──────────────────────────────────────────────────────────────
 
 export async function nativeLoad(
@@ -118,18 +65,14 @@ export async function nativeLoad(
   title?: string
 ): Promise<NativeAudioState> {
   displaceActive(nodeId);
-  log.info("chargement audio", { nodeId, src, platform: isMobile ? "native" : "html5" });
+  log.info("chargement audio natif", { nodeId, src });
 
   if (isMobile) {
     await ensureNativeReady();
     return setSource({ src, title });
   }
 
-  const audio = getHtmlAudio();
-  stopHtmlRaf();
-  audio.pause();
-  audio.src = src;
-  return htmlState();
+  return IDLE_STATE;
 }
 
 export async function nativePlay(nodeId: string): Promise<NativeAudioState> {
@@ -140,9 +83,7 @@ export async function nativePlay(nodeId: string): Promise<NativeAudioState> {
     return play();
   }
 
-  const audio = getHtmlAudio();
-  await audio.play().catch((err) => log.error("play HTML5 échoué", err));
-  return htmlState();
+  return IDLE_STATE;
 }
 
 export async function nativePause(): Promise<NativeAudioState> {
@@ -151,8 +92,7 @@ export async function nativePause(): Promise<NativeAudioState> {
     return pause();
   }
 
-  htmlAudio?.pause();
-  return htmlState();
+  return IDLE_STATE;
 }
 
 export async function nativeSeek(seconds: number): Promise<NativeAudioState> {
@@ -161,9 +101,7 @@ export async function nativeSeek(seconds: number): Promise<NativeAudioState> {
     return seekTo(seconds);
   }
 
-  if (htmlAudio) htmlAudio.currentTime = seconds;
-  dispatch(htmlState());
-  return htmlState();
+  return IDLE_STATE;
 }
 
 export function nativeIsActive(nodeId: string): boolean {

@@ -26,7 +26,20 @@ export function createAudioBlockNodeView(config: AudioBlockConfig = {}) {
     const nodeRef = { current: initialNode };
     const selectedRef = { current: false };
     const titleEditingRef = { current: false };
+    // Mis à jour par le composant à chaque render pour capturer l'état courant
+    const playToggleRef: { current: () => void } = { current: () => {} };
     const nodeId = nextNodeId();
+
+    // Listener barre espace : activé uniquement quand le bloc est sélectionné.
+    // Phase capture pour intercepter avant ProseMirror (qui sinon remplacerait la sélection par un espace).
+    function onSpaceKey(e: KeyboardEvent) {
+      if (e.key !== " " || titleEditingRef.current) return;
+      const target = e.target as HTMLElement;
+      if (!target.closest?.(".ProseMirror")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      playToggleRef.current();
+    }
 
     let root: Root | null = createRoot(container);
 
@@ -36,6 +49,7 @@ export function createAudioBlockNodeView(config: AudioBlockConfig = {}) {
           nodeRef,
           selectedRef,
           titleEditingRef,
+          playToggleRef,
           view,
           getPos,
           config,
@@ -70,15 +84,18 @@ export function createAudioBlockNodeView(config: AudioBlockConfig = {}) {
 
       selectNode() {
         selectedRef.current = true;
+        document.addEventListener("keydown", onSpaceKey, { capture: true });
         render();
       },
 
       deselectNode() {
         selectedRef.current = false;
+        document.removeEventListener("keydown", onSpaceKey, { capture: true });
         render();
       },
 
       destroy() {
+        document.removeEventListener("keydown", onSpaceKey, { capture: true });
         root?.unmount();
         root = null;
       },
