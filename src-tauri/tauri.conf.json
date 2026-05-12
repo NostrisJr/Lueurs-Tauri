@@ -25,7 +25,7 @@
     ],
     "macOSPrivateApi": true,
     "security": {
-      "csp": "default-src 'self' blob: data: asset: 'unsafe-inline'; connect-src ipc: http://ipc.localhost",
+      "csp": "default-src 'self' blob: data: asset: 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src ipc: http://ipc.localhost",
       "assetProtocol": {
         "enable": true,
         "scope": []

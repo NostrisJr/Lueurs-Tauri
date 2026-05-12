@@ -147,7 +147,7 @@ export function DocumentNavigator() {
               <div
                 key={block.pos}
                 data-nav-mark
-                className="w-0.5 h-[7px] shrink-0 cursor-pointer bg-gray-500/20 hover:bg-gray-500/30 transition-colors"
+                className="w-0.5 h-1.75 shrink-0 cursor-pointer bg-gray-500/20 hover:bg-gray-500/30 transition-colors"
                 onClick={() => setScrollToPos(block.pos)}
               />
             );
