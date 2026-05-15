@@ -1,9 +1,9 @@
 import { sfXCircle } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
-import { useNote } from "../../../shared/hooks/useNote";
 import { useAtomValue } from "jotai";
-import { treeAtom } from "../../../shared/lib/Atoms";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
+import { useNote } from "../../../shared/hooks/useNote";
+import { treeAtom } from "../../../shared/lib/Atoms";
 import { useCmdHeld } from "../../hooks/useCmdHeld";
 
 /**

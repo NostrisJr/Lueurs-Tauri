@@ -62,8 +62,40 @@ export type MobileView =
   | "editor"
   | "tabs"
   | "search"
-  | "dictaphone";
-export const mobileViewAtom = atom<MobileView>("filetree");
+  | "dictaphone"
+  | "settings";
+
+// Pile de navigation — source de vérité unique pour l'historique des vues
+export const mobileNavStackAtom = atom<MobileView[]>(["filetree"]);
+
+// Vue courante (dérivé — lecture seule)
+export const mobileViewAtom = atom((get) => {
+  const stack = get(mobileNavStackAtom);
+  return stack[stack.length - 1] ?? ("filetree" as MobileView);
+});
+
+// Vue précédente pour l'effet peek (dérivé)
+export const mobilePrevViewAtom = atom((get) => {
+  const stack = get(mobileNavStackAtom);
+  return stack.length >= 2 ? stack[stack.length - 2] : null;
+});
+
+// Naviguer vers une nouvelle vue (push)
+export const mobileNavigateAtom = atom(null, (_get, set, view: MobileView) => {
+  set(mobileNavStackAtom, (prev) => [...prev, view]);
+});
+
+// Retour arrière (pop)
+export const mobileGoBackAtom = atom(null, (_get, set) => {
+  set(mobileNavStackAtom, (prev) =>
+    prev.length > 1 ? prev.slice(0, -1) : prev
+  );
+});
+
+// Réinitialiser vers le file tree (retour à la racine absolue)
+export const mobileResetNavAtom = atom(null, (_get, set) => {
+  set(mobileNavStackAtom, ["filetree"]);
+});
 
 export type DictaphoneMode = "new-note" | "insert";
 export const dictaphoneModeAtom = atom<DictaphoneMode | null>(null);
@@ -83,6 +115,9 @@ export interface RenameTarget {
   isFolder: boolean;
 }
 export const renameTargetAtom = atom<RenameTarget | null>(null);
+
+// Cible du menu contextuel mobile (appui long sur note/dossier)
+export const mobileContextMenuAtom = atom<RenameTarget | null>(null);
 
 // Action : navigue vers noteId en empilant la note courante
 export const navigateToNoteAtom = atom(null, (get, set, noteId: string) => {

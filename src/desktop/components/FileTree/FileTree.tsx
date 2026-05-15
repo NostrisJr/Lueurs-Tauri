@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { folderPathAtom, dragOverAtom } from "../../../shared/lib/Atoms";
+import { dragOverAtom, folderPathAtom } from "../../../shared/lib/Atoms";
 import { useFileDrop } from "../../hooks/useFileDrop";
 import { FileDragCtx } from "./FileDragCtx";
 import { TreeNodes } from "./FileNode";

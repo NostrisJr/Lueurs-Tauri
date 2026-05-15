@@ -1,28 +1,28 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import {
-  flattenTree,
-  type NoteFile,
-  type TreeNode,
-  type FolderNode,
-  useFileTree,
-  type Frontmatter,
-} from "./useFileTree";
-import { useMemo } from "react";
-import { createLogger } from "../lib/logger";
 import { ask } from "@tauri-apps/plugin-dialog";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useMemo } from "react";
 import { useFrontmatter } from "../../desktop/components/Frontmatter/hooks/useFrontmatter";
 import { useTemplateSync } from "../../desktop/hooks/useTemplateSync";
-import { usePathPropagation } from "./usePathPropagation";
 import {
   activeNoteAtom,
   activeNoteIdAtom,
+  folderPathAtom,
   openTabIdsAtom,
   savingAtom,
   searchAtom,
-  treeAtom,
-  folderPathAtom,
   tabHistoryAtom,
+  treeAtom,
 } from "../lib/Atoms";
+import { createLogger } from "../lib/logger";
+import {
+  type FolderNode,
+  type Frontmatter,
+  type NoteFile,
+  type TreeNode,
+  flattenTree,
+  useFileTree,
+} from "./useFileTree";
+import { usePathPropagation } from "./usePathPropagation";
 
 const log = createLogger("useNote");
 

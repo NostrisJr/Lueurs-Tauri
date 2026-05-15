@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
+import { AnchoredDropdown } from "../../../../shared/components/AnchoredDropdown";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { TableColumn } from "../../../../shared/hooks/useTable";
 import {
+  AGG_LABELS,
+  AGG_OPS,
   type AggregationOp,
   type TableAggregations,
-  AGG_OPS,
-  AGG_LABELS,
   computeAggregation,
 } from "../../../../shared/lib/aggregations";
-import { AnchoredDropdown } from "../../../../shared/components/AnchoredDropdown";
 import { computeFormula, isFormula } from "../../../../shared/lib/formulas";
 
 interface Props {

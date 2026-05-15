@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
 import { platform } from "@tauri-apps/plugin-os";
+import { useRef, useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import type { getAddableFields } from "../../../shared/lib/noteTypes";
 

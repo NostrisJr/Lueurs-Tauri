@@ -1,11 +1,11 @@
-import { $prose } from "@milkdown/kit/utils";
-import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
+import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import type {
   EditorView,
   NodeView,
   ViewMutationRecord,
 } from "@milkdown/kit/prose/view";
+import { $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../../lib/logger";
 
 const log = createLogger("task-list-plugin");

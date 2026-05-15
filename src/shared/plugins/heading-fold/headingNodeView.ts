@@ -1,14 +1,14 @@
-import { $prose } from "@milkdown/kit/utils";
-import { Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
+import { sfChevronRight } from "@bradleyhodges/sfsymbols";
 import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
+import { Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
 import type {
   EditorView,
   NodeView,
   ViewMutationRecord,
 } from "@milkdown/kit/prose/view";
-import { sfChevronRight } from "@bradleyhodges/sfsymbols";
-import { headingFoldPluginKey, findSectionEnd } from "./headingFoldPlugin";
+import { $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../../lib/logger";
+import { findSectionEnd, headingFoldPluginKey } from "./headingFoldPlugin";
 
 const log = createLogger("heading-fold-view");
 

@@ -1,16 +1,19 @@
 import { useMemo, useRef, useState } from "react";
-import type { Frontmatter, NoteFile } from "../../../../shared/hooks/useFileTree";
-import { SystemField } from "../../../../shared/lib/noteTypes";
+import type {
+  Frontmatter,
+  NoteFile,
+} from "../../../../shared/hooks/useFileTree";
 import {
-  isFormula,
   computeFormula,
-  humanizeFormula,
   dehumanizeFormula,
+  humanizeFormula,
+  isFormula,
 } from "../../../../shared/lib/formulas";
+import { SystemField } from "../../../../shared/lib/noteTypes";
 import { NoteSelector } from "../../Frontmatter/NoteSelector";
 import {
-  PropertySelector,
   type PropertyOption,
+  PropertySelector,
 } from "../../Frontmatter/PropertySelector";
 
 const REF_PROP_TRIGGER_RE = /ref\("([^"]+)"\)\.$/;

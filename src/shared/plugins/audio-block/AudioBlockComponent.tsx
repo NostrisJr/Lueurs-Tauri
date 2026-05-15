@@ -4,10 +4,19 @@
 //   cela maintient la session audio macOS initialisée et élimine le délai ~1s.
 // Mobile : lecture via tauri-plugin-native-audio (nativeAudioPlayer).
 
-import { useEffect, useRef, useState } from "react";
+import {
+  sfPauseFill,
+  sfPlayFill,
+  sfWaveform,
+  sfXmark,
+} from "@bradleyhodges/sfsymbols";
+import SFIcon from "@bradleyhodges/sfsymbols-react";
 import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
+import { NodeSelection } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
-import type { AudioBlockConfig } from "./config";
+import clsx from "clsx";
+import { useEffect, useRef, useState } from "react";
+import { createLogger } from "../../lib/logger";
 import {
   nativeIsActive,
   nativeLoad,
@@ -17,17 +26,8 @@ import {
   nativeSubscribe,
 } from "../../lib/nativeAudioPlayer";
 import { isMobile } from "../../lib/platform";
+import type { AudioBlockConfig } from "./config";
 import { drawWaveform } from "./waveform";
-import { createLogger } from "../../lib/logger";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
-import {
-  sfPauseFill,
-  sfPlayFill,
-  sfWaveform,
-  sfXmark,
-} from "@bradleyhodges/sfsymbols";
-import clsx from "clsx";
-import { NodeSelection } from "@milkdown/kit/prose/state";
 
 const log = createLogger("audio-block");
 
@@ -113,7 +113,9 @@ export function AudioBlockComponent({
     if (!isMobile) {
       if (sourceRef.current) {
         sourceRef.current.onended = null;
-        try { sourceRef.current.stop(); } catch {}
+        try {
+          sourceRef.current.stop();
+        } catch {}
         sourceRef.current = null;
       }
       stopDesktopRaf();
@@ -148,7 +150,9 @@ export function AudioBlockComponent({
               setWaveformStatus("ready");
               // Afficher la durée dès le décodage
               if (timeRightRef.current) {
-                timeRightRef.current.textContent = fmtTime(audioBuffer.duration);
+                timeRightRef.current.textContent = fmtTime(
+                  audioBuffer.duration
+                );
               }
             },
             (err) => {
@@ -263,8 +267,7 @@ export function AudioBlockComponent({
       const pct = (pos / buf.duration) * 100;
       if (progressOverlayRef.current)
         progressOverlayRef.current.style.width = `${pct}%`;
-      if (timeLeftRef.current)
-        timeLeftRef.current.textContent = fmtTime(pos);
+      if (timeLeftRef.current) timeLeftRef.current.textContent = fmtTime(pos);
       if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
         (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
       webRafRef.current = requestAnimationFrame(tick);
@@ -278,7 +281,9 @@ export function AudioBlockComponent({
     stopDesktopRaf();
     if (sourceRef.current) {
       sourceRef.current.onended = null;
-      try { sourceRef.current.stop(); } catch {}
+      try {
+        sourceRef.current.stop();
+      } catch {}
       sourceRef.current = null;
     }
     if (resetPosition) {
@@ -342,11 +347,12 @@ export function AudioBlockComponent({
 
     if (isPlaying) {
       // Pause : mémoriser la position pour la reprise
-      playOffsetRef.current +=
-        ctx.currentTime - playStartCtxTimeRef.current;
+      playOffsetRef.current += ctx.currentTime - playStartCtxTimeRef.current;
       if (sourceRef.current) {
         sourceRef.current.onended = null;
-        try { sourceRef.current.stop(); } catch {}
+        try {
+          sourceRef.current.stop();
+        } catch {}
         sourceRef.current = null;
       }
       stopDesktopRaf();
@@ -439,7 +445,9 @@ export function AudioBlockComponent({
       if (isPlaying && sourceRef.current) {
         // Redémarrer depuis la nouvelle position
         sourceRef.current.onended = null;
-        try { sourceRef.current.stop(); } catch {}
+        try {
+          sourceRef.current.stop();
+        } catch {}
         sourceRef.current = null;
 
         const source = ctx.createBufferSource();

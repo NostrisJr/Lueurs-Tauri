@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
 import { useCmdHeld } from "../../../hooks/useCmdHeld";

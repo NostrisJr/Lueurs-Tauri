@@ -1,8 +1,8 @@
-import { $prose } from "@milkdown/kit/utils";
-import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
-import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
-import type { EditorState } from "@milkdown/kit/prose/state";
 import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
+import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
+import type { EditorState } from "@milkdown/kit/prose/state";
+import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
+import { $prose } from "@milkdown/kit/utils";
 
 const wordHighlightKey = new PluginKey<DecorationSet>("wordHighlight");
 
@@ -12,7 +12,10 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function findOccurrences(doc: ProsemirrorNode, word: string): Array<{ from: number; to: number }> {
+function findOccurrences(
+  doc: ProsemirrorNode,
+  word: string
+): Array<{ from: number; to: number }> {
   const results: Array<{ from: number; to: number }> = [];
   const re = new RegExp(escapeRegex(word), "gi");
 
@@ -22,7 +25,10 @@ function findOccurrences(doc: ProsemirrorNode, word: string): Array<{ from: numb
     let m: RegExpExecArray | null;
     while ((m = re.exec(node.text)) !== null) {
       const charBefore = m.index > 0 ? node.text[m.index - 1] : null;
-      const charAfter = m.index + word.length < node.text.length ? node.text[m.index + word.length] : null;
+      const charAfter =
+        m.index + word.length < node.text.length
+          ? node.text[m.index + word.length]
+          : null;
       if (charBefore && WORD_CHAR.test(charBefore)) continue;
       if (charAfter && WORD_CHAR.test(charAfter)) continue;
       results.push({ from: pos + m.index, to: pos + m.index + word.length });
@@ -42,7 +48,8 @@ function buildDecorations(state: EditorState): DecorationSet {
 
   // Doit avoir au moins 2 chars et commencer/finir par un caractère de mot
   if (text.length < 2) return DecorationSet.empty;
-  if (!WORD_CHAR.test(text[0]) || !WORD_CHAR.test(text[text.length - 1])) return DecorationSet.empty;
+  if (!WORD_CHAR.test(text[0]) || !WORD_CHAR.test(text[text.length - 1]))
+    return DecorationSet.empty;
 
   const occurrences = findOccurrences(state.doc, text);
   if (occurrences.length < 2) return DecorationSet.empty;

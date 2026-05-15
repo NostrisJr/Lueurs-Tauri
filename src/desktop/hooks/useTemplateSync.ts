@@ -1,30 +1,30 @@
+import { invoke } from "@tauri-apps/api/core";
+import { ask, message } from "@tauri-apps/plugin-dialog";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import {
-  treeAtom,
-  folderPathAtom,
-  writingPathsRegistry,
-  skipPropagationAtom,
-} from "../../shared/lib/Atoms";
-import {
-  flattenTree,
   type Frontmatter,
   type NoteFile,
+  flattenTree,
 } from "../../shared/hooks/useFileTree";
+import { usePersistNote } from "../../shared/hooks/usePersistNote";
+import {
+  folderPathAtom,
+  skipPropagationAtom,
+  treeAtom,
+  writingPathsRegistry,
+} from "../../shared/lib/Atoms";
 import {
   parseTableAggregations,
   serializeTableAggregations,
 } from "../../shared/lib/aggregations";
 import {
-  toArray,
   isSystemField,
+  toArray,
   updateNodeInTree,
 } from "../../shared/lib/fileTreeHelpers";
-import { invoke } from "@tauri-apps/api/core";
-import { ask, message } from "@tauri-apps/plugin-dialog";
 import { createLogger } from "../../shared/lib/logger";
-import { loadTree, applyAllTemplates } from "../../shared/lib/vaultIO";
 import { NoteType, SystemField } from "../../shared/lib/noteTypes";
-import { usePersistNote } from "../../shared/hooks/usePersistNote";
+import { applyAllTemplates, loadTree } from "../../shared/lib/vaultIO";
 
 const log = createLogger("useTemplateSync");
 

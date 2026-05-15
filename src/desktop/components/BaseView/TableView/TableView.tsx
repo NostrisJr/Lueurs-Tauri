@@ -1,12 +1,12 @@
-import { useNote } from "../../../../shared/hooks/useNote";
-import { useTemplateSync } from "../../../hooks/useTemplateSync";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { Frontmatter } from "../../../../shared/hooks/useFileTree";
+import { useNote } from "../../../../shared/hooks/useNote";
 import { useTable } from "../../../../shared/hooks/useTable";
+import { createLogger } from "../../../../shared/lib/logger";
+import { useTemplateSync } from "../../../hooks/useTemplateSync";
+import { TableFooter } from "./TableFooter";
 import { TableHeader } from "./TableHeader";
 import { TableRow } from "./TableRow";
-import { TableFooter } from "./TableFooter";
-import { createLogger } from "../../../../shared/lib/logger";
 
 const log = createLogger("TableView");
 

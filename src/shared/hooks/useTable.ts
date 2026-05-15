@@ -1,21 +1,21 @@
-import { useCallback, useRef, useState } from "react";
 import { useAtomValue } from "jotai";
+import { useCallback, useRef, useState } from "react";
 import {
-  treeAtom,
   parseTableColumns,
   serializeTableColumns,
+  treeAtom,
 } from "../lib/Atoms";
-import { flattenTree, isSystemField } from "../lib/fileTreeHelpers";
-import { SystemField } from "../lib/noteTypes";
-import type { NoteFile, Frontmatter } from "./useFileTree";
-import { createLogger } from "../lib/logger";
-import { usePersistNote } from "./usePersistNote";
 import {
   type AggregationOp,
   type TableAggregations,
   parseTableAggregations,
   serializeTableAggregations,
 } from "../lib/aggregations";
+import { flattenTree, isSystemField } from "../lib/fileTreeHelpers";
+import { createLogger } from "../lib/logger";
+import { SystemField } from "../lib/noteTypes";
+import type { Frontmatter, NoteFile } from "./useFileTree";
+import { usePersistNote } from "./usePersistNote";
 
 const log = createLogger("useTable");
 

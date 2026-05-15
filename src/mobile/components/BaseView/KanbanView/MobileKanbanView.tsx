@@ -1,37 +1,50 @@
-import { useState, useCallback } from "react";
 import {
   DndContext,
-  DragOverlay,
-  closestCorners,
-  type DragStartEvent,
   type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
   PointerSensor,
+  closestCorners,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import type { NoteFile } from "../../shared/hooks/useFileTree";
-import type { KanbanColumn as KanbanColumnType } from "../../shared/lib/noteTypes";
-import { NO_VALUE_COLUMN_ID, type KanbanCards } from "../../shared/lib/Atoms";
-import { MobileKanbanColumn } from "./MobileKanbanColumn";
+import { useCallback, useState } from "react";
+import type { NoteFile } from "../../../../shared/hooks/useFileTree";
+import { type KanbanCards, NO_VALUE_COLUMN_ID } from "../../../../shared/lib/Atoms";
+import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
 import { MobileKanbanCard } from "./MobileKanbanCard";
+import { MobileKanbanColumn } from "./MobileKanbanColumn";
 
 interface Props {
   columns: KanbanColumnType[];
   cards: KanbanCards;
   kanbanKey: string;
-  onMoveCard: (noteId: string, fromColId: string, toColId: string) => Promise<void>;
+  onMoveCard: (
+    noteId: string,
+    fromColId: string,
+    toColId: string
+  ) => Promise<void>;
   onRenameColumn: (colId: string, newLabel: string) => Promise<void>;
   onAddColumn: (label: string) => void;
 }
 
-export function MobileKanbanView({ columns, cards, kanbanKey, onMoveCard, onRenameColumn, onAddColumn }: Props) {
+export function MobileKanbanView({
+  columns,
+  cards,
+  kanbanKey,
+  onMoveCard,
+  onRenameColumn,
+  onAddColumn,
+}: Props) {
   const [activeNote, setActiveNote] = useState<NoteFile | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColumnLabel, setNewColumnLabel] = useState("");
 
   // Touch delay court pour ne pas bloquer le scroll horizontal
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    })
   );
 
   function findColumnOfNote(noteId: string): string | null {
@@ -61,7 +74,10 @@ export function MobileKanbanView({ columns, cards, kanbanKey, onMoveCard, onRena
       const noteId = active.id as string;
       const fromColId = findColumnOfNote(noteId);
       if (!fromColId) return;
-      const allColIds = new Set([...columns.map((c) => c.id), NO_VALUE_COLUMN_ID]);
+      const allColIds = new Set([
+        ...columns.map((c) => c.id),
+        NO_VALUE_COLUMN_ID,
+      ]);
       const toColId = allColIds.has(over.id as string)
         ? (over.id as string)
         : findColumnOfNote(over.id as string);
@@ -79,10 +95,18 @@ export function MobileKanbanView({ columns, cards, kanbanKey, onMoveCard, onRena
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div
         className="flex gap-4 px-4 py-3 overflow-x-auto h-full"
-        style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}
+        style={{
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
+        }}
       >
         {columns.map((col) => (
           <MobileKanbanColumn
@@ -106,7 +130,10 @@ export function MobileKanbanView({ columns, cards, kanbanKey, onMoveCard, onRena
         )}
 
         {/* Ajout de colonne */}
-        <div className="shrink-0 flex flex-col" style={{ width: "85vw", scrollSnapAlign: "start" }}>
+        <div
+          className="shrink-0 flex flex-col"
+          style={{ width: "85vw", scrollSnapAlign: "start" }}
+        >
           {addingColumn ? (
             <div className="bg-gray-50 rounded-2xl p-3">
               <input
@@ -117,7 +144,10 @@ export function MobileKanbanView({ columns, cards, kanbanKey, onMoveCard, onRena
                 onBlur={commitAddColumn}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") commitAddColumn();
-                  if (e.key === "Escape") { setNewColumnLabel(""); setAddingColumn(false); }
+                  if (e.key === "Escape") {
+                    setNewColumnLabel("");
+                    setAddingColumn(false);
+                  }
                 }}
                 placeholder="Nom de la colonne…"
                 style={{ fontSize: 16 }}
@@ -137,7 +167,9 @@ export function MobileKanbanView({ columns, cards, kanbanKey, onMoveCard, onRena
       </div>
 
       <DragOverlay>
-        {activeNote && <MobileKanbanCard note={activeNote} kanbanKey={kanbanKey} />}
+        {activeNote && (
+          <MobileKanbanCard note={activeNote} kanbanKey={kanbanKey} />
+        )}
       </DragOverlay>
     </DndContext>
   );

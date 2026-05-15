@@ -1,9 +1,9 @@
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { activeNoteAtom, treeAtom } from "../../shared/lib/Atoms";
 import { flattenTree } from "../../shared/hooks/useFileTree";
-import { NoteType } from "../../shared/lib/noteTypes";
+import { activeNoteAtom, treeAtom } from "../../shared/lib/Atoms";
 import { isSystemField } from "../../shared/lib/fileTreeHelpers";
+import { NoteType } from "../../shared/lib/noteTypes";
 
 function toArray(value: unknown): string[] {
   if (!value) return [];

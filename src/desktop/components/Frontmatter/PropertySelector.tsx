@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
 import { platform } from "@tauri-apps/plugin-os";
+import { useEffect, useRef, useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 
 export interface PropertyOption {

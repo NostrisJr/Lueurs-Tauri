@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import { platform } from "@tauri-apps/plugin-os";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { NoteFile } from "../../../shared/hooks/useFileTree";
 import {
   computeFormula,
   dehumanizeFormula,
@@ -7,7 +8,6 @@ import {
   isFormula,
 } from "../../../shared/lib/formulas";
 import { type NoteTypeValue, SystemField } from "../../../shared/lib/noteTypes";
-import type { NoteFile } from "../../../shared/hooks/useFileTree";
 import { NoteChip } from "./NoteChip";
 import { NoteSelector } from "./NoteSelector";
 import { type PropertyOption, PropertySelector } from "./PropertySelector";

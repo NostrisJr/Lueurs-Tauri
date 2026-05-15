@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { useEffect, useRef } from "react";
 import { createLogger } from "../../lib/logger";
 
 const log = createLogger("WaveformDisplay");
@@ -114,9 +114,12 @@ export function WaveformDisplay({
     (async () => {
       log.info("enregistrement amplitude listener...");
       try {
-        // iOS : commande directe avec Channel explicite → registerAmplitudeListener dans Swift
+        // iOS : commande directe avec Channel explicite → registerAmplitudeListener dans Swift.
+        // Nom en snake_case (Tauri mappe vers la méthode Swift camelCase).
         const ch = new Channel<AmplitudePayload>(handleAmplitude);
-        await invoke("plugin:audio-recorder|registerAmplitudeListener", { handler: ch });
+        await invoke("plugin:audio-recorder|register_amplitude_listener", {
+          handler: ch,
+        });
         log.info("registerAmplitudeListener OK", { channelId: ch.id });
         cancelListener = () => {};
       } catch (err) {

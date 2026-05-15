@@ -5,16 +5,16 @@
 // La lecture desktop passe par AudioBufferSourceNode directement dans AudioBlockComponent.
 
 import {
-  initialize,
-  setSource,
-  play,
-  pause,
-  seekTo,
   addStateListener,
+  initialize,
+  pause,
+  play,
+  seekTo,
+  setSource,
 } from "tauri-plugin-native-audio-api";
 import type { NativeAudioState } from "tauri-plugin-native-audio-api";
-import { isMobile } from "./platform";
 import { createLogger } from "./logger";
+import { isMobile } from "./platform";
 
 type StateCallback = (state: NativeAudioState) => void;
 

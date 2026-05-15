@@ -7,13 +7,17 @@ import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef } from "react";
-import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
-import { activeNoteAtom, treeAtom } from "../../../shared/lib/Atoms";
-import { computeFormula, isFormula } from "../../../shared/lib/formulas";
-import { NoteType, SystemField, getFieldDef } from "../../../shared/lib/noteTypes";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import { activeNoteAtom, treeAtom } from "../../../shared/lib/Atoms";
 import { toArray } from "../../../shared/lib/fileTreeHelpers";
+import { computeFormula, isFormula } from "../../../shared/lib/formulas";
+import {
+  NoteType,
+  SystemField,
+  getFieldDef,
+} from "../../../shared/lib/noteTypes";
+import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
 import { FrontmatterValue } from "./FrontmatterValue";
 import { NoteSelector } from "./NoteSelector";
 import { PropertyEditModal } from "./PropertyEditModal";

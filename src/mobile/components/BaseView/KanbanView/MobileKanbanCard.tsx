@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { NoteFile } from "../../shared/hooks/useFileTree";
-import { useNote } from "../../shared/hooks/useNote";
 import { useSetAtom } from "jotai";
-import { navigateToNoteAtom } from "../../shared/lib/Atoms";
+import { useRef, useState } from "react";
+import type { NoteFile } from "../../../../shared/hooks/useFileTree";
+import { useNote } from "../../../../shared/hooks/useNote";
+import { navigateToNoteAtom } from "../../../../shared/lib/Atoms";
 
 interface Props {
   note: NoteFile;
@@ -18,8 +18,14 @@ export function MobileKanbanCard({ note }: Props) {
   const [draft, setDraft] = useState(note.name);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: note.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: note.id });
 
   function startEdit(e: React.TouchEvent | React.MouseEvent) {
     e.stopPropagation();
@@ -39,7 +45,10 @@ export function MobileKanbanCard({ note }: Props) {
   function handleKeyDown(e: React.KeyboardEvent) {
     e.stopPropagation();
     if (e.key === "Enter") commitEdit();
-    if (e.key === "Escape") { setEditing(false); setDraft(note.name); }
+    if (e.key === "Escape") {
+      setEditing(false);
+      setDraft(note.name);
+    }
   }
 
   return (
@@ -91,7 +100,10 @@ export function MobileKanbanCard({ note }: Props) {
       <button
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); navigateToNote(note.id); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          navigateToNote(note.id);
+        }}
         className="mt-2 text-xs text-blue-500 active:text-blue-700 transition-colors"
       >
         Ouvrir →

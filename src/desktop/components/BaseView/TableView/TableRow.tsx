@@ -1,12 +1,12 @@
-import { useRef, useState } from "react";
 import { useAtomValue } from "jotai";
-import { treeAtom } from "../../../../shared/lib/Atoms";
+import { useRef, useState } from "react";
 import { flattenTree } from "../../../../shared/hooks/useFileTree";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
-import type { TableColumn } from "../../../../shared/hooks/useTable";
-import { TableCell } from "./TableCell";
 import { useNote } from "../../../../shared/hooks/useNote";
+import type { TableColumn } from "../../../../shared/hooks/useTable";
+import { treeAtom } from "../../../../shared/lib/Atoms";
 import { useCmdHeld } from "../../../hooks/useCmdHeld";
+import { TableCell } from "./TableCell";
 
 interface Props {
   note: NoteFile;

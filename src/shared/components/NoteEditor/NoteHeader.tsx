@@ -1,9 +1,9 @@
-import { useAtomValue } from "jotai";
 import { platform } from "@tauri-apps/plugin-os";
-import { activeNoteAtom, type DisplayMode } from "../../lib/Atoms";
+import { useAtomValue } from "jotai";
+import { useEffect } from "react";
+import { type DisplayMode, activeNoteAtom } from "../../lib/Atoms";
 import { EditableText } from "../EditableText.tsx";
 import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
-import { useEffect } from "react";
 
 interface Props {
   onRename: (newName: string) => Promise<void>;

@@ -1,8 +1,8 @@
+import { sfMicrophoneFill } from "@bradleyhodges/sfsymbols";
+import SFIcon from "@bradleyhodges/sfsymbols-react";
+import clsx from "clsx";
 import type { RefObject } from "react";
 import type { EditorHandle } from "./MarkdownEditor";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
-import { sfMicrophoneFill } from "@bradleyhodges/sfsymbols";
-import clsx from "clsx";
 
 interface Props {
   editorRef: RefObject<EditorHandle | null>;

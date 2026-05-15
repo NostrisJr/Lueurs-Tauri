@@ -1,5 +1,7 @@
 import {
+  type CmdKey,
   Editor,
+  commandsCtx,
   defaultValueCtx,
   editorViewCtx,
   rootCtx,
@@ -10,9 +12,16 @@ import { cursor } from "@milkdown/kit/plugin/cursor";
 import { history } from "@milkdown/kit/plugin/history";
 import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { trailing } from "@milkdown/kit/plugin/trailing";
-import { commonmark, headingKeymap } from "@milkdown/kit/preset/commonmark";
+import {
+  commonmark,
+  headingKeymap,
+  toggleInlineCodeCommand,
+  turnIntoTextCommand,
+} from "@milkdown/kit/preset/commonmark";
 import { gfm } from "@milkdown/kit/preset/gfm";
 import { toggleMark } from "@milkdown/kit/prose/commands";
+import { liftListItem, sinkListItem } from "prosemirror-schema-list";
+import { redo, undo } from "prosemirror-history";
 import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import { $prose } from "@milkdown/kit/utils";
 import { Milkdown, useEditor } from "@milkdown/react";
@@ -62,11 +71,34 @@ import { wordHighlightPlugin } from "../../plugins/word-highlight/wordHighlightP
 import { useContextMenu } from "./hooks/useContextMenu";
 import { useDropHandler } from "./hooks/useDropHandler";
 
+// Raccourci pour appeler une commande milkdown et refocaliser la vue
+// biome-ignore lint/suspicious/noExplicitAny: CmdKey est paramétré sur T inconnu à ce site d'appel
+function callCmd(editorRef: { current: Editor | null }, key: CmdKey<any>) {
+  editorRef.current?.action((ctx) => {
+    ctx.get(commandsCtx).call(key);
+    ctx.get(editorViewCtx).focus();
+  });
+}
+
 export interface EditorHandle {
+  undo: () => void;
+  redo: () => void;
   bold: () => void;
   italic: () => void;
   strike: () => void;
-  heading: (level: 1 | 2 | 3) => void;
+  heading: (level: 1 | 2 | 3 | 4 | 5 | 6) => void;
+  paragraph: () => void;
+  inlineCode: () => void;
+  blockquote: () => void;
+  bulletList: () => void;
+  orderedList: () => void;
+  taskList: () => void;
+  indent: () => void;
+  dedent: () => void;
+  codeBlock: () => void;
+  didascalieInline: () => void;
+  didascalieBlock: () => void;
+  poetry: () => void;
   insertAudioBlock: (path: string, title: string) => void;
   scrollToPos: (pos: number) => void;
 }
@@ -255,6 +287,20 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
     useContextMenu(editorRef, wrapperRef, insertImageBlock, insertAudioBlock);
 
     useImperativeHandle(ref, () => ({
+      undo() {
+        editorRef.current?.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          undo(view.state, view.dispatch);
+          view.focus();
+        });
+      },
+      redo() {
+        editorRef.current?.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          redo(view.state, view.dispatch);
+          view.focus();
+        });
+      },
       bold() {
         editorRef.current?.action((ctx) => {
           const view = ctx.get(editorViewCtx);
@@ -306,6 +352,52 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
       },
       insertAudioBlock(absolutePath, title) {
         insertAudioBlock(absolutePath, title);
+      },
+      paragraph() {
+        callCmd(editorRef, turnIntoTextCommand.key);
+      },
+      inlineCode() {
+        callCmd(editorRef, toggleInlineCodeCommand.key);
+      },
+      blockquote() {
+        callCmd(editorRef, toggleBlockquoteCommand.key);
+      },
+      bulletList() {
+        callCmd(editorRef, toggleBulletListCommand.key);
+      },
+      orderedList() {
+        callCmd(editorRef, toggleOrderedListCommand.key);
+      },
+      taskList() {
+        callCmd(editorRef, toggleTaskListCommand.key);
+      },
+      indent() {
+        editorRef.current?.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const listItem = ctx.get(schemaCtx).nodes.list_item;
+          if (listItem) sinkListItem(listItem)(view.state, view.dispatch);
+          view.focus();
+        });
+      },
+      dedent() {
+        editorRef.current?.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const listItem = ctx.get(schemaCtx).nodes.list_item;
+          if (listItem) liftListItem(listItem)(view.state, view.dispatch);
+          view.focus();
+        });
+      },
+      codeBlock() {
+        callCmd(editorRef, toggleCodeBlockCommand.key);
+      },
+      didascalieInline() {
+        callCmd(editorRef, toggleDidascalieInlineCommand.key);
+      },
+      didascalieBlock() {
+        callCmd(editorRef, toggleDidascalieBlockCommand.key);
+      },
+      poetry() {
+        callCmd(editorRef, togglePoetryCommand.key);
       },
       scrollToPos(pos) {
         editorRef.current?.action((ctx) => {

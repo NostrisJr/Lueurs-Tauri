@@ -1,10 +1,10 @@
 import {
-  sfSidebarLeft,
   sfArrowClockwise,
-  sfFolder,
   sfDocumentBadgePlus,
+  sfFolder,
   sfFolderBadgePlus,
   sfMagnifyingglass,
+  sfSidebarLeft,
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -12,17 +12,17 @@ import { useMemo } from "react";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
-  searchAtom,
-  loadingAtom,
-  treeAtom,
-  folderPathAtom,
-  errorAtom,
   activeNoteAtom,
+  errorAtom,
+  folderPathAtom,
+  loadingAtom,
+  searchAtom,
   sidebarCollapsedAtom,
+  treeAtom,
 } from "../../../shared/lib/Atoms";
 import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
-import { FileTree } from "../FileTree/FileTree";
 import { ROW_ACTIVE, ROW_INACTIVE } from "../FileTree/FileNode";
+import { FileTree } from "../FileTree/FileTree";
 
 export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
   const [search, setSearch] = useAtom(searchAtom);

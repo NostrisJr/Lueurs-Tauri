@@ -1,20 +1,23 @@
-import { useState, useCallback } from "react";
 import {
   DndContext,
-  DragOverlay,
-  closestCorners,
-  type DragStartEvent,
   type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
   PointerSensor,
+  closestCorners,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { useCallback, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
-import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
-import { KanbanColumn } from "./KanbanColumn";
-import { KanbanCard } from "./KanbanCard";
-import { NO_VALUE_COLUMN_ID, type KanbanCards } from "../../../../shared/lib/Atoms";
+import {
+  type KanbanCards,
+  NO_VALUE_COLUMN_ID,
+} from "../../../../shared/lib/Atoms";
 import { createLogger } from "../../../../shared/lib/logger";
+import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
+import { KanbanCard } from "./KanbanCard";
+import { KanbanColumn } from "./KanbanColumn";
 
 const log = createLogger("KanbanView");
 

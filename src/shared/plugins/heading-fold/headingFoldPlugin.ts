@@ -1,9 +1,11 @@
-import { $prose } from "@milkdown/kit/utils";
+import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
 import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
-import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
+import { $prose } from "@milkdown/kit/utils";
 
-export const headingFoldPluginKey = new PluginKey<DecorationSet>("heading-fold");
+export const headingFoldPluginKey = new PluginKey<DecorationSet>(
+  "heading-fold"
+);
 
 /**
  * Retourne la position de fin de la section d'un heading foldé.
@@ -43,16 +45,16 @@ export const headingFoldPlugin = $prose(
 
           // 2. Nettoyer les décos dont le heading a été supprimé ou a changé de niveau
           if (tr.docChanged) {
-            const obsoletes = decorations.find(
-              undefined,
-              undefined,
-              (spec) => {
-                if (spec.foldedByHeading == null) return false;
-                const pos = spec.foldedByHeading as number;
-                const node = newState.doc.nodeAt(pos);
-                return !node || node.type.name !== "heading" || node.attrs.level !== spec.headingLevel;
-              }
-            );
+            const obsoletes = decorations.find(undefined, undefined, (spec) => {
+              if (spec.foldedByHeading == null) return false;
+              const pos = spec.foldedByHeading as number;
+              const node = newState.doc.nodeAt(pos);
+              return (
+                !node ||
+                node.type.name !== "heading" ||
+                node.attrs.level !== spec.headingLevel
+              );
+            });
             if (obsoletes.length > 0) {
               decorations = decorations.remove(obsoletes);
             }
@@ -69,7 +71,8 @@ export const headingFoldPlugin = $prose(
 
           if (fold) {
             const headingNode = newState.doc.nodeAt(pos);
-            if (!headingNode || headingNode.type.name !== "heading") return decorations;
+            if (!headingNode || headingNode.type.name !== "heading")
+              return decorations;
             const level = headingNode.attrs.level as number;
             const sectionEnd = findSectionEnd(newState.doc, pos, level);
             const contentStart = pos + headingNode.nodeSize;

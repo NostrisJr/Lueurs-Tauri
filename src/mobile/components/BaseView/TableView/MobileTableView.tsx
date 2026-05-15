@@ -1,8 +1,8 @@
 import { useSetAtom } from "jotai";
-import { navigateToNoteAtom } from "../../../shared/lib/Atoms";
-import type { NoteFile, Frontmatter } from "../../../shared/hooks/useFileTree";
-import { useTable } from "../../../shared/hooks/useTable";
-import { useNote } from "../../../shared/hooks/useNote";
+import type { Frontmatter, NoteFile } from "../../../../shared/hooks/useFileTree";
+import { useNote } from "../../../../shared/hooks/useNote";
+import { useTable } from "../../../../shared/hooks/useTable";
+import { navigateToNoteAtom } from "../../../../shared/lib/Atoms";
 import { MobileTableRow } from "./MobileTableRow";
 
 const TITLE_WIDTH = 160;

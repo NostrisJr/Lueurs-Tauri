@@ -1,32 +1,35 @@
-import { useState, useEffect } from "react";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
-import { activeNoteAtom, skipPropagationAtom } from "../../../shared/lib/Atoms";
+import { useEffect, useState } from "react";
 import type { Frontmatter } from "../../../shared/hooks/useFileTree";
+import { activeNoteAtom, skipPropagationAtom } from "../../../shared/lib/Atoms";
+import { isSystemField } from "../../../shared/lib/fileTreeHelpers";
 import {
+  NoteType,
   getAddableFields,
   getFieldDef,
   isFunctionalBaseField,
-  NoteType,
 } from "../../../shared/lib/noteTypes";
-import { toFrontmatter, type Row } from "./lib/frontmatterUtils";
+import { useTemplateSync } from "../../hooks/useTemplateSync";
+import { AddPropertyDropdown } from "./AddPropertyDropdown";
+import { FrontmatterRow } from "./FrontmatterRow";
 import {
-  rowsAtom,
   editingKeyAtom,
+  rowsAtom,
   selectorOpenAtom,
 } from "./lib/frontMatterAtoms";
-import { FrontmatterRow } from "./FrontmatterRow";
-import { AddPropertyDropdown } from "./AddPropertyDropdown";
-import { ask } from "@tauri-apps/plugin-dialog";
-import { useTemplateSync } from "../../hooks/useTemplateSync";
-import { isSystemField } from "../../../shared/lib/fileTreeHelpers";
+import { type Row, toFrontmatter } from "./lib/frontmatterUtils";
 
 interface Props {
   onChange: (updated: Frontmatter) => void;
   defaultCollapsed?: boolean;
 }
 
-export function FrontmatterEditor({ onChange, defaultCollapsed = false }: Props) {
+export function FrontmatterEditor({
+  onChange,
+  defaultCollapsed = false,
+}: Props) {
   const isMobile = platform() === "ios";
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const rows = useAtomValue(rowsAtom);

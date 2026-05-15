@@ -465,4 +465,50 @@
 
 .mobile-prose .ProseMirror {
   padding: 16px 16px 80px;
+  font-size: 16px;
+}
+
+/* Décalage des headings pour faire de la place au chevron de fold */
+.mobile-prose .milkdown .ProseMirror h1,
+.mobile-prose .milkdown .ProseMirror h2,
+.mobile-prose .milkdown .ProseMirror h3,
+.mobile-prose .milkdown .ProseMirror h4,
+.mobile-prose .milkdown .ProseMirror h5,
+.mobile-prose .milkdown .ProseMirror h6 {
+  padding-left: 2.5rem;
+}
+
+.mobile-prose .milkdown .ProseMirror .fold-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Zone de tap 40px × 40px, chevron reste à 12px via la règle svg ci-dessous */
+  width: 2.5rem;
+  height: 2.5rem;
+  cursor: pointer;
+  /* Toujours visible sur mobile (pas de hover) */
+  opacity: 0.35;
+  transition: transform 0.15s ease, opacity 0.15s;
+  user-select: none;
+  color: currentColor;
+}
+
+.mobile-prose .milkdown .ProseMirror .fold-btn svg {
+  width: 12px;
+  height: auto;
+}
+
+/* Replié sur mobile */
+.mobile-prose .milkdown .ProseMirror h1[data-folded="true"] .fold-btn,
+.mobile-prose .milkdown .ProseMirror h2[data-folded="true"] .fold-btn,
+.mobile-prose .milkdown .ProseMirror h3[data-folded="true"] .fold-btn,
+.mobile-prose .milkdown .ProseMirror h4[data-folded="true"] .fold-btn,
+.mobile-prose .milkdown .ProseMirror h5[data-folded="true"] .fold-btn,
+.mobile-prose .milkdown .ProseMirror h6[data-folded="true"] .fold-btn {
+  transform: translateY(-50%) rotate(0deg);
+  opacity: 0.6;
 }

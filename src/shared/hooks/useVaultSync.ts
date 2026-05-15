@@ -1,10 +1,10 @@
-import { useEffect } from "react";
-import { useSetAtom, useStore } from "jotai";
 import { listen } from "@tauri-apps/api/event";
-import { treeAtom, folderPathAtom } from "../lib/Atoms";
+import { useSetAtom, useStore } from "jotai";
+import { useEffect } from "react";
+import { folderPathAtom, treeAtom } from "../lib/Atoms";
 import { updateNodeInTree } from "../lib/fileTreeHelpers";
-import { noteFromRaw } from "../lib/vaultIO";
 import { createLogger } from "../lib/logger";
+import { noteFromRaw } from "../lib/vaultIO";
 
 const log = createLogger("useVaultSync");
 

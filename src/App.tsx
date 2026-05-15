@@ -1,6 +1,6 @@
 import { platform } from "@tauri-apps/plugin-os";
 import { DesktopApp } from "./desktop/DesktopApp";
-import { MobileApp } from "./mobile/components/MobileApp";
+import { MobileApp } from "./mobile/MobileApp";
 
 export default function App() {
   if (platform() === "ios")

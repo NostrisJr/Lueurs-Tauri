@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
 import { useAtomValue } from "jotai";
-import { treeAtom } from "../../../shared/lib/Atoms";
-import { flattenTree, type NoteFile } from "../../../shared/hooks/useFileTree";
-import type { useTable } from "../../../shared/hooks/useTable";
+import { useRef, useState } from "react";
+import { type NoteFile, flattenTree } from "../../../../shared/hooks/useFileTree";
+import type { useTable } from "../../../../shared/hooks/useTable";
+import { treeAtom } from "../../../../shared/lib/Atoms";
 import { MobileTableCell } from "./MobileTableCell";
 
 const TITLE_WIDTH = 160;

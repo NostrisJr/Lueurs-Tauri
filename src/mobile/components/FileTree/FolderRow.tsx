@@ -1,5 +1,5 @@
+import { sfChevronRight, sfFolder } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
-import { sfFolder, sfChevronRight } from "@bradleyhodges/sfsymbols";
 import type { FolderNode } from "../../../shared/hooks/useFileTree";
 import { useLongPress } from "../../hooks/useLongPress";
 

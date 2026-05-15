@@ -1,31 +1,32 @@
-import { useState, useEffect, useCallback } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
-import { readDir, remove } from "@tauri-apps/plugin-fs";
-import { invoke } from "@tauri-apps/api/core";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import {
   sfChevronLeft,
   sfMicrophoneFill,
-  sfStopFill,
   sfPauseFill,
   sfPlayFill,
+  sfStopFill,
 } from "@bradleyhodges/sfsymbols";
+import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { invoke } from "@tauri-apps/api/core";
+import { readDir, remove } from "@tauri-apps/plugin-fs";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useState } from "react";
+import { WaveformDisplay } from "../../../shared/components/Dictaphone/WaveformDisplay";
+import { useAudioRecorder } from "../../../shared/hooks/useAudioRecorder";
+import { useFileTree } from "../../../shared/hooks/useFileTree";
+import { useNote } from "../../../shared/hooks/useNote";
 import {
-  mobileViewAtom,
+  activeNoteIdAtom,
   dictaphoneModeAtom,
-  pendingAudioInsertAtom,
   folderPathAtom,
   folderStackAtom,
-  activeNoteIdAtom,
-  openTabIdsAtom,
+  mobileGoBackAtom,
   noteBackStackAtom,
-} from "../../shared/lib/Atoms";
-import { useAudioRecorder } from "../../shared/hooks/useAudioRecorder";
-import { WaveformDisplay } from "../../shared/components/Dictaphone/WaveformDisplay";
-import { useFileTree } from "../../shared/hooks/useFileTree";
-import { useNote } from "../../shared/hooks/useNote";
-import { findNextAvailableNumber } from "../../shared/lib/fileTreeHelpers";
-import { createLogger } from "../../shared/lib/logger";
+  openTabIdsAtom,
+  pendingAudioInsertAtom,
+} from "../../../shared/lib/Atoms";
+import { findNextAvailableNumber } from "../../../shared/lib/fileTreeHelpers";
+import { createLogger } from "../../../shared/lib/logger";
+import { hapticImpact } from "../../lib/haptics";
 
 const log = createLogger("MobileDictaphone");
 
@@ -41,7 +42,7 @@ function formatTime(seconds: number): string {
 
 export function MobileDictaphone() {
   const dictaphoneMode = useAtomValue(dictaphoneModeAtom);
-  const setMobileView = useSetAtom(mobileViewAtom);
+  const goBack = useSetAtom(mobileGoBackAtom);
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const setPendingAudioInsert = useSetAtom(pendingAudioInsertAtom);
   const folderPath = useAtomValue(folderPathAtom);
@@ -86,8 +87,15 @@ export function MobileDictaphone() {
       await recorder.startRecording();
       setStatus("recording");
     } catch (err) {
-      log.error("impossible d'accéder au microphone", err);
-      setErrorMsg("Impossible d'accéder au microphone.");
+      // Détails complets pour Safari Web Inspector — invoke() rejette avec un objet { message, code?, ... } stringifié
+      const detail =
+        err instanceof Error
+          ? `${err.name}: ${err.message}`
+          : typeof err === "string"
+            ? err
+            : JSON.stringify(err);
+      log.error("impossible d'accéder au microphone", { err, detail });
+      setErrorMsg(`Impossible d'accéder au microphone. (${detail})`);
       setStatus("error");
     }
   }, [recorder]);
@@ -121,7 +129,7 @@ export function MobileDictaphone() {
       if (dictaphoneMode === "insert") {
         setPendingAudioInsert({ path: relativePath, title: "Enregistrement" });
         setDictaphoneMode(null);
-        setMobileView("editor");
+        goBack();
         return;
       }
 
@@ -148,7 +156,7 @@ export function MobileDictaphone() {
       );
       setActiveNoteId(finalId);
       setDictaphoneMode(null);
-      setMobileView("editor");
+      goBack();
     } catch (err) {
       log.error("erreur lors de la sauvegarde de l'enregistrement", err);
       setErrorMsg("Erreur lors de la sauvegarde.");
@@ -165,7 +173,7 @@ export function MobileDictaphone() {
     handleRename,
     setPendingAudioInsert,
     setDictaphoneMode,
-    setMobileView,
+    goBack,
     setActiveNoteId,
     setOpenTabIds,
     setNoteBackStack,
@@ -182,11 +190,12 @@ export function MobileDictaphone() {
   }, [recorder]);
 
   const handleCancel = useCallback(() => {
+    hapticImpact("light");
     if (status === "recording" || status === "paused")
       recorder.cancelRecording();
     setDictaphoneMode(null);
-    setMobileView(dictaphoneMode === "insert" ? "editor" : "filetree");
-  }, [status, recorder, dictaphoneMode, setDictaphoneMode, setMobileView]);
+    goBack();
+  }, [status, recorder, setDictaphoneMode, goBack]);
 
   // Nettoyage si le composant se démonte pendant l'enregistrement
   useEffect(() => {

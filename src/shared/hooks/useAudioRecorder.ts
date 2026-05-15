@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { tempDir } from "@tauri-apps/api/path";
 import { remove } from "@tauri-apps/plugin-fs";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createLogger } from "../lib/logger";
 
 const log = createLogger("useAudioRecorder");
@@ -83,7 +83,9 @@ export function useAudioRecorder(): AudioRecorderState {
     const tmp = await tempDir();
     const outputPath = `${tmp}lueurs_rec_${Date.now()}`;
 
-    await invoke(cmd("start_recording"), { config: { outputPath, quality: "medium" } });
+    await invoke(cmd("start_recording"), {
+      config: { outputPath, quality: "medium" },
+    });
     setIsRecording(true);
     setIsPaused(false);
     setDurationMs(0);

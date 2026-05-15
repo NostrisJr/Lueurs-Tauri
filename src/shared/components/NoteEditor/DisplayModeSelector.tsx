@@ -1,6 +1,6 @@
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useAtom } from "jotai";
-import { displayModeAtom, type DisplayMode } from "../../lib/Atoms";
+import { type DisplayMode, displayModeAtom } from "../../lib/Atoms";
 import { DISPLAY_MODES } from "../../lib/displayModes";
 
 interface Props {

@@ -1,19 +1,19 @@
-import { useState, useCallback, useRef } from "react";
 import { message } from "@tauri-apps/plugin-dialog";
 import { useAtomValue } from "jotai";
+import { useCallback, useRef, useState } from "react";
 import {
-  treeAtom,
+  type KanbanCards,
+  NO_VALUE_COLUMN_ID,
+  generateColumnId,
   kanbanCardsAtom,
   parseColumns,
   serializeColumns,
-  generateColumnId,
-  NO_VALUE_COLUMN_ID,
-  type KanbanCards,
+  treeAtom,
 } from "../lib/Atoms";
 import { flattenTree, getFreeProps } from "../lib/fileTreeHelpers";
-import { SystemField, type KanbanColumn } from "../lib/noteTypes";
-import type { NoteFile, Frontmatter } from "./useFileTree";
 import { createLogger } from "../lib/logger";
+import { type KanbanColumn, SystemField } from "../lib/noteTypes";
+import type { Frontmatter, NoteFile } from "./useFileTree";
 import { usePersistNote } from "./usePersistNote";
 
 const log = createLogger("useKanban");

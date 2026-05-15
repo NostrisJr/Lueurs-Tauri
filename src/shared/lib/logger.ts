@@ -18,28 +18,28 @@ const IS_DEV = import.meta.env.DEV;
 type LogLevel = "info" | "warn" | "error";
 
 interface Logger {
-    info: (message: string, data?: unknown) => void;
-    warn: (message: string, data?: unknown) => void;
-    error: (message: string, data?: unknown) => void;
+  info: (message: string, data?: unknown) => void;
+  warn: (message: string, data?: unknown) => void;
+  error: (message: string, data?: unknown) => void;
 }
 
 export function createLogger(module: string): Logger {
-    const prefix = `[${module}]`;
+  const prefix = `[${module}]`;
 
-    function log(level: LogLevel, message: string, data?: unknown) {
-        if (!IS_DEV && level === "info") return;
+  function log(level: LogLevel, message: string, data?: unknown) {
+    if (!IS_DEV && level === "info") return;
 
-        const args: unknown[] = [`${prefix} ${message}`];
-        if (data !== undefined) args.push(data);
+    const args: unknown[] = [`${prefix} ${message}`];
+    if (data !== undefined) args.push(data);
 
-        if (level === "error") console.error(...args);
-        else if (level === "warn") console.warn(...args);
-        else console.log(...args);
-    }
+    if (level === "error") console.error(...args);
+    else if (level === "warn") console.warn(...args);
+    else console.log(...args);
+  }
 
-    return {
-        info: (msg, data) => log("info", msg, data),
-        warn: (msg, data) => log("warn", msg, data),
-        error: (msg, data) => log("error", msg, data),
-    };
+  return {
+    info: (msg, data) => log("info", msg, data),
+    warn: (msg, data) => log("warn", msg, data),
+    error: (msg, data) => log("error", msg, data),
+  };
 }

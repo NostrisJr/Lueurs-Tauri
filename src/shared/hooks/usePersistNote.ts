@@ -1,8 +1,8 @@
-import { useCallback } from "react";
 import { useSetAtom, useStore } from "jotai";
-import { treeAtom, folderPathAtom } from "../lib/Atoms";
-import type { Frontmatter } from "./useFileTree";
+import { useCallback } from "react";
+import { folderPathAtom, treeAtom } from "../lib/Atoms";
 import { persistNotePatch } from "../lib/vaultIO";
+import type { Frontmatter } from "./useFileTree";
 
 /**
  * Wrapper de persistNotePatch qui injecte automatiquement vaultPath

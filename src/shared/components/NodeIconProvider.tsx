@@ -1,13 +1,13 @@
-import SFIcon from "@bradleyhodges/sfsymbols-react";
-import { NoteType, SystemField } from "../lib/noteTypes";
 import {
-  sfTextDocument,
-  sfDocument,
-  sfCylinderSplit1x2Fill,
-  sfCylinderSplit1x2,
   sfAppendPage,
+  sfCylinderSplit1x2,
+  sfCylinderSplit1x2Fill,
+  sfDocument,
+  sfTextDocument,
 } from "@bradleyhodges/sfsymbols";
+import SFIcon from "@bradleyhodges/sfsymbols-react";
 import type { NoteFile } from "../hooks/useFileTree";
+import { NoteType, SystemField } from "../lib/noteTypes";
 
 function NodeIconProvider({
   node,

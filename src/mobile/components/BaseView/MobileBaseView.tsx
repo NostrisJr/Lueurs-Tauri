@@ -1,15 +1,19 @@
-import { useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { folderPathAtom, openTabIdsAtom } from "../../shared/lib/Atoms";
-import { BaseViewEnum, type BaseViewType, SystemField } from "../../shared/lib/noteTypes";
-import { useFileTree } from "../../shared/hooks/useFileTree";
-import type { NoteFile } from "../../shared/hooks/useFileTree";
-import { toArray } from "../../shared/lib/fileTreeHelpers";
-import type { Frontmatter } from "../../shared/lib/fileTreeHelpers";
-import { useKanban } from "../../shared/hooks/useKanban";
-import { KanbanKeySelector } from "../../shared/components/KanbanKeySelector";
-import { MobileTableView } from "./MobileTableView";
-import { MobileKanbanView } from "./MobileKanbanView";
+import { useState } from "react";
+import { KanbanKeySelector } from "../../../shared/components/KanbanKeySelector";
+import { useFileTree } from "../../../shared/hooks/useFileTree";
+import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import { useKanban } from "../../../shared/hooks/useKanban";
+import { folderPathAtom, openTabIdsAtom } from "../../../shared/lib/Atoms";
+import { toArray } from "../../../shared/lib/fileTreeHelpers";
+import type { Frontmatter } from "../../../shared/lib/fileTreeHelpers";
+import {
+  BaseViewEnum,
+  type BaseViewType,
+  SystemField,
+} from "../../../shared/lib/noteTypes";
+import { MobileKanbanView } from "./KanbanView/MobileKanbanView";
+import { MobileTableView } from "./TableView";
 
 interface Props {
   base: NoteFile;
@@ -57,7 +61,9 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
   }
 
   async function handleCreateChild() {
-    const defaultFolder = base.frontmatter[SystemField.DEFAULT_FOLDER] as string | undefined;
+    const defaultFolder = base.frontmatter[SystemField.DEFAULT_FOLDER] as
+      | string
+      | undefined;
     const targetDir = defaultFolder || folderPath;
     if (!targetDir) return;
     const newNote = await createNote(targetDir);
@@ -87,7 +93,8 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
         {/* View selector — boutons pill */}
         <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl flex-1">
           {[BaseViewEnum.TABLE, BaseViewEnum.KANBAN].map((view) => {
-            const disabled = view === BaseViewEnum.KANBAN && availableKeys.length === 0;
+            const disabled =
+              view === BaseViewEnum.KANBAN && availableKeys.length === 0;
             const active = currentView === view;
             return (
               <button

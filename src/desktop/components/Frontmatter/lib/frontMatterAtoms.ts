@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import { activeNoteAtom } from "../../../../shared/lib/Atoms";
-import { type Row, toRows, toFrontmatter } from "./frontmatterUtils";
+import { type Row, toFrontmatter, toRows } from "./frontmatterUtils";
 
 const SYSTEM_FIELDS = ["__Children__", "__Base__", "__Template__", "__Type__"];
 

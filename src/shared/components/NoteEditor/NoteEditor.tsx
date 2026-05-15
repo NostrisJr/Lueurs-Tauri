@@ -6,7 +6,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { BaseView } from "../../../desktop/components/BaseView/BaseView";
 import { DesktopDictaphone } from "../../../desktop/components/Dictaphone/DesktopDictaphone";
 import { FrontmatterEditor } from "../../../desktop/components/Frontmatter/FrontmatterEditor";
-import { MobileBaseView } from "../../../mobile/components/MobileBaseView";
+import { MobileBaseView } from "../../../mobile/components/BaseView/MobileBaseView";
 import type { Frontmatter } from "../../hooks/useFileTree";
 import { useNote } from "../../hooks/useNote.ts";
 import {
@@ -112,11 +112,11 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
             displayModeHandlerRef={displayModeHandlerRef}
           />
 
-          {!isBase && (
+          {!isBase && isDesktop && (
             <div className="relative select-none">
               <EditorToolbar
                 editorRef={internalRef}
-                onRecord={isDesktop ? () => setDictaphoneOpen(true) : undefined}
+                onRecord={() => setDictaphoneOpen(true)}
               />
               {dictaphoneOpen && (
                 <DesktopDictaphone

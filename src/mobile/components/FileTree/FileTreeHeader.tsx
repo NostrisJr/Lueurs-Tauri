@@ -1,33 +1,34 @@
-import { useRef, useState, useEffect } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
-import {
-  folderStackAtom,
-  folderPathAtom,
-  renameTargetAtom,
-} from "../../../shared/lib/Atoms";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import {
   sfChevronLeft,
-  sfPlus,
   sfDocumentBadgePlus,
+  sfEllipsis,
   sfFolderBadgePlus,
   sfGearshape,
 } from "@bradleyhodges/sfsymbols";
+import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useRef, useState } from "react";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
+import {
+  folderPathAtom,
+  folderStackAtom,
+  mobileContextMenuAtom,
+  mobileNavigateAtom,
+} from "../../../shared/lib/Atoms";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
-import { MobileSettings } from "../MobileSettings";
+import { hapticImpact } from "../../lib/haptics";
 
 export function FileTreeHeader() {
   const folderStack = useAtomValue(folderStackAtom);
   const setFolderStack = useSetAtom(folderStackAtom);
   const folderPath = useAtomValue(folderPathAtom);
-  const setRenameTarget = useSetAtom(renameTargetAtom);
+  const setContextMenu = useSetAtom(mobileContextMenuAtom);
+  const navigate = useSetAtom(mobileNavigateAtom);
   const { createNote, createFolder } = useFileTree();
   const selectNote = useMobileSelectNote();
 
-  const [showCreateMenu, setShowCreateMenu] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const createMenuRef = useRef<HTMLDivElement>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
   const canGoBack = folderStack.length > 1;
@@ -35,47 +36,43 @@ export function FileTreeHeader() {
   const folderName = currentFolder?.name ?? vaultName ?? "Notes";
 
   function handleDrillOut() {
+    hapticImpact("light");
     setFolderStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }
 
   async function handleCreateNote() {
+    setShowMenu(false);
+    hapticImpact("light");
     const path = currentFolder?.id ?? folderPath ?? "";
     const note = await createNote(path);
     selectNote(note);
   }
 
-  async function handleRenameFolder() {
-    if (currentFolder) {
-      setRenameTarget({
-        id: currentFolder.id,
-        name: currentFolder.name,
-        isFolder: true,
-      });
-    }
-  }
-
   async function handleCreateFolder() {
+    setShowMenu(false);
+    hapticImpact("light");
     const path = currentFolder?.id ?? folderPath ?? "";
     await createFolder(path);
   }
 
+  function handleOpenSettings() {
+    setShowMenu(false);
+    hapticImpact("light");
+    navigate("settings");
+  }
+
   useEffect(() => {
-    if (!showCreateMenu) return;
+    if (!showMenu) return;
     function handleClickOutside(e: MouseEvent) {
-      if (
-        createMenuRef.current &&
-        !createMenuRef.current.contains(e.target as Node)
-      ) {
-        setShowCreateMenu(false);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showCreateMenu]);
+  }, [showMenu]);
 
   return (
-    <>
-    {showSettings && <MobileSettings onClose={() => setShowSettings(false)} />}
     <div className="px-5 pt-4 pb-2 flex items-end justify-between">
       {canGoBack ? (
         <button
@@ -86,50 +83,54 @@ export function FileTreeHeader() {
           <SFIcon icon={sfChevronLeft} className="size-4" />
         </button>
       ) : (
-        <button
-          type="button"
-          onClick={() => setShowSettings(true)}
-          className="w-8 h-8 flex items-center justify-center rounded-full text-amber-500 active:bg-black/5 transition-colors"
-          title="Réglages"
-        >
-          <SFIcon icon={sfGearshape} className="size-4" />
-        </button>
+        // Espace réservé pour aligner le titre au centre
+        <div className="w-8 h-8" />
       )}
 
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: tap = rename sur mobile */}
       <h1
         className="text-2xl text-gray-900 font-semibold tracking-tight cursor-pointer active:opacity-60 transition-opacity"
-        onClick={() => handleRenameFolder()}
+        onClick={() => {
+          if (currentFolder) {
+            hapticImpact("light");
+            setContextMenu({
+              id: currentFolder.id,
+              name: currentFolder.name,
+              isFolder: true,
+            });
+          }
+        }}
       >
         {folderName}
       </h1>
 
-      <div className="relative" ref={createMenuRef}>
+      <div className="relative" ref={menuRef}>
         <button
           type="button"
-          onClick={() => setShowCreateMenu((v) => !v)}
+          onClick={() => {
+            hapticImpact("light");
+            setShowMenu((v) => !v);
+          }}
           className="w-8 h-8 flex items-center justify-center rounded-full text-amber-500 active:bg-black/5 transition-colors"
+          aria-label="Menu"
         >
-          <SFIcon icon={sfPlus} className="size-5" />
+          <SFIcon icon={sfEllipsis} className="size-5" />
         </button>
 
-        {showCreateMenu && (
+        {showMenu && (
           <div
             className="absolute right-0 top-10 z-50 rounded-2xl overflow-hidden shadow-xl"
             style={{
-              background: "rgba(255,255,255,0.85)",
+              background: "rgba(255,255,255,0.92)",
               backdropFilter: "blur(40px) saturate(180%)",
               WebkitBackdropFilter: "blur(40px) saturate(180%)",
-              border: "1px solid rgba(255,255,255,0.6)",
-              minWidth: 180,
+              border: "1px solid rgba(0,0,0,0.06)",
+              minWidth: 200,
             }}
           >
             <button
               type="button"
-              onClick={async () => {
-                setShowCreateMenu(false);
-                await handleCreateNote();
-              }}
+              onClick={handleCreateNote}
               className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors border-b border-black/5"
             >
               <SFIcon
@@ -140,11 +141,8 @@ export function FileTreeHeader() {
             </button>
             <button
               type="button"
-              onClick={async () => {
-                setShowCreateMenu(false);
-                await handleCreateFolder();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+              onClick={handleCreateFolder}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors border-b border-black/5"
             >
               <SFIcon
                 icon={sfFolderBadgePlus}
@@ -152,10 +150,17 @@ export function FileTreeHeader() {
               />
               Nouveau dossier
             </button>
+            <button
+              type="button"
+              onClick={handleOpenSettings}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+            >
+              <SFIcon icon={sfGearshape} className="size-4 text-gray-500" />
+              Réglages
+            </button>
           </div>
         )}
       </div>
     </div>
-    </>
   );
 }

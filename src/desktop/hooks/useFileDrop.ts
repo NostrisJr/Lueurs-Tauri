@@ -1,22 +1,22 @@
-import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useStore, useSetAtom } from "jotai";
-import {
-  activeNoteIdAtom,
-  dragSourceAtom,
-  dragOverAtom,
-  folderPathAtom,
-} from "../../shared/lib/Atoms";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { useSetAtom, useStore } from "jotai";
+import { useEffect, useRef } from "react";
 import { useFileTree } from "../../shared/hooks/useFileTree";
 import { usePathPropagation } from "../../shared/hooks/usePathPropagation";
 import {
+  activeNoteIdAtom,
+  dragOverAtom,
+  dragSourceAtom,
+  folderPathAtom,
+} from "../../shared/lib/Atoms";
+import {
+  ensureType,
   parseFrontmatter,
   serializeFrontmatter,
-  ensureType,
 } from "../../shared/lib/fileTreeHelpers";
-import { resolveDestName } from "../../shared/lib/vaultIO";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { createLogger } from "../../shared/lib/logger";
+import { resolveDestName } from "../../shared/lib/vaultIO";
 
 const log = createLogger("useFileDrop");
 

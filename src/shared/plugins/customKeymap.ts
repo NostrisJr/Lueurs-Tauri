@@ -1,18 +1,18 @@
-import { $command, $prose } from "@milkdown/kit/utils";
-import { keymap } from "@milkdown/kit/prose/keymap";
 import { commandsCtx, schemaCtx } from "@milkdown/kit/core";
-import type { EditorState, Transaction } from "@milkdown/kit/prose/state";
-import type { Command } from "@milkdown/kit/prose/state";
-import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
-import type { Schema } from "@milkdown/kit/prose/model";
-import { lift, wrapIn, setBlockType } from "@milkdown/kit/prose/commands";
-import { wrapInList, liftListItem } from "@milkdown/kit/prose/schema-list";
 import {
-  toggleInlineCodeCommand,
   insertHrCommand,
+  toggleInlineCodeCommand,
   turnIntoTextCommand,
 } from "@milkdown/kit/preset/commonmark";
 import { toggleStrikethroughCommand } from "@milkdown/kit/preset/gfm";
+import { lift, setBlockType, wrapIn } from "@milkdown/kit/prose/commands";
+import { keymap } from "@milkdown/kit/prose/keymap";
+import type { Schema } from "@milkdown/kit/prose/model";
+import { liftListItem, wrapInList } from "@milkdown/kit/prose/schema-list";
+import type { EditorState, Transaction } from "@milkdown/kit/prose/state";
+import type { Command } from "@milkdown/kit/prose/state";
+import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
+import { $command, $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../lib/logger";
 
 const log = createLogger("customKeymap");
@@ -406,8 +406,7 @@ export const customKeymapPlugin = $prose((ctx) =>
     "Mod-Shift-b": () => ctx.get(commandsCtx).call(toggleBlockquoteCommand.key),
     "Mod-Shift-e": () => ctx.get(commandsCtx).call(toggleCodeBlockCommand.key),
     "Mod-Shift-p": () => ctx.get(commandsCtx).call(togglePoetryCommand.key),
-    "Mod-d": () =>
-      ctx.get(commandsCtx).call(toggleDidascalieInlineCommand.key),
+    "Mod-d": () => ctx.get(commandsCtx).call(toggleDidascalieInlineCommand.key),
     "Mod-Shift-d": () =>
       ctx.get(commandsCtx).call(toggleDidascalieBlockCommand.key),
   })

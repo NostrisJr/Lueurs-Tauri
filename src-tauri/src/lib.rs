@@ -51,6 +51,7 @@ pub fn run() {
         .plugin(tauri_plugin_audio_recorder::init())
         .plugin(tauri_plugin_native_audio::init())
         .plugin(tauri_plugin_persisted_scope::init())
+        .plugin(tauri_plugin_haptics::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -60,10 +61,17 @@ pub fn run() {
                     .expect("Vibrancy non supportée");
             }
             #[cfg(target_os = "ios")]
-            tauri::async_runtime::spawn(async {
-                let path = get_icloud_path().await;
-                eprintln!("[icloud] container path: {:?}", path);
-            });
+            {
+                extern "C" {
+                    fn setup_keyboard_behavior();
+                }
+                unsafe { setup_keyboard_behavior() };
+
+                tauri::async_runtime::spawn(async {
+                    let path = get_icloud_path().await;
+                    eprintln!("[icloud] container path: {:?}", path);
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -74,7 +82,9 @@ pub fn run() {
             get_titlebar_height,
             get_scale_factor,
             get_icloud_path,
-            get_icloud_path_macos
+            get_icloud_path_macos,
+            show_action_sheet,
+            show_rename_prompt,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -502,6 +512,98 @@ async fn icloud_path_impl() -> Option<String> {
 
 #[cfg(not(any(target_os = "ios", target_os = "macos")))]
 async fn icloud_path_impl() -> Option<String> {
+    None
+}
+
+// ── UI native iOS ──────────────────────────────────────────────────────────
+
+/// Affiche un UIAlertController (.actionSheet) natif iOS.
+/// Retourne l'index du bouton sélectionné, ou -1 si annulé.
+/// Sur toute autre plateforme, retourne immédiatement -1.
+#[tauri::command]
+#[allow(unused_variables)]
+async fn show_action_sheet(title: Option<String>, actions: Vec<String>) -> i32 {
+    #[cfg(target_os = "ios")]
+    {
+        extern "C" {
+            fn show_ios_action_sheet(json: *const std::os::raw::c_char, result: *mut i32);
+        }
+
+        #[derive(serde::Serialize)]
+        struct Payload {
+            title: Option<String>,
+            actions: Vec<String>,
+        }
+        let json = match serde_json::to_string(&Payload { title, actions }) {
+            Ok(j) => j,
+            Err(_) => return -1,
+        };
+
+        return tokio::task::spawn_blocking(move || {
+            let c_json = match std::ffi::CString::new(json) {
+                Ok(s) => s,
+                Err(_) => return -1,
+            };
+            let mut result: i32 = -1;
+            unsafe { show_ios_action_sheet(c_json.as_ptr(), &mut result) };
+            result
+        })
+        .await
+        .unwrap_or(-1);
+    }
+    #[cfg(not(target_os = "ios"))]
+    -1
+}
+
+/// Affiche un UIAlertController (.alert) avec champ de texte natif iOS.
+/// Retourne le nouveau nom saisi, ou None si annulé.
+#[tauri::command]
+#[allow(unused_variables)]
+async fn show_rename_prompt(
+    title: Option<String>,
+    placeholder: Option<String>,
+    current: Option<String>,
+) -> Option<String> {
+    #[cfg(target_os = "ios")]
+    {
+        extern "C" {
+            fn show_ios_rename_prompt(
+                json: *const std::os::raw::c_char,
+                result_buffer: *mut std::os::raw::c_char,
+                max_len: i32,
+            ) -> i32;
+        }
+
+        #[derive(serde::Serialize)]
+        struct Payload {
+            title: Option<String>,
+            placeholder: Option<String>,
+            current: Option<String>,
+        }
+        let json = match serde_json::to_string(&Payload { title, placeholder, current }) {
+            Ok(j) => j,
+            Err(_) => return None,
+        };
+
+        return tokio::task::spawn_blocking(move || {
+            let c_json = match std::ffi::CString::new(json) {
+                Ok(s) => s,
+                Err(_) => return None,
+            };
+            let mut buffer = vec![0i8; 1024];
+            let len = unsafe {
+                show_ios_rename_prompt(c_json.as_ptr(), buffer.as_mut_ptr(), 1024)
+            };
+            if len <= 0 {
+                return None;
+            }
+            let cstr = unsafe { std::ffi::CStr::from_ptr(buffer.as_ptr()) };
+            Some(cstr.to_string_lossy().into_owned())
+        })
+        .await
+        .unwrap_or(None);
+    }
+    #[cfg(not(target_os = "ios"))]
     None
 }
 

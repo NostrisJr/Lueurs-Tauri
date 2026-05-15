@@ -1,28 +1,7 @@
-import { useEffect } from "react";
-import type { RefObject } from "react";
 import type { Editor } from "@milkdown/kit/core";
 import { commandsCtx } from "@milkdown/kit/core";
-import {
-  toggleStrongCommand,
-  toggleEmphasisCommand,
-  toggleInlineCodeCommand,
-  insertHrCommand,
-  turnIntoTextCommand,
-} from "@milkdown/kit/preset/commonmark";
-import { toggleStrikethroughCommand } from "@milkdown/kit/preset/gfm";
+import { insertHrCommand } from "@milkdown/kit/preset/commonmark";
 import { insert } from "@milkdown/kit/utils";
-import {
-  toggleBlockquoteCommand,
-  toggleBulletListCommand,
-  toggleOrderedListCommand,
-  toggleTaskListCommand,
-  toggleHeadingCommand,
-  toggleCodeBlockCommand,
-  toggleLinkWithPromptCommand,
-  togglePoetryCommand,
-  toggleDidascalieInlineCommand,
-  toggleDidascalieBlockCommand,
-} from "../../../plugins/customKeymap";
 import {
   Menu,
   MenuItem,
@@ -30,7 +9,11 @@ import {
   Submenu,
 } from "@tauri-apps/api/menu";
 import { open } from "@tauri-apps/plugin-dialog";
+import { platform } from "@tauri-apps/plugin-os";
+import { useEffect } from "react";
+import type { RefObject } from "react";
 import { createLogger } from "../../../lib/logger";
+import { EDITOR_FORMATTING_GROUPS } from "../formattingMenuData";
 
 const log = createLogger("useContextMenu");
 
@@ -41,6 +24,9 @@ export function useContextMenu(
   insertAudioBlock: (srcPath: string, title: string) => void
 ) {
   useEffect(() => {
+    // Menu natif Tauri — desktop uniquement
+    if (platform() === "ios") return;
+
     const el = wrapperRef.current;
     if (!el) return;
 
@@ -54,166 +40,79 @@ export function useContextMenu(
         );
 
       try {
-        const [formatSubmenu, structureSubmenu, insertSubmenu] =
-          await Promise.all([
-            Submenu.new({
-              text: "Format",
-              items: await Promise.all([
+        const submenus = await Promise.all(
+          EDITOR_FORMATTING_GROUPS.map(async (group) => {
+            const menuItems = await Promise.all(
+              group.items.map((item) =>
                 MenuItem.new({
-                  text: "Gras\t⌘B",
-                  action: () => call(toggleStrongCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Italique\t⌘I",
-                  action: () => call(toggleEmphasisCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Barré\t⌘⇧S",
-                  action: () => call(toggleStrikethroughCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Code inline\t⌘E",
-                  action: () => call(toggleInlineCodeCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Didascalie inline\t⌘D",
-                  action: () => call(toggleDidascalieInlineCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Lien\t⌘⇧K",
-                  action: () => call(toggleLinkWithPromptCommand.key),
-                }),
-              ]),
+                  text: item.shortcut
+                    ? `${item.label}\t${item.shortcut}`
+                    : item.label,
+                  action: () => call(item.cmdKey, item.payload),
+                })
+              )
+            );
+            return Submenu.new({ text: group.label, items: menuItems });
+          })
+        );
+
+        const insertSubmenu = await Submenu.new({
+          text: "Insérer",
+          items: await Promise.all([
+            MenuItem.new({
+              text: "Image…",
+              action: async () => {
+                const path = await open({
+                  filters: [
+                    {
+                      name: "Images",
+                      extensions: ["png", "jpg", "jpeg", "gif", "webp"],
+                    },
+                  ],
+                });
+                if (path) {
+                  log.info("image sélectionnée via dialog", { path });
+                  insertImageBlock(path as string, "image");
+                }
+              },
             }),
-            Submenu.new({
-              text: "Structure",
-              items: await Promise.all([
-                MenuItem.new({
-                  text: "Paragraphe\t⌘⌥0",
-                  action: () => call(turnIntoTextCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Titre 1\t⌘⌥1",
-                  action: () => call(toggleHeadingCommand.key, { level: 1 }),
-                }),
-                MenuItem.new({
-                  text: "Titre 2\t⌘⌥2",
-                  action: () => call(toggleHeadingCommand.key, { level: 2 }),
-                }),
-                MenuItem.new({
-                  text: "Titre 3\t⌘⌥3",
-                  action: () => call(toggleHeadingCommand.key, { level: 3 }),
-                }),
-                MenuItem.new({
-                  text: "Titre 4\t⌘⌥4",
-                  action: () => call(toggleHeadingCommand.key, { level: 4 }),
-                }),
-                MenuItem.new({
-                  text: "Titre 5\t⌘⌥5",
-                  action: () => call(toggleHeadingCommand.key, { level: 5 }),
-                }),
-                MenuItem.new({
-                  text: "Titre 6\t⌘⌥6",
-                  action: () => call(toggleHeadingCommand.key, { level: 6 }),
-                }),
-                MenuItem.new({
-                  text: "Liste numérotée\t⌘⇧7",
-                  action: () => call(toggleOrderedListCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Liste à puces\t⌘⇧8",
-                  action: () => call(toggleBulletListCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Liste de tâches\t⌘⇧9",
-                  action: () => call(toggleTaskListCommand.key),
-                }),
-              ]),
+            MenuItem.new({
+              text: "Audio…",
+              action: async () => {
+                const path = await open({
+                  filters: [
+                    {
+                      name: "Audio",
+                      extensions: ["mp3", "m4a", "wav", "ogg", "flac", "aac"],
+                    },
+                  ],
+                });
+                if (path) {
+                  log.info("audio sélectionné via dialog", { path });
+                  const filename = (path as string).split("/").pop() ?? "audio";
+                  insertAudioBlock(path as string, filename);
+                }
+              },
             }),
-            Submenu.new({
-              text: "Blocs",
-              items: await Promise.all([
-                MenuItem.new({
-                  text: "Citation\t⌘⇧B",
-                  action: () => call(toggleBlockquoteCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Bloc de code\t⌘⇧E",
-                  action: () => call(toggleCodeBlockCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Poésie / Chanson\t⌘⇧P",
-                  action: () => call(togglePoetryCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Bloc didascalie\t⌘⇧D",
-                  action: () => call(toggleDidascalieBlockCommand.key),
-                }),
-                MenuItem.new({
-                  text: "Séparateur\t⌘⇧H",
-                  action: () => call(insertHrCommand.key),
-                }),
-              ]),
+            MenuItem.new({
+              text: "Séparateur\t⌘⇧H",
+              action: () =>
+                editorRef.current?.action((ctx) =>
+                  ctx.get(commandsCtx).call(insertHrCommand.key)
+                ),
             }),
-            Submenu.new({
-              text: "Insérer",
-              items: await Promise.all([
-                MenuItem.new({
-                  text: "Image…",
-                  action: async () => {
-                    const path = await open({
-                      filters: [
-                        {
-                          name: "Images",
-                          extensions: ["png", "jpg", "jpeg", "gif", "webp"],
-                        },
-                      ],
-                    });
-                    if (path) {
-                      log.info("image sélectionnée via dialog", { path });
-                      insertImageBlock(path as string, "image");
-                    }
-                  },
-                }),
-                MenuItem.new({
-                  text: "Audio…",
-                  action: async () => {
-                    const path = await open({
-                      filters: [
-                        {
-                          name: "Audio",
-                          extensions: [
-                            "mp3",
-                            "m4a",
-                            "wav",
-                            "ogg",
-                            "flac",
-                            "aac",
-                          ],
-                        },
-                      ],
-                    });
-                    if (path) {
-                      log.info("audio sélectionné via dialog", { path });
-                      const filename =
-                        (path as string).split("/").pop() ?? "audio";
-                      insertAudioBlock(path as string, filename);
-                    }
-                  },
-                }),
-                MenuItem.new({
-                  text: "Tableau",
-                  action: () => {
-                    editorRef.current?.action(
-                      insert(
-                        "| Col 1 | Col 2 |\n|-------|-------|\n|       |       |"
-                      )
-                    );
-                  },
-                }),
-              ]),
+            MenuItem.new({
+              text: "Tableau",
+              action: () => {
+                editorRef.current?.action(
+                  insert(
+                    "| Col 1 | Col 2 |\n|-------|-------|\n|       |       |"
+                  )
+                );
+              },
             }),
-          ]);
+          ]),
+        });
 
         const menu = await Menu.new({
           items: [
@@ -221,8 +120,7 @@ export function useContextMenu(
             await PredefinedMenuItem.new({ item: "Copy" }),
             await PredefinedMenuItem.new({ item: "Paste" }),
             await PredefinedMenuItem.new({ item: "Separator" }),
-            formatSubmenu,
-            structureSubmenu,
+            ...submenus,
             insertSubmenu,
             await PredefinedMenuItem.new({ item: "Separator" }),
             await PredefinedMenuItem.new({ item: "SelectAll" }),

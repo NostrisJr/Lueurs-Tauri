@@ -1,31 +1,28 @@
+import { invoke } from "@tauri-apps/api/core";
 /**
  * vaultIO.ts — Lecture/écriture du vault sans état React.
  * Toutes les fonctions sont pures ou async IO, sans hooks.
  */
 import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { invoke } from "@tauri-apps/api/core";
 import { platform } from "@tauri-apps/plugin-os";
+import type { NoteFile, TreeNode } from "../hooks/useFileTree";
+import { writingPathsRegistry } from "./Atoms";
 import {
-  sortNodes,
+  type Frontmatter,
+  computeTemplateProps,
+  ensureType,
+  extractTags,
+  extractTitle,
+  flattenTree,
   parseFrontmatter,
   serializeFrontmatter,
-  ensureType,
-  extractTitle,
-  extractTags,
-  computeTemplateProps,
+  sortNodes,
   toArray,
-  flattenTree,
   updateNodeInTree,
-  type Frontmatter,
 } from "./fileTreeHelpers";
-import { NoteType, SystemField } from "./noteTypes";
 import { isFormula } from "./formulas";
 import { createLogger } from "./logger";
-import type {
-  NoteFile,
-  TreeNode,
-} from "../hooks/useFileTree";
-import { writingPathsRegistry } from "./Atoms";
+import { NoteType, SystemField } from "./noteTypes";
 
 const log = createLogger("vaultIO");
 

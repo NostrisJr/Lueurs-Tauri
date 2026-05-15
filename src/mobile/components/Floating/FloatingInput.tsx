@@ -1,8 +1,8 @@
 import { sfXmark } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useEffect, useRef } from "react";
-import { createLogger } from "../../shared/lib/logger";
-import { useKeyboardHeight } from "../hooks/useKeyboardHeight";
+import { createLogger } from "../../../shared/lib/logger";
+import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 
 const log = createLogger("FloatingInput");
 

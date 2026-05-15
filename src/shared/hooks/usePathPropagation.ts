@@ -1,13 +1,10 @@
 import { useStore } from "jotai";
 import { treeAtom } from "../lib/Atoms";
-import {
-  flattenTree,
-  type Frontmatter,
-} from "./useFileTree";
 import { toArray } from "../lib/fileTreeHelpers";
-import { SystemField } from "../lib/noteTypes";
-import { usePersistNote } from "./usePersistNote";
 import { createLogger } from "../lib/logger";
+import { SystemField } from "../lib/noteTypes";
+import { type Frontmatter, flattenTree } from "./useFileTree";
+import { usePersistNote } from "./usePersistNote";
 
 const log = createLogger("usePathPropagation");
 

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
+import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 /* import { useAtomValue } from "jotai";
 import { activeNoteAtom } from "../../../shared/lib/Atoms";
  */ import type { NoteFile } from "../../../shared/hooks/useFileTree";
-import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 import { useLongPress } from "../../hooks/useLongPress";
 import { getPreviewLines } from "./helpers";
 

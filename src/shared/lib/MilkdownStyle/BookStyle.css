@@ -7,6 +7,10 @@
     font-size: 18px;
 }
 
+.mobile-prose .mode-livre .milkdown .ProseMirror {
+    font-weight: 450;
+}
+
 .mode-livre .milkdown .ProseMirror h1,
 .mode-livre .milkdown .ProseMirror h2,
 .mode-livre .milkdown .ProseMirror h3,

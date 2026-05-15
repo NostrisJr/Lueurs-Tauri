@@ -1,36 +1,13 @@
-import { useRef, useEffect, useCallback } from "react";
-import { readDir, writeTextFile, mkdir, rename } from "@tauri-apps/plugin-fs";
-import { useStore } from "jotai";
+import { mkdir, readDir, rename, writeTextFile } from "@tauri-apps/plugin-fs";
 import { watchImmediate } from "@tauri-apps/plugin-fs";
+import { useStore } from "jotai";
 import { useAtom, useSetAtom } from "jotai";
+import { useCallback, useEffect, useRef } from "react";
 
-import {
-  serializeFrontmatter,
-  ensureType,
-  extractTitle,
-  extractTags,
-  addNodeInTree,
-  deleteNodeInTree,
-  renameNodeInTree,
-  updateNodeInTree,
-  updateFolderInTree,
-  flattenTree,
-  moveToTrash,
-  findNextAvailableNumber,
-  type Frontmatter,
-} from "../lib/fileTreeHelpers";
-import { NoteType } from "../lib/noteTypes";
-import {
-  loadTree,
-  allowVaultScope,
-  applyAllTemplates,
-  resolveDestName,
-} from "../lib/vaultIO";
+import { invoke } from "@tauri-apps/api/core";
+import { documentDir } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { platform } from "@tauri-apps/plugin-os";
-import { documentDir } from "@tauri-apps/api/path";
-import { invoke } from "@tauri-apps/api/core";
-import { createLogger } from "../lib/logger";
 import {
   activeNoteIdAtom,
   errorAtom,
@@ -39,6 +16,29 @@ import {
   treeAtom,
   writingPathsRegistry,
 } from "../lib/Atoms";
+import {
+  type Frontmatter,
+  addNodeInTree,
+  deleteNodeInTree,
+  ensureType,
+  extractTags,
+  extractTitle,
+  findNextAvailableNumber,
+  flattenTree,
+  moveToTrash,
+  renameNodeInTree,
+  serializeFrontmatter,
+  updateFolderInTree,
+  updateNodeInTree,
+} from "../lib/fileTreeHelpers";
+import { createLogger } from "../lib/logger";
+import { NoteType } from "../lib/noteTypes";
+import {
+  allowVaultScope,
+  applyAllTemplates,
+  loadTree,
+  resolveDestName,
+} from "../lib/vaultIO";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -204,7 +204,11 @@ export function useFileTree() {
         const icloudPath = await invoke<string | null>("get_icloud_path_macos");
         defaultPath = icloudPath ?? undefined;
       }
-      const result = await open({ directory: true, multiple: false, defaultPath });
+      const result = await open({
+        directory: true,
+        multiple: false,
+        defaultPath,
+      });
       if (!result || typeof result !== "string") return;
       selected = result;
     }

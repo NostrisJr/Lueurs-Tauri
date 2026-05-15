@@ -1,10 +1,10 @@
 import { sfSidebarLeft } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
-import { useAtom } from "jotai";
-import { sidebarCollapsedAtom } from "../../../shared/lib/Atoms";
-import { useState, useRef, useCallback } from "react";
-import { SideBarResizable } from "./SideBarResizable";
 import { clsx } from "clsx";
+import { useAtom } from "jotai";
+import { useCallback, useRef, useState } from "react";
+import { sidebarCollapsedAtom } from "../../../shared/lib/Atoms";
+import { SideBarResizable } from "./SideBarResizable";
 
 function SideBar() {
   const [collapsed, setCollapsed] = useAtom(sidebarCollapsedAtom);
@@ -59,7 +59,9 @@ function SideBar() {
         )}
         style={{
           width: collapsed ? 0 : width,
-          transition: resizing ? "none" : "width 220ms ease, padding 220ms ease",
+          transition: resizing
+            ? "none"
+            : "width 220ms ease, padding 220ms ease",
         }}
       >
         <SideBarResizable onToggle={() => setCollapsed(true)} />

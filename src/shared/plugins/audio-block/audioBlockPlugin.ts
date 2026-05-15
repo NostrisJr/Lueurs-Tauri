@@ -36,10 +36,10 @@
  */
 
 import { $view } from "@milkdown/kit/utils";
+import type { AudioBlockConfig } from "./config";
+import { createAudioBlockNodeView } from "./node-view";
 import { audioBlockRemark } from "./remark-plugin";
 import { audioBlockSchema } from "./schema";
-import { createAudioBlockNodeView } from "./node-view";
-import type { AudioBlockConfig } from "./config";
 
 /**
  * Crée le plugin complet avec la configuration Tauri.

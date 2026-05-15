@@ -2,13 +2,13 @@
 // Seule responsabilité : créer le conteneur, passer les refs mutables au composant,
 // et implémenter l'interface NodeView (update, stopEvent, ignoreMutation, destroy…).
 
+import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
+import type { EditorView, NodeView } from "@milkdown/kit/prose/view";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
-import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
-import type { EditorView, NodeView } from "@milkdown/kit/prose/view";
-import type { AudioBlockConfig } from "./config";
 import { AudioBlockComponent } from "./AudioBlockComponent";
+import type { AudioBlockConfig } from "./config";
 
 let _nodeCounter = 0;
 function nextNodeId() {

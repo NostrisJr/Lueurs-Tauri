@@ -9,9 +9,9 @@
  * Monté dans un Portal (document.body) pour échapper aux overflow:hidden parents.
  * Swipe vers le bas pour fermer.
  */
-import { useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useKeyboardHeight } from "../../mobile/hooks/useKeyboardHeight";
+import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 
 interface Props {
   onClose: () => void;
@@ -63,7 +63,7 @@ export function BottomSheet({ onClose, children, title }: Props) {
           </p>
         )}
         <div
-          className="overflow-y-auto flex-1"
+          className="overflow-y-auto flex-1 text-sm"
           data-scrollable
           style={{
             WebkitOverflowScrolling: "touch",

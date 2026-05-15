@@ -1,15 +1,7 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import {
-  activeNoteIdAtom,
-  openTabIdsAtom,
-  treeAtom,
-} from "../../../shared/lib/Atoms";
-import { flattenTree, type NoteFile } from "../../../shared/hooks/useFileTree";
-import { useNote } from "../../../shared/hooks/useNote";
 import {
   DndContext,
-  DragOverlay,
   type DragEndEvent,
+  DragOverlay,
   type DragStartEvent,
   PointerSensor,
   useSensor,
@@ -19,7 +11,15 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
+import { type NoteFile, flattenTree } from "../../../shared/hooks/useFileTree";
+import { useNote } from "../../../shared/hooks/useNote";
+import {
+  activeNoteIdAtom,
+  openTabIdsAtom,
+  treeAtom,
+} from "../../../shared/lib/Atoms";
 import { createLogger } from "../../../shared/lib/logger";
 import { TabItem, TabOverlay } from "./TabItem.tsx";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { isFormula, computeFormula } from "../../../shared/lib/formulas";
-import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import type { NoteFile } from "../../../../shared/hooks/useFileTree";
+import { computeFormula, isFormula } from "../../../../shared/lib/formulas";
 
 interface Props {
   value: string;

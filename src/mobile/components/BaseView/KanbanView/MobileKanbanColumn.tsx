@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { NoteFile } from "../../shared/hooks/useFileTree";
-import type { KanbanColumn as KanbanColumnType } from "../../shared/lib/noteTypes";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useEffect, useRef, useState } from "react";
+import type { NoteFile } from "../../../../shared/hooks/useFileTree";
+import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
 import { MobileKanbanCard } from "./MobileKanbanCard";
 
 interface Props {
@@ -13,7 +16,13 @@ interface Props {
   virtual?: boolean;
 }
 
-export function MobileKanbanColumn({ column, notes, kanbanKey, onRename, virtual = false }: Props) {
+export function MobileKanbanColumn({
+  column,
+  notes,
+  kanbanKey,
+  onRename,
+  virtual = false,
+}: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(column.label);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +45,10 @@ export function MobileKanbanColumn({ column, notes, kanbanKey, onRename, virtual
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") commitRename();
-    if (e.key === "Escape") { setDraft(column.label); setEditing(false); }
+    if (e.key === "Escape") {
+      setDraft(column.label);
+      setEditing(false);
+    }
   }
 
   return (
@@ -61,7 +73,9 @@ export function MobileKanbanColumn({ column, notes, kanbanKey, onRename, virtual
             type="button"
             onClick={() => !virtual && setEditing(true)}
             className={`text-base font-semibold text-left truncate flex-1 ${
-              virtual ? "text-gray-400 italic cursor-default" : "text-gray-700 cursor-text"
+              virtual
+                ? "text-gray-400 italic cursor-default"
+                : "text-gray-700 cursor-text"
             }`}
           >
             {column.label}
@@ -77,7 +91,10 @@ export function MobileKanbanColumn({ column, notes, kanbanKey, onRename, virtual
           isOver ? "bg-blue-50" : "bg-gray-50"
         }`}
       >
-        <SortableContext items={notes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={notes.map((n) => n.id)}
+          strategy={verticalListSortingStrategy}
+        >
           {notes.map((note) => (
             <MobileKanbanCard key={note.id} note={note} kanbanKey={kanbanKey} />
           ))}

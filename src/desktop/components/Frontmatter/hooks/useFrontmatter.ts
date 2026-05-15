@@ -1,18 +1,18 @@
 import { useStore } from "jotai";
 
+import {
+  type Frontmatter,
+  type NoteFile,
+  flattenTree,
+} from "../../../../shared/hooks/useFileTree";
+import { usePersistNote } from "../../../../shared/hooks/usePersistNote";
 import { treeAtom } from "../../../../shared/lib/Atoms";
 import {
-  toArray,
   computeTemplateProps,
+  toArray,
 } from "../../../../shared/lib/fileTreeHelpers";
 import { createLogger } from "../../../../shared/lib/logger";
 import { NoteType } from "../../../../shared/lib/noteTypes";
-import {
-  flattenTree,
-  type Frontmatter,
-  type NoteFile,
-} from "../../../../shared/hooks/useFileTree";
-import { usePersistNote } from "../../../../shared/hooks/usePersistNote";
 
 const log = createLogger("useFrontmatter");
 //TODO : régler tous les types any

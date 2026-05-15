@@ -1,10 +1,10 @@
-import { useState, useCallback, useEffect } from "react";
-import { useAtomValue } from "jotai";
-import { remove } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
-import { folderPathAtom } from "../../../shared/lib/Atoms";
-import { useAudioRecorder } from "../../../shared/hooks/useAudioRecorder";
+import { remove } from "@tauri-apps/plugin-fs";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect, useState } from "react";
 import { WaveformDisplay } from "../../../shared/components/Dictaphone/WaveformDisplay";
+import { useAudioRecorder } from "../../../shared/hooks/useAudioRecorder";
+import { folderPathAtom } from "../../../shared/lib/Atoms";
 import { createLogger } from "../../../shared/lib/logger";
 
 const log = createLogger("DesktopDictaphone");
@@ -66,7 +66,9 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
       await remove(result.filePath);
 
       // Chemin relatif au vault pour portabilité
-      const vaultPrefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+      const vaultPrefix = folderPath.endsWith("/")
+        ? folderPath
+        : `${folderPath}/`;
       const relativePath = audioPath.startsWith(vaultPrefix)
         ? audioPath.slice(vaultPrefix.length)
         : audioPath;
