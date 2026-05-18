@@ -64,6 +64,29 @@ function buildListItemNodeView(
     );
   });
 
+  // Sur mobile : touchstart avec preventDefault empêche le focus du contenteditable
+  // (et donc l'ouverture du clavier). Le toggle est géré manuellement car le
+  // preventDefault sur touchstart bloque la synthèse du click → pas de "change".
+  checkbox.addEventListener(
+    "touchstart",
+    (e) => {
+      e.preventDefault();
+      const pos = getPos();
+      if (pos === undefined) return;
+      const newChecked = !currentNode.attrs.checked;
+      checkbox.checked = newChecked;
+      li.setAttribute("data-checked", String(newChecked));
+      log.info("toggle task checkbox (touch)", { pos, checked: newChecked });
+      view.dispatch(
+        view.state.tr.setNodeMarkup(pos, undefined, {
+          ...currentNode.attrs,
+          checked: newChecked,
+        })
+      );
+    },
+    { passive: false }
+  );
+
   checkboxWrapper.appendChild(checkbox);
 
   const content = document.createElement("span");

@@ -2,21 +2,17 @@ import { sfXmark } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
-import { type NoteFile, flattenTree } from "../../../shared/hooks/useFileTree";
+import { flattenTree } from "../../../shared/hooks/useFileTree";
 import {
   mobileContextMenuAtom,
   mobileGoBackAtom,
   treeAtom,
 } from "../../../shared/lib/Atoms";
-import { createLogger } from "../../../shared/lib/logger";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
-import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "../Floating/FloatingComponent";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
-import { NoteRow } from "../FileTree/NoteRow";
-
-const log = createLogger("SearchView");
+import { FileRow } from "../FileTree/FileRow";
 
 export function SearchView() {
   const [query, setQuery] = useState("");
@@ -24,7 +20,6 @@ export function SearchView() {
   const goBack = useSetAtom(mobileGoBackAtom);
   const setContextMenu = useSetAtom(mobileContextMenuAtom);
   const allNotes = useMemo(() => flattenTree(tree), [tree]);
-  const selectNote = useMobileSelectNote();
   const { keyboardHeight } = useKeyboardHeight();
 
   const results = useMemo(() => {
@@ -35,11 +30,6 @@ export function SearchView() {
         n.name.toLowerCase().includes(q) || n.body.toLowerCase().includes(q)
     );
   }, [allNotes, query]);
-
-  function handleSelect(note: NoteFile) {
-    log.info("sélection depuis recherche", { id: note.id });
-    selectNote(note);
-  }
 
   return (
     <>
@@ -66,10 +56,10 @@ export function SearchView() {
           ) : (
             <div className="flex flex-col gap-2">
               {results.map((note) => (
-                <NoteRow
+                <FileRow
                   key={note.id}
-                  note={note}
-                  onSelect={handleSelect}
+                  node={note}
+                  onDrillIn={() => {}}
                   onLongPress={() =>
                     setContextMenu({
                       id: note.id,

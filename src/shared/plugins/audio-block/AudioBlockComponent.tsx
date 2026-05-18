@@ -78,6 +78,7 @@ export function AudioBlockComponent({
   const timeLeftRef = useRef<HTMLSpanElement>(null);
   const timeRightRef = useRef<HTMLSpanElement>(null);
   const waveformReadyRef = useRef(false);
+  const titleLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Refs Web Audio (desktop) ───────────────────────────────────────────────
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -412,6 +413,7 @@ export function AudioBlockComponent({
   // Mis à jour à chaque render pour capturer isPlaying courant (pour la barre espace)
   playToggleRef.current = togglePlayback;
 
+  // Desktop : sélectionne le nœud + focus + joue
   async function handlePlayClick(e: React.MouseEvent) {
     e.stopPropagation();
     const pos = getPos();
@@ -424,6 +426,13 @@ export function AudioBlockComponent({
     await togglePlayback();
   }
 
+  // Mobile : joue directement, sans dispatch ni focus (évite l'ouverture du clavier)
+  async function handlePlayTouch(e: React.TouchEvent) {
+    e.preventDefault();
+    await togglePlayback();
+  }
+
+  // Desktop : seek waveform
   async function handleWaveformClick(e: React.MouseEvent<HTMLDivElement>) {
     e.stopPropagation();
     const pos = getPos();
@@ -434,65 +443,63 @@ export function AudioBlockComponent({
       view.focus();
     }
 
-    if (!isMobile) {
-      // Desktop : seek via AudioBufferSourceNode
-      const ctx = audioCtxRef.current;
-      const buf = audioBufferRef.current;
-      if (!ctx || !buf) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const newOffset = ((e.clientX - rect.left) / rect.width) * buf.duration;
-
-      if (isPlaying && sourceRef.current) {
-        // Redémarrer depuis la nouvelle position
-        sourceRef.current.onended = null;
-        try {
-          sourceRef.current.stop();
-        } catch {}
-        sourceRef.current = null;
-
-        const source = ctx.createBufferSource();
-        source.buffer = buf;
-        source.connect(ctx.destination);
-        source.onended = () => {
-          if (sourceRef.current !== source) return;
-          sourceRef.current = null;
-          isActiveRef.current = false;
-          _globalDesktopStop = null;
-          playOffsetRef.current = 0;
-          stopDesktopRaf();
-          setIsPlaying(false);
-          if (progressOverlayRef.current)
-            progressOverlayRef.current.style.width = "0%";
-          if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
-          if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
-            (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
-        };
-        playOffsetRef.current = newOffset;
-        playStartCtxTimeRef.current = ctx.currentTime;
-        source.start(0, newOffset);
-        sourceRef.current = source;
-      } else {
-        // Juste mettre à jour la position (lecture reprendra depuis là)
-        playOffsetRef.current = newOffset;
-        const pct = (newOffset / buf.duration) * 100;
-        if (progressOverlayRef.current)
-          progressOverlayRef.current.style.width = `${pct}%`;
-        if (timeLeftRef.current)
-          timeLeftRef.current.textContent = fmtTime(newOffset);
-        if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
-          (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
-      }
-      return;
-    }
-
-    // Mobile : seek natif
-    if (!nativeIsActive(nodeId) || nativeDurationRef.current <= 0) return;
+    const ctx = audioCtxRef.current;
+    const buf = audioBufferRef.current;
+    if (!ctx || !buf) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
+    const newOffset = ((e.clientX - rect.left) / rect.width) * buf.duration;
+
+    if (isPlaying && sourceRef.current) {
+      sourceRef.current.onended = null;
+      try {
+        sourceRef.current.stop();
+      } catch {}
+      sourceRef.current = null;
+
+      const source = ctx.createBufferSource();
+      source.buffer = buf;
+      source.connect(ctx.destination);
+      source.onended = () => {
+        if (sourceRef.current !== source) return;
+        sourceRef.current = null;
+        isActiveRef.current = false;
+        _globalDesktopStop = null;
+        playOffsetRef.current = 0;
+        stopDesktopRaf();
+        setIsPlaying(false);
+        if (progressOverlayRef.current)
+          progressOverlayRef.current.style.width = "0%";
+        if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
+        if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
+          (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
+      };
+      playOffsetRef.current = newOffset;
+      playStartCtxTimeRef.current = ctx.currentTime;
+      source.start(0, newOffset);
+      sourceRef.current = source;
+    } else {
+      playOffsetRef.current = newOffset;
+      const pct = (newOffset / buf.duration) * 100;
+      if (progressOverlayRef.current)
+        progressOverlayRef.current.style.width = `${pct}%`;
+      if (timeLeftRef.current)
+        timeLeftRef.current.textContent = fmtTime(newOffset);
+      if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars)
+        (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
+    }
+  }
+
+  // Mobile : seek waveform natif, sans dispatch ni focus
+  async function handleWaveformTouch(e: React.TouchEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    if (!touch || !nativeIsActive(nodeId) || nativeDurationRef.current <= 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (touch.clientX - rect.left) / rect.width;
     try {
       await nativeSeek(pct * nativeDurationRef.current);
     } catch (err) {
-      log.error("seek waveform échoué", err);
+      log.error("seek waveform échoué (touch)", err);
     }
   }
 
@@ -501,6 +508,20 @@ export function AudioBlockComponent({
     e.stopPropagation();
     titleEditingRef.current = true;
     setTitleEditing(true);
+  }
+
+  function handleTitleTouchStart() {
+    titleLongPressRef.current = setTimeout(() => {
+      titleEditingRef.current = true;
+      setTitleEditing(true);
+    }, 600);
+  }
+
+  function handleTitleTouchEnd() {
+    if (titleLongPressRef.current) {
+      clearTimeout(titleLongPressRef.current);
+      titleLongPressRef.current = null;
+    }
   }
 
   function handleTitleBlur(e: React.FocusEvent<HTMLInputElement>) {
@@ -541,7 +562,6 @@ export function AudioBlockComponent({
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  const filename = decodeURIComponent(src.split(/[/\\]/).pop() ?? "");
   const displayTitle = (node.attrs.title as string) || src || "Audio";
   const isSelected = selectedRef.current;
 
@@ -556,7 +576,8 @@ export function AudioBlockComponent({
           ? "border-amber-400 shadow-amber-700/20 shadow-lg"
           : "border-black/10 hover:border-black/18"
       )}
-      onClick={() => {
+      style={{ fontFamily: "'Inter', Arial, Helvetica, sans-serif" }}
+      onClick={isMobile ? undefined : () => {
         const pos = getPos();
         if (pos === undefined) return;
         view.dispatch(
@@ -577,7 +598,7 @@ export function AudioBlockComponent({
               defaultValue={displayTitle}
               // biome-ignore lint/a11y/noAutofocus: focus intentionnel après double-clic
               autoFocus
-              className="w-full text-[13px] bg-gray-200/50 font-semibold tracking-[-0.1px] border-none outline-none px-0.5 text-gray-700"
+              className="w-full text-base bg-gray-200/50 font-semibold border-none outline-none px-0.5 text-gray-700"
               onMouseDown={(e) => e.stopPropagation()}
               onBlur={handleTitleBlur}
               onKeyDown={handleTitleKeyDown}
@@ -586,13 +607,14 @@ export function AudioBlockComponent({
             <div
               className="text-[13px] font-semibold text-black truncate cursor-text hover:bg-gray-200/50"
               onDoubleClick={handleTitleDblClick}
+              onTouchStart={isMobile ? handleTitleTouchStart : undefined}
+              onTouchEnd={isMobile ? handleTitleTouchEnd : undefined}
+              onTouchMove={isMobile ? handleTitleTouchEnd : undefined}
+              onTouchCancel={isMobile ? handleTitleTouchEnd : undefined}
             >
               {displayTitle}
             </div>
           )}
-          <div className="text-[11px] text-(--crepe-color-muted,#999) mt-px truncate">
-            {filename}
-          </div>
         </div>
 
         <button
@@ -612,7 +634,9 @@ export function AudioBlockComponent({
         className="relative h-12 rounded-xl overflow-hidden bg-black/03 cursor-pointer active:opacity-85"
         data-ab-interactive="true"
         onMouseDown={(e) => e.stopPropagation()}
-        onClick={handleWaveformClick}
+        onTouchStart={isMobile ? (e) => e.preventDefault() : undefined}
+        onTouchEnd={isMobile ? handleWaveformTouch : undefined}
+        onClick={isMobile ? undefined : handleWaveformClick}
       >
         <canvas
           ref={canvasRef}
@@ -644,7 +668,9 @@ export function AudioBlockComponent({
           aria-label={isPlaying ? "Pause" : "Lecture"}
           className="w-8 h-8 rounded-full bg-amber-400/80 text-white border-none cursor-pointer flex items-center justify-center shrink-0 p-0 transition-[transform,background] duration-120 hover:bg-amber-400 hover:scale-[1.06] active:scale-95"
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={handlePlayClick}
+          onTouchStart={isMobile ? (e) => e.preventDefault() : undefined}
+          onTouchEnd={isMobile ? handlePlayTouch : undefined}
+          onClick={isMobile ? undefined : handlePlayClick}
         >
           {isPlaying ? (
             <SFIcon icon={sfPauseFill} className="size-3" aria-hidden="true" />

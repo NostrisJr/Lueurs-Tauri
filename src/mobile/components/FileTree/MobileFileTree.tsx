@@ -6,7 +6,6 @@ import {
   dictaphoneModeAtom,
   folderStackAtom,
   mobileContextMenuAtom,
-  mobileNavigateAtom,
   treeAtom,
 } from "../../../shared/lib/Atoms";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
@@ -18,9 +17,8 @@ import {
 import { hapticImpact } from "../../lib/haptics";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
 import { FileTreeBottomBar } from "./FileTreeBottomBar";
+import { FileRow } from "./FileRow";
 import { FileTreeHeader } from "./FileTreeHeader";
-import { FolderRow } from "./FolderRow";
-import { NoteRow } from "./NoteRow";
 
 function findFolderById(nodes: TreeNode[], id: string): FolderNode | null {
   for (const node of nodes) {
@@ -38,7 +36,6 @@ interface NodeListProps {
 }
 
 function NodeList({ nodes, onDrillIn }: NodeListProps) {
-  const selectNote = useMobileSelectNote();
   const setContextMenu = useSetAtom(mobileContextMenuAtom);
 
   if (nodes.length === 0) {
@@ -48,29 +45,23 @@ function NodeList({ nodes, onDrillIn }: NodeListProps) {
   }
 
   return (
-    <>
-      {nodes.map((node) =>
-        node.kind === "folder" ? (
-          <FolderRow
-            key={node.id}
-            folder={node}
+    <div className="flex flex-col gap-2 w-full">
+      {nodes.map((node) => (
+        <div key={node.id} className="w-11/12 mx-auto">
+          <FileRow
+            node={node}
             onDrillIn={onDrillIn}
             onLongPress={() =>
-              setContextMenu({ id: node.id, name: node.name, isFolder: true })
+              setContextMenu({
+                id: node.id,
+                name: node.name,
+                isFolder: node.kind === "folder",
+              })
             }
           />
-        ) : (
-          <NoteRow
-            key={node.id}
-            note={node}
-            onSelect={selectNote}
-            onLongPress={() =>
-              setContextMenu({ id: node.id, name: node.name, isFolder: false })
-            }
-          />
-        )
-      )}
-    </>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -82,7 +73,6 @@ export function MobileFileTree() {
   const setFolderStack = useSetAtom(folderStackAtom);
   const { createNote } = useFileTree();
   const selectNote = useMobileSelectNote();
-  const navigate = useSetAtom(mobileNavigateAtom);
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
 
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
@@ -111,7 +101,6 @@ export function MobileFileTree() {
 
   function handleCreateRecording() {
     setDictaphoneMode("new-note");
-    navigate("dictaphone");
   }
 
   const currentNodes: TreeNode[] = currentFolder
@@ -191,6 +180,7 @@ export function MobileFileTree() {
 
   // ── Styles ────────────────────────────────────────────────────
   const showBgContent = isDrilling || isSwipingBack;
+  // biome-ignore lint/style/noNonNullAssertion: <explanation>
   const bgNodes = isDrilling ? drillFrom! : parentNodes;
 
   const bgContentStyle: React.CSSProperties = isDrilling
@@ -248,7 +238,7 @@ export function MobileFileTree() {
         )}
 
         <div
-          className="absolute inset-0 flex flex-col gap-2 p-4 bg-gray-100 overflow-y-scroll pb-20"
+          className="absolute inset-0 flex flex-col gap-0 py-4 bg-gray-100 overflow-y-scroll pb-30"
           style={contentStyle}
           onTouchStart={touchHandlers.onTouchStart}
           onTouchMove={touchHandlers.onTouchMove}

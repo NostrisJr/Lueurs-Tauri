@@ -1,6 +1,10 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { NoteEditor } from "../shared/components/NoteEditor/NoteEditor.tsx";
+import {
+  DESKTOP_HEADER_HEIGHT,
+  useCaretScroll,
+} from "../shared/hooks/useCaretScroll";
 import { useFileTree } from "../shared/hooks/useFileTree";
 import { useNote } from "../shared/hooks/useNote";
 import { useVaultSync } from "../shared/hooks/useVaultSync";
@@ -28,6 +32,7 @@ export function DesktopApp() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
+  useCaretScroll(scrollContainerRef, { topInset: DESKTOP_HEADER_HEIGHT });
 
   const handleScroll = useCallback(() => {
     if (activeNote && scrollContainerRef.current) {

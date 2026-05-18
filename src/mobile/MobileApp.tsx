@@ -4,6 +4,7 @@ import { useFileTree } from "../shared/hooks/useFileTree";
 import { useVaultSync } from "../shared/hooks/useVaultSync";
 import {
   type MobileView,
+  dictaphoneModeAtom,
   folderPathAtom,
   mobileGoBackAtom,
   mobileNavStackAtom,
@@ -31,8 +32,6 @@ function ViewRenderer({ view }: { view: MobileView }) {
       return <MobileTabsView />;
     case "search":
       return <SearchView />;
-    case "dictaphone":
-      return <MobileDictaphone />;
     case "settings":
       return <MobileSettingsView />;
     default:
@@ -47,6 +46,7 @@ function ViewRenderer({ view }: { view: MobileView }) {
 export function MobileApp() {
   const { pickFolder, initFolder } = useFileTree();
   const folderPath = useAtomValue(folderPathAtom);
+  const dictaphoneMode = useAtomValue(dictaphoneModeAtom);
   useVaultSync();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: init au montage uniquement
@@ -168,6 +168,7 @@ export function MobileApp() {
       <div className="absolute inset-0" style={currentStyle}>
         <ViewRenderer view={currentView} />
       </div>
+      {dictaphoneMode !== null && <MobileDictaphone />}
     </div>
   );
 }

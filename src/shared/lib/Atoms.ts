@@ -62,7 +62,6 @@ export type MobileView =
   | "editor"
   | "tabs"
   | "search"
-  | "dictaphone"
   | "settings";
 
 // Pile de navigation — source de vérité unique pour l'historique des vues

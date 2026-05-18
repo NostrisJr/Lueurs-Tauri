@@ -25,6 +25,13 @@ import {
 } from "../../../shared/lib/Atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { NoteType } from "../../../shared/lib/noteTypes";
+import {
+  CARET_BOTTOM_PADDING,
+  MOBILE_HEADER_HEIGHT,
+  MOBILE_TOOLBAR_OFFSET,
+  useCaretScroll,
+} from "../../../shared/hooks/useCaretScroll";
+
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileFormattingBar } from "./MobileFormattingBar";
@@ -48,6 +55,12 @@ export function MobileEditor() {
   const scrollPositions = useRef(new Map<string, number>());
   const isBase = activeNote?.type === NoteType.BASE;
   const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
+  const totalMobileInset =
+    keyboardHeight > 0 ? keyboardHeight + MOBILE_TOOLBAR_OFFSET : 0;
+  useCaretScroll(scrollContainerRef, {
+    bottomInset: totalMobileInset,
+    topInset: MOBILE_HEADER_HEIGHT,
+  });
 
   const handleScroll = useCallback(() => {
     if (activeNote && scrollContainerRef.current) {
@@ -68,7 +81,7 @@ export function MobileEditor() {
     return () => cancelAnimationFrame(raf);
   }, [activeNote]);
 
-  // Scroll l'éditeur pour garder le caret visible quand le clavier s'ouvre
+  // Scroll instant au caret quand le clavier s'ouvre (hauteur corrigée avec la toolbar)
   useEffect(() => {
     if (keyboardHeight === 0) return;
     const container = scrollContainerRef.current;
@@ -77,7 +90,11 @@ export function MobileEditor() {
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0) return;
       const caretRect = sel.getRangeAt(0).getBoundingClientRect();
-      const visibleBottom = window.innerHeight - keyboardHeight - 16;
+      const visibleBottom =
+        window.innerHeight -
+        keyboardHeight -
+        MOBILE_TOOLBAR_OFFSET -
+        CARET_BOTTOM_PADDING;
       if (caretRect.bottom > visibleBottom) {
         container.scrollTop += caretRect.bottom - visibleBottom;
       }
@@ -160,7 +177,6 @@ export function MobileEditor() {
             onClick={() => {
               hapticImpact("light");
               setDictaphoneMode("insert");
-              navigate("dictaphone");
             }}
             className="w-9 h-9 flex items-center justify-center rounded-full text-amber-500 active:bg-gray-100 transition-colors"
             title="Ajouter un enregistrement"

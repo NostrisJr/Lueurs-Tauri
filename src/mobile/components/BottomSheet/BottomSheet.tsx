@@ -11,6 +11,7 @@
  */
 import { type ReactNode, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Squircle } from "react-ios-corners";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 
 interface Props {
@@ -24,25 +25,25 @@ export function BottomSheet({ onClose, children, title }: Props) {
   const startYRef = useRef(0);
   const [swipe, setSwipe] = useState(0);
 
-  const sheetHeight = isKeyboardOpen ? "75vh" : "40vh";
+  const sheetHeight = isKeyboardOpen ? "80vh" : "45vh";
 
   const sheet = (
     // biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile
     <div className="fixed inset-0 z-50 bg-gray-600/30" onClick={onClose}>
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: sheet */}
-      <div
-        className="fixed left-0 right-0 bottom-0 bg-white flex flex-col overflow-hidden shadow-2xl"
+      <Squircle
+        radius={50}
+        className="fixed left-0 right-0 -bottom-10 bg-white py-10 px-4 flex flex-col overflow-hidden"
         style={{
           height: sheetHeight,
-          borderRadius: "16px 16px 0 0",
           transform: `translateY(${-keyboardHeight + swipe}px)`,
           transition: swipe === 0 ? "height 0.25s ease-out" : undefined,
+          filter: "drop-shadow(0px -4px 20px rgba(0,0,0,0.12))",
         }}
-        onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => {
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onTouchStart={(e: React.TouchEvent) => {
           startYRef.current = e.touches[0].clientY;
         }}
-        onTouchMove={(e) => {
+        onTouchMove={(e: React.TouchEvent) => {
           const dy = e.touches[0].clientY - startYRef.current;
           if (dy > 0) setSwipe(dy);
         }}
@@ -63,7 +64,7 @@ export function BottomSheet({ onClose, children, title }: Props) {
           </p>
         )}
         <div
-          className="overflow-y-auto flex-1 text-sm"
+          className="overflow-y-auto flex-1"
           data-scrollable
           style={{
             WebkitOverflowScrolling: "touch",
@@ -72,7 +73,7 @@ export function BottomSheet({ onClose, children, title }: Props) {
         >
           {children}
         </div>
-      </div>
+      </Squircle>
     </div>
   );
 

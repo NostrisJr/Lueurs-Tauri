@@ -7,9 +7,8 @@ import {
   sfTrash,
 } from "@bradleyhodges/sfsymbols";
 import SFIcon from "@bradleyhodges/sfsymbols-react";
-import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useAtomValue } from "jotai";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   EditableText,
   type EditableTextHandle,
@@ -23,21 +22,15 @@ import {
 } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import { dragOverAtom, dragSourceAtom } from "../../../shared/lib/Atoms";
-import {
-  DesktopContextMenu,
-  sfArrowUpForward,
-  sfPencil,
-} from "./DesktopContextMenu";
-import type { ContextMenuAction } from "./DesktopContextMenu";
 import { useFileDragCtx } from "./FileDragCtx";
 
 // ── Styles partagés ────────────────────────────────────────────────────────────
 
 const ROW_BASE =
-  "select-none group justify-between flex items-center gap-1.5 rounded-lg px-2 py-1.5 pl-2 cursor-pointer transition-colors";
-export const ROW_ACTIVE = "liquid-glass bg-white/70";
+  "select-none group justify-between flex items-center gap-1.5 rounded-lg px-2 py-1.5 pl-2 cursor-pointer";
+export const ROW_ACTIVE = "liquid-glass bg-white/90";
 export const ROW_INACTIVE =
-  "text-gray-600 hover:bg-white/50 hover:text-gray-800";
+  "text-gray-600 hover:bg-white/80 hover:text-gray-800";
 const ROW_DRAGGING = "opacity-40";
 const rowIndent = 8;
 
@@ -53,7 +46,7 @@ export function TreeNodes({
   depth: number;
 }) {
   return (
-    <div className="overflow-clip  gap-1 flex flex-col">
+    <div className="gap-1 flex flex-col w-full">
       {nodes.map((node) =>
         // TODO : pourquoi j'utilise autre chose que NoteType.FOLDER ???
         node.kind === "folder" ? (
@@ -93,45 +86,12 @@ function FileNodeComponent({
   const isDragging = dragSource === node.id;
   const editableRef = useRef<EditableTextHandle | null>(null);
 
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCtxMenu({ x: e.clientX, y: e.clientY });
-  }, []);
-
-  const actions: ContextMenuAction[] = [
-    {
-      label: "Renommer",
-      icon: sfPencil,
-      iconColor: "text-amber-500",
-      onPress: () => editableRef.current?.startEdit(),
-    },
-    {
-      label: "Afficher dans le Finder",
-      icon: sfArrowUpForward,
-      iconColor: "text-green-600",
-      separator: true,
-      onPress: () => revealItemInDir(node.id).catch(() => {}),
-    },
-    {
-      label: "Supprimer",
-      icon: sfTrash,
-      iconColor: "text-red-500",
-      labelColor: "text-red-500",
-      separator: true,
-      onPress: () => handleDeleteNote(node.id),
-    },
-  ];
-
   return (
     <>
       <div
         onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
         onClick={(e) => handleSelectNote(node, e.metaKey)}
         onKeyDown={(e) => e.key === "Enter" && handleSelectNote(node)}
-        onContextMenu={handleContextMenu}
         className={`${ROW_BASE} ${isActive ? ROW_ACTIVE : ROW_INACTIVE} ${isDragging ? ROW_DRAGGING : ""}`}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -160,14 +120,6 @@ function FileNodeComponent({
           <SFIcon icon={sfTrash} className="size-3" aria-hidden="true" />
         </button>
       </div>
-      {ctxMenu && (
-        <DesktopContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          actions={actions}
-          onClose={() => setCtxMenu(null)}
-        />
-      )}
     </>
   );
 }
@@ -184,7 +136,6 @@ function FolderNodeComponent({
   depth: number;
 }) {
   const [open, setOpen] = useState(depth === 0);
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const editableRef = useRef<EditableTextHandle | null>(null);
 
   const { createNote, createFolder } = useFileTree();
@@ -194,36 +145,6 @@ function FolderNodeComponent({
   const dragOver = useAtomValue(dragOverAtom);
   const isDragging = dragSource === node.id;
   const isOver = dragOver === node.id;
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCtxMenu({ x: e.clientX, y: e.clientY });
-  }, []);
-
-  const folderActions: ContextMenuAction[] = [
-    {
-      label: "Renommer",
-      icon: sfPencil,
-      iconColor: "text-amber-500",
-      onPress: () => editableRef.current?.startEdit(),
-    },
-    {
-      label: "Afficher dans le Finder",
-      icon: sfArrowUpForward,
-      iconColor: "text-green-600",
-      separator: true,
-      onPress: () => revealItemInDir(node.id).catch(() => {}),
-    },
-    {
-      label: "Supprimer",
-      icon: sfTrash,
-      iconColor: "text-red-500",
-      labelColor: "text-red-500",
-      separator: true,
-      onPress: () => handleDeleteFolder(node),
-    },
-  ];
 
   // La note __folder__ est celle qui porte exactement le même nom que ce dossier
   const folderNoteId = `${node.id}/${node.name}.md`;
@@ -240,7 +161,6 @@ function FolderNodeComponent({
         {/* En-tête du dossier */}
         <div
           onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
-          onContextMenu={handleContextMenu}
           className={`${ROW_BASE} ${isActive ? ROW_ACTIVE : isOver ? "bg-amber-400/20 text-gray-700" : ROW_INACTIVE}`}
         >
           {/* Flèche : toggle seul */}
@@ -352,14 +272,6 @@ function FolderNodeComponent({
           </p>
         )}
       </div>
-      {ctxMenu && (
-        <DesktopContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          actions={folderActions}
-          onClose={() => setCtxMenu(null)}
-        />
-      )}
     </>
   );
 }

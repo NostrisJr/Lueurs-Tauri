@@ -466,6 +466,7 @@
 .mobile-prose .ProseMirror {
   padding: 16px 16px 80px;
   font-size: 16px;
+  /*ne modifie pas du tout la taille de la police...*/
 }
 
 /* Décalage des headings pour faire de la place au chevron de fold */

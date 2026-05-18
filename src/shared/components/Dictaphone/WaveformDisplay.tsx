@@ -46,7 +46,18 @@ export function WaveformDisplay({
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     const newNumBars = Math.floor(width / BAR_STEP);
-    bufRef.current = new Float32Array(newNumBars).fill(0);
+    const oldBuf = bufRef.current;
+    if (newNumBars !== oldBuf.length) {
+      const newBuf = new Float32Array(newNumBars);
+      if (newNumBars <= oldBuf.length) {
+        // Garde les barres les plus récentes (côté droit du buffer)
+        newBuf.set(oldBuf.slice(oldBuf.length - newNumBars));
+      } else {
+        // Buffer plus grand : les anciennes valeurs sont repoussées à droite
+        newBuf.set(oldBuf, newNumBars - oldBuf.length);
+      }
+      bufRef.current = newBuf;
+    }
   }, [width, height]);
 
   useEffect(() => {
@@ -85,7 +96,8 @@ export function WaveformDisplay({
 
     if (!isActive) {
       cancelAnimationFrame(rafRef.current);
-      bufRef.current.fill(0);
+      // Preserve le buffer pour que la forme d'onde soit restaurée si le composant
+      // se réactive (toggle pill/sheet). La ligne plate n'est donc pas forcée ici.
       draw();
       return;
     }

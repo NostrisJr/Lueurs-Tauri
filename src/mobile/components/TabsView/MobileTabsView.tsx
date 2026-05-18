@@ -6,12 +6,16 @@ import { useNote } from "../../../shared/hooks/useNote";
 import {
   activeNoteIdAtom,
   mobileGoBackAtom,
+  mobileNavigateAtom,
   mobileResetNavAtom,
   noteBackStackAtom,
   openTabIdsAtom,
   treeAtom,
 } from "../../../shared/lib/Atoms";
 import { hapticImpact } from "../../lib/haptics";
+import { FileRow } from "../FileTree/FileRow";
+
+const NOOP_DRILL = () => {};
 
 export function MobileTabsView() {
   const openTabIds = useAtomValue(openTabIdsAtom);
@@ -19,6 +23,7 @@ export function MobileTabsView() {
   const allNotes = flattenTree(tree);
   const goBack = useSetAtom(mobileGoBackAtom);
   const resetNav = useSetAtom(mobileResetNavAtom);
+  const navigate = useSetAtom(mobileNavigateAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const setNoteBackStack = useSetAtom(noteBackStackAtom);
   const { handleCloseTab } = useNote();
@@ -28,6 +33,7 @@ export function MobileTabsView() {
     setNoteBackStack([]);
     setActiveNoteId(id);
     resetNav();
+    navigate("editor");
   }
 
   return (
@@ -62,7 +68,7 @@ export function MobileTabsView() {
 
       {/* Liste d'onglets */}
       <div
-        className="flex-1 overflow-auto px-4 pt-4"
+        className="flex-1 overflow-auto py-4 flex flex-col gap-2"
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 16px)" }}
       >
         {openTabIds.length === 0 ? (
@@ -70,47 +76,32 @@ export function MobileTabsView() {
             Aucun onglet ouvert
           </p>
         ) : (
-          <div className="flex flex-col gap-2">
-            {openTabIds.map((id) => {
-              const note = allNotes.find((n) => n.id === id);
-              if (!note) return null;
-              const preview = note.body
-                .replace(/^---[\s\S]*?---\n/, "")
-                .slice(0, 120)
-                .trim();
+          openTabIds.map((id) => {
+            const note = allNotes.find((n) => n.id === id);
+            if (!note) return null;
 
-              return (
-                <div key={id} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab(id)}
-                    className="w-full text-left bg-white rounded-2xl px-4 py-3.5 shadow-xs border border-gray-100 active:bg-gray-50 transition-colors"
-                  >
-                    <p className="text-base font-semibold text-gray-900 truncate mb-0.5">
-                      {note.name}
-                    </p>
-                    {preview ? (
-                      <p className="text-sm text-gray-400 line-clamp-2">
-                        {preview}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-gray-300 italic">Vide</p>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      hapticImpact("light");
-                      handleCloseTab(id);
-                    }}
-                    className="absolute top-2 right-3 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center active:bg-gray-300 transition-colors"
-                  >
-                    <SFIcon icon={sfXmark} className="size-3 text-gray-500" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+            return (
+              <div key={id} className="relative w-11/12 mx-auto">
+                <FileRow
+                  node={note}
+                  onDrillIn={NOOP_DRILL}
+                  onLongPress={() => {}}
+                  onClick={() => handleSelectTab(id)}
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    hapticImpact("light");
+                    handleCloseTab(id);
+                  }}
+                  className="absolute top-2 right-3 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center active:bg-gray-300 transition-colors z-10"
+                >
+                  <SFIcon icon={sfXmark} className="size-3 text-gray-500" />
+                </button>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

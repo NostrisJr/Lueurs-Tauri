@@ -23,7 +23,7 @@ export function FileTree({ nodes, activeId }: FileTreeProps) {
     <FileDragCtx.Provider value={dnd}>
       <div
         data-dropzone={folderPath ?? undefined}
-        className={`px-2 py-1 overflow-scroll min-h-full transition-colors ${isRootOver ? "bg-amber-100/30" : ""}`}
+        className={`px-2 py-1 min-h-full transition-colors ${isRootOver ? "bg-amber-100/30" : ""}`}
       >
         <TreeNodes nodes={nodes} activeId={activeId} depth={0} />
       </div>

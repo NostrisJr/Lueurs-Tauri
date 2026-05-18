@@ -58,6 +58,45 @@ function buildHeadingNodeView(
     initPos != null ? isHeadingFolded(view, initPos) : false
   );
 
+  // Sur mobile : touchstart avec preventDefault bloque le focus contenteditable
+  // (clavier). Le fold est géré ici car preventDefault sur touchstart bloque
+  // la synthèse mousedown/click.
+  btn.addEventListener(
+    "touchstart",
+    (e) => {
+      e.preventDefault();
+      const pos = getPos();
+      if (pos == null) return;
+
+      const currentlyFolded = isHeadingFolded(view, pos);
+      const fold = !currentlyFolded;
+      const tr = view.state.tr.setMeta(headingFoldPluginKey, { pos, fold });
+
+      if (fold) {
+        const headingNode = view.state.doc.nodeAt(pos);
+        if (headingNode) {
+          const headingLevel = headingNode.attrs.level as number;
+          const sectionEnd = findSectionEnd(view.state.doc, pos, headingLevel);
+          const contentStart = pos + headingNode.nodeSize;
+          const { from } = view.state.selection;
+          if (from >= contentStart && from < sectionEnd) {
+            const newSel = TextSelection.near(
+              view.state.doc.resolve(contentStart - 1),
+              -1
+            );
+            tr.setSelection(newSel);
+          }
+        }
+      }
+
+      dom.dataset.folded = String(fold);
+      log.info("toggle fold heading (touch)", { pos, fold });
+      view.dispatch(tr);
+      // Pas de view.focus() : le clavier ne doit pas s'ouvrir
+    },
+    { passive: false }
+  );
+
   btn.addEventListener("mousedown", (e) => {
     e.preventDefault();
     const pos = getPos();

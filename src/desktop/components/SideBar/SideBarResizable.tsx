@@ -187,6 +187,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               </p>
             ) : (
               searchResults.map((note) => (
+                //TODO :
                 <div
                   key={note.id}
                   onClick={(e) => handleSelectNote(note, e.metaKey)}
