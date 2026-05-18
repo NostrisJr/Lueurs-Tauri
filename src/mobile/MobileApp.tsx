@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { IconFolder } from "../shared/components/PlatformIcon";
 import { useFileTree } from "../shared/hooks/useFileTree";
 import { useVaultSync } from "../shared/hooks/useVaultSync";
 import {
@@ -11,6 +12,7 @@ import {
   mobilePrevViewAtom,
   mobileViewAtom,
 } from "../shared/lib/Atoms";
+import { isAndroid, isIOS } from "../shared/lib/platform";
 import {
   DURATION,
   EASING,
@@ -51,7 +53,9 @@ export function MobileApp() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: init au montage uniquement
   useEffect(() => {
-    pickFolder();
+    // Sur iOS, pickFolder() auto-détecte iCloud sans interaction utilisateur.
+    // Sur Android, on n'ouvre pas le picker automatiquement : l'écran d'accueil s'en charge.
+    if (isIOS) pickFolder();
   }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: réagit au changement de vault
@@ -152,6 +156,31 @@ export function MobileApp() {
           willChange: "transform",
         }
       : {};
+
+  if (!folderPath && isAndroid) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-100 gap-6 px-8">
+        <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow">
+          <IconFolder className="size-8 text-amber-500" />
+        </div>
+        <div className="text-center">
+          <p className="font-semibold text-gray-900 text-lg">
+            Aucun dossier sélectionné
+          </p>
+          <p className="text-sm text-gray-400 mt-1">
+            Choisis un dossier contenant tes fichiers .md
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={pickFolder}
+          className="px-6 py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-base active:bg-amber-600 transition-colors"
+        >
+          Choisir un dossier
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

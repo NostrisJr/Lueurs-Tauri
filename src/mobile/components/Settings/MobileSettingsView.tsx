@@ -1,11 +1,11 @@
-import { sfChevronLeft } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useSetAtom } from "jotai";
 import { Squircle } from "react-ios-corners";
-import { defaultDisplayModeAtom } from "../../../shared/lib/Atoms";
-import { mobileGoBackAtom } from "../../../shared/lib/Atoms";
+import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
+import { useFileTree } from "../../../shared/hooks/useFileTree";
+import { defaultDisplayModeAtom, folderPathAtom, mobileGoBackAtom } from "../../../shared/lib/Atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
+import { isAndroid } from "../../../shared/lib/platform";
 import { hapticImpact } from "../../lib/haptics";
 
 const descriptions: Record<string, string> = {
@@ -18,6 +18,8 @@ export function MobileSettingsView() {
     defaultDisplayModeAtom
   );
   const goBack = useSetAtom(mobileGoBackAtom);
+  const folderPath = useAtomValue(folderPathAtom);
+  const { pickFolder } = useFileTree();
 
   return (
     <div className="flex flex-col h-full w-full fixed bg-gray-100">
@@ -31,7 +33,7 @@ export function MobileSettingsView() {
           }}
           className="flex-1 justify-start flex items-center gap-1 px-2 py-1.5 rounded-lg text-amber-500 active:bg-gray-100 transition-colors"
         >
-          <SFIcon icon={sfChevronLeft} className="size-4" />
+          <IconChevronLeft className="size-4" />
           <span className="text-base">Notes</span>
         </button>
         <h1 className="flex-1 text-center text-base font-semibold text-gray-900 pr-16">
@@ -49,7 +51,7 @@ export function MobileSettingsView() {
             radius={18}
             className="overflow-hidden bg-white border border-gray-100"
           >
-            {DISPLAY_MODES.map(({ value, icon, label }, i) => (
+            {DISPLAY_MODES.map(({ value, Icon, label }, i) => (
               <button
                 key={value}
                 type="button"
@@ -61,11 +63,7 @@ export function MobileSettingsView() {
                   i < DISPLAY_MODES.length - 1 ? "border-b border-gray-100" : ""
                 }`}
               >
-                <SFIcon
-                  icon={icon}
-                  className="size-5 text-gray-400 shrink-0"
-                  aria-hidden="true"
-                />
+                <Icon className="size-5 text-gray-400 shrink-0" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
                   <p className="text-base text-gray-900">{label}</p>
                   <p className="text-sm text-gray-400">{descriptions[value]}</p>
@@ -80,6 +78,37 @@ export function MobileSettingsView() {
         <p className="mt-2 text-xs text-gray-400 px-1">
           Appliqué aux nouvelles notes et aux notes sans mode défini.
         </p>
+
+        {isAndroid && (
+          <>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+              Vault
+            </p>
+            <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+              <Squircle
+                radius={18}
+                className="overflow-hidden bg-white border border-gray-100"
+              >
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-xs text-gray-400 mb-0.5">Dossier racine</p>
+                  <p className="text-sm text-gray-700 font-mono truncate">
+                    {folderPath ?? "–"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticImpact("light");
+                    pickFolder();
+                  }}
+                  className="w-full px-4 py-4 text-left text-base text-amber-500 active:bg-gray-50 transition-colors"
+                >
+                  Changer de dossier
+                </button>
+              </Squircle>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

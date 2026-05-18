@@ -1,5 +1,4 @@
-import { sfXmark } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
@@ -99,7 +98,7 @@ export function SearchView() {
             }}
             className="size-13 justify-center items-center"
           >
-            <SFIcon icon={sfXmark} className="size-4.5" />
+            <IconXmark className="size-4.5" />
           </FloatingComponent>
         </div>
       </div>

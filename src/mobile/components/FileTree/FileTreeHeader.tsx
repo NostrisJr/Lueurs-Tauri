@@ -1,13 +1,12 @@
-import {
-  sfChevronLeft,
-  sfDocumentBadgePlus,
-  sfEllipsis,
-  sfFolderBadgePlus,
-  sfGearshape,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
+import {
+  IconChevronLeft,
+  IconDocumentBadgePlus,
+  IconEllipsis,
+  IconFolderBadgePlus,
+  IconGearshape,
+} from "../../../shared/components/PlatformIcon";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
   folderPathAtom,
@@ -80,10 +79,9 @@ export function FileTreeHeader() {
           onClick={handleDrillOut}
           className="w-8 h-8 flex items-center justify-center rounded-full text-amber-500 active:bg-black/5 transition-colors"
         >
-          <SFIcon icon={sfChevronLeft} className="size-4" />
+          <IconChevronLeft className="size-4" />
         </button>
       ) : (
-        // Espace réservé pour aligner le titre au centre
         <div className="w-8 h-8" />
       )}
 
@@ -114,7 +112,7 @@ export function FileTreeHeader() {
           className="w-8 h-8 flex items-center justify-center rounded-full text-amber-500 active:bg-black/5 transition-colors"
           aria-label="Menu"
         >
-          <SFIcon icon={sfEllipsis} className="size-5" />
+          <IconEllipsis className="size-5" />
         </button>
 
         {showMenu && (
@@ -133,10 +131,7 @@ export function FileTreeHeader() {
               onClick={handleCreateNote}
               className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors border-b border-black/5"
             >
-              <SFIcon
-                icon={sfDocumentBadgePlus}
-                className="size-4 text-blue-500"
-              />
+              <IconDocumentBadgePlus className="size-4 text-blue-500" />
               Nouvelle note
             </button>
             <button
@@ -144,10 +139,7 @@ export function FileTreeHeader() {
               onClick={handleCreateFolder}
               className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors border-b border-black/5"
             >
-              <SFIcon
-                icon={sfFolderBadgePlus}
-                className="size-4 text-yellow-500"
-              />
+              <IconFolderBadgePlus className="size-4 text-yellow-500" />
               Nouveau dossier
             </button>
             <button
@@ -155,7 +147,7 @@ export function FileTreeHeader() {
               onClick={handleOpenSettings}
               className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
             >
-              <SFIcon icon={sfGearshape} className="size-4 text-gray-500" />
+              <IconGearshape className="size-4 text-gray-500" />
               Réglages
             </button>
           </div>

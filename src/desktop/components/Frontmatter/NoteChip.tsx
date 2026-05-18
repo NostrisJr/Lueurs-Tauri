@@ -1,5 +1,4 @@
-import { sfXCircle } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconXCircle } from "../../../shared/components/PlatformIcon";
 import { useAtomValue } from "jotai";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
@@ -44,16 +43,17 @@ export function NoteChip({
         {name}
       </span>
       {!readOnly && (
-        <SFIcon
-          icon={sfXCircle}
+        <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          className="size-3 text-gray-400 hover:text-red-400 transition-all cursor-pointer"
-          aria-hidden="true"
           title={`Retirer ${name}`}
-        />
+          className="text-gray-400 hover:text-red-400 transition-all cursor-pointer bg-transparent border-0 p-0 flex items-center"
+        >
+          <IconXCircle className="size-3" aria-hidden="true" />
+        </button>
       )}
     </span>
   );

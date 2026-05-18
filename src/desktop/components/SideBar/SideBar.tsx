@@ -1,5 +1,4 @@
-import { sfSidebarLeft } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconSidebarLeft } from "../../../shared/components/PlatformIcon";
 import { clsx } from "clsx";
 import { useAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
@@ -49,7 +48,7 @@ function SideBar() {
           transform: collapsed ? "translateX(0)" : "translateX(10px)",
         }}
       >
-        <SFIcon icon={sfSidebarLeft} className="size-5" aria-hidden="true" />
+        <IconSidebarLeft className="size-5" aria-hidden="true" />
       </button>
 
       <aside

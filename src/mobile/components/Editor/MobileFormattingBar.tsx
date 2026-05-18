@@ -1,23 +1,22 @@
-import {
-  sfAppleTerminalFill,
-  sfBold,
-  sfCharacterSquare,
-  sfChartBarYaxis,
-  sfChecklist,
-  sfChevronLeftForwardslashChevronRight,
-  sfDecreaseIndent,
-  sfIncreaseIndent,
-  sfItalic,
-  sfKeyboardChevronCompactDown,
-  sfListBullet,
-  sfListNumber,
-  sfStrikethrough,
-  sfTextformat,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { EditorHandle } from "../../../shared/components/NoteEditor/MarkdownEditor";
+import {
+  IconAppleTerminalFill,
+  IconBold,
+  IconCharacterSquare,
+  IconChartBarYaxis,
+  IconChecklist,
+  IconCodeInline,
+  IconDecreaseIndent,
+  IconIncreaseIndent,
+  IconItalic,
+  IconKeyboardChevronCompactDown,
+  IconListBullet,
+  IconListNumber,
+  IconStrikethrough,
+  IconTextformat,
+} from "../../../shared/components/PlatformIcon";
 import { FloatingComponent } from "../Floating/FloatingComponent";
 
 interface Props {
@@ -28,7 +27,7 @@ interface Props {
 
 interface Btn {
   label?: string;
-  icon?: typeof sfBold;
+  Icon?: React.FC<{ className?: string }>;
   title: string;
   action: (e: EditorHandle) => void;
   className?: string;
@@ -61,26 +60,12 @@ export function MobileFormattingBar({
 
   const groups: Btn[][] = [
     [
-      { icon: sfBold, title: "Gras", action: (ed) => ed.bold() },
-      { icon: sfItalic, title: "Italique", action: (ed) => ed.italic() },
-      { icon: sfStrikethrough, title: "Barré", action: (ed) => ed.strike() },
-      {
-        icon: sfChevronLeftForwardslashChevronRight,
-        title: "Code inline",
-        action: (ed) => ed.inlineCode(),
-        className: "font-mono",
-      },
-      {
-        label: "|Abc|",
-        title: "Didascalie inline",
-        action: (ed) => ed.didascalieInline(),
-        className: "italic opacity-75",
-      },
-      {
-        icon: sfTextformat,
-        title: "Texte normal",
-        action: (ed) => ed.paragraph(),
-      },
+      { Icon: IconBold,          title: "Gras",            action: (ed) => ed.bold() },
+      { Icon: IconItalic,        title: "Italique",        action: (ed) => ed.italic() },
+      { Icon: IconStrikethrough, title: "Barré",           action: (ed) => ed.strike() },
+      { Icon: IconCodeInline,    title: "Code inline",     action: (ed) => ed.inlineCode(), className: "font-mono" },
+      { label: "|Abc|",          title: "Didascalie inline", action: (ed) => ed.didascalieInline(), className: "italic opacity-75" },
+      { Icon: IconTextformat,    title: "Texte normal",   action: (ed) => ed.paragraph() },
     ],
     [
       { label: "H1", title: "Titre 1", action: (ed) => ed.heading(1) },
@@ -91,52 +76,17 @@ export function MobileFormattingBar({
       { label: "H6", title: "Titre 6", action: (ed) => ed.heading(6) },
     ],
     [
-      {
-        icon: sfListBullet,
-        title: "Liste à puces",
-        action: (ed) => ed.bulletList(),
-      },
-      {
-        icon: sfListNumber,
-        title: "Liste numérotée",
-        action: (ed) => ed.orderedList(),
-      },
-      {
-        icon: sfChecklist,
-        title: "Liste de tâches",
-        action: (ed) => ed.taskList(),
-      },
-      {
-        icon: sfIncreaseIndent,
-        title: "Indenter",
-        action: (ed) => ed.indent(),
-      },
-
-      {
-        icon: sfDecreaseIndent,
-        title: "Désindenter",
-        action: (ed) => ed.dedent(),
-      },
+      { Icon: IconListBullet,    title: "Liste à puces",    action: (ed) => ed.bulletList() },
+      { Icon: IconListNumber,    title: "Liste numérotée",  action: (ed) => ed.orderedList() },
+      { Icon: IconChecklist,     title: "Liste de tâches",  action: (ed) => ed.taskList() },
+      { Icon: IconIncreaseIndent, title: "Indenter",        action: (ed) => ed.indent() },
+      { Icon: IconDecreaseIndent, title: "Désindenter",     action: (ed) => ed.dedent() },
     ],
     [
-      {
-        icon: sfCharacterSquare,
-        title: "Citation",
-        action: (ed) => ed.blockquote(),
-      },
-      {
-        icon: sfAppleTerminalFill,
-        title: "Bloc de code",
-        action: (ed) => ed.codeBlock(),
-        className: "font-mono text-xs",
-      },
-      { icon: sfChartBarYaxis, title: "Poésie", action: (ed) => ed.poetry() },
-      {
-        label: "(D)",
-        title: "Bloc didascalie",
-        action: (ed) => ed.didascalieBlock(),
-        className: "italic opacity-75 text-xs",
-      },
+      { Icon: IconCharacterSquare,   title: "Citation",       action: (ed) => ed.blockquote() },
+      { Icon: IconAppleTerminalFill, title: "Bloc de code",   action: (ed) => ed.codeBlock(), className: "font-mono text-xs" },
+      { Icon: IconChartBarYaxis,     title: "Poésie",         action: (ed) => ed.poetry() },
+      { label: "(D)",                title: "Bloc didascalie", action: (ed) => ed.didascalieBlock(), className: "italic opacity-75 text-xs" },
     ],
   ];
 
@@ -169,7 +119,6 @@ export function MobileFormattingBar({
                 type="button"
                 title={item.title}
                 onPointerDown={(ev) => {
-                  // Empêche le blur de l'éditeur ; enregistre la position de départ
                   ev.preventDefault();
                   dragRef.current = { isDragging: false, startX: ev.clientX };
                 }}
@@ -179,7 +128,6 @@ export function MobileFormattingBar({
                   }
                 }}
                 onPointerUp={() => {
-                  // N'exécute l'action que si c'était un tap, pas un scroll
                   if (!dragRef.current.isDragging) {
                     const ed = e();
                     if (ed) item.action(ed);
@@ -187,8 +135,8 @@ export function MobileFormattingBar({
                 }}
                 className={`shrink-0 min-w-9 h-9 flex items-center justify-center px-2 rounded-full text-black hover:bg-white/20 active:bg-white/30 transition-colors select-none ${item.className ?? ""}`}
               >
-                {item.icon ? (
-                  <SFIcon icon={item.icon} className="size-5" />
+                {item.Icon ? (
+                  <item.Icon className="size-5" />
                 ) : (
                   <span className="text-sm font-medium">{item.label}</span>
                 )}
@@ -205,7 +153,7 @@ export function MobileFormattingBar({
           onPointerUp={() => (document.activeElement as HTMLElement)?.blur()}
           className="w-full h-full flex items-center justify-center text-black active:bg-white/30 transition-colors rounded-full"
         >
-          <SFIcon icon={sfKeyboardChevronCompactDown} className="size-5" />
+          <IconKeyboardChevronCompactDown className="size-5" />
         </button>
       </FloatingComponent>
     </div>

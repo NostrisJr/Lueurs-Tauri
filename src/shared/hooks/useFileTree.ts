@@ -197,6 +197,14 @@ export function useFileTree() {
       const icloudPath = await invoke<string | null>("get_icloud_path");
       selected = icloudPath ?? (await documentDir());
       log.info("vault iOS", { selected, icloud: !!icloudPath });
+    } else if (currentPlatform === "android") {
+      const result = await invoke<string | null>("pick_android_folder");
+      if (!result) {
+        log.info("vault Android: sélection annulée");
+        return;
+      }
+      log.info("vault Android sélectionné", { path: result });
+      selected = result;
     } else {
       // Sur macOS, positionner le picker sur le conteneur iCloud s'il existe
       let defaultPath: string | undefined;
@@ -204,12 +212,18 @@ export function useFileTree() {
         const icloudPath = await invoke<string | null>("get_icloud_path_macos");
         defaultPath = icloudPath ?? undefined;
       }
-      const result = await open({
-        directory: true,
-        multiple: false,
-        defaultPath,
-      });
-      if (!result || typeof result !== "string") return;
+      let result: unknown;
+      try {
+        result = await open({ directory: true, multiple: false, defaultPath });
+        log.info("dialog open résultat", { result, type: typeof result, platform: currentPlatform });
+      } catch (err) {
+        log.error("dialog open échoué", { err, platform: currentPlatform });
+        return;
+      }
+      if (!result || typeof result !== "string") {
+        log.warn("dialog open: résultat invalide ou annulé", { result });
+        return;
+      }
       selected = result;
     }
 

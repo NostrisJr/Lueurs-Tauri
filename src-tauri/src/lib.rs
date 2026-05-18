@@ -5,6 +5,62 @@ use tauri_plugin_fs::FsExt;
 use tokio::task::JoinSet;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
+// ── Plugin folder picker Android ───────────────────────────────────────────
+
+#[cfg(target_os = "android")]
+struct FolderPickerHandle(tauri::plugin::PluginHandle<tauri::Wry>);
+
+#[cfg(target_os = "android")]
+#[derive(Deserialize)]
+struct FolderPickResult {
+    path: String,
+}
+
+fn folder_picker_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri::plugin::Builder::<tauri::Wry>::new("folderPicker")
+        .setup(|app, api| {
+            #[cfg(target_os = "android")]
+            {
+                let handle = api.register_android_plugin(
+                    "com.theophiledonato.lueurs",
+                    "FolderPickerPlugin",
+                )?;
+                app.manage(FolderPickerHandle(handle));
+            }
+            let _ = (app, api);
+            Ok(())
+        })
+        .build()
+}
+
+#[tauri::command]
+async fn pick_android_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    #[cfg(target_os = "android")]
+    {
+        let handle = app.state::<FolderPickerHandle>();
+        match handle
+            .0
+            .run_mobile_plugin_async::<FolderPickResult>("pickFolder", ())
+            .await
+        {
+            Ok(result) => Ok(Some(result.path)),
+            Err(e) => {
+                let s = e.to_string();
+                if s.contains("cancelled") {
+                    Ok(None)
+                } else {
+                    Err(s)
+                }
+            }
+        }
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Ok(None)
+    }
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -53,6 +109,7 @@ pub fn run() {
         .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_haptics::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(folder_picker_plugin())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
@@ -85,6 +142,7 @@ pub fn run() {
             get_icloud_path_macos,
             show_action_sheet,
             show_rename_prompt,
+            pick_android_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

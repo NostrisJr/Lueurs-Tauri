@@ -1,9 +1,8 @@
 import {
-  sfArrowRight,
-  sfPlusCircle,
-  sfXCircle,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+  IconArrowRight,
+  IconPlusCircle,
+  IconXCircle,
+} from "../../../shared/components/PlatformIcon";
 import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef } from "react";
@@ -182,17 +181,19 @@ export function FrontmatterRow({
       className={`flex items-center gap-2 group transition duration-300 select-none ${isMobile ? "text-sm min-h-10" : "text-xs min-h-5"}`}
     >
       {row.key !== SystemField.TYPE ? (
-        <SFIcon
-          icon={sfXCircle}
+        <button
+          type="button"
           onClick={canDelete ? removeRow : undefined}
-          className={`shrink-0 transition-all ${isMobile ? "size-4" : "size-3"}
+          title={canDelete ? "Supprimer la propriété" : undefined}
+          className={`shrink-0 transition-all p-0 bg-transparent border-0 ${isMobile ? "size-4" : "size-3"}
             ${
               canDelete
                 ? "text-transparent hover:text-red-400 group-hover:text-gray-300 cursor-pointer"
                 : "text-transparent cursor-default"
             }`}
-          title={canDelete ? "Supprimer la propriété" : undefined}
-        />
+        >
+          <IconXCircle className="size-full" />
+        </button>
       ) : (
         <span className={`shrink-0 ${isMobile ? "w-4" : "w-3"}`} />
       )}
@@ -216,20 +217,21 @@ export function FrontmatterRow({
         {row.key.replace(/^__|__$/g, "")}
       </span>
 
-      <SFIcon
-        icon={sfArrowRight}
+      <IconArrowRight
         className={`shrink-0 text-gray-300 select-none ${isMobile ? "size-4" : "size-3"}`}
         aria-hidden="true"
       />
 
       {hasNoteSelector(row.key) ? (
         <span ref={selectorAnchorRef}>
-          <SFIcon
-            icon={sfPlusCircle}
-            className={`text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
+          <button
+            type="button"
             title="Ajouter une note"
             onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
-          />
+            className={`p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
+          >
+            <IconPlusCircle className="size-full" />
+          </button>
         </span>
       ) : (
         <span className={`shrink-0 ${isMobile ? "w-4" : "w-3"}`} />

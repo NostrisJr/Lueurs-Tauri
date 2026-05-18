@@ -1,110 +1,138 @@
-import { invoke } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useRef } from "react";
-import type { TreeNode } from "../../../shared/hooks/useFileTree";
+import { useState } from "react";
 import { useNote } from "../../../shared/hooks/useNote";
+import type { TreeNode } from "../../../shared/hooks/useFileTree";
 import { folderPathAtom, mobileContextMenuAtom } from "../../../shared/lib/Atoms";
 import { createLogger } from "../../../shared/lib/logger";
 import { hapticImpact } from "../../lib/haptics";
+import { BottomSheet } from "./BottomSheet";
 
 const log = createLogger("MobileContextMenu");
 
-const ACTIONS = [
-  "Renommer",
-  "Supprimer",
-  "Afficher dans les Fichiers",
-  "Partager",
-] as const;
+type Step = "menu" | "rename";
 
 export function MobileContextMenu() {
   const [target, setTarget] = useAtom(mobileContextMenuAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const { handleRename, handleDeleteNote, handleDeleteFolder } = useNote();
 
-  // activeRef empêche une double invocation si l'atom est mis à jour
-  // (nouvelle référence objet) pendant que le menu est déjà affiché.
-  const activeRef = useRef(false);
+  const [step, setStep] = useState<Step>("menu");
+  const [renameValue, setRenameValue] = useState("");
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: seul target déclenche le menu ; les handlers sont stables
-  useEffect(() => {
-    if (!target || activeRef.current) return;
-    activeRef.current = true;
+  if (!target) return null;
 
-    const t = target;
+  function close() {
+    setTarget(null);
+    setStep("menu");
+    setRenameValue("");
+  }
 
-    async function show() {
-      hapticImpact("light");
-
-      const idx = await invoke<number>("show_action_sheet", {
-        title: t.name,
-        actions: [...ACTIONS],
-      });
-
-      if (idx !== -1) {
-        switch (idx) {
-          case 0: {
-            const newName = await invoke<string | null>("show_rename_prompt", {
-              title: t.isFolder ? "Renommer le dossier" : "Renommer la note",
-              placeholder: t.name,
-              current: t.name,
-            });
-            if (newName && newName !== t.name) {
-              log.info("rename", { id: t.id, newName });
-              await handleRename(t.id, newName, t.isFolder);
-            }
-            break;
-          }
-          case 1: {
-            hapticImpact("medium");
-            log.info("delete", { id: t.id, isFolder: t.isFolder });
-            if (t.isFolder) {
-              const node: TreeNode = {
-                kind: "folder",
-                id: t.id,
-                name: t.name,
-                children: [],
-              };
-              await handleDeleteFolder(node);
-            } else {
-              await handleDeleteNote(t.id);
-            }
-            break;
-          }
-          case 2: {
-            if (folderPath) {
-              const prefix = folderPath.endsWith("/")
-                ? folderPath
-                : `${folderPath}/`;
-              const abs = `${prefix}${t.id}`;
-              const parent = abs.substring(0, abs.lastIndexOf("/"));
-              await openPath(parent).catch((err) =>
-                log.error("impossible d'ouvrir dans les Fichiers", err)
-              );
-            }
-            break;
-          }
-          case 3: {
-            if (folderPath && navigator.share) {
-              const prefix = folderPath.endsWith("/")
-                ? folderPath
-                : `${folderPath}/`;
-              const abs = `${prefix}${t.id}`;
-              await navigator
-                .share({ title: t.name, text: abs })
-                .catch(() => {});
-            }
-            break;
-          }
+  async function handleAction(idx: number) {
+    if (!target) return;
+    switch (idx) {
+      case 0:
+        setRenameValue(target.name);
+        setStep("rename");
+        break;
+      case 1:
+        hapticImpact("medium");
+        log.info("delete", { id: target.id, isFolder: target.isFolder });
+        if (target.isFolder) {
+          const node: TreeNode = {
+            kind: "folder",
+            id: target.id,
+            name: target.name,
+            children: [],
+          };
+          await handleDeleteFolder(node);
+        } else {
+          await handleDeleteNote(target.id);
         }
-      }
-
-      activeRef.current = false;
-      setTarget(null);
+        close();
+        break;
+      case 2:
+        if (folderPath) {
+          const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+          const abs = `${prefix}${target.id}`;
+          const parent = abs.substring(0, abs.lastIndexOf("/"));
+          await openPath(parent).catch((err) =>
+            log.error("impossible d'ouvrir dans les Fichiers", err)
+          );
+        }
+        close();
+        break;
+      case 3:
+        if (folderPath && navigator.share) {
+          const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+          const abs = `${prefix}${target.id}`;
+          await navigator.share({ title: target.name, text: abs }).catch(() => {});
+        }
+        close();
+        break;
     }
+  }
 
-    show();
-  }, [target]);
+  async function handleRenameConfirm() {
+    if (!target || !renameValue.trim() || renameValue === target.name) {
+      close();
+      return;
+    }
+    log.info("rename", { id: target.id, newName: renameValue });
+    await handleRename(target.id, renameValue.trim(), target.isFolder);
+    close();
+  }
 
-  return null;
+  if (step === "rename") {
+    return (
+      <BottomSheet
+        onClose={close}
+        title={target.isFolder ? "Renommer le dossier" : "Renommer la note"}
+      >
+        <div className="px-2 pt-2 flex flex-col gap-4">
+          <input
+            // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture du rename
+            autoFocus
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleRenameConfirm();
+              if (e.key === "Escape") close();
+            }}
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-base text-gray-900 bg-gray-50 focus:outline-none focus:border-amber-400"
+            placeholder={target.name}
+          />
+          <button
+            type="button"
+            onClick={handleRenameConfirm}
+            className="w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-base active:bg-amber-600 transition-colors"
+          >
+            Renommer
+          </button>
+        </div>
+      </BottomSheet>
+    );
+  }
+
+  const actions = ["Renommer", "Supprimer", "Afficher dans les Fichiers", "Partager"] as const;
+
+  return (
+    <BottomSheet onClose={close} title={target.name}>
+      <div className="flex flex-col divide-y divide-gray-100">
+        {actions.map((label, idx) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => handleAction(idx)}
+            className={`w-full px-4 py-4 text-left text-base active:bg-gray-50 transition-colors ${
+              idx === 1 ? "text-red-500" : "text-gray-900"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </BottomSheet>
+  );
 }

@@ -1,4 +1,3 @@
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
@@ -96,7 +95,7 @@ export function SettingsModal() {
                 Mode de lecture par défaut
               </p>
               <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-                {DISPLAY_MODES.map(({ value, icon, label }) => (
+                {DISPLAY_MODES.map(({ value, Icon, label }) => (
                   <button
                     key={value}
                     type="button"
@@ -107,11 +106,7 @@ export function SettingsModal() {
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    <SFIcon
-                      icon={icon}
-                      className="size-3.5"
-                      aria-hidden="true"
-                    />
+                    <Icon className="size-3.5" aria-hidden="true" />
                     {label}
                   </button>
                 ))}

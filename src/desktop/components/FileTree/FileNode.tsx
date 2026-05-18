@@ -1,12 +1,11 @@
 import {
-  sfChevronDown,
-  sfChevronRight,
-  sfFolder,
-  sfFolderBadgePlus,
-  sfPlus,
-  sfTrash,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+  IconChevronDown,
+  IconChevronRight,
+  IconFolder,
+  IconFolderBadgePlus,
+  IconPlus,
+  IconTrash,
+} from "../../../shared/components/PlatformIcon";
 import { useAtomValue } from "jotai";
 import { useRef, useState } from "react";
 import {
@@ -117,7 +116,7 @@ function FileNodeComponent({
           title="Mettre à la poubelle"
           className="hidden group-hover:block rounded text-gray-300 hover:text-red-400 transition-all cursor-pointer"
         >
-          <SFIcon icon={sfTrash} className="size-3" aria-hidden="true" />
+          <IconTrash className="size-3" aria-hidden="true" />
         </button>
       </div>
     </>
@@ -173,11 +172,10 @@ function FolderNodeComponent({
             className="shrink-0 p-0.5 transition-colors"
             aria-label={open ? "Fermer le dossier" : "Ouvrir le dossier"}
           >
-            <SFIcon
-              icon={open ? sfChevronDown : sfChevronRight}
-              className="size-3 text-gray-400"
-              aria-hidden="true"
-            />
+            {open
+              ? <IconChevronDown className="size-3 text-gray-400" aria-hidden="true" />
+              : <IconChevronRight className="size-3 text-gray-400" aria-hidden="true" />
+            }
           </button>
 
           {/* Icône + nom : ouvre la note __folder__ */}
@@ -189,11 +187,7 @@ function FolderNodeComponent({
               handleOpenFolder(node, e.metaKey);
             }}
           >
-            <SFIcon
-              icon={sfFolder}
-              className="size-4 text-gray-400 shrink-0"
-              aria-hidden="true"
-            />
+            <IconFolder className="size-4 text-gray-400 shrink-0" aria-hidden="true" />
             <EditableText
               ref={editableRef}
               value={node.name}
@@ -215,7 +209,7 @@ function FolderNodeComponent({
               title="Nouvelle note"
               className="rounded text-gray-400 hover:bg-gray-200 transition-colors cursor-pointer"
             >
-              <SFIcon icon={sfPlus} className="size-3 m-1" aria-hidden="true" />
+              <IconPlus className="size-3 m-1" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -227,11 +221,7 @@ function FolderNodeComponent({
               title="Nouveau dossier"
               className="rounded text-gray-400 hover:bg-gray-200 transition-colors cursor-pointer"
             >
-              <SFIcon
-                icon={sfFolderBadgePlus}
-                className="size-3.5 m-1"
-                aria-hidden="true"
-              />
+              <IconFolderBadgePlus className="size-3.5 m-1" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -243,7 +233,7 @@ function FolderNodeComponent({
               title="Mettre à la poubelle"
               className="rounded text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
             >
-              <SFIcon icon={sfTrash} className="size-3" aria-hidden="true" />
+              <IconTrash className="size-3" aria-hidden="true" />
             </button>
           </div>
         </div>

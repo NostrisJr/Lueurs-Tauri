@@ -1,11 +1,10 @@
 import {
-  sfArrowUturnBackward,
-  sfArrowUturnForward,
-  sfChevronLeft,
-  sfMicrophoneFill,
-  sfRectangleStack,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+  IconArrowUturnBackward,
+  IconArrowUturnForward,
+  IconChevronLeft,
+  IconMicrophoneFill,
+  IconRectangleStack,
+} from "../../../shared/components/PlatformIcon";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import {
@@ -127,7 +126,7 @@ export function MobileEditor() {
           }}
           className="flex-1 justify-start flex items-center gap-1 px-2 py-1.5 rounded-lg text-amber-500 active:bg-gray-100 transition-colors"
         >
-          <SFIcon icon={sfChevronLeft} className="size-4" />
+          <IconChevronLeft className="size-4" />
           <span className="text-base">Notes</span>
         </button>
 
@@ -138,7 +137,7 @@ export function MobileEditor() {
             className="w-9 h-9 flex items-center justify-center rounded-full text-amber-500 active:bg-gray-100 transition-colors"
             title="Annuler (⌘Z)"
           >
-            <SFIcon icon={sfArrowUturnBackward} className="size-4.5" />
+            <IconArrowUturnBackward className="size-4.5" />
           </button>
           <button
             type="button"
@@ -146,7 +145,7 @@ export function MobileEditor() {
             className="w-9 h-9 flex items-center justify-center rounded-full text-amber-500 active:bg-gray-100 transition-colors"
             title="Rétablir (⌘⇧Z)"
           >
-            <SFIcon icon={sfArrowUturnForward} className="size-4.5" />
+            <IconArrowUturnForward className="size-4.5" />
           </button>
           {!isBase &&
             (() => {
@@ -168,7 +167,7 @@ export function MobileEditor() {
                   className="w-9 h-9 flex items-center justify-center rounded-full text-amber-500 active:bg-gray-100 transition-colors"
                   title={currentEntry.label}
                 >
-                  <SFIcon icon={currentEntry.icon} className="size-5" />
+                  <currentEntry.Icon className="size-5" />
                 </button>
               );
             })()}
@@ -181,7 +180,7 @@ export function MobileEditor() {
             className="w-9 h-9 flex items-center justify-center rounded-full text-amber-500 active:bg-gray-100 transition-colors"
             title="Ajouter un enregistrement"
           >
-            <SFIcon icon={sfMicrophoneFill} className="size-5" />
+            <IconMicrophoneFill className="size-5" />
           </button>
           <button
             type="button"
@@ -191,7 +190,7 @@ export function MobileEditor() {
             }}
             className="relative w-9 h-9 flex items-center justify-center rounded-full text-amber-500 active:bg-gray-100 transition-colors"
           >
-            <SFIcon icon={sfRectangleStack} className="size-5" />
+            <IconRectangleStack className="size-5" />
             {openTabIds.length > 1 && (
               <span className="absolute -top-0.5 -right-0.5 bg-amber-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
                 {openTabIds.length}

@@ -1,5 +1,4 @@
-import { sfMicrophoneFill } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconMicrophoneFill } from "../PlatformIcon";
 import clsx from "clsx";
 import type { RefObject } from "react";
 import type { EditorHandle } from "./MarkdownEditor";
@@ -88,13 +87,14 @@ export function EditorToolbar({ editorRef, onRecord }: Props) {
       {onRecord && (
         <>
           <div className="w-px h-4 bg-gray-200 mx-1" aria-hidden />
-          <SFIcon
-            icon={sfMicrophoneFill}
-            className="size-4 px-2 py-0.5 text-gray-500 hover:text-red-500 transition-colors bg-transparent rounded hover:bg-gray-100"
-            aria-hidden="true"
+          <button
+            type="button"
             onClick={onRecord}
             title="Enregistrement vocal"
-          />
+            className="p-0.5 text-gray-500 hover:text-red-500 transition-colors bg-transparent rounded hover:bg-gray-100"
+          >
+            <IconMicrophoneFill className="size-4" aria-hidden="true" />
+          </button>
         </>
       )}
     </div>

@@ -1,12 +1,11 @@
 import {
-  sfArrowClockwise,
-  sfDocumentBadgePlus,
-  sfFolder,
-  sfFolderBadgePlus,
-  sfMagnifyingglass,
-  sfSidebarLeft,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+  IconArrowClockwise,
+  IconDocumentBadgePlus,
+  IconFolder,
+  IconFolderBadgePlus,
+  IconMagnifyingglass,
+  IconSidebarLeft,
+} from "../../../shared/components/PlatformIcon";
 import { useAtom, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
@@ -60,7 +59,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
           aria-label="Réduire la sidebar"
           title="Réduire"
         >
-          <SFIcon icon={sfSidebarLeft} className="size-5" aria-hidden="true" />
+          <IconSidebarLeft className="size-5" aria-hidden="true" />
         </button>
         {/* En-tête */}
         <div className="flex items-center justify-between px-4 h-11">
@@ -74,11 +73,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               title="Recharger"
               className="w-auto h-6 flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-colors cursor-pointer"
             >
-              <SFIcon
-                icon={sfArrowClockwise}
-                className="size-4 select-none"
-                aria-hidden="true"
-              />
+              <IconArrowClockwise className="size-4 select-none" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -87,11 +82,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               title="Changer de dossier"
               className="w-auto h-6 flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-colors cursor-pointer"
             >
-              <SFIcon
-                icon={sfFolder}
-                className="size-4 select-none"
-                aria-hidden="true"
-              />
+              <IconFolder className="size-4 select-none" aria-hidden="true" />
             </button>
 
             <p
@@ -110,11 +101,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               title="Nouvelle note"
               className="w-auto h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 transition-colors cursor-pointer"
             >
-              <SFIcon
-                icon={sfDocumentBadgePlus}
-                className="size-4 select-none"
-                aria-hidden="true"
-              />
+              <IconDocumentBadgePlus className="size-4 select-none" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -123,11 +110,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               title="Nouveau dossier"
               className="w-auto h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 transition-colors cursor-pointer"
             >
-              <SFIcon
-                icon={sfFolderBadgePlus}
-                className="size-4 select-none"
-                aria-hidden="true"
-              />
+              <IconFolderBadgePlus className="size-4 select-none" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -135,11 +118,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
         {/* Recherche */}
         <div className="px-3 py-2">
           <div className="flex items-center gap-2 h-8 liquid-glass bg-white/40 rounded-full px-2.5 py-1.5 text-gray-700 transition-colors">
-            <SFIcon
-              icon={sfMagnifyingglass}
-              className="size-4"
-              aria-hidden="true"
-            />
+            <IconMagnifyingglass className="size-4" aria-hidden="true" />
             <input
               type="text"
               placeholder="Rechercher..."

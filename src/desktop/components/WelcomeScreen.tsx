@@ -1,12 +1,11 @@
-import { sfFolder } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconFolder } from "../../shared/components/PlatformIcon";
 
 export function WelcomeScreen({ onPick }: { onPick: () => void }) {
   return (
     <div className="h-screen flex items-center justify-center bg-transparent">
       <div className="flex flex-col items-center gap-4 text-center max-w-xs">
         <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400">
-          <SFIcon icon={sfFolder} className="size-4" aria-hidden="true" />
+          <IconFolder className="size-4" aria-hidden="true" />
         </div>
         <div>
           <p className="font-semibold text-gray-800">

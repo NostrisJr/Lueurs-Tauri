@@ -1,11 +1,10 @@
-import {
-  sfDocumentBadgePlus,
-  sfMagnifyingglass,
-  sfMicrophoneFill,
-  sfRectangleStack,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useSetAtom } from "jotai";
+import {
+  IconDocumentBadgePlus,
+  IconMagnifyingglass,
+  IconMicrophoneFill,
+  IconRectangleStack,
+} from "../../../shared/components/PlatformIcon";
 import { mobileNavigateAtom } from "../../../shared/lib/Atoms";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "../Floating/FloatingComponent";
@@ -27,7 +26,7 @@ export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
         }}
         className="text-amber-500 active:bg-black/5 transition-colors"
       >
-        <SFIcon icon={sfRectangleStack} className="size-6.5" />
+        <IconRectangleStack className="size-6.5" />
       </FloatingComponent>
 
       <FloatingComponent
@@ -37,10 +36,7 @@ export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
         }}
         className="flex-1"
       >
-        <SFIcon
-          icon={sfMagnifyingglass}
-          className="size-5 text-black shrink-0"
-        />
+        <IconMagnifyingglass className="size-5 text-black shrink-0" />
         <span className="flex-1 text-gray-700 text-md">Rechercher...</span>
       </FloatingComponent>
 
@@ -51,7 +47,7 @@ export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
         }}
         className="text-amber-500 active:bg-black/5 transition-colors"
       >
-        <SFIcon icon={sfMicrophoneFill} className="size-6" />
+        <IconMicrophoneFill className="size-6" />
       </FloatingComponent>
 
       <FloatingComponent
@@ -61,10 +57,7 @@ export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
         }}
         className="text-amber-500 active:bg-black/5 transition-colors"
       >
-        <SFIcon
-          icon={sfDocumentBadgePlus}
-          className="size-6.5 -mr-0.5 -mt-0.5"
-        />
+        <IconDocumentBadgePlus className="size-6.5 -mr-0.5 -mt-0.5" />
       </FloatingComponent>
     </div>
   );

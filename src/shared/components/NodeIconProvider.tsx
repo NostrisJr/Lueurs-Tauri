@@ -1,13 +1,12 @@
-import {
-  sfAppendPage,
-  sfCylinderSplit1x2,
-  sfCylinderSplit1x2Fill,
-  sfDocument,
-  sfTextDocument,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import type { NoteFile } from "../hooks/useFileTree";
 import { NoteType, SystemField } from "../lib/noteTypes";
+import {
+  IconAppendPage,
+  IconCylinderSplit1x2,
+  IconCylinderSplit1x2Fill,
+  IconDocument,
+  IconTextDocument,
+} from "./PlatformIcon";
 
 function NodeIconProvider({
   node,
@@ -21,29 +20,17 @@ function NodeIconProvider({
   const hasChildren = Array.isArray(children) && children.length > 0;
 
   if (node.type === NoteType.NOTE) {
-    return (
-      <SFIcon
-        icon={hasContent ? sfTextDocument : sfDocument}
-        className={className}
-        aria-hidden="true"
-      />
-    );
+    const Icon = hasContent ? IconTextDocument : IconDocument;
+    return <Icon className={className} aria-hidden="true" />;
   }
 
   if (node.type === NoteType.BASE) {
-    return (
-      <SFIcon
-        icon={hasChildren ? sfCylinderSplit1x2Fill : sfCylinderSplit1x2}
-        className={className}
-        aria-hidden="true"
-      />
-    );
+    const Icon = hasChildren ? IconCylinderSplit1x2Fill : IconCylinderSplit1x2;
+    return <Icon className={className} aria-hidden="true" />;
   }
 
   if (node.type === NoteType.TEMPLATE) {
-    return (
-      <SFIcon icon={sfAppendPage} className={className} aria-hidden="true" />
-    );
+    return <IconAppendPage className={className} aria-hidden="true" />;
   }
 }
 

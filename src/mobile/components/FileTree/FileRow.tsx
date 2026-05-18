@@ -1,8 +1,10 @@
-import { sfChevronRight, sfFolder } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useMemo } from "react";
 import { Squircle } from "react-ios-corners";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
+import {
+  IconChevronRight,
+  IconFolder,
+} from "../../../shared/components/PlatformIcon";
 import type { FolderNode, NoteFile } from "../../../shared/hooks/useFileTree";
 import { useLongPress } from "../../hooks/useLongPress";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
@@ -53,14 +55,11 @@ function NoteContent({ note }: { note: NoteFile }) {
 function FolderContent({ folder }: { folder: FolderNode }) {
   return (
     <>
-      <SFIcon icon={sfFolder} className="size-4 text-yellow-500 shrink-0" />
+      <IconFolder className="size-4 text-yellow-500 shrink-0" />
       <span className="flex-1 text-base font-semibold text-gray-900 truncate">
         {folder.name}
       </span>
-      <SFIcon
-        icon={sfChevronRight}
-        className="size-3.5 text-gray-300 shrink-0"
-      />
+      <IconChevronRight className="size-3.5 text-gray-300 shrink-0" />
     </>
   );
 }

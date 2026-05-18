@@ -1,11 +1,10 @@
 import {
-  sfChevronDown,
-  sfMicrophoneFill,
-  sfPauseFill,
-  sfPlayFill,
-  sfStopFill,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+  IconChevronDown,
+  IconMicrophoneFill,
+  IconPauseFill,
+  IconPlayFill,
+  IconStopFill,
+} from "../../../shared/components/PlatformIcon";
 import { invoke } from "@tauri-apps/api/core";
 import { readDir, remove } from "@tauri-apps/plugin-fs";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -307,7 +306,7 @@ export function MobileDictaphone() {
               }}
               className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
             >
-              <SFIcon icon={sfStopFill} className="size-4 text-white" />
+              <IconStopFill className="size-4 text-white" />
             </button>
           </div>
         </FloatingComponent>
@@ -387,7 +386,7 @@ export function MobileDictaphone() {
               onClick={handleRecord}
               className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg active:scale-95 transition-transform"
             >
-              <SFIcon icon={sfMicrophoneFill} className="size-9 text-white" />
+              <IconMicrophoneFill className="size-9 text-white" />
             </button>
           )}
 
@@ -400,7 +399,7 @@ export function MobileDictaphone() {
                   onClick={handlePause}
                   className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center shadow active:scale-95 transition-transform"
                 >
-                  <SFIcon icon={sfPauseFill} className="size-6 text-gray-700" />
+                  <IconPauseFill className="size-6 text-gray-700" />
                 </button>
               ) : (
                 <button
@@ -408,7 +407,7 @@ export function MobileDictaphone() {
                   onClick={handleResume}
                   className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center shadow active:scale-95 transition-transform"
                 >
-                  <SFIcon icon={sfPlayFill} className="size-6 text-amber-500" />
+                  <IconPlayFill className="size-6 text-amber-500" />
                 </button>
               )}
 
@@ -417,7 +416,7 @@ export function MobileDictaphone() {
                 onClick={handleStop}
                 className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center shadow-lg active:scale-95 transition-transform"
               >
-                <SFIcon icon={sfStopFill} className="size-9 text-white" />
+                <IconStopFill className="size-9 text-white" />
               </button>
 
               {/* Minimiser */}
@@ -426,7 +425,7 @@ export function MobileDictaphone() {
                 onClick={() => setIsMinimized(true)}
                 className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center shadow active:scale-95 transition-transform"
               >
-                <SFIcon icon={sfChevronDown} className="size-6 text-gray-500" />
+                <IconChevronDown className="size-6 text-gray-500" />
               </button>
             </div>
           )}

@@ -5,12 +5,11 @@
 // Mobile : lecture via tauri-plugin-native-audio (nativeAudioPlayer).
 
 import {
-  sfPauseFill,
-  sfPlayFill,
-  sfWaveform,
-  sfXmark,
-} from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+  IconPauseFill,
+  IconPlayFill,
+  IconWaveform,
+  IconXmark,
+} from "../../components/PlatformIcon";
 import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
 import { NodeSelection } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
@@ -588,7 +587,7 @@ export function AudioBlockComponent({
       {/* ── Header ── */}
       <div className="flex items-center gap-2.5 mb-2.5">
         <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 text-red-400">
-          <SFIcon icon={sfWaveform} className="size-4" aria-hidden="true" />
+          <IconWaveform className="size-4" aria-hidden="true" />
         </div>
 
         <div className="flex-1 min-w-0 ">
@@ -624,7 +623,7 @@ export function AudioBlockComponent({
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleDelete}
         >
-          <SFIcon icon={sfXmark} className="size-2" aria-hidden="true" />
+          <IconXmark className="size-2" aria-hidden="true" />
         </button>
       </div>
 
@@ -673,9 +672,9 @@ export function AudioBlockComponent({
           onClick={isMobile ? undefined : handlePlayClick}
         >
           {isPlaying ? (
-            <SFIcon icon={sfPauseFill} className="size-3" aria-hidden="true" />
+            <IconPauseFill className="size-3" aria-hidden="true" />
           ) : (
-            <SFIcon icon={sfPlayFill} className="size-3" aria-hidden="true" />
+            <IconPlayFill className="size-3" aria-hidden="true" />
           )}
         </button>
 

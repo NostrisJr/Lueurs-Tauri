@@ -1,6 +1,5 @@
-import { sfXmark } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useEffect, useRef } from "react";
+import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { createLogger } from "../../../shared/lib/logger";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 
@@ -48,7 +47,7 @@ export function FloatingInput({ onClose, label }: Props) {
             onClick={onClose}
             className="size-9 shrink-0 flex items-center justify-center rounded-full text-gray-400 active:bg-gray-100 transition-colors"
           >
-            <SFIcon icon={sfXmark} className="size-4" />
+            <IconXmark className="size-4" />
           </button>
         )}
       </div>

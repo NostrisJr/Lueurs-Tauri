@@ -1,3 +1,7 @@
 import { platform } from "@tauri-apps/plugin-os";
 
-export const isMobile = platform() === "ios" || platform() === "android";
+const _platform = platform();
+export const isIOS     = _platform === "ios";
+export const isAndroid = _platform === "android";
+export const isMobile  = isIOS || isAndroid;
+export const isDesktop = !isMobile;

@@ -1,5 +1,4 @@
-import { sfXmark } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
@@ -50,7 +49,7 @@ export function TabItem({
         }}
         aria-label={`Fermer ${note.name}`}
       >
-        <SFIcon icon={sfXmark} className="size-2" />
+        <IconXmark className="size-2" />
       </button>
       <span className="truncate select-none px-5">{note.name}</span>
     </div>

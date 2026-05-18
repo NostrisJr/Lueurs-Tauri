@@ -1,4 +1,3 @@
-import SFIcon from "@bradleyhodges/sfsymbols-react";
 import { useAtom } from "jotai";
 import { type DisplayMode, displayModeAtom } from "../../lib/Atoms";
 import { DISPLAY_MODES } from "../../lib/displayModes";
@@ -17,7 +16,7 @@ export function DisplayModeSelector({ onModeChange }: Props) {
 
   return (
     <div className="flex gap-0.5 h-10 bg-gray-100/80 rounded-full p-0.75 transition">
-      {DISPLAY_MODES.map(({ value, icon, label: title }) => (
+      {DISPLAY_MODES.map(({ value, Icon, label: title }) => (
         <button
           key={value}
           type="button"
@@ -30,7 +29,7 @@ export function DisplayModeSelector({ onModeChange }: Props) {
               : "text-gray-400 hover:text-gray-500",
           ].join(" ")}
         >
-          <SFIcon icon={icon} className="size-4.5" aria-hidden="true" />
+          <Icon className="size-4.5" aria-hidden="true" />
         </button>
       ))}
     </div>

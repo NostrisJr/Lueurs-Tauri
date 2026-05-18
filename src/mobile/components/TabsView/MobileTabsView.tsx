@@ -1,5 +1,4 @@
-import { sfChevronLeft, sfXmark } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconChevronLeft, IconXmark } from "../../../shared/components/PlatformIcon";
 import { useAtomValue, useSetAtom } from "jotai";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
@@ -48,7 +47,7 @@ export function MobileTabsView() {
           }}
           className="flex items-center justify-center w-8 h-8 rounded-full text-amber-500 active:bg-black/5 transition-colors"
         >
-          <SFIcon icon={sfChevronLeft} className="size-4" />
+          <IconChevronLeft className="size-4" />
         </button>
         <h1 className="font-semibold text-gray-900">
           {openTabIds.length} onglet{openTabIds.length > 1 ? "s" : ""}
@@ -97,7 +96,7 @@ export function MobileTabsView() {
                   }}
                   className="absolute top-2 right-3 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center active:bg-gray-300 transition-colors z-10"
                 >
-                  <SFIcon icon={sfXmark} className="size-3 text-gray-500" />
+                  <IconXmark className="size-3 text-gray-500" />
                 </button>
               </div>
             );

@@ -1,5 +1,4 @@
-import { sfCheckmark } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconCheckmark } from "../../shared/components/PlatformIcon";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { activeNoteAtom, savingAtom } from "../../shared/lib/Atoms";
@@ -58,7 +57,7 @@ function SavingIndicator() {
     >
       <div className="flex justify-end items-center px-4 h-8">
         <span className="flex items-baseline gap-1.5 text-xs text-gray-500">
-          <SFIcon icon={sfCheckmark} className="size-3" aria-hidden="true" />
+          <IconCheckmark className="size-3" aria-hidden="true" />
           {displayState === "saving" ? "Sauvegarde..." : "Sauvegardé"}
         </span>
       </div>

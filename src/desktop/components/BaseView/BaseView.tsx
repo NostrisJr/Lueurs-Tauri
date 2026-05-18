@@ -1,5 +1,4 @@
-import { sfPlusCircle } from "@bradleyhodges/sfsymbols";
-import SFIcon from "@bradleyhodges/sfsymbols-react";
+import { IconPlusCircle } from "../../../shared/components/PlatformIcon";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { KanbanKeySelector } from "../../../shared/components/KanbanKeySelector";
@@ -132,7 +131,7 @@ export function BaseView({ base, onBaseChange }: Props) {
           className="flex items-center gap-1 font-body text-xs text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
           title="Nouvelle note dans la base"
         >
-          <SFIcon icon={sfPlusCircle} className="size-3.5" />
+          <IconPlusCircle className="size-3.5" />
           <span>Nouvelle note</span>
         </button>
       </div>
