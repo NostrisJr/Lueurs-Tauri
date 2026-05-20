@@ -327,6 +327,65 @@ Tauri transmet cette option à WKWebView à la création de la webview. Elle est
 
 ---
 
+## Android — Clavier IME et auto-scroll du caret
+
+### Le problème
+
+Sur Android `targetSdk >= 35`, l'edge-to-edge est forcé (`enableEdgeToEdge()` dans `MainActivity.kt`). Conséquence : `android:windowSoftInputMode="adjustResize"` **ne suffit plus** à redimensionner la WebView quand le clavier s'ouvre — la fenêtre est considérée comme s'étendant sous les system bars et sous l'IME, et c'est à l'app d'appliquer les insets elle-même.
+
+Symptôme observé dans l'éditeur Markdown (`MobileEditor`) : clavier ouvert, l'utilisateur scrolle le caret hors-vue puis tape à nouveau. Le browser Chromium déclenche un auto-scroll natif pour ramener le caret en vue, mais comme la WebView n'a pas été redimensionnée, c'est le **visualViewport entier qui translate** vers le haut. Conséquence : header `fixed` + formatting bar `fixed` translatent avec le reste — toute l'UI disparaît visuellement.
+
+### Solution retenue : insets IME appliqués manuellement côté natif
+
+Dans `MainActivity.kt`, on installe un `setOnApplyWindowInsetsListener` sur le content view (`android.R.id.content`) :
+
+```kotlin
+ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
+  val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+  val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+  view.setPadding(sys.left, sys.top, sys.right, maxOf(sys.bottom, ime.bottom))
+  WindowInsetsCompat.CONSUMED
+}
+```
+
+Le padding bottom devient `max(systemBars.bottom, ime.bottom)`. La WebView occupe alors la zone réellement visible — au-dessus du clavier quand il est ouvert, au-dessus de la nav bar sinon. `window.innerHeight` reflète directement cette hauteur, et le browser n'a plus besoin de translater le visualViewport pour ramener le caret en vue : il scrolle naturellement le scroll container.
+
+### Détection du clavier côté JS (`useAndroidKeyboardOpen`)
+
+Avec la WebView redimensionnée, `visualViewport.height` devient égal à `window.innerHeight` quand le clavier est ouvert — donc `useKeyboardHeight` retourne `keyboardHeight = 0` sur Android, ce qui empêcherait l'affichage de la `MobileFormattingBar`. Pour piloter son apparition, on détecte l'ouverture du clavier différemment : `src/mobile/hooks/useAndroidKeyboardOpen.ts` écoute `window.resize` et compare `innerHeight` au maximum observé. Si la baisse dépasse 150 px, le clavier est considéré ouvert.
+
+Dans `MobileEditor.tsx` :
+
+```ts
+const androidKbOpen = useAndroidKeyboardOpen();
+const effectiveKbOpen = isAndroid ? androidKbOpen : isKeyboardOpen;
+```
+
+La `MobileFormattingBar` reçoit `effectiveKbOpen` et se positionne à `bottom: keyboardHeight + 8`. Sur Android, `keyboardHeight = 0` → `bottom: 8px`, ce qui place la barre juste au-dessus du clavier puisque le bas de la WebView correspond désormais au top du clavier.
+
+### Ce qui n'a pas fonctionné
+
+Plusieurs tentatives infructueuses avant d'arriver à la solution insets natifs — listées ici parce que les pistes paraissent plausibles mais ne résolvent pas le problème racine (edge-to-edge SDK 35+) :
+
+- **`<meta name="viewport" content="… interactive-widget=resizes-content">`** : censé forcer Chromium à redimensionner le visual viewport au lieu de translater. Aucun effet observé dans la WebView Tauri.
+- **`overflow: clip` sur tous les ancêtres** (`html`, `body`, `#root`, container MobileApp, container MobileEditor) : tentative pour empêcher tout scroll programmatique de remonter l'arbre. Inefficace, car le translate natif du visualViewport n'est pas un scroll classique d'un ancêtre — il agit au-dessus du DOM.
+- **Header en `position: sticky top-0` à l'intérieur du scroll container** (au lieu de `fixed` sibling) : le sticky disparaissait aussi, confirmant que le translate opère au niveau du visualViewport / WebView native, pas au niveau du scroll container.
+- **`android:windowSoftInputMode="adjustNothing"` + gestion JS totale via `visualViewport.scroll`** : techniquement viable mais beaucoup plus complexe, et lutte en permanence contre le browser. Abandonné au profit de la solution native qui fixe la cause racine.
+- **Hook keyboard-tracking côté JS via `focusin`/`focusout`** : a fait disparaître la formatting bar complètement parce qu'on remplaçait toute la logique `visualViewport` au lieu de la compléter.
+
+### Récap des fichiers touchés
+
+| Fichier | Rôle |
+|---|---|
+| `src-tauri/gen/android/app/src/main/java/com/theophiledonato/lueurs/MainActivity.kt` | Listener `setOnApplyWindowInsetsListener` qui applique `max(systemBars, ime)` en padding bottom |
+| `src-tauri/gen/android/app/src/main/AndroidManifest.xml` | Conserve `adjustResize` (nécessaire en combinaison avec les insets manuels) |
+| `src/mobile/hooks/useAndroidKeyboardOpen.ts` | Détection clavier ouvert via baisse de `window.innerHeight` |
+| `src/mobile/components/Editor/MobileEditor.tsx` | Structure JSX unifiée iOS/Android, hook Android pour piloter la formatting bar |
+
+iOS n'est pas affecté : `useKeyboardHeight` continue de lire `visualViewport.height` (WKWebView n'est pas redimensionné, le clavier reste un overlay), `effectiveKbOpen` retombe sur `isKeyboardOpen`, et le `paddingBottom` garde sa formule originale `keyboardHeight + MOBILE_TOOLBAR_OFFSET`.
+
+---
+
 ## Propagation de templates (Rust)
 
 Lorsque le frontmatter d'un template change, le frontend (`useTemplateSync`) calcule la liste des notes héritières et invoque `propagate_template_change`. Rust traite les fichiers en parallèle (Tokio `JoinSet`) et les écrit directement sur le disque.

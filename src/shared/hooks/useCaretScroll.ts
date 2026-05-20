@@ -97,7 +97,12 @@ export function useCaretScroll(
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    const onInput = () => scrollToCaretIfNeeded(false);
+    const onInput = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target instanceof HTMLInputElement && target.type === "checkbox")
+        return;
+      scrollToCaretIfNeeded(false);
+    };
     container.addEventListener("input", onInput, { capture: true });
     return () => {
       container.removeEventListener("input", onInput, { capture: true });

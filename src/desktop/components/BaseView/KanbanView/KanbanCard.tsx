@@ -7,7 +7,6 @@ import { useCmdHeld } from "../../../hooks/useCmdHeld";
 
 interface Props {
   note: NoteFile;
-  kanbanKey: string;
 }
 
 export function KanbanCard({ note }: Props) {

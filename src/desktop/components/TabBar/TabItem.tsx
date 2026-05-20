@@ -1,6 +1,6 @@
-import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { IconXmark } from "../../../shared/components/PlatformIcon";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
 
 export function TabItem({

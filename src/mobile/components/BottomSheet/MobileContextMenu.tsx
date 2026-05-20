@@ -1,9 +1,12 @@
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
-import { useNote } from "../../../shared/hooks/useNote";
 import type { TreeNode } from "../../../shared/hooks/useFileTree";
-import { folderPathAtom, mobileContextMenuAtom } from "../../../shared/lib/Atoms";
+import { useNote } from "../../../shared/hooks/useNote";
+import {
+  folderPathAtom,
+  mobileContextMenuAtom,
+} from "../../../shared/lib/atoms";
 import { createLogger } from "../../../shared/lib/logger";
 import { hapticImpact } from "../../lib/haptics";
 import { BottomSheet } from "./BottomSheet";
@@ -53,7 +56,9 @@ export function MobileContextMenu() {
         break;
       case 2:
         if (folderPath) {
-          const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+          const prefix = folderPath.endsWith("/")
+            ? folderPath
+            : `${folderPath}/`;
           const abs = `${prefix}${target.id}`;
           const parent = abs.substring(0, abs.lastIndexOf("/"));
           await openPath(parent).catch((err) =>
@@ -64,9 +69,13 @@ export function MobileContextMenu() {
         break;
       case 3:
         if (folderPath && navigator.share) {
-          const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+          const prefix = folderPath.endsWith("/")
+            ? folderPath
+            : `${folderPath}/`;
           const abs = `${prefix}${target.id}`;
-          await navigator.share({ title: target.name, text: abs }).catch(() => {});
+          await navigator
+            .share({ title: target.name, text: abs })
+            .catch(() => {});
         }
         close();
         break;
@@ -115,7 +124,12 @@ export function MobileContextMenu() {
     );
   }
 
-  const actions = ["Renommer", "Supprimer", "Afficher dans les Fichiers", "Partager"] as const;
+  const actions = [
+    "Renommer",
+    "Supprimer",
+    "Afficher dans les Fichiers",
+    "Partager",
+  ] as const;
 
   return (
     <BottomSheet onClose={close} title={target.name}>

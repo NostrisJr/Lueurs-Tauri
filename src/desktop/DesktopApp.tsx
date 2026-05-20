@@ -13,7 +13,7 @@ import {
   folderPathAtom,
   loadingAtom,
   settingsOpenAtom,
-} from "../shared/lib/Atoms";
+} from "../shared/lib/atoms";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
 import { SettingsModal } from "./components/Settings/SettingsModal";
 import { SideBar } from "./components/SideBar/SideBar.tsx";

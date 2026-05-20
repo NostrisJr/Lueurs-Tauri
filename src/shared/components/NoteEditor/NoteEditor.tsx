@@ -1,5 +1,4 @@
 import { MilkdownProvider } from "@milkdown/react";
-import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
@@ -16,8 +15,9 @@ import {
   displayModeAtom,
   documentMapAtom,
   folderPathAtom,
-} from "../../lib/Atoms";
+} from "../../lib/atoms";
 import { NoteType, SystemField } from "../../lib/noteTypes";
+import { isDesktop, isMobile } from "../../lib/platform";
 import { DocumentNavigator } from "./DocumentNavigator.tsx";
 import { EditorToolbar } from "./EditorToolbar.tsx";
 import { type EditorHandle, MarkdownEditor } from "./MarkdownEditor.tsx";
@@ -49,7 +49,6 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const defaultDisplayMode = useAtomValue(defaultDisplayModeAtom);
   const internalRef = useRef<EditorHandle | null>(null);
   const [dictaphoneOpen, setDictaphoneOpen] = useState(false);
-  const isDesktop = platform() !== "ios";
   const isBase = activeNote?.type === NoteType.BASE;
 
   // Vide la carte quand on passe sur une base (pas de MarkdownEditor → plugin jamais déclenché)
@@ -144,7 +143,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
             )}
 
             {isBase ? (
-              platform() === "ios" ? (
+              isMobile ? (
                 <MobileBaseView
                   base={activeNote}
                   onBaseChange={handleFrontmatterChange}

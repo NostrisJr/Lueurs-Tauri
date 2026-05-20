@@ -4,11 +4,10 @@ import { useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
-import { navigateToNoteAtom } from "../../../../shared/lib/Atoms";
+import { navigateToNoteAtom } from "../../../../shared/lib/atoms";
 
 interface Props {
   note: NoteFile;
-  kanbanKey: string;
 }
 
 export function MobileKanbanCard({ note }: Props) {

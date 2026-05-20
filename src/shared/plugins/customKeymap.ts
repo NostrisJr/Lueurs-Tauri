@@ -284,21 +284,6 @@ export const toggleDidascalieInlineCommand = $command(
   }
 );
 
-export const toggleDidascalieBlockCommand = $command(
-  "ToggleDidascalieBlock",
-  (ctx) => () => (state, dispatch) => {
-    const schema = ctx.get(schemaCtx);
-    const blockType = schema.nodes.didascalie_block;
-    if (!blockType) return false;
-
-    if (isInNodeType(state, schema, "didascalie_block")) {
-      return lift(state, dispatch);
-    }
-
-    return applyWithEscape(state, dispatch, schema, wrapIn(blockType));
-  }
-);
-
 export const togglePoetryCommand = $command(
   "TogglePoetry",
   (ctx) => () => (state, dispatch) => {
@@ -407,8 +392,6 @@ export const customKeymapPlugin = $prose((ctx) =>
     "Mod-Shift-e": () => ctx.get(commandsCtx).call(toggleCodeBlockCommand.key),
     "Mod-Shift-p": () => ctx.get(commandsCtx).call(togglePoetryCommand.key),
     "Mod-d": () => ctx.get(commandsCtx).call(toggleDidascalieInlineCommand.key),
-    "Mod-Shift-d": () =>
-      ctx.get(commandsCtx).call(toggleDidascalieBlockCommand.key),
   })
 );
 
@@ -465,12 +448,6 @@ export const codeBasedShortcutsPlugin = $prose(
           if (!event.altKey && !event.shiftKey && event.code === "KeyD") {
             event.preventDefault();
             commands.call(toggleDidascalieInlineCommand.key);
-            return true;
-          }
-          // Mod+Shift : bloc didascalie (KeyD)
-          if (!event.altKey && event.shiftKey && event.code === "KeyD") {
-            event.preventDefault();
-            commands.call(toggleDidascalieBlockCommand.key);
             return true;
           }
 

@@ -1,3 +1,7 @@
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { EditableText } from "../../../shared/components/EditableText";
+import { NodeIconProvider } from "../../../shared/components/NodeIconProvider.tsx";
 import {
   IconChevronDown,
   IconChevronRight,
@@ -6,13 +10,6 @@ import {
   IconPlus,
   IconTrash,
 } from "../../../shared/components/PlatformIcon";
-import { useAtomValue } from "jotai";
-import { useRef, useState } from "react";
-import {
-  EditableText,
-  type EditableTextHandle,
-} from "../../../shared/components/EditableText";
-import { NodeIconProvider } from "../../../shared/components/NodeIconProvider.tsx";
 import {
   type FolderNode,
   type NoteFile,
@@ -20,7 +17,7 @@ import {
   useFileTree,
 } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
-import { dragOverAtom, dragSourceAtom } from "../../../shared/lib/Atoms";
+import { dragOverAtom, dragSourceAtom } from "../../../shared/lib/atoms";
 import { useFileDragCtx } from "./FileDragCtx";
 
 // ── Styles partagés ────────────────────────────────────────────────────────────
@@ -47,7 +44,6 @@ export function TreeNodes({
   return (
     <div className="gap-1 flex flex-col w-full">
       {nodes.map((node) =>
-        // TODO : pourquoi j'utilise autre chose que NoteType.FOLDER ???
         node.kind === "folder" ? (
           <FolderNodeComponent
             key={node.id}
@@ -56,12 +52,7 @@ export function TreeNodes({
             depth={depth}
           />
         ) : (
-          <FileNodeComponent
-            key={node.id}
-            node={node}
-            activeId={activeId}
-            depth={depth}
-          />
+          <FileNodeComponent key={node.id} node={node} activeId={activeId} />
         )
       )}
     </div>
@@ -76,14 +67,12 @@ function FileNodeComponent({
 }: {
   node: NoteFile;
   activeId: string | null;
-  depth: number;
 }) {
   const isActive = activeId === node.id;
   const { handleSelectNote, handleDeleteNote, handleRename } = useNote();
   const dnd = useFileDragCtx();
   const dragSource = useAtomValue(dragSourceAtom);
   const isDragging = dragSource === node.id;
-  const editableRef = useRef<EditableTextHandle | null>(null);
 
   return (
     <>
@@ -99,7 +88,6 @@ function FileNodeComponent({
             className="size-4 text-gray-400 shrink-0"
           />
           <EditableText
-            ref={editableRef}
             value={node.name}
             onSave={async (newName) => {
               await handleRename(node.id, newName, false);
@@ -135,7 +123,6 @@ function FolderNodeComponent({
   depth: number;
 }) {
   const [open, setOpen] = useState(depth === 0);
-  const editableRef = useRef<EditableTextHandle | null>(null);
 
   const { createNote, createFolder } = useFileTree();
   const { handleRename, handleDeleteFolder, handleOpenFolder } = useNote();
@@ -172,10 +159,17 @@ function FolderNodeComponent({
             className="shrink-0 p-0.5 transition-colors"
             aria-label={open ? "Fermer le dossier" : "Ouvrir le dossier"}
           >
-            {open
-              ? <IconChevronDown className="size-3 text-gray-400" aria-hidden="true" />
-              : <IconChevronRight className="size-3 text-gray-400" aria-hidden="true" />
-            }
+            {open ? (
+              <IconChevronDown
+                className="size-3 text-gray-400"
+                aria-hidden="true"
+              />
+            ) : (
+              <IconChevronRight
+                className="size-3 text-gray-400"
+                aria-hidden="true"
+              />
+            )}
           </button>
 
           {/* Icône + nom : ouvre la note __folder__ */}
@@ -187,9 +181,11 @@ function FolderNodeComponent({
               handleOpenFolder(node, e.metaKey);
             }}
           >
-            <IconFolder className="size-4 text-gray-400 shrink-0" aria-hidden="true" />
+            <IconFolder
+              className="size-4 text-gray-400 shrink-0"
+              aria-hidden="true"
+            />
             <EditableText
-              ref={editableRef}
               value={node.name}
               onSave={async (newName) => {
                 await handleRename(node.id, newName, true);
@@ -221,7 +217,10 @@ function FolderNodeComponent({
               title="Nouveau dossier"
               className="rounded text-gray-400 hover:bg-gray-200 transition-colors cursor-pointer"
             >
-              <IconFolderBadgePlus className="size-3.5 m-1" aria-hidden="true" />
+              <IconFolderBadgePlus
+                className="size-3.5 m-1"
+                aria-hidden="true"
+              />
             </button>
             <button
               type="button"

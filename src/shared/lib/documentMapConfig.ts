@@ -5,8 +5,7 @@ export type MapBlockType =
   | "code_block"
   | "poetry_block"
   | "audio_block"
-  | "image"
-  | "didascalie_block";
+  | "image";
 
 export interface DocumentBlock {
   typeName: string;
@@ -26,7 +25,6 @@ export const ALL_MAP_BLOCK_TYPES: MapBlockType[] = [
   "poetry_block",
   "audio_block",
   "image",
-  "didascalie_block",
 ];
 
 export const DEFAULT_DISTINGUISHED_TYPES: MapBlockType[] = [
@@ -41,7 +39,6 @@ export const BLOCK_TYPE_COLORS: Record<MapBlockType, string> = {
   poetry_block: "var(--color-lime-500)",
   audio_block: "var(--color-blue-500)",
   image: "var(--color-pink-500)",
-  didascalie_block: "var(--color-teal-500)",
 };
 
 export const BLOCK_TYPE_LABELS: Record<MapBlockType, string> = {
@@ -50,5 +47,4 @@ export const BLOCK_TYPE_LABELS: Record<MapBlockType, string> = {
   poetry_block: "Poésie",
   audio_block: "Audio",
   image: "Images",
-  didascalie_block: "Didascalies",
 };

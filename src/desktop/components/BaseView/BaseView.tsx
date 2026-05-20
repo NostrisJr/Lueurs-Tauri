@@ -1,7 +1,7 @@
-import { IconPlusCircle } from "../../../shared/components/PlatformIcon";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { KanbanKeySelector } from "../../../shared/components/KanbanKeySelector";
+import { IconPlusCircle } from "../../../shared/components/PlatformIcon";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
 import { useKanban } from "../../../shared/hooks/useKanban";
@@ -9,7 +9,7 @@ import {
   activeNoteIdAtom,
   folderPathAtom,
   openTabIdsAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
 import { toArray } from "../../../shared/lib/fileTreeHelpers";
 import type { Frontmatter } from "../../../shared/lib/fileTreeHelpers";
 import { createLogger } from "../../../shared/lib/logger";
@@ -147,7 +147,6 @@ export function BaseView({ base, onBaseChange }: Props) {
           <KanbanView
             columns={columns}
             cards={cards}
-            kanbanKey={kanbanKey}
             onMoveCard={moveCard}
             onRenameColumn={renameColumn}
             onAddColumn={addColumn}

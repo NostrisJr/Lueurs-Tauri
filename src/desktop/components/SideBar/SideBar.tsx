@@ -1,8 +1,8 @@
-import { IconSidebarLeft } from "../../../shared/components/PlatformIcon";
 import { clsx } from "clsx";
 import { useAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
-import { sidebarCollapsedAtom } from "../../../shared/lib/Atoms";
+import { IconSidebarLeft } from "../../../shared/components/PlatformIcon";
+import { sidebarCollapsedAtom } from "../../../shared/lib/atoms";
 import { SideBarResizable } from "./SideBarResizable";
 
 function SideBar() {

@@ -7,7 +7,7 @@ import {
   documentMapShowNavigatorAtom,
   documentMapShowTextAtom,
   scrollToPosAtom,
-} from "../../lib/Atoms";
+} from "../../lib/atoms";
 import { BLOCK_TYPE_COLORS } from "../../lib/documentMapConfig";
 
 const DOT_TYPES = new Set(["image", "audio_block"]);

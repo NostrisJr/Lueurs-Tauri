@@ -1,7 +1,7 @@
-import { IconCheckmark } from "../../shared/components/PlatformIcon";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
-import { activeNoteAtom, savingAtom } from "../../shared/lib/Atoms";
+import { IconCheckmark } from "../../shared/components/PlatformIcon";
+import { activeNoteAtom, savingAtom } from "../../shared/lib/atoms";
 
 type DisplayState = "saving" | "saved" | "hidden";
 

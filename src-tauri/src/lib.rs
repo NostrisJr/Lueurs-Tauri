@@ -5,61 +5,10 @@ use tauri_plugin_fs::FsExt;
 use tokio::task::JoinSet;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
-// ── Plugin folder picker Android ───────────────────────────────────────────
-
 #[cfg(target_os = "android")]
-struct FolderPickerHandle(tauri::plugin::PluginHandle<tauri::Wry>);
-
+mod vault_android;
 #[cfg(target_os = "android")]
-#[derive(Deserialize)]
-struct FolderPickResult {
-    path: String,
-}
-
-fn folder_picker_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
-    tauri::plugin::Builder::<tauri::Wry>::new("folderPicker")
-        .setup(|app, api| {
-            #[cfg(target_os = "android")]
-            {
-                let handle = api.register_android_plugin(
-                    "com.theophiledonato.lueurs",
-                    "FolderPickerPlugin",
-                )?;
-                app.manage(FolderPickerHandle(handle));
-            }
-            let _ = (app, api);
-            Ok(())
-        })
-        .build()
-}
-
-#[tauri::command]
-async fn pick_android_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    #[cfg(target_os = "android")]
-    {
-        let handle = app.state::<FolderPickerHandle>();
-        match handle
-            .0
-            .run_mobile_plugin_async::<FolderPickResult>("pickFolder", ())
-            .await
-        {
-            Ok(result) => Ok(Some(result.path)),
-            Err(e) => {
-                let s = e.to_string();
-                if s.contains("cancelled") {
-                    Ok(None)
-                } else {
-                    Err(s)
-                }
-            }
-        }
-    }
-    #[cfg(not(target_os = "android"))]
-    {
-        let _ = app;
-        Ok(None)
-    }
-}
+use vault_android::*;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -99,7 +48,9 @@ struct NotePatch {
 // ── Entrée Tauri ───────────────────────────────────────────────────────────
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    // Le plugin android-fs doit être enregistré sur le Builder (avant setup)
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -108,9 +59,14 @@ pub fn run() {
         .plugin(tauri_plugin_native_audio::init())
         .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_haptics::init())
-        .plugin(tauri_plugin_opener::init())
-        .plugin(folder_picker_plugin())
-        .setup(|app| {
+        .plugin(tauri_plugin_opener::init());
+
+    #[cfg(target_os = "android")]
+    {
+        builder = builder.plugin(tauri_plugin_android_fs::init());
+    }
+
+    builder.setup(|app| {
             #[cfg(target_os = "macos")]
             {
                 let window = app.get_webview_window("main").unwrap();
@@ -142,7 +98,26 @@ pub fn run() {
             get_icloud_path_macos,
             show_action_sheet,
             show_rename_prompt,
-            pick_android_folder,
+            #[cfg(target_os = "android")]
+            vault_pick_dir,
+            #[cfg(target_os = "android")]
+            vault_read_dir,
+            #[cfg(target_os = "android")]
+            vault_read_file,
+            #[cfg(target_os = "android")]
+            vault_write_file,
+            #[cfg(target_os = "android")]
+            vault_create_file,
+            #[cfg(target_os = "android")]
+            vault_create_dir,
+            #[cfg(target_os = "android")]
+            vault_rename,
+            #[cfg(target_os = "android")]
+            vault_delete,
+            #[cfg(target_os = "android")]
+            vault_resolve_relative,
+            #[cfg(target_os = "android")]
+            vault_read_bytes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -198,21 +173,30 @@ async fn allow_vault_path(app: tauri::AppHandle, vault_path: String) -> Result<(
 
 #[tauri::command]
 async fn copy_resource_to_vault(
+    #[allow(unused_variables)] app: tauri::AppHandle,
     src_path: String,
     vault_path: String,
     sub_dir: String,
     filename: String,
 ) -> Result<String, String> {
-    let dest_dir = PathBuf::from(&vault_path).join("resources").join(&sub_dir);
-    std::fs::create_dir_all(&dest_dir).map_err(|e| format!("create_dir_all: {}", e))?;
-    let dest = dest_dir.join(&filename);
-    if dest.exists() {
-        maybe_cleanup_tmp(src_path);
-        return Ok(dest.to_string_lossy().to_string());
+    // Sur Android, le vault_path est une URI SAF — on passe par tauri-plugin-android-fs.
+    #[cfg(target_os = "android")]
+    {
+        return copy_to_vault_android(app, src_path, vault_path, sub_dir, filename).await;
     }
-    std::fs::copy(&src_path, &dest).map_err(|e| format!("copy: {}", e))?;
-    maybe_cleanup_tmp(src_path);
-    Ok(dest.to_string_lossy().to_string())
+    #[cfg(not(target_os = "android"))]
+    {
+        let dest_dir = PathBuf::from(&vault_path).join("resources").join(&sub_dir);
+        std::fs::create_dir_all(&dest_dir).map_err(|e| format!("create_dir_all: {}", e))?;
+        let dest = dest_dir.join(&filename);
+        if dest.exists() {
+            maybe_cleanup_tmp(src_path);
+            return Ok(dest.to_string_lossy().to_string());
+        }
+        std::fs::copy(&src_path, &dest).map_err(|e| format!("copy: {}", e))?;
+        maybe_cleanup_tmp(src_path);
+        Ok(dest.to_string_lossy().to_string())
+    }
 }
 
 /// Propage un changement de template aux notes héritières.

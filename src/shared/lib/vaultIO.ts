@@ -2,11 +2,14 @@ import { invoke } from "@tauri-apps/api/core";
 /**
  * vaultIO.ts — Lecture/écriture du vault sans état React.
  * Toutes les fonctions sont pures ou async IO, sans hooks.
+ *
+ * Sur Android : opérations FS via invoke → vault_io.rs → tauri-plugin-android-fs (SAF).
+ * Sur les autres plateformes : @tauri-apps/plugin-fs directement.
  */
 import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
 import type { NoteFile, TreeNode } from "../hooks/useFileTree";
-import { writingPathsRegistry } from "./Atoms";
+import { writingPathsRegistry } from "./atoms";
 import {
   type Frontmatter,
   computeTemplateProps,
@@ -23,14 +26,115 @@ import {
 import { isFormula } from "./formulas";
 import { createLogger } from "./logger";
 import { NoteType, SystemField } from "./noteTypes";
+import { isAndroid } from "./platform";
 
 const log = createLogger("vaultIO");
 
-// ── Chemins relatifs ───────────────────────────────────────────────────────
+// ── Interface unifiée ──────────────────────────────────────────────────────────
+//
+// uri : content:// URI sur Android, chemin POSIX absolu sur les autres plateformes.
+
+export interface VaultEntry {
+  name: string;
+  uri: string;
+  isDir: boolean;
+}
+
+export const vaultIO = {
+  async readDir(uri: string): Promise<VaultEntry[]> {
+    if (isAndroid) {
+      return invoke<VaultEntry[]>("vault_read_dir", { uri });
+    }
+    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+    const entries = await readDir(uri, { baseDir: null } as any);
+    return entries
+      .filter((e) => e.name != null)
+      .map((e) => ({
+        name: e.name as string,
+        uri: `${uri}/${e.name}`,
+        isDir: !!e.isDirectory,
+      }));
+  },
+
+  async readFile(uri: string): Promise<string> {
+    if (isAndroid) {
+      return invoke<string>("vault_read_file", { uri });
+    }
+    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+    return readTextFile(uri, { baseDir: null } as any);
+  },
+
+  async writeFile(uri: string, content: string): Promise<void> {
+    if (isAndroid) {
+      return invoke<void>("vault_write_file", { uri, content });
+    }
+    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+    return writeTextFile(uri, content, { baseDir: null } as any);
+  },
+
+  // Crée un fichier vide et retourne son URI/chemin.
+  async createFile(parentUri: string, name: string): Promise<string> {
+    if (isAndroid) {
+      return invoke<string>("vault_create_file", { parentUri, name });
+    }
+    const path = `${parentUri}/${name}`;
+    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+    await writeTextFile(path, "", { baseDir: null } as any);
+    return path;
+  },
+
+  // Crée un dossier et retourne son URI/chemin.
+  async createDir(parentUri: string, name: string): Promise<string> {
+    if (isAndroid) {
+      return invoke<string>("vault_create_dir", { parentUri, name });
+    }
+    const { mkdir } = await import("@tauri-apps/plugin-fs");
+    const path = `${parentUri}/${name}`;
+    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+    await mkdir(path, { baseDir: null } as any);
+    return path;
+  },
+
+  // Renomme et retourne le nouvel URI/chemin.
+  async rename(uri: string, newName: string): Promise<string> {
+    if (isAndroid) {
+      return invoke<string>("vault_rename", { uri, newName });
+    }
+    const { rename } = await import("@tauri-apps/plugin-fs");
+    const parts = uri.split("/");
+    parts[parts.length - 1] = newName;
+    const newUri = parts.join("/");
+    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+    await rename(uri, newUri, { baseDir: null } as any);
+    return newUri;
+  },
+
+  // Sur Android : suppression définitive. Sur macOS : corbeille Finder (via osascript côté JS).
+  async delete(uri: string): Promise<void> {
+    if (isAndroid) {
+      return invoke<void>("vault_delete", { uri });
+    }
+    const { moveToTrash } = await import("./fileTreeHelpers");
+    return moveToTrash(uri);
+  },
+
+  // Ouvre le picker SAF sur Android. Sur les autres plateformes, retourne null
+  // (le picker est géré par useFileTree.pickFolder via @tauri-apps/plugin-dialog).
+  async pickRoot(): Promise<string | null> {
+    if (isAndroid) {
+      return invoke<string | null>("vault_pick_dir");
+    }
+    return null;
+  },
+};
+
+// ── Chemins relatifs ───────────────────────────────────────────────────────────
 //
 // Sur disque : paths relatifs depuis la racine du vault (ex: "Templates/Mon Template.md")
 // En mémoire : paths absolus (ex: "/Users/.../vault/Templates/Mon Template.md")
 // Migration automatique : les paths absolus déjà stockés sont reconvertis à la lecture.
+// Sur Android : la relativisation est désactivée car les URI SAF ne peuvent pas être
+// reconstruits par simple concaténation (encodage URL différent).
 
 const PATH_FIELDS = [
   SystemField.TEMPLATE,
@@ -58,6 +162,8 @@ export function absolutifyPathFields(
   frontmatter: Frontmatter,
   vaultPath: string
 ): Frontmatter {
+  // Sur Android, les URI SAF sont déjà absolus et non relativisables
+  if (isAndroid) return frontmatter;
   const result = { ...frontmatter };
   for (const field of PATH_FIELDS) {
     const val = result[field];
@@ -84,6 +190,8 @@ export function relativizePathFields(
   frontmatter: Frontmatter,
   vaultPath: string
 ): Frontmatter {
+  // Sur Android, les URI SAF sont propres à l'appareil — pas de relativisation
+  if (isAndroid) return frontmatter;
   const result = { ...frontmatter };
   for (const field of PATH_FIELDS) {
     const val = result[field];
@@ -103,7 +211,7 @@ export function relativizePathFields(
   return result;
 }
 
-// ── Parsing d'une note ─────────────────────────────────────────────────────
+// ── Parsing d'une note ─────────────────────────────────────────────────────────
 
 export function noteFromRaw(
   fullPath: string,
@@ -145,28 +253,27 @@ export function noteFromRaw(
   };
 }
 
-// ── Chargement récursif ────────────────────────────────────────────────────
+// ── Chargement récursif ────────────────────────────────────────────────────────
 
 export async function loadTree(
   dirPath: string,
   vaultPath?: string
 ): Promise<TreeNode[]> {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  const entries = await readDir(dirPath, { baseDir: null } as any);
+  const entries = await vaultIO.readDir(dirPath);
   const nodes: TreeNode[] = [];
 
   await Promise.all(
     entries.map(async (entry) => {
       if (!entry.name || entry.name.startsWith(".")) return;
       if (
-        entry.isDirectory &&
+        entry.isDir &&
         (entry.name === "resources" || entry.name === "config")
       )
         return;
 
-      const fullPath = `${dirPath}/${entry.name}`;
+      const fullPath = entry.uri;
 
-      if (entry.isDirectory) {
+      if (entry.isDir) {
         const children = await loadTree(fullPath, vaultPath);
         nodes.push({
           kind: "folder",
@@ -175,10 +282,7 @@ export async function loadTree(
           children: sortNodes(children),
         });
       } else if (entry.name.endsWith(".md")) {
-        const rawContent = await readTextFile(fullPath, {
-          baseDir: null,
-          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        } as any);
+        const rawContent = await vaultIO.readFile(fullPath);
         const note = noteFromRaw(fullPath, entry.name, rawContent, vaultPath);
 
         // Persister __Type__ si absent
@@ -187,10 +291,11 @@ export async function loadTree(
             ? relativizePathFields(note.frontmatter, vaultPath)
             : note.frontmatter;
           const raw = serializeFrontmatter(diskFrontmatter, note.body);
-          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-          writeTextFile(fullPath, raw, { baseDir: null } as any).catch((err) =>
-            log.error("échec persistance __Type__", { path: fullPath, err })
-          );
+          vaultIO
+            .writeFile(fullPath, raw)
+            .catch((err) =>
+              log.error("échec persistance __Type__", { path: fullPath, err })
+            );
         }
 
         nodes.push(note);
@@ -201,7 +306,7 @@ export async function loadTree(
   return sortNodes(nodes);
 }
 
-// ── Application des templates ──────────────────────────────────────────────
+// ── Application des templates ──────────────────────────────────────────────────
 
 /**
  * Résout les templates pour toutes les notes du vault après chargement complet.
@@ -272,10 +377,11 @@ export async function applyAllTemplates(
         ? relativizePathFields(frontmatter, vaultPath)
         : frontmatter;
       const raw = serializeFrontmatter(diskFrontmatter, body);
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      return writeTextFile(path, raw, { baseDir: null } as any).catch((err) =>
-        log.error("échec persistance props template", { path, err })
-      );
+      return vaultIO
+        .writeFile(path, raw)
+        .catch((err) =>
+          log.error("échec persistance props template", { path, err })
+        );
     })
   );
 
@@ -289,12 +395,12 @@ export async function applyAllTemplates(
   return finalNodes;
 }
 
-// ── Écriture unitaire ──────────────────────────────────────────────────────
+// ── Écriture unitaire ──────────────────────────────────────────────────────────
 
 /**
- * Écrit un patch frontmatter via Rust, avec mise à jour optimiste immédiate.
- * Rust confirme l'écriture via l'événement vault:patch — useVaultSync réconcilie treeAtom.
- * vaultPath : si fourni, les champs path sont stockés en relatif sur disque.
+ * Écrit un patch frontmatter avec mise à jour optimiste immédiate.
+ * Sur Android : écrit directement via SAF (pas de vault:patch event).
+ * Sur les autres plateformes : passe par Rust update_note qui émet vault:patch.
  */
 export async function persistNotePatch(
   noteId: string,
@@ -310,17 +416,23 @@ export async function persistNotePatch(
     ? relativizePathFields(frontmatter, vaultPath)
     : frontmatter;
   const raw = serializeFrontmatter(diskFrontmatter, body);
-  // Empêcher le watcher FS de recharger ce que Rust va écrire
+
   writingPathsRegistry.add(noteId);
   try {
-    await invoke("update_note", { id: noteId, rawContent: raw });
-    log.info("patch envoyé à Rust", { noteId });
+    if (isAndroid) {
+      // SAF : écriture directe, pas de vault:patch event (optimistic update suffit)
+      await vaultIO.writeFile(noteId, raw);
+    } else {
+      // Rust update_note émet vault:patch pour la réconciliation multi-fenêtres desktop
+      await invoke("update_note", { id: noteId, rawContent: raw });
+    }
+    log.info("patch persisté", { noteId });
   } finally {
     writingPathsRegistry.delete(noteId);
   }
 }
 
-// ── Résolution de conflits de nom ─────────────────────────────────────────
+// ── Résolution de conflits de nom ──────────────────────────────────────────────
 
 /**
  * Retourne un nom sans conflit dans destFolderPath.
@@ -330,14 +442,13 @@ export async function resolveDestName(
   destFolderPath: string,
   name: string
 ): Promise<string> {
-  let entries: { name?: string | null }[] = [];
+  let entries: VaultEntry[] = [];
   try {
-    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
-    entries = await readDir(destFolderPath, { baseDir: null } as any);
+    entries = await vaultIO.readDir(destFolderPath);
   } catch {
     return name;
   }
-  const existing = new Set(entries.map((e) => e.name).filter(Boolean));
+  const existing = new Set(entries.map((e) => e.name));
   if (!existing.has(name)) return name;
 
   const isNote = name.endsWith(".md");
@@ -348,11 +459,13 @@ export async function resolveDestName(
   return `${base} (${i})${ext}`;
 }
 
-// ── Scope Tauri ────────────────────────────────────────────────────────────
+// ── Scope Tauri ────────────────────────────────────────────────────────────────
 
 export async function allowVaultScope(vaultPath: string): Promise<void> {
-  // FS scope = mécanisme desktop uniquement ; le sandbox iOS accorde déjà l'accès au vault
-  if (platform() === "ios") return;
+  // FS scope = mécanisme desktop uniquement
+  // iOS : le sandbox accorde déjà l'accès au container iCloud
+  // Android : les permissions SAF sont gérées par vault_pick_dir (persist_uri_permission)
+  if (platform() === "ios" || isAndroid) return;
   log.info("autorisation scope vault", { vaultPath });
   try {
     await invoke("allow_vault_path", { vaultPath });

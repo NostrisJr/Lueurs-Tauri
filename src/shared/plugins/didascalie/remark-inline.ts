@@ -28,7 +28,7 @@ function processInlineChildren(parent: AnyNode): void {
   for (const child of parent.children) {
     if (child.type === "text" && typeof child.value === "string") {
       const text = child.value as string;
-      const regex = /\|([^|\n]+)\|/g;
+      const regex = /\|\|([^|]+)\|\|/g;
       let lastIndex = 0;
       let match: RegExpExecArray | null;
       const parts: AnyNode[] = [];

@@ -9,7 +9,7 @@ import {
   dragOverAtom,
   dragSourceAtom,
   folderPathAtom,
-} from "../../shared/lib/Atoms";
+} from "../../shared/lib/atoms";
 import {
   ensureType,
   parseFrontmatter,

@@ -1,8 +1,7 @@
-import { IconXCircle } from "../../../shared/components/PlatformIcon";
 import { useAtomValue } from "jotai";
-import { flattenTree } from "../../../shared/hooks/useFileTree";
+import { IconXCircle } from "../../../shared/components/PlatformIcon";
 import { useNote } from "../../../shared/hooks/useNote";
-import { treeAtom } from "../../../shared/lib/Atoms";
+import { notesByIdAtom } from "../../../shared/lib/atoms";
 import { useCmdHeld } from "../../hooks/useCmdHeld";
 
 /**
@@ -24,12 +23,12 @@ export function NoteChip({
   noteId,
 }: NoteChipProps) {
   const { handleSelectNote } = useNote();
-  const tree = useAtomValue(treeAtom);
+  const notesById = useAtomValue(notesByIdAtom);
   const cmdHeld = useCmdHeld();
 
   function handleClick(e: React.MouseEvent) {
     if (!e.metaKey || !noteId) return;
-    const note = flattenTree(tree).find((n) => n.id === noteId);
+    const note = notesById.get(noteId);
     if (note) handleSelectNote(note, true);
   }
 

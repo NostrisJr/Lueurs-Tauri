@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { WaveformDisplay } from "../../../shared/components/Dictaphone/WaveformDisplay";
 import { useAudioRecorder } from "../../../shared/hooks/useAudioRecorder";
-import { folderPathAtom } from "../../../shared/lib/Atoms";
+import { folderPathAtom } from "../../../shared/lib/atoms";
 import { createLogger } from "../../../shared/lib/logger";
 
 const log = createLogger("DesktopDictaphone");

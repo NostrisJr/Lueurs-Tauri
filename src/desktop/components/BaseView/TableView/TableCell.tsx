@@ -1,8 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
+import { useRef, useState } from "react";
 import type {
   Frontmatter,
   NoteFile,
 } from "../../../../shared/hooks/useFileTree";
+import { notesByNameAtom } from "../../../../shared/lib/atoms";
 import {
   computeFormula,
   dehumanizeFormula,
@@ -53,10 +55,9 @@ export function TableCell({
   const selectorOpenRef = useRef(false);
   const triggerCursorRef = useRef(0);
 
-  const notesByName = useMemo(
-    () => new Map(allNotes?.map((n) => [n.name, n.id]) ?? []),
-    [allNotes]
-  );
+  // Map name→id partagée entre toutes les cellules — recalculée uniquement
+  // quand treeAtom change.
+  const notesByName = useAtomValue(notesByNameAtom);
 
   const formula = isFormula(value);
 

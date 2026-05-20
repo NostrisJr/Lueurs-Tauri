@@ -1,23 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
-import {
-  type Frontmatter,
-  type NoteFile,
-  flattenTree,
-} from "../../shared/hooks/useFileTree";
+import type { Frontmatter, NoteFile } from "../../shared/hooks/useFileTree";
 import { usePersistNote } from "../../shared/hooks/usePersistNote";
-import {
-  folderPathAtom,
-  skipPropagationAtom,
-  treeAtom,
-  writingPathsRegistry,
-} from "../../shared/lib/Atoms";
 import {
   parseTableAggregations,
   serializeTableAggregations,
 } from "../../shared/lib/aggregations";
 import {
+  folderPathAtom,
+  notesByIdAtom,
+  skipPropagationAtom,
+  treeAtom,
+  writingPathsRegistry,
+} from "../../shared/lib/atoms";
+import {
+  flattenTree,
   isSystemField,
   toArray,
   updateNodeInTree,
@@ -98,8 +96,7 @@ export function useTemplateSync() {
     if (!folderPath) return;
 
     // Lire la valeur actuelle du template pour old_key — détermine si la prop est imposée
-    const freshNotes = flattenTree(store.get(treeAtom));
-    const templateNote = freshNotes.find((n) => n.id === templateId);
+    const templateNote = store.get(notesByIdAtom).get(templateId);
     const templateValue = templateNote
       ? ((templateNote.frontmatter[oldKey] as string) ?? "")
       : "";
@@ -276,8 +273,12 @@ export function useTemplateSync() {
       // Mise à jour chirurgicale du treeAtom — évite un rechargement complet du disque
       setTree((prev) => {
         let updated = prev;
+        // Indexer une fois pour ce cycle de propagation — chaque iteration
+        // ne lit que la frontmatter de son propre path (unique), donc l'index
+        // construit depuis l'arbre initial reste correct.
+        const notesIndex = new Map(flattenTree(updated).map((n) => [n.id, n]));
         for (const path of affectedPaths) {
-          const note = flattenTree(updated).find((n) => n.id === path);
+          const note = notesIndex.get(path);
           if (!note) continue;
           const fm = note.frontmatter;
           let newFm: Frontmatter | null = null;
@@ -317,29 +318,32 @@ export function useTemplateSync() {
 
   // Toujours lire le treeAtom le plus récent — évite les snapshots périmés lors des callbacks async
   function resolveAllHeirs(templateId: string): string[] {
-    const freshNotes = flattenTree(store.get(treeAtom));
-    return freshNotes
-      .filter((note) => {
-        if (note.id === templateId) return false;
-        if (note.type === NoteType.BASE) return false;
+    const notesById = store.get(notesByIdAtom);
+    const result: string[] = [];
+    for (const note of notesById.values()) {
+      if (note.id === templateId) continue;
+      if (note.type === NoteType.BASE) continue;
 
-        const directTemplates = toArray(note.frontmatter.__Template__);
-        if (directTemplates.includes(templateId)) return true;
+      const directTemplates = toArray(note.frontmatter.__Template__);
+      if (directTemplates.includes(templateId)) {
+        result.push(note.id);
+        continue;
+      }
 
-        const bases = toArray(note.frontmatter.__Base__);
-        return bases.some((basePath) => {
-          const base = freshNotes.find((n) => n.id === basePath);
-          return base
-            ? toArray(base.frontmatter.__Template__).includes(templateId)
-            : false;
-        });
-      })
-      .map((n) => n.id);
+      const bases = toArray(note.frontmatter.__Base__);
+      const inherited = bases.some((basePath) => {
+        const base = notesById.get(basePath);
+        return base
+          ? toArray(base.frontmatter.__Template__).includes(templateId)
+          : false;
+      });
+      if (inherited) result.push(note.id);
+    }
+    return result;
   }
 
   function resolveHeirBases(templateId: string) {
-    const freshNotes = flattenTree(store.get(treeAtom));
-    return freshNotes.filter(
+    return [...store.get(notesByIdAtom).values()].filter(
       (note) =>
         note.type === NoteType.BASE &&
         toArray(note.frontmatter.__Template__).includes(templateId)

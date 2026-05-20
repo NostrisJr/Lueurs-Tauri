@@ -13,7 +13,7 @@ import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import {
   type KanbanCards,
   NO_VALUE_COLUMN_ID,
-} from "../../../../shared/lib/Atoms";
+} from "../../../../shared/lib/atoms";
 import { createLogger } from "../../../../shared/lib/logger";
 import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
 import { KanbanCard } from "./KanbanCard";
@@ -24,7 +24,6 @@ const log = createLogger("KanbanView");
 interface Props {
   columns: KanbanColumnType[];
   cards: KanbanCards;
-  kanbanKey: string;
   onMoveCard: (
     noteId: string,
     fromColId: string,
@@ -37,7 +36,6 @@ interface Props {
 export function KanbanView({
   columns,
   cards,
-  kanbanKey,
   onMoveCard,
   onRenameColumn,
   onAddColumn,
@@ -130,7 +128,6 @@ export function KanbanView({
             key={col.id}
             column={col}
             notes={cards[col.id] ?? []}
-            kanbanKey={kanbanKey}
             onRename={onRenameColumn}
           />
         ))}
@@ -141,7 +138,6 @@ export function KanbanView({
             key={NO_VALUE_COLUMN_ID}
             column={{ id: NO_VALUE_COLUMN_ID, label: "Sans valeur" }}
             notes={cards[NO_VALUE_COLUMN_ID]}
-            kanbanKey={kanbanKey}
             onRename={() => {}}
             virtual
           />
@@ -176,7 +172,7 @@ export function KanbanView({
 
       {/* Carte fantôme pendant le drag */}
       <DragOverlay>
-        {activeNote && <KanbanCard note={activeNote} kanbanKey={kanbanKey} />}
+        {activeNote && <KanbanCard note={activeNote} />}
       </DragOverlay>
     </DndContext>
   );

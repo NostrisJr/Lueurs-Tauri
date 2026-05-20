@@ -57,12 +57,7 @@ export const noteBackStackAtom = atom<string[]>([]);
 
 // ── Navigation mobile ─────────────────────────────────────────────────────
 
-export type MobileView =
-  | "filetree"
-  | "editor"
-  | "tabs"
-  | "search"
-  | "settings";
+export type MobileView = "filetree" | "editor" | "tabs" | "search" | "settings";
 
 // Pile de navigation — source de vérité unique pour l'historique des vues
 export const mobileNavStackAtom = atom<MobileView[]>(["filetree"]);
@@ -127,11 +122,31 @@ export const navigateToNoteAtom = atom(null, (get, set, noteId: string) => {
   set(activeNoteIdAtom, noteId);
 });
 
+// Index id → NoteFile, recalculé une fois par changement de treeAtom et partagé
+// par tous les consommateurs : O(1) au lookup au lieu de O(n) par .find().
+export const notesByIdAtom = atom((get) => {
+  const map = new Map<string, NoteFile>();
+  for (const note of flattenTree(get(treeAtom))) {
+    map.set(note.id, note);
+  }
+  return map;
+});
+
+// Index name → id pour la résolution des références par nom (formules, dehumanize).
+// Évite la recréation de Map à chaque cellule du tableau.
+export const notesByNameAtom = atom((get) => {
+  const map = new Map<string, string>();
+  for (const note of get(notesByIdAtom).values()) {
+    map.set(note.name, note.id);
+  }
+  return map;
+});
+
 // Dérivé : toujours synchronisé avec l'arbre, jamais de snapshot
 export const activeNoteAtom = atom((get) => {
   const id = get(activeNoteIdAtom);
   if (!id) return null;
-  return flattenTree(get(treeAtom)).find((n) => n.id === id) ?? null;
+  return get(notesByIdAtom).get(id) ?? null;
 });
 
 // ── Navigateur de document ────────────────────────────────────────────────
@@ -244,11 +259,11 @@ export const kanbanCardsAtom = atom((get): KanbanCards => {
   const columns = parseColumns(base.frontmatter[SystemField.KANBAN_COLUMNS]);
   // Pas de guard sur columns.length — la colonne "Sans valeur" doit apparaître même si aucune colonne n'est configurée
 
-  const allNotes = flattenTree(get(treeAtom));
+  const notesById = get(notesByIdAtom);
   const childrenPaths = base.frontmatter[SystemField.CHILDREN];
   const paths = Array.isArray(childrenPaths) ? (childrenPaths as string[]) : [];
   const childNotes = paths
-    .map((p) => allNotes.find((n) => n.id === p))
+    .map((p) => notesById.get(p))
     .filter((n): n is NoteFile => !!n);
 
   const labelledValues = new Set(columns.map((col) => col.label));

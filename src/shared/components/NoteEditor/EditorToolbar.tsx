@@ -1,6 +1,6 @@
-import { IconMicrophoneFill } from "../PlatformIcon";
 import clsx from "clsx";
 import type { RefObject } from "react";
+import { IconMicrophoneFill } from "../PlatformIcon";
 import type { EditorHandle } from "./MarkdownEditor";
 
 interface Props {

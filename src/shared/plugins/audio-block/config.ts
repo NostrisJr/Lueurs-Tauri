@@ -26,9 +26,10 @@ export interface AudioBlockConfig {
   /**
    * Retourne le chemin absolu (ou URL file://) du fichier audio pour le lecteur natif.
    * Utilisé exclusivement par tauri-plugin-native-audio pour la lecture.
+   * Async toléré : sur Android la résolution rel → URI SAF passe par invoke().
    *
    * Typiquement :
    *   resolveAbsolutePath: (src) => `${vaultPath}/${src}`
    */
-  resolveAbsolutePath?: (src: string) => string;
+  resolveAbsolutePath?: (src: string) => string | Promise<string>;
 }

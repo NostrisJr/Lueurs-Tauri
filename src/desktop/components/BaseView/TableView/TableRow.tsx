@@ -1,10 +1,9 @@
 import { useAtomValue } from "jotai";
-import { useRef, useState } from "react";
-import { flattenTree } from "../../../../shared/hooks/useFileTree";
+import { useMemo, useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
 import type { TableColumn } from "../../../../shared/hooks/useTable";
-import { treeAtom } from "../../../../shared/lib/Atoms";
+import { notesByIdAtom } from "../../../../shared/lib/atoms";
 import { useCmdHeld } from "../../../hooks/useCmdHeld";
 import { TableCell } from "./TableCell";
 
@@ -25,8 +24,10 @@ export function TableRow({
 }: Props) {
   const { handleSelectNote } = useNote();
   const cmdHeld = useCmdHeld();
-  const allNotes = flattenTree(useAtomValue(treeAtom));
-  const noteResolver = (path: string) => allNotes.find((n) => n.id === path);
+  const notesById = useAtomValue(notesByIdAtom);
+  // L'array trié des notes est encore nécessaire pour les fuzzy lookups dans TableCell
+  const allNotes = useMemo(() => [...notesById.values()], [notesById]);
+  const noteResolver = (path: string) => notesById.get(path);
   const [titleDraft, setTitleDraft] = useState(note.name);
   const [editingTitle, setEditingTitle] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);

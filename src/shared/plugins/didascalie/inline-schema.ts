@@ -1,7 +1,7 @@
 import { $node } from "@milkdown/kit/utils";
 
 // Nœud inline `didascalie_inline` : contenu texte uniquement, rendu via NodeView
-// avec deux pipes non-éditables de part et d'autre. Stocké `|texte|` sur disque.
+// avec deux pipes non-éditables de part et d'autre. Stocké `||texte||` sur disque.
 export const didascalieInlineSchema = $node("didascalie_inline", () => ({
   inline: true,
   group: "inline",
@@ -26,10 +26,10 @@ export const didascalieInlineSchema = $node("didascalie_inline", () => ({
     match: (node: any) => node.type.name === "didascalie_inline",
     runner: (state: any, node: any) => {
       // Émet 3 text nodes frères dans le parent (typiquement un paragraph) :
-      // |, contenu, |. remark-stringify concatène en `|texte|`.
-      state.addNode("text", undefined, "|");
+      // ||, contenu, ||. remark-stringify concatène en `||texte||`.
+      state.addNode("text", undefined, "||");
       state.next(node.content);
-      state.addNode("text", undefined, "|");
+      state.addNode("text", undefined, "||");
     },
   },
 }));

@@ -1,12 +1,11 @@
 import { useStore } from "jotai";
 
-import {
-  type Frontmatter,
-  type NoteFile,
-  flattenTree,
+import type {
+  Frontmatter,
+  NoteFile,
 } from "../../../../shared/hooks/useFileTree";
 import { usePersistNote } from "../../../../shared/hooks/usePersistNote";
-import { treeAtom } from "../../../../shared/lib/Atoms";
+import { notesByIdAtom } from "../../../../shared/lib/atoms";
 import {
   computeTemplateProps,
   toArray,
@@ -15,7 +14,6 @@ import { createLogger } from "../../../../shared/lib/logger";
 import { NoteType } from "../../../../shared/lib/noteTypes";
 
 const log = createLogger("useFrontmatter");
-//TODO : régler tous les types any
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -32,8 +30,8 @@ export function useFrontmatter() {
   const store = useStore();
   const persistPatch = usePersistNote();
 
-  function getCurrentNotes() {
-    return flattenTree(store.get(treeAtom));
+  function getNotesById() {
+    return store.get(notesByIdAtom);
   }
 
   async function applyTemplateProps(
@@ -43,11 +41,11 @@ export function useFrontmatter() {
     // Les bases ne sont pas contraintes par leurs propres templates
     if (frontmatter.__Type__ === NoteType.BASE) return null;
 
-    const allNotes = getCurrentNotes();
+    const notesById = getNotesById();
     const directTemplates = toArray(frontmatter.__Template__);
     const parentBases = toArray(frontmatter.__Base__);
     const inheritedTemplates = parentBases.flatMap((basePath) => {
-      const base = allNotes.find((n) => n.id === basePath);
+      const base = notesById.get(basePath);
       return base ? toArray(base.frontmatter.__Template__) : [];
     });
     const allTemplatePaths = [
@@ -55,7 +53,7 @@ export function useFrontmatter() {
     ];
     const templates = allTemplatePaths
       .map((p) => {
-        const t = allNotes.find((n) => n.id === p);
+        const t = notesById.get(p);
         if (!t) log.warn("template introuvable", { templatePath: p });
         return t?.frontmatter;
       })
@@ -68,7 +66,7 @@ export function useFrontmatter() {
     });
     if (changed.length === 0) return null;
 
-    const note = allNotes.find((n) => n.id === noteId);
+    const note = notesById.get(noteId);
     if (!note) return updated;
 
     await persistPatch(noteId, updated, note.body);
@@ -105,7 +103,7 @@ export function useFrontmatter() {
         const children = toArray(nextFrontmatter.__Children__);
         await Promise.all(
           children.map(async (childPath) => {
-            const child = getCurrentNotes().find((n) => n.id === childPath);
+            const child = getNotesById().get(childPath);
             if (child) await applyTemplateProps(childPath, child.frontmatter);
           })
         );
@@ -139,7 +137,7 @@ export function useFrontmatter() {
   }
 
   async function addToChildren(basePath: string, noteId: string) {
-    const base = getCurrentNotes().find((n) => n.id === basePath);
+    const base = getNotesById().get(basePath);
     if (!base) {
       log.warn("base introuvable pour ajout __Children__", { basePath });
       return;
@@ -151,7 +149,7 @@ export function useFrontmatter() {
   }
 
   async function removeFromChildren(basePath: string, noteId: string) {
-    const base = getCurrentNotes().find((n) => n.id === basePath);
+    const base = getNotesById().get(basePath);
     if (!base) {
       log.warn("base introuvable pour retrait __Children__", { basePath });
       return;
@@ -164,7 +162,7 @@ export function useFrontmatter() {
   }
 
   async function addBaseToNote(notePath: string, basePath: string) {
-    const note = getCurrentNotes().find((n) => n.id === notePath);
+    const note = getNotesById().get(notePath);
     if (!note) {
       log.warn("note enfant introuvable pour ajout __Base__", { notePath });
       return;
@@ -177,7 +175,7 @@ export function useFrontmatter() {
   }
 
   async function removeBaseFromNote(notePath: string, basePath: string) {
-    const note = getCurrentNotes().find((n) => n.id === notePath);
+    const note = getNotesById().get(notePath);
     if (!note) {
       log.warn("note enfant introuvable pour retrait __Base__", { notePath });
       return;
@@ -218,8 +216,7 @@ export function useFrontmatter() {
   }
 
   async function cleanupNoteFromBases(noteId: string) {
-    const allNotes = getCurrentNotes();
-    const bases = allNotes.filter((n) =>
+    const bases = [...getNotesById().values()].filter((n) =>
       toArray(n.frontmatter.__Children__).includes(noteId)
     );
     log.info("cleanup — bases trouvées", { noteId, baseCount: bases.length });

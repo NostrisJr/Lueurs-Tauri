@@ -4,17 +4,17 @@
 //   cela maintient la session audio macOS initialisée et élimine le délai ~1s.
 // Mobile : lecture via tauri-plugin-native-audio (nativeAudioPlayer).
 
+import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
+import { NodeSelection } from "@milkdown/kit/prose/state";
+import type { EditorView } from "@milkdown/kit/prose/view";
+import clsx from "clsx";
+import { useEffect, useRef, useState } from "react";
 import {
   IconPauseFill,
   IconPlayFill,
   IconWaveform,
   IconXmark,
 } from "../../components/PlatformIcon";
-import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
-import { NodeSelection } from "@milkdown/kit/prose/state";
-import type { EditorView } from "@milkdown/kit/prose/view";
-import clsx from "clsx";
-import { useEffect, useRef, useState } from "react";
 import { createLogger } from "../../lib/logger";
 import {
   nativeIsActive,
@@ -300,7 +300,8 @@ export function AudioBlockComponent({
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   async function getPlaybackSrc(): Promise<string> {
-    if (config.resolveAbsolutePath) return config.resolveAbsolutePath(src);
+    if (config.resolveAbsolutePath)
+      return await config.resolveAbsolutePath(src);
     return src;
   }
 
@@ -492,7 +493,8 @@ export function AudioBlockComponent({
   async function handleWaveformTouch(e: React.TouchEvent<HTMLDivElement>) {
     e.preventDefault();
     const touch = e.changedTouches[0];
-    if (!touch || !nativeIsActive(nodeId) || nativeDurationRef.current <= 0) return;
+    if (!touch || !nativeIsActive(nodeId) || nativeDurationRef.current <= 0)
+      return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = (touch.clientX - rect.left) / rect.width;
     try {
@@ -576,13 +578,19 @@ export function AudioBlockComponent({
           : "border-black/10 hover:border-black/18"
       )}
       style={{ fontFamily: "'Inter', Arial, Helvetica, sans-serif" }}
-      onClick={isMobile ? undefined : () => {
-        const pos = getPos();
-        if (pos === undefined) return;
-        view.dispatch(
-          view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos))
-        );
-      }}
+      onClick={
+        isMobile
+          ? undefined
+          : () => {
+              const pos = getPos();
+              if (pos === undefined) return;
+              view.dispatch(
+                view.state.tr.setSelection(
+                  NodeSelection.create(view.state.doc, pos)
+                )
+              );
+            }
+      }
     >
       {/* ── Header ── */}
       <div className="flex items-center gap-2.5 mb-2.5">

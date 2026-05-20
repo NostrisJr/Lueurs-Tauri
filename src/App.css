@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap");
 
 @import "tailwindcss";
+@import "material-symbols/rounded.css";
 @import "./shared/lib/MilkdownStyle/DefaultStyle.css";
 @import "./shared/lib/MilkdownStyle/BookStyle.css";
 
@@ -78,7 +79,7 @@ html {
   backdrop-filter: blur(20px) saturate(180%) brightness(1.1);
   -webkit-backdrop-filter: blur(3px) saturate(110%) brightness(1.05);
 
-  /* Bezel shiny : rim light haut + reflet bas + ombre portée */
+  /* Bezel shiny : rim light haut + reflet bas */
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
     /* highlight haut */
@@ -86,10 +87,10 @@ html {
     /* reflet bas */
     inset 1px 0 rgba(255, 255, 255, 0.2),
     /* reflet gauche */
-    inset -1px 0 rgba(255, 255, 255, 0.2),
-    /* reflet droite */
-    0 8px 32px rgba(0, 0, 0, 0.15);
-  /* ombre portée */
+    inset -1px 0 rgba(255, 255, 255, 0.2);
+  /* reflet droite */
+  /* L'ombre portée est gérée via filter:drop-shadow sur le conteneur
+     pour suivre la forme squircle après clip-path */
 
   /* Bordure fine lumineuse */
   border: .5px solid rgba(255, 255, 255, 0.8);

@@ -1,17 +1,17 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import {
-  parseTableColumns,
-  serializeTableColumns,
-  treeAtom,
-} from "../lib/Atoms";
-import {
   type AggregationOp,
   type TableAggregations,
   parseTableAggregations,
   serializeTableAggregations,
 } from "../lib/aggregations";
-import { flattenTree, isSystemField } from "../lib/fileTreeHelpers";
+import {
+  notesByIdAtom,
+  parseTableColumns,
+  serializeTableColumns,
+} from "../lib/atoms";
+import { isSystemField } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { SystemField } from "../lib/noteTypes";
 import type { Frontmatter, NoteFile } from "./useFileTree";
@@ -38,7 +38,7 @@ interface UseTableProps {
 }
 
 export function useTable({ base, onBaseChange }: UseTableProps) {
-  const allNotes = flattenTree(useAtomValue(treeAtom));
+  const notesById = useAtomValue(notesByIdAtom);
   const persistPatch = usePersistNote();
 
   const savedWidths = parseTableColumns(
@@ -50,7 +50,7 @@ export function useTable({ base, onBaseChange }: UseTableProps) {
   const templatePaths = base.frontmatter[SystemField.TEMPLATE];
   const paths = Array.isArray(templatePaths) ? (templatePaths as string[]) : [];
   const templates = paths
-    .map((p) => allNotes.find((n) => n.id === p))
+    .map((p) => notesById.get(p))
     .filter((n): n is NoteFile => !!n);
 
   // Union de toutes les props non-système des templates — premier template gagne
@@ -85,7 +85,7 @@ export function useTable({ base, onBaseChange }: UseTableProps) {
     ? (childrenPaths as string[])
     : [];
   const childNotes = childPaths
-    .map((p) => allNotes.find((n) => n.id === p))
+    .map((p) => notesById.get(p))
     .filter((n): n is NoteFile => !!n);
 
   // ── Agrégations ───────────────────────────────────────────────────────

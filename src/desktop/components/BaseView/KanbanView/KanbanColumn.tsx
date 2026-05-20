@@ -11,7 +11,6 @@ import { KanbanCard } from "./KanbanCard";
 interface Props {
   column: KanbanColumnType;
   notes: NoteFile[];
-  kanbanKey: string;
   onRename: (colId: string, newLabel: string) => void;
   // Colonne virtuelle — header non éditable, style distinct
   virtual?: boolean;
@@ -20,7 +19,6 @@ interface Props {
 export function KanbanColumn({
   column,
   notes,
-  kanbanKey,
   onRename,
   virtual = false,
 }: Props) {
@@ -96,7 +94,7 @@ export function KanbanColumn({
           strategy={verticalListSortingStrategy}
         >
           {notes.map((note) => (
-            <KanbanCard key={note.id} note={note} kanbanKey={kanbanKey} />
+            <KanbanCard key={note.id} note={note} />
           ))}
         </SortableContext>
       </div>

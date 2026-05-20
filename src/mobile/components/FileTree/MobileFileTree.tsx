@@ -1,13 +1,16 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FolderNode, TreeNode } from "../../../shared/hooks/useFileTree";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
   dictaphoneModeAtom,
+  folderPathAtom,
   folderStackAtom,
   mobileContextMenuAtom,
   treeAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
+import { isIOS } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
 import {
   DURATION,
@@ -16,8 +19,8 @@ import {
 } from "../../hooks/useMobileSwipeGesture";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
-import { FileTreeBottomBar } from "./FileTreeBottomBar";
 import { FileRow } from "./FileRow";
+import { FileTreeBottomBar } from "./FileTreeBottomBar";
 import { FileTreeHeader } from "./FileTreeHeader";
 
 function findFolderById(nodes: TreeNode[], id: string): FolderNode | null {
@@ -65,8 +68,6 @@ function NodeList({ nodes, onDrillIn }: NodeListProps) {
   );
 }
 
-const NOOP_DRILL = () => {};
-
 export function MobileFileTree() {
   const tree = useAtomValue(treeAtom);
   const folderStack = useAtomValue(folderStackAtom);
@@ -74,6 +75,7 @@ export function MobileFileTree() {
   const { createNote } = useFileTree();
   const selectNote = useMobileSelectNote();
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
+  const folderPath = useAtomValue(folderPathAtom);
 
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
   const parentFolder =
@@ -94,7 +96,8 @@ export function MobileFileTree() {
   }, [tree, setFolderStack]);
 
   async function handleCreateNote() {
-    const path = currentFolder?.id ?? "";
+    hapticImpact("light");
+    const path = currentFolder?.id ?? folderPath ?? "";
     const note = await createNote(path);
     selectNote(note);
   }
@@ -219,8 +222,18 @@ export function MobileFileTree() {
       : {};
 
   return (
-    <div className="relative flex flex-col pt-24 w-full h-screen overflow-hidden select-none">
-      <div className="absolute top-0 w-full h-fit pt-10 bg-white shadow-lg shadow-gray-500/5 z-10">
+    <div
+      className={clsx(
+        "relative flex flex-col w-full h-screen overflow-hidden select-none",
+        isIOS ? " pt-24 " : "pt-14"
+      )}
+    >
+      <div
+        className={clsx(
+          "absolute top-0 w-full h-fit bg-white shadow-lg shadow-gray-500/5 z-10",
+          isIOS ? "pt-10" : "pt-4"
+        )}
+      >
         <FileTreeHeader />
       </div>
 
@@ -232,7 +245,7 @@ export function MobileFileTree() {
             style={bgContentStyle}
           >
             <div className="flex flex-col gap-2 p-4 pb-20">
-              <NodeList nodes={bgNodes} onDrillIn={NOOP_DRILL} />
+              <NodeList nodes={bgNodes} onDrillIn={() => {}} />
             </div>
           </div>
         )}

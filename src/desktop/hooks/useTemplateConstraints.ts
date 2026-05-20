@@ -1,7 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { flattenTree } from "../../shared/hooks/useFileTree";
-import { activeNoteAtom, treeAtom } from "../../shared/lib/Atoms";
+import { activeNoteAtom, notesByIdAtom } from "../../shared/lib/atoms";
 import { isSystemField } from "../../shared/lib/fileTreeHelpers";
 import { NoteType } from "../../shared/lib/noteTypes";
 
@@ -26,7 +25,7 @@ export interface TemplateConstraints {
  */
 export function useTemplateConstraints(): TemplateConstraints {
   const activeNote = useAtomValue(activeNoteAtom);
-  const allNotes = flattenTree(useAtomValue(treeAtom));
+  const notesById = useAtomValue(notesByIdAtom);
 
   return useMemo(() => {
     const empty = {
@@ -38,7 +37,7 @@ export function useTemplateConstraints(): TemplateConstraints {
     const fm = activeNote.frontmatter;
     const directTemplates = toArray(fm.__Template__);
     const inheritedTemplates = toArray(fm.__Base__).flatMap((basePath) => {
-      const base = allNotes.find((n) => n.id === basePath);
+      const base = notesById.get(basePath);
       return base ? toArray(base.frontmatter.__Template__) : [];
     });
 
@@ -48,7 +47,7 @@ export function useTemplateConstraints(): TemplateConstraints {
     for (const templatePath of [
       ...new Set([...directTemplates, ...inheritedTemplates]),
     ]) {
-      const template = allNotes.find((n) => n.id === templatePath);
+      const template = notesById.get(templatePath);
       if (!template) continue;
       for (const [key, value] of Object.entries(template.frontmatter)) {
         if (isSystemField(key)) continue;
@@ -60,5 +59,5 @@ export function useTemplateConstraints(): TemplateConstraints {
     }
 
     return { lockedKeys, lockedValues };
-  }, [activeNote, allNotes]);
+  }, [activeNote, notesById]);
 }

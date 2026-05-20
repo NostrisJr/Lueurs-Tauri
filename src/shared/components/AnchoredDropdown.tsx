@@ -1,10 +1,10 @@
-import { platform } from "@tauri-apps/plugin-os";
 /**
  * AnchoredDropdown — dropdown positionné en fixed sous son ancre (desktop),
- * ou BottomSheet clavier-aware (iOS).
+ * ou BottomSheet clavier-aware (mobile).
  */
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { BottomSheet } from "../../mobile/components/BottomSheet/BottomSheet";
+import { isMobile } from "../lib/platform";
 
 interface AnchoredDropdownProps {
   anchorRef: { current: HTMLElement | null };
@@ -19,8 +19,6 @@ export function AnchoredDropdown({
   children,
   className = "",
 }: AnchoredDropdownProps) {
-  const isMobile = platform() === "ios";
-
   if (isMobile) {
     return <BottomSheet onClose={onClose}>{children}</BottomSheet>;
   }

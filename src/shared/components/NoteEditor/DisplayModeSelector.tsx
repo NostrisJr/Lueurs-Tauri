@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { type DisplayMode, displayModeAtom } from "../../lib/Atoms";
+import { type DisplayMode, displayModeAtom } from "../../lib/atoms";
 import { DISPLAY_MODES } from "../../lib/displayModes";
 
 interface Props {

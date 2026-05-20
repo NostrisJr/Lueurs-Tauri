@@ -10,7 +10,10 @@ import {
 } from "@dnd-kit/core";
 import { useCallback, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
-import { type KanbanCards, NO_VALUE_COLUMN_ID } from "../../../../shared/lib/Atoms";
+import {
+  type KanbanCards,
+  NO_VALUE_COLUMN_ID,
+} from "../../../../shared/lib/atoms";
 import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
 import { MobileKanbanCard } from "./MobileKanbanCard";
 import { MobileKanbanColumn } from "./MobileKanbanColumn";
@@ -18,7 +21,6 @@ import { MobileKanbanColumn } from "./MobileKanbanColumn";
 interface Props {
   columns: KanbanColumnType[];
   cards: KanbanCards;
-  kanbanKey: string;
   onMoveCard: (
     noteId: string,
     fromColId: string,
@@ -31,7 +33,6 @@ interface Props {
 export function MobileKanbanView({
   columns,
   cards,
-  kanbanKey,
   onMoveCard,
   onRenameColumn,
   onAddColumn,
@@ -113,7 +114,6 @@ export function MobileKanbanView({
             key={col.id}
             column={col}
             notes={cards[col.id] ?? []}
-            kanbanKey={kanbanKey}
             onRename={onRenameColumn}
           />
         ))}
@@ -123,7 +123,6 @@ export function MobileKanbanView({
             key={NO_VALUE_COLUMN_ID}
             column={{ id: NO_VALUE_COLUMN_ID, label: "Sans valeur" }}
             notes={cards[NO_VALUE_COLUMN_ID]}
-            kanbanKey={kanbanKey}
             onRename={() => {}}
             virtual
           />
@@ -167,9 +166,7 @@ export function MobileKanbanView({
       </div>
 
       <DragOverlay>
-        {activeNote && (
-          <MobileKanbanCard note={activeNote} kanbanKey={kanbanKey} />
-        )}
+        {activeNote && <MobileKanbanCard note={activeNote} />}
       </DragOverlay>
     </DndContext>
   );

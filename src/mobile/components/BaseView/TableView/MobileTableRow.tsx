@@ -1,8 +1,8 @@
 import { useAtomValue } from "jotai";
 import { useRef, useState } from "react";
-import { type NoteFile, flattenTree } from "../../../../shared/hooks/useFileTree";
+import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { useTable } from "../../../../shared/hooks/useTable";
-import { treeAtom } from "../../../../shared/lib/Atoms";
+import { notesByIdAtom } from "../../../../shared/lib/atoms";
 import { MobileTableCell } from "./MobileTableCell";
 
 const TITLE_WIDTH = 160;
@@ -25,8 +25,8 @@ export function MobileTableRow({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(note.name);
   const titleRef = useRef<HTMLInputElement>(null);
-  const allNotes = flattenTree(useAtomValue(treeAtom));
-  const noteResolver = (path: string) => allNotes.find((n) => n.id === path);
+  const notesById = useAtomValue(notesByIdAtom);
+  const noteResolver = (path: string) => notesById.get(path);
 
   function startTitleEdit() {
     setTitleDraft(note.name);

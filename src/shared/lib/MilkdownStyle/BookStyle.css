@@ -65,10 +65,3 @@
     content: none;
 }
 
-/* ── Didascalies en mode livre ─────────────────────────────────────────── */
-
-
-/* Pas d'indentation des paragraphes dans le bloc didascalie */
-.mode-livre .milkdown .ProseMirror div[data-didascalie-block] p {
-    text-indent: 0;
-}

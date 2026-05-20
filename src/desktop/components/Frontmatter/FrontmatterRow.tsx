@@ -1,14 +1,13 @@
+import { platform } from "@tauri-apps/plugin-os";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useMemo, useRef } from "react";
 import {
   IconArrowRight,
   IconPlusCircle,
   IconXCircle,
 } from "../../../shared/components/PlatformIcon";
-import { platform } from "@tauri-apps/plugin-os";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useRef } from "react";
-import { flattenTree } from "../../../shared/hooks/useFileTree";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
-import { activeNoteAtom, treeAtom } from "../../../shared/lib/Atoms";
+import { activeNoteAtom, notesByIdAtom } from "../../../shared/lib/atoms";
 import { toArray } from "../../../shared/lib/fileTreeHelpers";
 import { computeFormula, isFormula } from "../../../shared/lib/formulas";
 import {
@@ -72,19 +71,20 @@ export function FrontmatterRow({
   const isEditing = editingKey === row.key;
   const isSelectorOpen = selectorOpen === row.key;
 
-  const allNotes = flattenTree(useAtomValue(treeAtom));
+  const notesById = useAtomValue(notesByIdAtom);
+  const allNotes = useMemo(() => [...notesById.values()], [notesById]);
   const activeNote = useAtomValue(activeNoteAtom);
 
   // Notes enfant de la base active — pour évaluer agg() dans les formules
   const formulaChildren: NoteFile[] | undefined =
     activeNote?.type === NoteType.BASE
       ? toArray(activeNote.frontmatter[SystemField.CHILDREN])
-          .map((p) => allNotes.find((n) => n.id === p))
+          .map((p) => notesById.get(p))
           .filter((n): n is NoteFile => !!n)
       : undefined;
 
   function noteName(path: string) {
-    const note = allNotes.find((n) => n.id === path);
+    const note = notesById.get(path);
     return note
       ? note.name
       : (path.split("/").pop()?.replace(/\.md$/, "") ?? path);
@@ -156,7 +156,7 @@ export function FrontmatterRow({
   // Sur les enfants, isKeyLocked bloque le renommage.
   const canRename = !row.isSystem && (isTemplate || !isKeyLocked);
 
-  const noteResolver = (path: string) => allNotes.find((n) => n.id === path);
+  const noteResolver = (path: string) => notesById.get(path);
 
   const formulaVars = Object.fromEntries(
     rows.map((r) => {

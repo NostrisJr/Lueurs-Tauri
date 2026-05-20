@@ -10,7 +10,7 @@ import {
   documentMapShowTextAtom,
   folderPathAtom,
   settingsOpenAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import {
   ALL_MAP_BLOCK_TYPES,

@@ -5,7 +5,7 @@ import {
   mobileNavigateAtom,
   noteBackStackAtom,
   openTabIdsAtom,
-} from "../../shared/lib/Atoms";
+} from "../../shared/lib/atoms";
 
 export function useMobileSelectNote() {
   const navigate = useSetAtom(mobileNavigateAtom);

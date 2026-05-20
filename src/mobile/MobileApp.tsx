@@ -11,19 +11,19 @@ import {
   mobileNavStackAtom,
   mobilePrevViewAtom,
   mobileViewAtom,
-} from "../shared/lib/Atoms";
+} from "../shared/lib/atoms";
 import { isAndroid, isIOS } from "../shared/lib/platform";
+import { MobileDictaphone } from "./components/Dictaphone/MobileDictaphone";
+import { MobileEditor } from "./components/Editor/MobileEditor";
+import { MobileFileTree } from "./components/FileTree";
+import { SearchView } from "./components/Search/SearchView";
+import { MobileSettingsView } from "./components/Settings/MobileSettingsView";
+import { MobileTabsView } from "./components/TabsView/MobileTabsView";
 import {
   DURATION,
   EASING,
   useMobileSwipeGesture,
 } from "./hooks/useMobileSwipeGesture";
-import { MobileDictaphone } from "./components/Dictaphone/MobileDictaphone";
-import { MobileEditor } from "./components/Editor/MobileEditor";
-import { MobileFileTree } from "./components/FileTree";
-import { MobileSettingsView } from "./components/Settings/MobileSettingsView";
-import { MobileTabsView } from "./components/TabsView/MobileTabsView";
-import { SearchView } from "./components/Search/SearchView";
 import "./MobileApp.css";
 
 function ViewRenderer({ view }: { view: MobileView }) {

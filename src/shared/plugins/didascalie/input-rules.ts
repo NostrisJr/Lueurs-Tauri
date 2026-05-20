@@ -5,10 +5,10 @@ import { createLogger } from "../../lib/logger";
 
 const log = createLogger("didascalie-input-rules");
 
-// Règle inline : `|texte|` (à la fermeture du second |) → nœud didascalie_inline.
-// Le pattern exclut les pipes intermédiaires et les retours-ligne.
+// Règle inline : `||texte||` (à la fermeture du second ||) → nœud didascalie_inline.
+// Le pattern exclut les pipes intermédiaires.
 const inlineDidascalieRule = new InputRule(
-  /\|([^|\n]+)\|$/,
+  /\|\|([^|]+)\|\|$/,
   (state, match, start, end) => {
     const schema = state.schema;
     const didascalieType = schema.nodes.didascalie_inline;
@@ -29,7 +29,10 @@ const inlineDidascalieRule = new InputRule(
     // Place le curseur APRÈS le nœud (sortie du bloc inline pour continuer à taper)
     const after = start + node.nodeSize;
     tr.setSelection(TextSelection.create(tr.doc, after));
-    log.info("didascalie inline créée via input rule", { text });
+    log.info("didascalie inline créée via input rule", {
+      text,
+      pattern: "||texte||",
+    });
     return tr;
   }
 );
@@ -65,16 +68,6 @@ function wrapEmptyParagraph(
   return tr;
 }
 
-// Règle bloc didascalie : `||` seul dans un paragraphe vide → wrap dans didascalie_block.
-const blockDidascalieRule = new InputRule(
-  /^\|\|$/,
-  (state, _match, start, end) => {
-    const tr = wrapEmptyParagraph(state, start, end, "didascalie_block");
-    if (tr) log.info("bloc didascalie créé via input rule");
-    return tr;
-  }
-);
-
 // Règle bloc poésie : `§§` seul dans un paragraphe vide → wrap dans poetry_block.
 const blockPoetryRule = new InputRule(/^§§$/, (state, _match, start, end) => {
   const tr = wrapEmptyParagraph(state, start, end, "poetry_block");
@@ -84,6 +77,6 @@ const blockPoetryRule = new InputRule(/^§§$/, (state, _match, start, end) => {
 
 export const didascalieInputRulesPlugin = $prose(() =>
   inputRules({
-    rules: [inlineDidascalieRule, blockDidascalieRule, blockPoetryRule],
+    rules: [inlineDidascalieRule, blockPoetryRule],
   })
 );

@@ -6,9 +6,10 @@ interface KeyboardState {
 }
 
 /**
- * Hauteur du clavier iOS via window.visualViewport.
+ * Hauteur du clavier mobile via window.visualViewport.
  * Quand le clavier s'ouvre, visualViewport.height diminue tandis que
- * window.innerHeight reste stable (body { position:fixed }).
+ * window.innerHeight reste stable (body { position:fixed } sur iOS, et Android
+ * moderne par défaut ne redimensionne pas le webview).
  */
 export function useKeyboardHeight(): KeyboardState {
   const [state, setState] = useState<KeyboardState>({

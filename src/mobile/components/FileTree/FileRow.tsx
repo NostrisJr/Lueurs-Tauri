@@ -1,13 +1,15 @@
+import clsx from "clsx";
 import { useMemo } from "react";
-import { Squircle } from "react-ios-corners";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 import {
   IconChevronRight,
   IconFolder,
 } from "../../../shared/components/PlatformIcon";
 import type { FolderNode, NoteFile } from "../../../shared/hooks/useFileTree";
+import { isIOS } from "../../../shared/lib/platform";
 import { useLongPress } from "../../hooks/useLongPress";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
+import { Squircle } from "../Squircle";
 import { getPreviewLines } from "./helpers";
 
 interface Props {
@@ -25,7 +27,10 @@ function NoteContent({ note }: { note: NoteFile }) {
       <div className="flex items-center gap-2.5 min-w-0">
         <NodeIconProvider
           node={note}
-          className="size-4 text-gray-400 shrink-0"
+          className={clsx(
+            "text-gray-400 shrink-0",
+            isIOS ? "size-4" : "size-5"
+          )}
         />
         <p className="text-base font-semibold text-gray-900 truncate">
           {note.name}
@@ -55,11 +60,21 @@ function NoteContent({ note }: { note: NoteFile }) {
 function FolderContent({ folder }: { folder: FolderNode }) {
   return (
     <>
-      <IconFolder className="size-4 text-yellow-500 shrink-0" />
+      <IconFolder
+        className={clsx(
+          "text-yellow-500 shrink-0",
+          isIOS ? "size-4" : "size-5"
+        )}
+      />
       <span className="flex-1 text-base font-semibold text-gray-900 truncate">
         {folder.name}
       </span>
-      <IconChevronRight className="size-3.5 text-gray-300 shrink-0" />
+      <IconChevronRight
+        className={clsx(
+          "text-gray-300 shrink-0",
+          isIOS ? "size-3.5" : "size-5.5"
+        )}
+      />
     </>
   );
 }
@@ -85,7 +100,7 @@ export function FileRow({ node, onDrillIn, onLongPress, onClick }: Props) {
 
   return (
     <Squircle
-      radius={40}
+      radius={20}
       className="w-full bg-white active:scale-[0.98] transition-transform"
       {...longPress}
     >

@@ -31,13 +31,6 @@ function classifyNode(node: any, offset: number): DocumentBlock {
   if (typeName === "poetry_block") {
     return { typeName: "poetry_block", pos: offset, nodeSize: node.nodeSize };
   }
-  if (typeName === "didascalie_block") {
-    return {
-      typeName: "didascalie_block",
-      pos: offset,
-      nodeSize: node.nodeSize,
-    };
-  }
   // Paragraphe contenant une image
   if (typeName === "paragraph") {
     let hasImage = false;

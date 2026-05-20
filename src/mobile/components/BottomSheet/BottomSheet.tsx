@@ -2,17 +2,21 @@
  * BottomSheet — modal slide-up clavier-aware.
  *
  * Positionnement :
- *   - Sans clavier : height 40vh, translateY 0  → occupe le bas de l'écran
- *   - Avec clavier  : height 75vh, translateY -keyboardHeight → bord bas
- *     coïncide avec le haut du clavier, contenu visible au-dessus
+ *   - Sans clavier : bottom=0, height=45vh → le bas du sheet est au ras de l'écran
+ *   - Avec clavier  : bottom=keyboardHeight, height ≤ zone visible − marge
+ *     → le sheet se pose juste au-dessus du clavier
+ *
+ * Les coins bas sont droits : le clavier (ou le bas de l'écran) forme visuellement
+ * la base du sheet, les coins bas ne sont jamais visibles.
+ * Coins haut en squircle (superellipse iOS via notre composant Squircle).
  *
  * Monté dans un Portal (document.body) pour échapper aux overflow:hidden parents.
  * Swipe vers le bas pour fermer.
  */
 import { type ReactNode, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Squircle } from "react-ios-corners";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
+import { Squircle } from "../Squircle";
 
 interface Props {
   onClose: () => void;
@@ -25,18 +29,26 @@ export function BottomSheet({ onClose, children, title }: Props) {
   const startYRef = useRef(0);
   const [swipe, setSwipe] = useState(0);
 
-  const sheetHeight = isKeyboardOpen ? "80vh" : "45vh";
+  // Hauteur disponible au-dessus du clavier (ou de l'écran entier)
+  const visibleH = window.innerHeight - keyboardHeight;
+  const sheetH = isKeyboardOpen
+    ? Math.min(Math.round(visibleH * 0.85), visibleH - 40)
+    : Math.round(window.innerHeight * 0.45);
 
   const sheet = (
     // biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile
     <div className="fixed inset-0 z-50 bg-gray-600/30" onClick={onClose}>
       <Squircle
-        radius={50}
-        className="fixed left-0 right-0 -bottom-10 bg-white py-10 px-4 flex flex-col overflow-hidden"
+        topRadius={28}
+        className="fixed left-0 right-0 bg-white flex flex-col"
         style={{
-          height: sheetHeight,
-          transform: `translateY(${-keyboardHeight + swipe}px)`,
-          transition: swipe === 0 ? "height 0.25s ease-out" : undefined,
+          bottom: keyboardHeight,
+          height: sheetH,
+          transform: `translateY(${swipe}px)`,
+          transition:
+            swipe === 0
+              ? "bottom 0.3s ease-out, height 0.3s ease-out, transform 0.15s ease-out"
+              : undefined,
           filter: "drop-shadow(0px -4px 20px rgba(0,0,0,0.12))",
         }}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -68,7 +80,9 @@ export function BottomSheet({ onClose, children, title }: Props) {
           data-scrollable
           style={{
             WebkitOverflowScrolling: "touch",
-            paddingBottom: `calc(${keyboardHeight}px + env(safe-area-inset-bottom) + 16px)`,
+            paddingBottom: isKeyboardOpen
+              ? "16px"
+              : "calc(env(safe-area-inset-bottom) + 16px)",
           }}
         >
           {children}

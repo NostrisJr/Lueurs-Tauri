@@ -1,6 +1,8 @@
-import { IconChevronLeft, IconXmark } from "../../../shared/components/PlatformIcon";
 import { useAtomValue, useSetAtom } from "jotai";
-import { flattenTree } from "../../../shared/hooks/useFileTree";
+import {
+  IconChevronLeft,
+  IconXmark,
+} from "../../../shared/components/PlatformIcon";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
   activeNoteIdAtom,
@@ -8,18 +10,15 @@ import {
   mobileNavigateAtom,
   mobileResetNavAtom,
   noteBackStackAtom,
+  notesByIdAtom,
   openTabIdsAtom,
-  treeAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
 import { hapticImpact } from "../../lib/haptics";
 import { FileRow } from "../FileTree/FileRow";
 
-const NOOP_DRILL = () => {};
-
 export function MobileTabsView() {
   const openTabIds = useAtomValue(openTabIdsAtom);
-  const tree = useAtomValue(treeAtom);
-  const allNotes = flattenTree(tree);
+  const notesById = useAtomValue(notesByIdAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
   const resetNav = useSetAtom(mobileResetNavAtom);
   const navigate = useSetAtom(mobileNavigateAtom);
@@ -36,9 +35,9 @@ export function MobileTabsView() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 pt-12">
+    <div className="flex flex-col h-screen bg-gray-100">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-3 bg-white pt-13">
         <button
           type="button"
           onClick={() => {
@@ -76,14 +75,14 @@ export function MobileTabsView() {
           </p>
         ) : (
           openTabIds.map((id) => {
-            const note = allNotes.find((n) => n.id === id);
+            const note = notesById.get(id);
             if (!note) return null;
 
             return (
               <div key={id} className="relative w-11/12 mx-auto">
                 <FileRow
                   node={note}
-                  onDrillIn={NOOP_DRILL}
+                  onDrillIn={() => {}}
                   onLongPress={() => {}}
                   onClick={() => handleSelectTab(id)}
                 />

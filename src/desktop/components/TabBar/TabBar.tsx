@@ -13,13 +13,13 @@ import {
 } from "@dnd-kit/sortable";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
-import { type NoteFile, flattenTree } from "../../../shared/hooks/useFileTree";
+import type { NoteFile } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
   activeNoteIdAtom,
+  notesByIdAtom,
   openTabIdsAtom,
-  treeAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
 import { createLogger } from "../../../shared/lib/logger";
 import { TabItem, TabOverlay } from "./TabItem.tsx";
 
@@ -29,7 +29,7 @@ export function TabBar() {
   // Tous les hooks en premier — avant tout return conditionnel
   const openTabIds = useAtomValue(openTabIdsAtom);
   const activeNoteId = useAtomValue(activeNoteIdAtom);
-  const tree = useAtomValue(treeAtom);
+  const notesById = useAtomValue(notesByIdAtom);
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const { handleCloseTab, pushHistory } = useNote();
@@ -62,17 +62,14 @@ export function TabBar() {
 
   if (openTabIds.length === 0) return null;
 
-  const allNotes = flattenTree(tree);
   const tabs = openTabIds
-    .map((tabId) => ({ tabId, note: allNotes.find((n) => n.id === tabId) }))
+    .map((tabId) => ({ tabId, note: notesById.get(tabId) }))
     .filter(
       (item): item is { tabId: string; note: NoteFile } =>
         item.note !== undefined
     );
 
-  const draggingNote = draggingId
-    ? allNotes.find((n) => n.id === draggingId)
-    : null;
+  const draggingNote = draggingId ? notesById.get(draggingId) : null;
 
   if (openTabIds.length <= 1) {
     return <div className=" w-full h-10" />;

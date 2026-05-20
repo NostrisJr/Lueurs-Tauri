@@ -1,5 +1,8 @@
-import type { DisplayMode } from "./Atoms";
-import { IconBooksVertical, IconTextRectanglePage } from "../components/PlatformIcon";
+import {
+  IconBooksVertical,
+  IconTextRectanglePage,
+} from "../components/PlatformIcon";
+import type { DisplayMode } from "./atoms";
 
 export const DISPLAY_MODES: {
   value: DisplayMode;
@@ -7,5 +10,5 @@ export const DISPLAY_MODES: {
   label: string;
 }[] = [
   { value: "normal", Icon: IconTextRectanglePage, label: "Normal" },
-  { value: "livre",  Icon: IconBooksVertical,     label: "Livre" },
+  { value: "livre", Icon: IconBooksVertical, label: "Livre" },
 ];

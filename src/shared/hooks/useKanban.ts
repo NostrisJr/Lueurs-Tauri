@@ -6,11 +6,11 @@ import {
   NO_VALUE_COLUMN_ID,
   generateColumnId,
   kanbanCardsAtom,
+  notesByIdAtom,
   parseColumns,
   serializeColumns,
-  treeAtom,
-} from "../lib/Atoms";
-import { flattenTree, getFreeProps } from "../lib/fileTreeHelpers";
+} from "../lib/atoms";
+import { getFreeProps } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { type KanbanColumn, SystemField } from "../lib/noteTypes";
 import type { Frontmatter, NoteFile } from "./useFileTree";
@@ -27,7 +27,7 @@ interface UseKanbanProps {
 
 export function getAvailableKanbanKeys(
   base: NoteFile,
-  allNotes: NoteFile[]
+  notesById: Map<string, NoteFile>
 ): string[] {
   const templatePaths = base.frontmatter[SystemField.TEMPLATE];
   if (
@@ -40,7 +40,7 @@ export function getAvailableKanbanKeys(
   // Dédupliquer — plusieurs templates peuvent avoir la même propriété libre
   const seen = new Set<string>();
   return templatePaths.flatMap((path) => {
-    const template = allNotes.find((n) => n.id === path);
+    const template = notesById.get(path);
     if (!template) return [];
     return getFreeProps(template.frontmatter).filter(
       (k) => !seen.has(k) && seen.add(k)
@@ -51,7 +51,7 @@ export function getAvailableKanbanKeys(
 /** Valeurs possibles d'une propriété libre à travers les templates de la base. */
 export function getTemplateValues(
   base: NoteFile,
-  allNotes: NoteFile[],
+  notesById: Map<string, NoteFile>,
   key: string
 ): string[] {
   const templatePaths = base.frontmatter[SystemField.TEMPLATE];
@@ -60,7 +60,7 @@ export function getTemplateValues(
   const seen = new Set<string>();
   const values: string[] = [];
   for (const path of templatePaths as string[]) {
-    const template = allNotes.find((n) => n.id === path);
+    const template = notesById.get(path);
     if (!template) continue;
     // Chercher les valeurs possibles dans les props du template (ex: enum stocké comme string "A faire,Fait")
     // Pour l'instant : valeur courante du template si non vide et non déjà vue
@@ -76,7 +76,7 @@ export function getTemplateValues(
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useKanban({ base, onBaseChange }: UseKanbanProps) {
-  const allNotes = flattenTree(useAtomValue(treeAtom));
+  const notesById = useAtomValue(notesByIdAtom);
   const persistPatch = usePersistNote();
 
   const kanbanKey = base.frontmatter[SystemField.KANBAN_KEY] as
@@ -90,9 +90,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
     const paths = Array.isArray(base.frontmatter[SystemField.CHILDREN])
       ? (base.frontmatter[SystemField.CHILDREN] as string[])
       : [];
-    return paths
-      .map((p) => allNotes.find((n) => n.id === p))
-      .filter((n): n is NoteFile => !!n);
+    return paths.map((p) => notesById.get(p)).filter((n): n is NoteFile => !!n);
   })();
 
   // Cards dérivées de l'atom — source de vérité
@@ -126,7 +124,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
       const distinctValues =
         fromNotes.length > 0
           ? fromNotes
-          : getTemplateValues(base, allNotes, key);
+          : getTemplateValues(base, notesById, key);
 
       const columns: KanbanColumn[] = distinctValues.map((label) => ({
         id: generateColumnId(),
@@ -319,7 +317,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
     kanbanKey,
     columns: persistedColumns,
     cards,
-    availableKeys: getAvailableKanbanKeys(base, allNotes),
+    availableKeys: getAvailableKanbanKeys(base, notesById),
     initKanban,
     removeKanban,
     moveCard,

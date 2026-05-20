@@ -85,6 +85,13 @@ export const EditableText = forwardRef<EditableTextHandle, EditableTextProps>(
       }
     }
 
+    function startEditing() {
+      setEditValue(value);
+      setIsEditing(true);
+    }
+
+    useImperativeHandle(ref, () => ({ startEdit: startEditing }), []);
+
     if (isEditing) {
       return (
         <input
@@ -98,13 +105,6 @@ export const EditableText = forwardRef<EditableTextHandle, EditableTextProps>(
         />
       );
     }
-
-    function startEditing() {
-      setEditValue(value);
-      setIsEditing(true);
-    }
-
-    useImperativeHandle(ref, () => ({ startEdit: startEditing }), []);
 
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>

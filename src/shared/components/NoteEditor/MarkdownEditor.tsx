@@ -20,15 +20,15 @@ import {
 } from "@milkdown/kit/preset/commonmark";
 import { gfm } from "@milkdown/kit/preset/gfm";
 import { toggleMark } from "@milkdown/kit/prose/commands";
-import { liftListItem, sinkListItem } from "prosemirror-schema-list";
-import { redo, undo } from "prosemirror-history";
 import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import { $prose } from "@milkdown/kit/utils";
 import { Milkdown, useEditor } from "@milkdown/react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { useAtomValue, useSetAtom } from "jotai";
+import { redo, undo } from "prosemirror-history";
+import { liftListItem, sinkListItem } from "prosemirror-schema-list";
 import {
   forwardRef,
   useCallback,
@@ -41,9 +41,10 @@ import {
   displayModeAtom,
   documentMapAtom,
   scrollToPosAtom,
-} from "../../lib/Atoms";
+} from "../../lib/atoms";
 import type { DocumentMapState } from "../../lib/documentMapConfig";
 import { createLogger } from "../../lib/logger";
+import { isAndroid } from "../../lib/platform";
 import { createAudioBlockPlugin } from "../../plugins/audio-block/audioBlockPlugin";
 import {
   codeBasedShortcutsPlugin,
@@ -51,7 +52,6 @@ import {
   toggleBlockquoteCommand,
   toggleBulletListCommand,
   toggleCodeBlockCommand,
-  toggleDidascalieBlockCommand,
   toggleDidascalieInlineCommand,
   toggleHeadingCommand,
   toggleLinkWithPromptCommand,
@@ -97,7 +97,6 @@ export interface EditorHandle {
   dedent: () => void;
   codeBlock: () => void;
   didascalieInline: () => void;
-  didascalieBlock: () => void;
   poetry: () => void;
   insertAudioBlock: (path: string, title: string) => void;
   scrollToPos: (pos: number) => void;
@@ -107,48 +106,90 @@ const log = createLogger("MarkdownEditor");
 
 // ── NodeView image — convertit les chemins absolus en asset:// à l'affichage ──
 // Le chemin absolu est conservé dans le markdown ; seul le rendu DOM change.
+// Sur Android, le vaultPath est une URI SAF : on lit les bytes via une commande
+// Rust et on génère un blob URL (révoqué quand le NodeView est détruit).
 const isAbsolutePath = (s: string) => s.startsWith("/") || /^[A-Z]:\\/i.test(s);
 
-function makeImageSrc(src: string): string {
-  return isAbsolutePath(src) ? convertFileSrc(src) : src;
+// Résout `rel` (relatif au vault) vers un URI SAF, puis lit les octets via Rust.
+async function readVaultBytesAndroid(
+  vaultPath: string,
+  rel: string
+): Promise<Uint8Array> {
+  const uri = await invoke<string>("vault_resolve_relative", {
+    vaultUri: vaultPath,
+    relPath: rel,
+  });
+  const buf = await invoke<ArrayBuffer>("vault_read_bytes", { uri });
+  return new Uint8Array(buf);
 }
 
-// NodeView image via props.nodeViews d'un plugin ProseMirror — bypass complet
-// du système nodeViewCtx de Milkdown (qui souffre d'une race condition).
-// ProseMirror fusionne les nodeViews des plugins avec ceux de l'EditorView.
-// Le nœud image est créé de zéro (pas de toDOM) → src asset:// dès le départ.
 const imageSrcFixKey = new PluginKey("imageSrcFix");
 
-// biome-ignore lint/suspicious/noExplicitAny: NodeViewConstructor ProseMirror
-function buildImageNodeView(node: any) {
-  const img = document.createElement("img");
-  img.src = makeImageSrc(node.attrs.src ?? "");
-  img.alt = node.attrs.alt ?? "";
-  if (node.attrs.title) img.title = node.attrs.title;
-  img.style.maxWidth = "100%";
-  img.style.borderRadius = "6px";
-  return {
-    dom: img,
-    // biome-ignore lint/suspicious/noExplicitAny: NodeViewConstructor ProseMirror
-    update(updated: any) {
-      if (updated.type !== node.type) return false;
-      img.src = makeImageSrc(updated.attrs.src ?? "");
-      img.alt = updated.attrs.alt ?? "";
-      img.title = updated.attrs.title ?? "";
-      return true;
-    },
+function makeImageNodeViewBuilder(vaultPath: string) {
+  // biome-ignore lint/suspicious/noExplicitAny: NodeViewConstructor ProseMirror
+  return function buildImageNodeView(node: any) {
+    const img = document.createElement("img");
+    img.style.maxWidth = "100%";
+    img.style.borderRadius = "6px";
+    let currentBlobUrl: string | null = null;
+
+    const applySrc = (src: string) => {
+      if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
+        currentBlobUrl = null;
+      }
+      if (!src) {
+        img.src = "";
+        return;
+      }
+      if (isAndroid && !isAbsolutePath(src)) {
+        // Génération async d'un blob URL — pendant ce temps img.src reste vide.
+        readVaultBytesAndroid(vaultPath, src)
+          .then((bytes) => {
+            const url = URL.createObjectURL(new Blob([bytes]));
+            currentBlobUrl = url;
+            img.src = url;
+          })
+          .catch((err) =>
+            log.error("image Android résolution échec", { src, err })
+          );
+        return;
+      }
+      img.src = isAbsolutePath(src) ? convertFileSrc(src) : src;
+    };
+
+    applySrc(node.attrs.src ?? "");
+    img.alt = node.attrs.alt ?? "";
+    if (node.attrs.title) img.title = node.attrs.title;
+
+    return {
+      dom: img,
+      // biome-ignore lint/suspicious/noExplicitAny: NodeViewConstructor ProseMirror
+      update(updated: any) {
+        if (updated.type !== node.type) return false;
+        applySrc(updated.attrs.src ?? "");
+        img.alt = updated.attrs.alt ?? "";
+        img.title = updated.attrs.title ?? "";
+        return true;
+      },
+      destroy() {
+        if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      },
+    };
   };
 }
 
-const imageNodeViewPlugin = $prose(
-  () =>
-    new Plugin({
-      key: imageSrcFixKey,
-      props: {
-        nodeViews: { image: buildImageNodeView },
-      },
-    })
-);
+function makeImageNodeViewPlugin(vaultPath: string) {
+  return $prose(
+    () =>
+      new Plugin({
+        key: imageSrcFixKey,
+        props: {
+          nodeViews: { image: makeImageNodeViewBuilder(vaultPath) },
+        },
+      })
+  );
+}
 
 // ── Listener drop singleton ────────────────────────────────────────────────
 // Enregistré une seule fois au niveau module pour éviter les duplicatas React.
@@ -393,9 +434,6 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
       didascalieInline() {
         callCmd(editorRef, toggleDidascalieInlineCommand.key);
       },
-      didascalieBlock() {
-        callCmd(editorRef, toggleDidascalieBlockCommand.key);
-      },
       poetry() {
         callCmd(editorRef, togglePoetryCommand.key);
       },
@@ -463,6 +501,10 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
             readAudioData: async (src: string) => {
               const isAbsolute =
                 src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
+              if (isAndroid && !isAbsolute) {
+                log.info("lecture audio (Android SAF)", { src });
+                return readVaultBytesAndroid(vaultPath, src);
+              }
               const absolutePath = isAbsolute ? src : `${vaultPath}/${src}`;
               log.info("lecture fichier audio", { src, absolutePath });
               // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
@@ -472,17 +514,29 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
               // Conservé comme fallback (contexte sans Tauri FS, ex. dev web pur)
               const isAbsolute =
                 src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
+              if (isAndroid && !isAbsolute) {
+                return invoke<string>("vault_resolve_relative", {
+                  vaultUri: vaultPath,
+                  relPath: src,
+                });
+              }
               const absolutePath = isAbsolute ? src : `${vaultPath}/${src}`;
               return convertFileSrc(absolutePath);
             },
-            resolveAbsolutePath: (src: string) => {
+            resolveAbsolutePath: async (src: string) => {
               const isAbsolute =
                 src.startsWith("/") || /^[A-Za-z]:[\\/]/.test(src);
+              if (isAndroid && !isAbsolute) {
+                return invoke<string>("vault_resolve_relative", {
+                  vaultUri: vaultPath,
+                  relPath: src,
+                });
+              }
               return isAbsolute ? src : `${vaultPath}/${src}`;
             },
           })
         )
-        .use(imageNodeViewPlugin)
+        .use(makeImageNodeViewPlugin(vaultPath))
         .use(taskListPlugin)
         .use(headingFoldPlugin)
         .use(headingNodeViewPlugin)
@@ -499,7 +553,6 @@ export const MarkdownEditor = forwardRef<EditorHandle, Props>(
         .use(toggleLinkWithPromptCommand)
         .use(togglePoetryCommand)
         .use(toggleDidascalieInlineCommand)
-        .use(toggleDidascalieBlockCommand)
         .use(customKeymapPlugin)
         .use(codeBasedShortcutsPlugin);
 

@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { useSetAtom, useStore } from "jotai";
 import { useEffect } from "react";
-import { folderPathAtom, treeAtom } from "../lib/Atoms";
+import { folderPathAtom, treeAtom } from "../lib/atoms";
 import { updateNodeInTree } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { noteFromRaw } from "../lib/vaultIO";

@@ -420,7 +420,7 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Didascalies — inline `|texte|` et bloc `||...||`
+   Didascalies — inline `||texte||`, rendu visuel `| texte |`
    ───────────────────────────────────────────────────────────────────────── */
 
 .milkdown .ProseMirror span[data-didascalie-inline] {
@@ -433,21 +433,6 @@
 .milkdown .ProseMirror .didascalie-pipe {
   color: var(--color-gray-400);
   user-select: none;
-}
-
-/* Bloc didascalie : bordures gauche et droite, fond très subtil */
-.milkdown .ProseMirror div[data-didascalie-block] {
-  border-left: 1.5px solid var(--color-gray-400);
-  border-right: 1.5px solid var(--color-gray-400);
-  margin: 0.8em 0;
-  padding: 0em .6em;
-  font-style: italic;
-  width: fit-content;
-}
-
-.milkdown .ProseMirror div[data-didascalie-block] p {
-  padding: 0.2em 0;
-  color: var(--color-gray-400);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

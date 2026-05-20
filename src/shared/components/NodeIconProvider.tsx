@@ -32,6 +32,7 @@ function NodeIconProvider({
   if (node.type === NoteType.TEMPLATE) {
     return <IconAppendPage className={className} aria-hidden="true" />;
   }
+  return null;
 }
 
 export { NodeIconProvider };

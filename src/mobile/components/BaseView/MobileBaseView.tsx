@@ -4,7 +4,7 @@ import { KanbanKeySelector } from "../../../shared/components/KanbanKeySelector"
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
 import { useKanban } from "../../../shared/hooks/useKanban";
-import { folderPathAtom, openTabIdsAtom } from "../../../shared/lib/Atoms";
+import { folderPathAtom, openTabIdsAtom } from "../../../shared/lib/atoms";
 import { toArray } from "../../../shared/lib/fileTreeHelpers";
 import type { Frontmatter } from "../../../shared/lib/fileTreeHelpers";
 import {
@@ -130,7 +130,6 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
         <MobileKanbanView
           columns={columns}
           cards={cards}
-          kanbanKey={kanbanKey}
           onMoveCard={moveCard}
           onRenameColumn={renameColumn}
           onAddColumn={addColumn}

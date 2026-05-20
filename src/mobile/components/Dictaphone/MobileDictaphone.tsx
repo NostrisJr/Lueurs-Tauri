@@ -1,3 +1,9 @@
+import { invoke } from "@tauri-apps/api/core";
+import { readDir, remove } from "@tauri-apps/plugin-fs";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { WaveformDisplay } from "../../../shared/components/Dictaphone/WaveformDisplay";
 import {
   IconChevronDown,
   IconMicrophoneFill,
@@ -5,12 +11,6 @@ import {
   IconPlayFill,
   IconStopFill,
 } from "../../../shared/components/PlatformIcon";
-import { invoke } from "@tauri-apps/api/core";
-import { readDir, remove } from "@tauri-apps/plugin-fs";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { WaveformDisplay } from "../../../shared/components/Dictaphone/WaveformDisplay";
 import { useAudioRecorder } from "../../../shared/hooks/useAudioRecorder";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
@@ -22,13 +22,13 @@ import {
   noteBackStackAtom,
   openTabIdsAtom,
   pendingAudioInsertAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
 import { findNextAvailableNumber } from "../../../shared/lib/fileTreeHelpers";
 import { createLogger } from "../../../shared/lib/logger";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "../Floating/FloatingComponent";
-import { Squircle } from "react-ios-corners";
+import { Squircle } from "../Squircle";
 
 const log = createLogger("MobileDictaphone");
 
@@ -130,7 +130,13 @@ export function MobileDictaphone() {
         subDir: "audio",
         filename,
       });
-      await remove(result.filePath);
+      // Sur Android, Rust supprime déjà le cache via SAF ; sur desktop/iOS, le
+      // plugin FS y a accès. On tolère un échec silencieux pour ne pas casser la sauvegarde.
+      try {
+        await remove(result.filePath);
+      } catch (e) {
+        log.warn("nettoyage cache ignoré", e);
+      }
 
       // Chemin relatif au vault pour portabilité cross-platform
       const vaultPrefix = folderPath.endsWith("/")
@@ -315,14 +321,13 @@ export function MobileDictaphone() {
       {/* ── Bottom sheet ─────────────────────────────────────────────────────
           Toujours monté (display:none quand minimisé) pour le même motif. */}
       <Squircle
-        radius={50}
-        className="fixed left-0 right-0 -bottom-12 py-12 z-50 bg-white overflow-hidden"
+        topRadius={28}
+        className="fixed left-0 right-0 bottom-0 z-50 bg-white flex flex-col"
         style={{
           display: isMinimized ? "none" : "flex",
-          flexDirection: "column",
           transform: `translateY(${swipeDelta}px)`,
           transition: swipeDelta === 0 ? "transform 0.2s ease-out" : "none",
-          boxShadow: "0 -4px 24px rgba(0,0,0,0.08)",
+          filter: "drop-shadow(0px -4px 24px rgba(0,0,0,0.08))",
         }}
         onClick={(e) => e.stopPropagation()}
       >

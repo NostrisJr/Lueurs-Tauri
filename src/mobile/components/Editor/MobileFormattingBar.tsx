@@ -60,12 +60,26 @@ export function MobileFormattingBar({
 
   const groups: Btn[][] = [
     [
-      { Icon: IconBold,          title: "Gras",            action: (ed) => ed.bold() },
-      { Icon: IconItalic,        title: "Italique",        action: (ed) => ed.italic() },
-      { Icon: IconStrikethrough, title: "Barré",           action: (ed) => ed.strike() },
-      { Icon: IconCodeInline,    title: "Code inline",     action: (ed) => ed.inlineCode(), className: "font-mono" },
-      { label: "|Abc|",          title: "Didascalie inline", action: (ed) => ed.didascalieInline(), className: "italic opacity-75" },
-      { Icon: IconTextformat,    title: "Texte normal",   action: (ed) => ed.paragraph() },
+      { Icon: IconBold, title: "Gras", action: (ed) => ed.bold() },
+      { Icon: IconItalic, title: "Italique", action: (ed) => ed.italic() },
+      { Icon: IconStrikethrough, title: "Barré", action: (ed) => ed.strike() },
+      {
+        Icon: IconCodeInline,
+        title: "Code inline",
+        action: (ed) => ed.inlineCode(),
+        className: "font-mono",
+      },
+      {
+        label: "|Abc|",
+        title: "Didascalie inline",
+        action: (ed) => ed.didascalieInline(),
+        className: "italic opacity-75",
+      },
+      {
+        Icon: IconTextformat,
+        title: "Texte normal",
+        action: (ed) => ed.paragraph(),
+      },
     ],
     [
       { label: "H1", title: "Titre 1", action: (ed) => ed.heading(1) },
@@ -76,17 +90,45 @@ export function MobileFormattingBar({
       { label: "H6", title: "Titre 6", action: (ed) => ed.heading(6) },
     ],
     [
-      { Icon: IconListBullet,    title: "Liste à puces",    action: (ed) => ed.bulletList() },
-      { Icon: IconListNumber,    title: "Liste numérotée",  action: (ed) => ed.orderedList() },
-      { Icon: IconChecklist,     title: "Liste de tâches",  action: (ed) => ed.taskList() },
-      { Icon: IconIncreaseIndent, title: "Indenter",        action: (ed) => ed.indent() },
-      { Icon: IconDecreaseIndent, title: "Désindenter",     action: (ed) => ed.dedent() },
+      {
+        Icon: IconListBullet,
+        title: "Liste à puces",
+        action: (ed) => ed.bulletList(),
+      },
+      {
+        Icon: IconListNumber,
+        title: "Liste numérotée",
+        action: (ed) => ed.orderedList(),
+      },
+      {
+        Icon: IconChecklist,
+        title: "Liste de tâches",
+        action: (ed) => ed.taskList(),
+      },
+      {
+        Icon: IconIncreaseIndent,
+        title: "Indenter",
+        action: (ed) => ed.indent(),
+      },
+      {
+        Icon: IconDecreaseIndent,
+        title: "Désindenter",
+        action: (ed) => ed.dedent(),
+      },
     ],
     [
-      { Icon: IconCharacterSquare,   title: "Citation",       action: (ed) => ed.blockquote() },
-      { Icon: IconAppleTerminalFill, title: "Bloc de code",   action: (ed) => ed.codeBlock(), className: "font-mono text-xs" },
-      { Icon: IconChartBarYaxis,     title: "Poésie",         action: (ed) => ed.poetry() },
-      { label: "(D)",                title: "Bloc didascalie", action: (ed) => ed.didascalieBlock(), className: "italic opacity-75 text-xs" },
+      {
+        Icon: IconCharacterSquare,
+        title: "Citation",
+        action: (ed) => ed.blockquote(),
+      },
+      {
+        Icon: IconAppleTerminalFill,
+        title: "Bloc de code",
+        action: (ed) => ed.codeBlock(),
+        className: "font-mono text-xs",
+      },
+      { Icon: IconChartBarYaxis, title: "Poésie", action: (ed) => ed.poetry() },
     ],
   ];
 
@@ -99,7 +141,10 @@ export function MobileFormattingBar({
       className={`fixed left-3 right-3 z-50 flex items-center gap-2 transition-all duration-300 ease-in-out ${visible ? "translate-y-0 opacity-100" : "translate-y-16 opacity-0"}`}
       style={{ bottom: keyboardHeight + 8 }}
     >
-      <FloatingComponent className="flex-1 overflow-hidden px-0 py-0 bg-white/70">
+      <FloatingComponent
+        className="flex-1 overflow-hidden px-0 py-0"
+        bgColor="rgba(255, 255, 255, 0.7)"
+      >
         <div
           className="flex items-center overflow-x-auto h-13 px-2 gap-1"
           style={{ scrollbarWidth: "none" }}
@@ -145,7 +190,10 @@ export function MobileFormattingBar({
           )}
         </div>
       </FloatingComponent>
-      <FloatingComponent className="shrink-0 w-13 h-13 !rounded-full !p-0 gap-0! bg-white/70">
+      <FloatingComponent
+        className="shrink-0 w-13 h-13 rounded-full! p-0! gap-0!"
+        bgColor="rgba(255, 255, 255, 0.7)"
+      >
         <button
           type="button"
           title="Fermer le clavier"

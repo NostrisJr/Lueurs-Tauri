@@ -1,25 +1,23 @@
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useMemo } from "react";
 import { useFrontmatter } from "../../desktop/components/Frontmatter/hooks/useFrontmatter";
 import { useTemplateSync } from "../../desktop/hooks/useTemplateSync";
 import {
   activeNoteAtom,
   activeNoteIdAtom,
   folderPathAtom,
+  notesByIdAtom,
   openTabIdsAtom,
   savingAtom,
   searchAtom,
   tabHistoryAtom,
-  treeAtom,
-} from "../lib/Atoms";
+} from "../lib/atoms";
 import { createLogger } from "../lib/logger";
 import {
   type FolderNode,
   type Frontmatter,
   type NoteFile,
   type TreeNode,
-  flattenTree,
   useFileTree,
 } from "./useFileTree";
 import { usePathPropagation } from "./usePathPropagation";
@@ -33,7 +31,7 @@ export function useNote() {
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
   const setSaving = useSetAtom(savingAtom);
   const setSearch = useSetAtom(searchAtom);
-  const tree = useAtomValue(treeAtom);
+  const notesById = useAtomValue(notesByIdAtom);
   const folderPath = useAtomValue(folderPathAtom);
 
   const tabHistory = useAtomValue(tabHistoryAtom);
@@ -56,8 +54,6 @@ export function useNote() {
   function pushHistory(id: string) {
     setTabHistory((prev) => [...prev.filter((x) => x !== id), id]);
   }
-
-  const allNotes = useMemo(() => flattenTree(tree), [tree]);
 
   function handleChange(body: string, frontmatter: Frontmatter) {
     if (!activeNote) return;
@@ -183,7 +179,7 @@ export function useNote() {
         }
       );
       if (answer) {
-        const notesInFolder = allNotes.filter((n) =>
+        const notesInFolder = [...notesById.values()].filter((n) =>
           n.id.startsWith(`${node.id}/`)
         );
         const newTabIds = openTabIds.filter(
@@ -223,7 +219,7 @@ export function useNote() {
     newName: string,
     isFolder: boolean
   ) {
-    const note = !isFolder ? allNotes.find((n) => n.id === oldPath) : null;
+    const note = !isFolder ? (notesById.get(oldPath) ?? null) : null;
     const isFolderNote =
       note?.type === "__folder__" &&
       note.name === oldPath.split("/").slice(-2, -1)[0];

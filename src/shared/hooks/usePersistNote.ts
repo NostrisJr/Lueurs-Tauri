@@ -1,6 +1,6 @@
 import { useSetAtom, useStore } from "jotai";
 import { useCallback } from "react";
-import { folderPathAtom, treeAtom } from "../lib/Atoms";
+import { folderPathAtom, treeAtom } from "../lib/atoms";
 import { persistNotePatch } from "../lib/vaultIO";
 import type { Frontmatter } from "./useFileTree";
 

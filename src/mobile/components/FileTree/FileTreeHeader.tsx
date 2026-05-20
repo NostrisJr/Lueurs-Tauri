@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -13,9 +14,20 @@ import {
   folderStackAtom,
   mobileContextMenuAtom,
   mobileNavigateAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
+import { isIOS } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
 import { hapticImpact } from "../../lib/haptics";
+
+// Fonctionne pour les chemins POSIX et les URI SAF Android (content://...primary%3AMonDossier).
+function vaultDisplayName(uri: string): string {
+  const last = decodeURIComponent(uri.split("/").pop() ?? uri);
+  // URI SAF : "primary:path/to/folder" → extraire le dernier segment du chemin
+  const afterColon = last.includes(":")
+    ? last.split(":").slice(1).join(":")
+    : last;
+  return afterColon.split("/").pop() ?? afterColon;
+}
 
 export function FileTreeHeader() {
   const folderStack = useAtomValue(folderStackAtom);
@@ -31,7 +43,7 @@ export function FileTreeHeader() {
 
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
   const canGoBack = folderStack.length > 1;
-  const vaultName = folderPath?.split("/").filter(Boolean).pop();
+  const vaultName = folderPath ? vaultDisplayName(folderPath) : undefined;
   const folderName = currentFolder?.name ?? vaultName ?? "Notes";
 
   function handleDrillOut() {
@@ -72,7 +84,12 @@ export function FileTreeHeader() {
   }, [showMenu]);
 
   return (
-    <div className="px-5 pt-4 pb-2 flex items-end justify-between">
+    <div
+      className={clsx(
+        "px-5 pb-2 flex items-end justify-between",
+        isIOS ? "pt-4" : "pt-0"
+      )}
+    >
       {canGoBack ? (
         <button
           type="button"

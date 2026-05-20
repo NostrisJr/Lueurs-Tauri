@@ -1,3 +1,5 @@
+import { useAtom, useAtomValue } from "jotai";
+import { useMemo } from "react";
 import {
   IconArrowClockwise,
   IconDocumentBadgePlus,
@@ -6,8 +8,6 @@ import {
   IconMagnifyingglass,
   IconSidebarLeft,
 } from "../../../shared/components/PlatformIcon";
-import { useAtom, useAtomValue } from "jotai";
-import { useMemo } from "react";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
@@ -18,7 +18,7 @@ import {
   searchAtom,
   sidebarCollapsedAtom,
   treeAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
 import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
 import { ROW_ACTIVE, ROW_INACTIVE } from "../FileTree/FileNode";
 import { FileTree } from "../FileTree/FileTree";
@@ -65,7 +65,6 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
         <div className="flex items-center justify-between px-4 h-11">
           {/* Dossier actif */}
           <div className="flex items-center -ml-2">
-            {/* TODO: extraire un composant */}
             <button
               type="button"
               onClick={reload}
@@ -73,7 +72,10 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               title="Recharger"
               className="w-auto h-6 flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-colors cursor-pointer"
             >
-              <IconArrowClockwise className="size-4 select-none" aria-hidden="true" />
+              <IconArrowClockwise
+                className="size-4 select-none"
+                aria-hidden="true"
+              />
             </button>
             <button
               type="button"
@@ -101,7 +103,10 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               title="Nouvelle note"
               className="w-auto h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 transition-colors cursor-pointer"
             >
-              <IconDocumentBadgePlus className="size-4 select-none" aria-hidden="true" />
+              <IconDocumentBadgePlus
+                className="size-4 select-none"
+                aria-hidden="true"
+              />
             </button>
             <button
               type="button"
@@ -110,7 +115,10 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               title="Nouveau dossier"
               className="w-auto h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 transition-colors cursor-pointer"
             >
-              <IconFolderBadgePlus className="size-4 select-none" aria-hidden="true" />
+              <IconFolderBadgePlus
+                className="size-4 select-none"
+                aria-hidden="true"
+              />
             </button>
           </div>
         </div>
@@ -166,7 +174,6 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               </p>
             ) : (
               searchResults.map((note) => (
-                //TODO :
                 <div
                   key={note.id}
                   onClick={(e) => handleSelectNote(note, e.metaKey)}

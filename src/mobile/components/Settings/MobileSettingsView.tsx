@@ -1,12 +1,24 @@
 import { useAtom, useAtomValue } from "jotai";
 import { useSetAtom } from "jotai";
-import { Squircle } from "react-ios-corners";
 import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
-import { defaultDisplayModeAtom, folderPathAtom, mobileGoBackAtom } from "../../../shared/lib/Atoms";
+import {
+  defaultDisplayModeAtom,
+  folderPathAtom,
+  mobileGoBackAtom,
+} from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { isAndroid } from "../../../shared/lib/platform";
 import { hapticImpact } from "../../lib/haptics";
+import { Squircle } from "../Squircle";
+
+function vaultDisplayName(uri: string): string {
+  const last = decodeURIComponent(uri.split("/").pop() ?? uri);
+  const afterColon = last.includes(":")
+    ? last.split(":").slice(1).join(":")
+    : last;
+  return afterColon.split("/").pop() ?? afterColon;
+}
 
 const descriptions: Record<string, string> = {
   normal: "Sans empattement, aligné à gauche",
@@ -63,7 +75,10 @@ export function MobileSettingsView() {
                   i < DISPLAY_MODES.length - 1 ? "border-b border-gray-100" : ""
                 }`}
               >
-                <Icon className="size-5 text-gray-400 shrink-0" aria-hidden="true" />
+                <Icon
+                  className="size-5 text-gray-400 shrink-0"
+                  aria-hidden="true"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-base text-gray-900">{label}</p>
                   <p className="text-sm text-gray-400">{descriptions[value]}</p>
@@ -84,15 +99,17 @@ export function MobileSettingsView() {
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
               Vault
             </p>
-            <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+            <div
+              style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
+            >
               <Squircle
                 radius={18}
                 className="overflow-hidden bg-white border border-gray-100"
               >
                 <div className="px-4 py-3 border-b border-gray-100">
                   <p className="text-xs text-gray-400 mb-0.5">Dossier racine</p>
-                  <p className="text-sm text-gray-700 font-mono truncate">
-                    {folderPath ?? "–"}
+                  <p className="text-sm text-gray-700 truncate">
+                    {folderPath ? vaultDisplayName(folderPath) : "–"}
                   </p>
                 </div>
                 <button

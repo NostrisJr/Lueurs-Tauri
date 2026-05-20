@@ -3,7 +3,7 @@ import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import type { Frontmatter } from "../../../shared/hooks/useFileTree";
-import { activeNoteAtom, skipPropagationAtom } from "../../../shared/lib/Atoms";
+import { activeNoteAtom, skipPropagationAtom } from "../../../shared/lib/atoms";
 import { isSystemField } from "../../../shared/lib/fileTreeHelpers";
 import {
   NoteType,

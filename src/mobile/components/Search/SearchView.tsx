@@ -1,17 +1,17 @@
-import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
+import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
 import {
   mobileContextMenuAtom,
   mobileGoBackAtom,
   treeAtom,
-} from "../../../shared/lib/Atoms";
+} from "../../../shared/lib/atoms";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 import { hapticImpact } from "../../lib/haptics";
-import { FloatingComponent } from "../Floating/FloatingComponent";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
 import { FileRow } from "../FileTree/FileRow";
+import { FloatingComponent } from "../Floating/FloatingComponent";
 
 export function SearchView() {
   const [query, setQuery] = useState("");

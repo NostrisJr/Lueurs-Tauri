@@ -1,5 +1,5 @@
 import { useStore } from "jotai";
-import { treeAtom } from "../lib/Atoms";
+import { treeAtom } from "../lib/atoms";
 import { toArray } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { SystemField } from "../lib/noteTypes";
