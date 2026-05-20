@@ -15,6 +15,8 @@ import {
 } from "../../../shared/lib/atoms";
 import { hapticImpact } from "../../lib/haptics";
 import { FileRow } from "../FileTree/FileRow";
+import { clsx } from "clsx";
+import { isIOS } from "../../../shared/lib/platform";
 
 export function MobileTabsView() {
   const openTabIds = useAtomValue(openTabIdsAtom);
@@ -37,7 +39,12 @@ export function MobileTabsView() {
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white pt-13">
+      <div
+        className={clsx(
+          "flex items-center justify-between px-4 py-3 bg-white",
+          isIOS ? "pt-13" : "pt-3"
+        )}
+      >
         <button
           type="button"
           onClick={() => {
