@@ -52,7 +52,7 @@ function buildListItemNodeView(
   checkbox.checked = currentNode.attrs.checked === true;
 
   // change se déclenche après le toggle natif du browser (visuellement déjà correct)
-  checkbox.addEventListener("change", () => {
+  const onChange = () => {
     const pos = getPos();
     if (pos === undefined) return;
     log.info("toggle task checkbox", { pos, checked: checkbox.checked });
@@ -62,30 +62,28 @@ function buildListItemNodeView(
         checked: checkbox.checked,
       })
     );
-  });
+  };
+  checkbox.addEventListener("change", onChange);
 
   // Sur mobile : touchstart avec preventDefault empêche le focus du contenteditable
   // (et donc l'ouverture du clavier). Le toggle est géré manuellement car le
   // preventDefault sur touchstart bloque la synthèse du click → pas de "change".
-  checkbox.addEventListener(
-    "touchstart",
-    (e) => {
-      e.preventDefault();
-      const pos = getPos();
-      if (pos === undefined) return;
-      const newChecked = !currentNode.attrs.checked;
-      checkbox.checked = newChecked;
-      li.setAttribute("data-checked", String(newChecked));
-      log.info("toggle task checkbox (touch)", { pos, checked: newChecked });
-      view.dispatch(
-        view.state.tr.setNodeMarkup(pos, undefined, {
-          ...currentNode.attrs,
-          checked: newChecked,
-        })
-      );
-    },
-    { passive: false }
-  );
+  const onTouchStart = (e: TouchEvent) => {
+    e.preventDefault();
+    const pos = getPos();
+    if (pos === undefined) return;
+    const newChecked = !currentNode.attrs.checked;
+    checkbox.checked = newChecked;
+    li.setAttribute("data-checked", String(newChecked));
+    log.info("toggle task checkbox (touch)", { pos, checked: newChecked });
+    view.dispatch(
+      view.state.tr.setNodeMarkup(pos, undefined, {
+        ...currentNode.attrs,
+        checked: newChecked,
+      })
+    );
+  };
+  checkbox.addEventListener("touchstart", onTouchStart, { passive: false });
 
   checkboxWrapper.appendChild(checkbox);
 
@@ -132,6 +130,11 @@ function buildListItemNodeView(
         return true;
       // Laisser PM reconcilier les mutations structurelles
       return false;
+    },
+
+    destroy() {
+      checkbox.removeEventListener("change", onChange);
+      checkbox.removeEventListener("touchstart", onTouchStart);
     },
   };
 }

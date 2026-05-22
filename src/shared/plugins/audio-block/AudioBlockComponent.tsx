@@ -33,6 +33,19 @@ const log = createLogger("audio-block");
 // Coordination multi-bloc (desktop) : quand un bloc démarre, on arrête l'autre.
 let _globalDesktopStop: (() => void) | null = null;
 
+// AudioBufferSourceNode.stop() lève si la source est déjà terminée — pattern
+// imposé par la Web Audio API. On factorise pour clarifier l'intention partout.
+function safeStopSource(ref: { current: AudioBufferSourceNode | null }) {
+  if (!ref.current) return;
+  ref.current.onended = null;
+  try {
+    ref.current.stop();
+  } catch {
+    // déjà stoppé : noop
+  }
+  ref.current = null;
+}
+
 function fmtTime(s: number): string {
   if (!Number.isFinite(s) || s < 0) return "--:--";
   const m = Math.floor(s / 60);
@@ -111,13 +124,7 @@ export function AudioBlockComponent({
 
     // Fermer le contexte précédent si src change pendant la lecture
     if (!isMobile) {
-      if (sourceRef.current) {
-        sourceRef.current.onended = null;
-        try {
-          sourceRef.current.stop();
-        } catch {}
-        sourceRef.current = null;
-      }
+      safeStopSource(sourceRef);
       stopDesktopRaf();
       audioCtxRef.current?.close();
       audioCtxRef.current = null;
@@ -189,6 +196,18 @@ export function AudioBlockComponent({
     return () => {
       cancelled = true;
       if (!isMobile) {
+        // Libère la coordination multi-bloc si on en est propriétaire — sinon
+        // un autre bloc pourrait appeler une closure pointant vers ce composant
+        // démonté (refs nullifiées) au prochain play.
+        if (isActiveRef.current) {
+          _globalDesktopStop = null;
+          isActiveRef.current = false;
+        }
+        safeStopSource(sourceRef);
+        if (webRafRef.current) {
+          cancelAnimationFrame(webRafRef.current);
+          webRafRef.current = 0;
+        }
         audioCtxRef.current?.close();
         audioCtxRef.current = null;
         audioBufferRef.current = null;
@@ -279,13 +298,7 @@ export function AudioBlockComponent({
   function stopDesktopPlayback(resetPosition: boolean) {
     isActiveRef.current = false;
     stopDesktopRaf();
-    if (sourceRef.current) {
-      sourceRef.current.onended = null;
-      try {
-        sourceRef.current.stop();
-      } catch {}
-      sourceRef.current = null;
-    }
+    safeStopSource(sourceRef);
     if (resetPosition) {
       playOffsetRef.current = 0;
       if (progressOverlayRef.current)
@@ -349,13 +362,7 @@ export function AudioBlockComponent({
     if (isPlaying) {
       // Pause : mémoriser la position pour la reprise
       playOffsetRef.current += ctx.currentTime - playStartCtxTimeRef.current;
-      if (sourceRef.current) {
-        sourceRef.current.onended = null;
-        try {
-          sourceRef.current.stop();
-        } catch {}
-        sourceRef.current = null;
-      }
+      safeStopSource(sourceRef);
       stopDesktopRaf();
       setIsPlaying(false);
     } else {
@@ -450,11 +457,7 @@ export function AudioBlockComponent({
     const newOffset = ((e.clientX - rect.left) / rect.width) * buf.duration;
 
     if (isPlaying && sourceRef.current) {
-      sourceRef.current.onended = null;
-      try {
-        sourceRef.current.stop();
-      } catch {}
-      sourceRef.current = null;
+      safeStopSource(sourceRef);
 
       const source = ctx.createBufferSource();
       source.buffer = buf;

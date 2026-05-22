@@ -1,6 +1,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { NoteEditor } from "../shared/components/NoteEditor/NoteEditor.tsx";
+import { registerDropListener } from "../shared/components/NoteEditor/dropListener.ts";
 import {
   DESKTOP_HEADER_HEIGHT,
   useCaretScroll,
@@ -74,6 +75,25 @@ export function DesktopApp() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setSettingsOpen]);
+
+  // Listener drop natif (audio/images), enregistré pour toute la session desktop.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+    registerDropListener()
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      })
+      .catch((err) => {
+        // Log déjà fait dans registerDropListener côté succès ; ici on remonte l'échec.
+        console.error("registerDropListener failed", err);
+      });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   if (!folderPath) return <WelcomeScreen onPick={pickFolder} />;
 

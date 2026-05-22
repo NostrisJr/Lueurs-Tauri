@@ -61,43 +61,40 @@ function buildHeadingNodeView(
   // Sur mobile : touchstart avec preventDefault bloque le focus contenteditable
   // (clavier). Le fold est géré ici car preventDefault sur touchstart bloque
   // la synthèse mousedown/click.
-  btn.addEventListener(
-    "touchstart",
-    (e) => {
-      e.preventDefault();
-      const pos = getPos();
-      if (pos == null) return;
+  const onTouchStart = (e: TouchEvent) => {
+    e.preventDefault();
+    const pos = getPos();
+    if (pos == null) return;
 
-      const currentlyFolded = isHeadingFolded(view, pos);
-      const fold = !currentlyFolded;
-      const tr = view.state.tr.setMeta(headingFoldPluginKey, { pos, fold });
+    const currentlyFolded = isHeadingFolded(view, pos);
+    const fold = !currentlyFolded;
+    const tr = view.state.tr.setMeta(headingFoldPluginKey, { pos, fold });
 
-      if (fold) {
-        const headingNode = view.state.doc.nodeAt(pos);
-        if (headingNode) {
-          const headingLevel = headingNode.attrs.level as number;
-          const sectionEnd = findSectionEnd(view.state.doc, pos, headingLevel);
-          const contentStart = pos + headingNode.nodeSize;
-          const { from } = view.state.selection;
-          if (from >= contentStart && from < sectionEnd) {
-            const newSel = TextSelection.near(
-              view.state.doc.resolve(contentStart - 1),
-              -1
-            );
-            tr.setSelection(newSel);
-          }
+    if (fold) {
+      const headingNode = view.state.doc.nodeAt(pos);
+      if (headingNode) {
+        const headingLevel = headingNode.attrs.level as number;
+        const sectionEnd = findSectionEnd(view.state.doc, pos, headingLevel);
+        const contentStart = pos + headingNode.nodeSize;
+        const { from } = view.state.selection;
+        if (from >= contentStart && from < sectionEnd) {
+          const newSel = TextSelection.near(
+            view.state.doc.resolve(contentStart - 1),
+            -1
+          );
+          tr.setSelection(newSel);
         }
       }
+    }
 
-      dom.dataset.folded = String(fold);
-      log.info("toggle fold heading (touch)", { pos, fold });
-      view.dispatch(tr);
-      // Pas de view.focus() : le clavier ne doit pas s'ouvrir
-    },
-    { passive: false }
-  );
+    dom.dataset.folded = String(fold);
+    log.info("toggle fold heading (touch)", { pos, fold });
+    view.dispatch(tr);
+    // Pas de view.focus() : le clavier ne doit pas s'ouvrir
+  };
+  btn.addEventListener("touchstart", onTouchStart, { passive: false });
 
-  btn.addEventListener("mousedown", (e) => {
+  const onMouseDown = (e: MouseEvent) => {
     e.preventDefault();
     const pos = getPos();
     if (pos == null) return;
@@ -130,7 +127,8 @@ function buildHeadingNodeView(
     log.info("toggle fold heading", { pos, fold });
     view.dispatch(tr);
     view.focus();
-  });
+  };
+  btn.addEventListener("mousedown", onMouseDown);
 
   const contentDOM = document.createElement("span");
   contentDOM.className = "heading-content";
@@ -167,6 +165,11 @@ function buildHeadingNodeView(
       )
         return true;
       return false;
+    },
+
+    destroy() {
+      btn.removeEventListener("touchstart", onTouchStart);
+      btn.removeEventListener("mousedown", onMouseDown);
     },
   };
 }

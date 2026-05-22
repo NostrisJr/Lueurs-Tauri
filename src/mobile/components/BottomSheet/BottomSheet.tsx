@@ -57,7 +57,11 @@ export function BottomSheet({ onClose, children, title }: Props) {
         }}
         onTouchMove={(e: React.TouchEvent) => {
           const dy = e.touches[0].clientY - startYRef.current;
-          if (dy > 0) setSwipe(dy);
+          if (dy > 0) {
+            // Bloque le scroll sous-jacent pendant le drag-to-dismiss
+            e.preventDefault();
+            setSwipe(dy);
+          }
         }}
         onTouchEnd={() => {
           if (swipe > 60) {

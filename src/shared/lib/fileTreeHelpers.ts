@@ -41,6 +41,52 @@ export function toArray(value: unknown): string[] {
 }
 
 /**
+ * Égalité d'ensembles : ignore l'ordre. Suppose des éléments sémantiquement uniques
+ * (cas typiques : __Base__, __Template__, __Children__).
+ */
+export function arraysEqualUnordered(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sb = new Set(b);
+  return a.every((v) => sb.has(v));
+}
+
+/**
+ * Compare deux valeurs de champ frontmatter (string | string[] | undefined).
+ * Tableaux : comparaison ordonnée (un reorder = vraie modif).
+ */
+export function frontmatterFieldEqual(
+  a: string | string[] | undefined,
+  b: string | string[] | undefined
+): boolean {
+  if (a === b) return true;
+  if (a === undefined || b === undefined) return false;
+  const aIsArr = Array.isArray(a);
+  const bIsArr = Array.isArray(b);
+  if (aIsArr !== bIsArr) return false;
+  if (aIsArr && bIsArr) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Égalité de frontmatter : insensible à l'ordre des clés, comparaison champ par champ.
+ * Évite le piège du JSON.stringify (sensible à l'ordre d'insertion).
+ */
+export function frontmatterEqual(a: Frontmatter, b: Frontmatter): boolean {
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (const k of keysA) {
+    if (!(k in b)) return false;
+    if (!frontmatterFieldEqual(a[k], b[k])) return false;
+  }
+  return true;
+}
+
+/**
  * Calcule les propriétés à appliquer depuis les templates vers une note.
  * - applyForced: false → ajoute seulement les props absentes (chargement initial)
  * - applyForced: true  → ajoute les absentes + écrase si le template impose une valeur non vide (édition live)

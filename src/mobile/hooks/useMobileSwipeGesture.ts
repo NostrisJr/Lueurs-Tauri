@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { hapticImpact, hapticSelection } from "../lib/haptics";
 
 interface SwipeGestureOptions {
@@ -37,6 +37,10 @@ export function useMobileSwipeGesture(
   const isTracking = useRef(false);
   const hasTriggeredSelection = useRef(false);
   const rafRef = useRef<number>(0);
+  // Pour clear les timers d'animation au démontage (sinon setSwipeProgress/setIsAnimating
+  // peuvent être appelés sur un composant démonté).
+  const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [swipeProgress, setSwipeProgress] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -47,7 +51,9 @@ export function useMobileSwipeGesture(
     setSwipeProgress(1);
     isTracking.current = false;
     hasTriggeredSelection.current = false;
-    setTimeout(() => {
+    if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
+    completeTimerRef.current = setTimeout(() => {
+      completeTimerRef.current = null;
       onComplete();
       setSwipeProgress(0);
       setIsAnimating(false);
@@ -63,10 +69,23 @@ export function useMobileSwipeGesture(
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = requestAnimationFrame(() => {
         setSwipeProgress(0);
-        setTimeout(() => setIsAnimating(false), DURATION);
+        if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+        cancelTimerRef.current = setTimeout(() => {
+          cancelTimerRef.current = null;
+          setIsAnimating(false);
+        }, DURATION);
       });
     });
   }, []);
+
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(rafRef.current);
+      if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
+      if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+    },
+    []
+  );
 
   const onTouchStart = useCallback(
     (e: React.TouchEvent) => {

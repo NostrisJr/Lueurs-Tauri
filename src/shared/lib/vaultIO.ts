@@ -152,9 +152,46 @@ function toRelative(absolutePath: string, vaultPath: string): string {
   return absolutePath;
 }
 
+// Détection des paths iCloud d'une autre plateforme pointant sur le même container.
+// Permet de récupérer les __Children__/__Template__/__Base__ corrompus écrits en absolu
+// sur l'une et lus sur l'autre.
+const ICLOUD_CONTAINER_RE =
+  /\/Mobile Documents\/(iCloud~[^/]+)\/Documents(\/|$)/;
+
+function migrateCrossPlatformICloudPath(
+  path: string,
+  vaultPath: string
+): string {
+  if (!path.startsWith("/")) return path;
+  if (path.startsWith(`${vaultPath}/`) || path === vaultPath) return path;
+
+  const pathMatch = path.match(ICLOUD_CONTAINER_RE);
+  if (!pathMatch) return path;
+  const vaultMatch = vaultPath.match(ICLOUD_CONTAINER_RE);
+  if (!vaultMatch || vaultMatch[1] !== pathMatch[1]) return path;
+
+  const pathSuffix = path.slice((pathMatch.index ?? 0) + pathMatch[0].length);
+  const vaultSuffix = vaultPath.slice(
+    (vaultMatch.index ?? 0) + vaultMatch[0].length
+  );
+
+  // Vault à la racine du container Documents
+  if (vaultSuffix === "") {
+    return pathSuffix === "" ? vaultPath : `${vaultPath}/${pathSuffix}`;
+  }
+  // Vault dans un sous-dossier : le path doit y être pour être rebasé
+  if (pathSuffix === vaultSuffix) return vaultPath;
+  if (pathSuffix.startsWith(`${vaultSuffix}/`)) {
+    return `${vaultPath}/${pathSuffix.slice(vaultSuffix.length + 1)}`;
+  }
+  // Path sous le même container mais hors du vault courant → garde absolu
+  return path;
+}
+
 function toAbsolute(path: string, vaultPath: string): string {
-  // Chemin déjà absolu → tel quel (ancien format ou chemin hors vault)
-  if (path.startsWith("/")) return path;
+  // Chemin déjà absolu → migration cross-plateforme si applicable, sinon tel quel
+  if (path.startsWith("/"))
+    return migrateCrossPlatformICloudPath(path, vaultPath);
   return `${vaultPath}/${path}`;
 }
 

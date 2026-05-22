@@ -6,7 +6,7 @@ import {
   IconPlusCircle,
   IconXCircle,
 } from "../../../shared/components/PlatformIcon";
-import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import { type NoteFile, useFileTree } from "../../../shared/hooks/useFileTree";
 import { activeNoteAtom, notesByIdAtom } from "../../../shared/lib/atoms";
 import { toArray } from "../../../shared/lib/fileTreeHelpers";
 import { computeFormula, isFormula } from "../../../shared/lib/formulas";
@@ -74,6 +74,7 @@ export function FrontmatterRow({
   const notesById = useAtomValue(notesByIdAtom);
   const allNotes = useMemo(() => [...notesById.values()], [notesById]);
   const activeNote = useAtomValue(activeNoteAtom);
+  const { flushPendingWrite } = useFileTree();
 
   // Notes enfant de la base active — pour évaluer agg() dans les formules
   const formulaChildren: NoteFile[] | undefined =
@@ -248,7 +249,11 @@ export function FrontmatterRow({
         noteResolver={noteResolver}
         allNotes={allNotes}
         onTextChange={updateText}
-        onTextBlur={() => commit(rows)}
+        onTextBlur={() => {
+          // Flush immédiat : pour un template, déclenche onTemplateChange tout
+          // de suite au lieu d'attendre les 1000ms du debounce.
+          if (activeNote) flushPendingWrite(activeNote.id);
+        }}
         onRemoveNote={removeNote}
         noteName={noteName}
       />

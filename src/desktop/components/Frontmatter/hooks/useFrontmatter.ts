@@ -7,6 +7,7 @@ import type {
 import { usePersistNote } from "../../../../shared/hooks/usePersistNote";
 import { notesByIdAtom } from "../../../../shared/lib/atoms";
 import {
+  arraysEqualUnordered,
   computeTemplateProps,
   toArray,
 } from "../../../../shared/lib/fileTreeHelpers";
@@ -14,15 +15,6 @@ import { createLogger } from "../../../../shared/lib/logger";
 import { NoteType } from "../../../../shared/lib/noteTypes";
 
 const log = createLogger("useFrontmatter");
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function arraysEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const sa = [...a].sort();
-  const sb = [...b].sort();
-  return sa.every((v, i) => v === sb[i]);
-}
 
 // ── Hook ───────────────────────────────────────────────────────────────────
 
@@ -82,7 +74,7 @@ export function useFrontmatter() {
     const prevBases = toArray(prevFrontmatter.__Base__);
     const nextBases = toArray(nextFrontmatter.__Base__);
 
-    if (!arraysEqual(prevBases, nextBases)) {
+    if (!arraysEqualUnordered(prevBases, nextBases)) {
       log.info("__Base__ modifié", { noteId, prevBases, nextBases });
       const basesAdded = nextBases.filter((b) => !prevBases.includes(b));
       const basesRemoved = prevBases.filter((b) => !nextBases.includes(b));
@@ -92,11 +84,11 @@ export function useFrontmatter() {
       ]);
     }
 
-    const templateChanged = !arraysEqual(
+    const templateChanged = !arraysEqualUnordered(
       toArray(prevFrontmatter.__Template__),
       toArray(nextFrontmatter.__Template__)
     );
-    if (templateChanged || !arraysEqual(prevBases, nextBases)) {
+    if (templateChanged || !arraysEqualUnordered(prevBases, nextBases)) {
       await applyTemplateProps(noteId, nextFrontmatter);
 
       if (templateChanged) {
@@ -119,7 +111,7 @@ export function useFrontmatter() {
     const prevChildren = toArray(prevFrontmatter.__Children__);
     const nextChildren = toArray(nextFrontmatter.__Children__);
 
-    if (!arraysEqual(prevChildren, nextChildren)) {
+    if (!arraysEqualUnordered(prevChildren, nextChildren)) {
       log.info("__Children__ modifié", { noteId, prevChildren, nextChildren });
       const childrenAdded = nextChildren.filter(
         (c) => !prevChildren.includes(c)

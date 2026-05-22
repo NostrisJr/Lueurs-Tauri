@@ -72,9 +72,11 @@ export function FileTreeHeader() {
     navigate("settings");
   }
 
+  // Listener attaché systématiquement, gating à l'intérieur, pour garantir la
+  // symétrie attach/detach même si le composant se démonte avec showMenu=true.
   useEffect(() => {
-    if (!showMenu) return;
     function handleClickOutside(e: MouseEvent) {
+      if (!showMenu) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
       }

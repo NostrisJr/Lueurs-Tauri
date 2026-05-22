@@ -12,6 +12,7 @@ import {
   searchAtom,
   tabHistoryAtom,
 } from "../lib/atoms";
+import { frontmatterEqual } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import {
   type FolderNode,
@@ -57,10 +58,18 @@ export function useNote() {
 
   function handleChange(body: string, frontmatter: Frontmatter) {
     if (!activeNote) return;
-    setSaving(true);
 
-    const frontmatterChanged =
-      JSON.stringify(frontmatter) !== JSON.stringify(activeNote.frontmatter);
+    const frontmatterChanged = !frontmatterEqual(
+      frontmatter,
+      activeNote.frontmatter
+    );
+    const bodyChanged = body !== activeNote.body;
+    // Early return critique : sinon un appel sans changement (typiquement
+    // commit(rows) déclenché par le blur du champ valeur) reset le debounce
+    // d'updateNote sans callback, annulant la propagation template en attente.
+    if (!frontmatterChanged && !bodyChanged) return;
+
+    setSaving(true);
     if (frontmatterChanged) {
       onFrontmatterChange(
         activeNote.id,

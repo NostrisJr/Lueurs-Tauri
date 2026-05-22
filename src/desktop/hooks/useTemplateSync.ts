@@ -79,12 +79,17 @@ export function useTemplateSync() {
     // Vider l'atom après consommation
     if (skipPropagation.size > 0) setSkipPropagation(new Set());
 
+    // Heirs résolus une fois pour ce cycle — propagate ne modifie ni __Template__
+    // ni __Base__ des héritiers (diffFrontmatter exclut les champs système), donc
+    // la liste reste valide entre les itérations.
+    const { heirs } = resolveTemplateUsers(templateId);
+
     log.info("changements template détectés", {
       templateId,
       changes: filteredChanges,
     });
     for (const change of filteredChanges) {
-      await propagate(templateId, change);
+      await propagate(templateId, change, heirs);
     }
   }
 
@@ -101,7 +106,9 @@ export function useTemplateSync() {
       ? ((templateNote.frontmatter[oldKey] as string) ?? "")
       : "";
 
-    const allPaths = [templateId, ...resolveAllHeirs(templateId)];
+    // Une seule passe sur l'index pour récupérer heirs et heirBases
+    const { heirs, heirBases } = resolveTemplateUsers(templateId);
+    const allPaths = [templateId, ...heirs];
     log.info("renommage propriété template", {
       templateId,
       oldKey,
@@ -138,7 +145,7 @@ export function useTemplateSync() {
     }
 
     // Agrégations des bases héritières — exclues du renommage Rust, à patcher séparément
-    for (const base of resolveHeirBases(templateId)) {
+    for (const base of heirBases) {
       await renameBaseAggregations(base, oldKey, newKey);
     }
   }
@@ -152,7 +159,7 @@ export function useTemplateSync() {
     templateId: string,
     propKey: string
   ): Promise<boolean> {
-    const affectedBases = resolveHeirBases(templateId).filter(
+    const affectedBases = resolveTemplateUsers(templateId).heirBases.filter(
       (base) => base.frontmatter[SystemField.KANBAN_KEY] === propKey
     );
 
@@ -238,10 +245,13 @@ export function useTemplateSync() {
     await persistPatch(base.id, newFm, base.body);
   }
 
-  async function propagate(templateId: string, change: TemplateChange) {
+  async function propagate(
+    templateId: string,
+    change: TemplateChange,
+    affectedPaths: string[]
+  ) {
     if (!folderPath) return;
 
-    const affectedPaths = resolveAllHeirs(templateId);
     if (affectedPaths.length === 0) {
       log.info("aucun héritier trouvé — pas de propagation", {
         templateId,
@@ -316,17 +326,33 @@ export function useTemplateSync() {
     }
   }
 
-  // Toujours lire le treeAtom le plus récent — évite les snapshots périmés lors des callbacks async
-  function resolveAllHeirs(templateId: string): string[] {
+  /**
+   * Une seule passe sur l'index notesById : résout en parallèle les notes héritières
+   * (qui appliqueront le template, directement ou via leur __Base__) et les bases
+   * héritières (qui référencent le template via __Template__).
+   * Toujours lire le store le plus récent — évite les snapshots périmés en async.
+   */
+  function resolveTemplateUsers(templateId: string): {
+    heirs: string[];
+    heirBases: NoteFile[];
+  } {
     const notesById = store.get(notesByIdAtom);
-    const result: string[] = [];
+    const heirs: string[] = [];
+    const heirBases: NoteFile[] = [];
+
     for (const note of notesById.values()) {
       if (note.id === templateId) continue;
-      if (note.type === NoteType.BASE) continue;
+
+      if (note.type === NoteType.BASE) {
+        if (toArray(note.frontmatter.__Template__).includes(templateId)) {
+          heirBases.push(note);
+        }
+        continue;
+      }
 
       const directTemplates = toArray(note.frontmatter.__Template__);
       if (directTemplates.includes(templateId)) {
-        result.push(note.id);
+        heirs.push(note.id);
         continue;
       }
 
@@ -337,17 +363,9 @@ export function useTemplateSync() {
           ? toArray(base.frontmatter.__Template__).includes(templateId)
           : false;
       });
-      if (inherited) result.push(note.id);
+      if (inherited) heirs.push(note.id);
     }
-    return result;
-  }
-
-  function resolveHeirBases(templateId: string) {
-    return [...store.get(notesByIdAtom).values()].filter(
-      (note) =>
-        note.type === NoteType.BASE &&
-        toArray(note.frontmatter.__Template__).includes(templateId)
-    );
+    return { heirs, heirBases };
   }
 
   return { onTemplateChange, renameTemplateProperty, checkKanbanKeyUsage };

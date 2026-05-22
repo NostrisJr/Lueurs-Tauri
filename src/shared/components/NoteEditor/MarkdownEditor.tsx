@@ -24,7 +24,6 @@ import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import { $prose } from "@milkdown/kit/utils";
 import { Milkdown, useEditor } from "@milkdown/react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { useAtomValue, useSetAtom } from "jotai";
 import { redo, undo } from "prosemirror-history";
@@ -68,6 +67,7 @@ import {
 import { poetryBlockPlugin } from "../../plugins/poetry-block/poetryBlockPlugin";
 import { taskListPlugin } from "../../plugins/task-list/taskListPlugin";
 import { wordHighlightPlugin } from "../../plugins/word-highlight/wordHighlightPlugin";
+import { dropHandlerRef } from "./dropListener";
 import { useContextMenu } from "./hooks/useContextMenu";
 import { useDropHandler } from "./hooks/useDropHandler";
 
@@ -191,28 +191,8 @@ function makeImageNodeViewPlugin(vaultPath: string) {
   );
 }
 
-// ── Listener drop singleton ────────────────────────────────────────────────
-// Enregistré une seule fois au niveau module pour éviter les duplicatas React.
-// Le handler effectif est mis à jour via dropHandlerRef à chaque montage.
-type DropHandler = (paths: string[]) => void;
-const dropHandlerRef = { current: null as DropHandler | null };
-
-getCurrentWebview()
-  .onDragDropEvent((event) => {
-    if (event.payload.type !== "drop") return;
-    if (!dropHandlerRef.current) return;
-    // Les .md sont gérés par useFileDrop — ne traiter que audio/images
-    const paths = (event.payload.paths ?? []).filter(
-      (p: string) => !p.endsWith(".md")
-    );
-    if (!paths.length) return;
-    log.info("drop natif reçu", { paths });
-    dropHandlerRef.current(paths);
-  })
-  .then(() => log.info("listener drop singleton enregistré"))
-  .catch((err) => log.error("échec enregistrement listener drop", err));
-
 // ── Composant ──────────────────────────────────────────────────────────────
+// Note : le listener drop natif est enregistré par DesktopApp (cf. dropListener.ts).
 
 interface Props {
   node: NoteFile;

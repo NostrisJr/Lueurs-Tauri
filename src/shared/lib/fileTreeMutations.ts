@@ -31,10 +31,12 @@ import {
 import { createLogger } from "./logger";
 import { NoteType } from "./noteTypes";
 import { isAndroid } from "./platform";
+import { ensureVaultConfig, findVaultRoot } from "./vaultConfig";
 import {
   allowVaultScope,
   applyAllTemplates,
   loadTree,
+  relativizePathFields,
   resolveDestName,
   vaultIO,
 } from "./vaultIO";
@@ -154,11 +156,30 @@ export function stopWatcher(): void {
 
 // ── Init / switch vault ────────────────────────────────────────────────────
 
+/**
+ * Résout la racine "officielle" du vault depuis un chemin sélectionné par l'utilisateur :
+ *  - walk-up à la recherche de `.lueurs/config.json` → racine = ce parent
+ *  - sinon racine = chemin sélectionné, et on crée le marqueur (init silencieux)
+ *
+ * Sur Android, on garde le path tel quel (SAF ne permet pas de walker au-dessus du
+ * dossier permissionné). Retourne le path final à utiliser comme `folderPathAtom`.
+ */
+async function resolveVaultRoot(selectedPath: string): Promise<string> {
+  if (isAndroid) return selectedPath;
+  const found = await findVaultRoot(selectedPath);
+  if (found) return found;
+  await ensureVaultConfig(selectedPath);
+  return selectedPath;
+}
+
 export async function initFolder(store: JotaiStore): Promise<void> {
   const folderPath = store.get(folderPathAtom);
   if (!folderPath) return;
   log.info("restauration vault au démarrage", { folderPath });
   await allowVaultScope(folderPath);
+  // Migration : si le marqueur n'existe pas encore (vault pré-marqueur), le créer
+  // au niveau du folderPath actuel — comportement strictement identique à avant.
+  if (!isAndroid) await ensureVaultConfig(folderPath);
   await reload(store, folderPath);
   await startWatcher(store, folderPath);
 }
@@ -169,25 +190,32 @@ export async function autoInitFolder(store: JotaiStore): Promise<void> {
   // Re-vérification après l'await : Jotai peut avoir hydraté folderPathAtom depuis
   // localStorage pendant l'invoke. Si un chemin est déjà là, on ne l'écrase pas.
   if (store.get(folderPathAtom)) return;
-  log.info("vault macOS iCloud auto-initialisé", { icloudPath });
-  await allowVaultScope(icloudPath);
+  const resolved = await resolveVaultRoot(icloudPath);
+  log.info("vault iCloud auto-initialisé", { icloudPath, resolved });
+  await allowVaultScope(resolved);
   store.set(activeNoteIdAtom, null);
   store.set(errorAtom, null);
-  store.set(folderPathAtom, icloudPath);
-  await reload(store, icloudPath);
-  await startWatcher(store, icloudPath);
+  store.set(folderPathAtom, resolved);
+  await reload(store, resolved);
+  await startWatcher(store, resolved);
 }
 
 export async function switchVault(
   store: JotaiStore,
   path: string
 ): Promise<void> {
-  await allowVaultScope(path);
+  // Résout vers le vrai vault root via le marqueur si présent, sinon initialise.
+  // Permet de pointer le picker sur n'importe quel sous-dossier d'un vault existant.
+  const resolved = await resolveVaultRoot(path);
+  if (resolved !== path) {
+    log.info("vault root résolu via marqueur", { picked: path, resolved });
+  }
+  await allowVaultScope(resolved);
   store.set(activeNoteIdAtom, null);
   store.set(errorAtom, null);
-  store.set(folderPathAtom, path);
-  await reload(store, path);
-  await startWatcher(store, path);
+  store.set(folderPathAtom, resolved);
+  await reload(store, resolved);
+  await startWatcher(store, resolved);
 }
 
 export async function pickFolder(store: JotaiStore): Promise<void> {
@@ -294,7 +322,15 @@ export function updateNote(
   const noteName = uriBaseName(fileId);
   const parentFolderName = uriParentName(fileId);
   const safeFrontmatter = ensureType(frontmatter, noteName, parentFolderName);
-  const raw = serializeFrontmatter(safeFrontmatter, body);
+
+  // Mémoire : paths absolus. Disque : paths relatifs au vault. Sans relativiser
+  // ici, les champs __Children__/__Template__/__Base__ partent en absolu sur le
+  // disque et cassent les bases au sync cross-plateforme (Mac ↔ iOS via iCloud).
+  const vaultPath = store.get(folderPathAtom) ?? undefined;
+  const diskFrontmatter = vaultPath
+    ? relativizePathFields(safeFrontmatter, vaultPath)
+    : safeFrontmatter;
+  const raw = serializeFrontmatter(diskFrontmatter, body);
 
   // Mise à jour mémoire immédiate
   store.set(treeAtom, (prev) =>

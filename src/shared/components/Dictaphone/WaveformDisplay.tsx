@@ -38,7 +38,15 @@ export function WaveformDisplay({
   const bufRef = useRef(new Float32Array(numBars).fill(0));
   const rafRef = useRef<number>(0);
   const dirtyRef = useRef(false);
+  // draw stable : remappé à chaque changement de visuel (width/height/color).
+  // Stocké en ref pour que la loop RAF (effet listener) reste indépendante des
+  // changements visuels et ne soit pas recyclée à chaque tweak de couleur.
+  const drawRef = useRef<() => void>(() => {});
+  // cancelListener accessible synchronisement par la cleanup, même si l'assignation
+  // se fait après l'await async.
+  const cancelListenerRef = useRef<(() => void) | null>(null);
 
+  // ── Resize canvas + buffer ───────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -60,6 +68,7 @@ export function WaveformDisplay({
     }
   }, [width, height]);
 
+  // ── Setup du rendu (draw) + repaint immédiat à chaque tweak visuel ───────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -74,55 +83,59 @@ export function WaveformDisplay({
     const radius = bw / 2;
     const bars = Math.floor(width / BAR_STEP);
 
-    function draw() {
-      if (!ctx) return;
+    drawRef.current = () => {
       ctx.clearRect(0, 0, width * dpr, height * dpr);
       ctx.fillStyle = color;
-
       const buf = bufRef.current;
       for (let i = 0; i < bars; i++) {
         const amplified = amplify(buf[i]);
         const barH = Math.max(2 * dpr, amplified * amp * 2);
         const x = i * step;
         const y = cy - barH / 2;
-
         ctx.beginPath();
         ctx.roundRect(x, y, bw, barH, radius);
         ctx.fill();
       }
-
       dirtyRef.current = false;
-    }
+    };
 
+    drawRef.current();
+  }, [width, height, color]);
+
+  // ── Listener Tauri + boucle RAF — pilotés uniquement par isActive ────────
+  // Le re-mount de ce listener à chaque changement de color/size est ce qui
+  // causait des événements amplitude perdus pendant l'await. Cf. audit A12.
+  useEffect(() => {
     if (!isActive) {
       cancelAnimationFrame(rafRef.current);
-      // Preserve le buffer pour que la forme d'onde soit restaurée si le composant
-      // se réactive (toggle pill/sheet). La ligne plate n'est donc pas forcée ici.
-      draw();
+      rafRef.current = 0;
+      // Preserve le buffer pour restauration au toggle pill/sheet ; le repaint
+      // statique de la frame courante est fait par l'effet visuel ci-dessus.
+      drawRef.current?.();
       return;
     }
 
     function loop() {
-      if (dirtyRef.current) draw();
+      if (dirtyRef.current) drawRef.current?.();
       rafRef.current = requestAnimationFrame(loop);
     }
     loop();
 
-    // Sur iOS, le plugin Swift émet via trigger() → Channel (addPluginListener standard Tauri).
-    // Sur desktop, le plugin Rust émet via app.emit() → listen() global.
-    let cancelListener: (() => void) | undefined;
     let firstEvent = true;
-
     const handleAmplitude = (payload: AmplitudePayload) => {
       if (firstEvent) {
         log.info("premier événement amplitude reçu", { rms: payload.rms });
         firstEvent = false;
       }
-      bufRef.current.copyWithin(0, 1);
-      bufRef.current[bars - 1] = Math.min(1, Math.max(0, payload.rms));
+      // length - 1 : la longueur peut changer entre setup et émission si width
+      // bouge ; on écrit toujours dans la dernière case du buffer courant.
+      const buf = bufRef.current;
+      buf.copyWithin(0, 1);
+      buf[buf.length - 1] = Math.min(1, Math.max(0, payload.rms));
       dirtyRef.current = true;
     };
 
+    let cancelled = false;
     (async () => {
       log.info("enregistrement amplitude listener...");
       try {
@@ -133,7 +146,8 @@ export function WaveformDisplay({
           handler: ch,
         });
         log.info("registerAmplitudeListener OK", { channelId: ch.id });
-        cancelListener = () => {};
+        if (cancelled) return;
+        cancelListenerRef.current = () => {};
       } catch (err) {
         log.warn("registerAmplitudeListener échoué, fallback listen()", err);
         const unlisten = await listen<AmplitudePayload>(
@@ -141,16 +155,23 @@ export function WaveformDisplay({
           (event) => handleAmplitude(event.payload)
         );
         log.info("listen() enregistré (desktop fallback)");
-        cancelListener = unlisten;
+        if (cancelled) {
+          unlisten();
+          return;
+        }
+        cancelListenerRef.current = unlisten;
       }
     })().catch((e) => log.error("impossible d'écouter l'event amplitude", e));
 
     return () => {
+      cancelled = true;
       cancelAnimationFrame(rafRef.current);
-      cancelListener?.();
+      rafRef.current = 0;
+      cancelListenerRef.current?.();
+      cancelListenerRef.current = null;
       log.info("écoute amplitude arrêtée");
     };
-  }, [isActive, width, height, color]);
+  }, [isActive]);
 
   return (
     <canvas

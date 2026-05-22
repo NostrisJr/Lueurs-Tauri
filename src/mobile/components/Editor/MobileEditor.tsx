@@ -55,6 +55,9 @@ export function MobileEditor() {
   const editorRef = useRef<EditorHandle | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
+  // Pour distinguer "changement de note" (restore) vs "changement clavier" (scroll caret)
+  // dans l'effet unifié de scroll.
+  const lastScrolledNoteIdRef = useRef<string | null>(null);
   const isBase = activeNote?.type === NoteType.BASE;
   const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
   // Sur Android, le WebView est redimensionné par les insets natifs : visualViewport
@@ -80,22 +83,21 @@ export function MobileEditor() {
     }
   }, [activeNote]);
 
+  // Effet unifié : un seul calcul de scrollTop par cycle, qu'il vienne du
+  // changement de note (restore) ou d'une ouverture clavier (caret-in-view).
+  // Évite la race entre deux scrolls successifs sous 16 ms.
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !activeNote) return;
-    const saved = scrollPositions.current.get(activeNote.id) ?? 0;
     const raf = requestAnimationFrame(() => {
-      container.scrollTop = saved;
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [activeNote]);
-
-  // Scroll instant au caret quand le clavier s'ouvre (hauteur corrigée avec la toolbar)
-  useEffect(() => {
-    if (keyboardHeight === 0) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const raf = requestAnimationFrame(() => {
+      if (lastScrolledNoteIdRef.current !== activeNote.id) {
+        // Changement de note : restaurer la position sauvegardée.
+        lastScrolledNoteIdRef.current = activeNote.id;
+        container.scrollTop = scrollPositions.current.get(activeNote.id) ?? 0;
+        return;
+      }
+      // Même note : ajustement clavier (caret-in-view) uniquement.
+      if (keyboardHeight === 0) return;
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0) return;
       const caretRect = sel.getRangeAt(0).getBoundingClientRect();
@@ -109,7 +111,7 @@ export function MobileEditor() {
       }
     });
     return () => cancelAnimationFrame(raf);
-  }, [keyboardHeight]);
+  }, [activeNote, keyboardHeight]);
 
   // Consomme le bloc audio en attente après retour du dictaphone (insert-mode)
   useEffect(() => {

@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
 import { navigateToNoteAtom } from "../../../../shared/lib/atoms";
+import { useLongPress } from "../../../hooks/useLongPress";
 
 interface Props {
   note: NoteFile;
@@ -26,12 +27,20 @@ export function MobileKanbanCard({ note }: Props) {
     isDragging,
   } = useSortable({ id: note.id });
 
-  function startEdit(e: React.TouchEvent | React.MouseEvent) {
-    e.stopPropagation();
+  function beginEdit() {
     setDraft(note.name);
     setEditing(true);
     setTimeout(() => inputRef.current?.select(), 0);
   }
+
+  function startEdit(e: React.MouseEvent) {
+    e.stopPropagation();
+    beginEdit();
+  }
+
+  // Long-press tactile → renommer. Le cleanup des listeners est porté par
+  // useLongPress (touchend/touchmove/touchcancel + démontage).
+  const longPress = useLongPress(beginEdit, () => {});
 
   function commitEdit() {
     setEditing(false);
@@ -79,13 +88,7 @@ export function MobileKanbanCard({ note }: Props) {
         <p
           className="text-base font-medium text-gray-800 leading-snug truncate"
           onDoubleClick={startEdit}
-          onTouchStart={(e) => {
-            // Long press → renommer
-            const timer = setTimeout(() => startEdit(e), 600);
-            const cancel = () => clearTimeout(timer);
-            document.addEventListener("touchend", cancel, { once: true });
-            document.addEventListener("touchmove", cancel, { once: true });
-          }}
+          {...longPress}
         >
           {note.name}
         </p>
