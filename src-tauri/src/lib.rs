@@ -10,6 +10,9 @@ mod vault_android;
 #[cfg(target_os = "android")]
 use vault_android::*;
 
+#[cfg(target_os = "macos")]
+mod macos_window;
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -30,6 +33,19 @@ enum TemplateChange {
     ForceValue {
         key: String,
         value: String,
+    },
+    // Renommage d'une valeur permise dans un BUTTON : met à jour les héritiers
+    // dont la propriété vaut exactement old_value.
+    RenameEnumValue {
+        key: String,
+        old_value: String,
+        new_value: String,
+    },
+    // Réconciliation BUTTON : écrase par le default toute valeur non permise.
+    EnforceEnum {
+        key: String,
+        options: Vec<String>,
+        default: String,
     },
 }
 
@@ -66,12 +82,24 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_android_fs::init());
     }
 
-    builder.setup(|app| {
+    builder
+        .setup(|app| {
             #[cfg(target_os = "macos")]
             {
                 let window = app.get_webview_window("main").unwrap();
-                apply_vibrancy(&window, NSVisualEffectMaterial::FullScreenUI, None, None)
-                    .expect("Vibrancy non supportée");
+                let radius = macos_window::CORNER_RADIUS;
+                // 4e arg = rayon des coins : arrondit la vue de vibrancy (fond visible).
+                apply_vibrancy(
+                    &window,
+                    NSVisualEffectMaterial::FullScreenUI,
+                    None,
+                    Some(radius),
+                )
+                .expect("Vibrancy non supportée");
+                // Clippe le contentView au même rayon pour que le webview suive l'arrondi.
+                if let Err(e) = macos_window::apply_corner_radius(&window, radius) {
+                    eprintln!("[macos_window] arrondi non appliqué : {}", e);
+                }
             }
             #[cfg(target_os = "ios")]
             {
@@ -265,6 +293,24 @@ fn clone_change(change: &TemplateChange) -> TemplateChange {
             key: key.clone(),
             value: value.clone(),
         },
+        TemplateChange::RenameEnumValue {
+            key,
+            old_value,
+            new_value,
+        } => TemplateChange::RenameEnumValue {
+            key: key.clone(),
+            old_value: old_value.clone(),
+            new_value: new_value.clone(),
+        },
+        TemplateChange::EnforceEnum {
+            key,
+            options,
+            default,
+        } => TemplateChange::EnforceEnum {
+            key: key.clone(),
+            options: options.clone(),
+            default: default.clone(),
+        },
     }
 }
 
@@ -374,6 +420,33 @@ fn apply_change(
                     fm.insert(key.clone(), new_val);
                     true
                 }
+            }
+        }
+        TemplateChange::RenameEnumValue {
+            key,
+            old_value,
+            new_value,
+        } => match fm.get_mut(key.as_str()) {
+            Some(serde_yaml::Value::String(s)) if s == old_value => {
+                *s = new_value.clone();
+                true
+            }
+            _ => false,
+        },
+        TemplateChange::EnforceEnum {
+            key,
+            options,
+            default,
+        } => {
+            let needs_reset = matches!(
+                fm.get(key.as_str()),
+                Some(serde_yaml::Value::String(s)) if !options.contains(s) && s != default
+            );
+            if needs_reset {
+                fm.insert(key.clone(), serde_yaml::Value::String(default.clone()));
+                true
+            } else {
+                false
             }
         }
     }
@@ -622,7 +695,11 @@ async fn show_rename_prompt(
             placeholder: Option<String>,
             current: Option<String>,
         }
-        let json = match serde_json::to_string(&Payload { title, placeholder, current }) {
+        let json = match serde_json::to_string(&Payload {
+            title,
+            placeholder,
+            current,
+        }) {
             Ok(j) => j,
             Err(_) => return None,
         };
@@ -633,9 +710,7 @@ async fn show_rename_prompt(
                 Err(_) => return None,
             };
             let mut buffer = vec![0i8; 1024];
-            let len = unsafe {
-                show_ios_rename_prompt(c_json.as_ptr(), buffer.as_mut_ptr(), 1024)
-            };
+            let len = unsafe { show_ios_rename_prompt(c_json.as_ptr(), buffer.as_mut_ptr(), 1024) };
             if len <= 0 {
                 return None;
             }

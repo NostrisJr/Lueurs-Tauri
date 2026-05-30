@@ -1,5 +1,6 @@
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useRef } from "react";
 import { useFrontmatter } from "../../desktop/components/Frontmatter/hooks/useFrontmatter";
 import { useTemplateSync } from "../../desktop/hooks/useTemplateSync";
 import {
@@ -37,6 +38,10 @@ export function useNote() {
 
   const tabHistory = useAtomValue(tabHistoryAtom);
   const setTabHistory = useSetAtom(tabHistoryAtom);
+
+  // État du template figé au début d'une rafale d'édition (par noteId), pour que
+  // le diff de propagation porte sur le changement complet et non la dernière frappe.
+  const templatePrevRef = useRef<Map<string, Frontmatter>>(new Map());
 
   const {
     updateNote,
@@ -81,8 +86,19 @@ export function useNote() {
     }
 
     const isTemplate = activeNote.type === "__template__";
-    const prevFrontmatter = activeNote.frontmatter;
     const noteId = activeNote.id;
+
+    // updateNote met l'arbre à jour à chaque frappe (activeNote.frontmatter avance)
+    // et le debounce ne conserve que le dernier callback. On fige l'état d'avant-rafale
+    // pour que le diff voie le changement complet — sinon un renommage de valeur étalé
+    // sur plusieurs frappes n'est jamais détecté (l'old_value ne correspond plus).
+    if (
+      isTemplate &&
+      frontmatterChanged &&
+      !templatePrevRef.current.has(noteId)
+    ) {
+      templatePrevRef.current.set(noteId, activeNote.frontmatter);
+    }
 
     // onTemplateChange après persistance disque — Rust doit lire les fichiers à jour
     updateNote(
@@ -91,14 +107,15 @@ export function useNote() {
       frontmatter,
       isTemplate && frontmatterChanged
         ? () => {
+            const prev =
+              templatePrevRef.current.get(noteId) ?? activeNote.frontmatter;
+            templatePrevRef.current.delete(noteId);
             log.info("template persisté, propagation des changements", {
               noteId,
             });
-            onTemplateChange(noteId, prevFrontmatter, frontmatter).catch(
-              (err) => {
-                log.error("erreur onTemplateChange", err);
-              }
-            );
+            onTemplateChange(noteId, prev, frontmatter).catch((err) => {
+              log.error("erreur onTemplateChange", err);
+            });
           }
         : undefined
     );

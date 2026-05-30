@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
 import { useCmdHeld } from "../../../hooks/useCmdHeld";
@@ -14,7 +14,10 @@ export function KanbanCard({ note }: Props) {
   const cmdHeld = useCmdHeld();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note.name);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Ref stable → sélectionne le texte au montage de l'input d'édition uniquement
+  const editInputRef = useCallback((el: HTMLInputElement | null) => {
+    el?.select();
+  }, []);
 
   const {
     attributes,
@@ -29,7 +32,6 @@ export function KanbanCard({ note }: Props) {
     e.stopPropagation();
     setDraft(note.name);
     setEditing(true);
-    setTimeout(() => inputRef.current?.select(), 0);
   }
 
   function commitEdit() {
@@ -68,7 +70,7 @@ export function KanbanCard({ note }: Props) {
     >
       {editing ? (
         <input
-          ref={inputRef}
+          ref={editInputRef}
           // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture de l'édition
           autoFocus
           value={draft}

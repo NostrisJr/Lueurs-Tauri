@@ -46,6 +46,9 @@ export function BaseView({ base, onBaseChange }: Props) {
     moveCard,
     addColumn,
     renameColumn,
+    removeColumn,
+    setColumnColor,
+    isButtonKey,
   } = useKanban({ base, onBaseChange });
 
   // Tableau est la vue par défaut
@@ -103,7 +106,7 @@ export function BaseView({ base, onBaseChange }: Props) {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-center gap-3 px-4 py-2 sticky top-12 bg-white z-30">
+      <div className="flex items-center gap-3 px-4 py-2 sticky top-12 bg-white z-0">
         <ViewSelector
           currentView={currentView}
           kanbanAvailable={availableKeys.length > 0}
@@ -150,6 +153,8 @@ export function BaseView({ base, onBaseChange }: Props) {
             onMoveCard={moveCard}
             onRenameColumn={renameColumn}
             onAddColumn={addColumn}
+            onDeleteColumn={removeColumn}
+            onSetColumnColor={isButtonKey ? setColumnColor : undefined}
           />
         ) : (
           <TableView base={base} onBaseChange={onBaseChange} />

@@ -25,10 +25,10 @@ import {
 } from "../../../shared/lib/atoms";
 import { findNextAvailableNumber } from "../../../shared/lib/fileTreeHelpers";
 import { createLogger } from "../../../shared/lib/logger";
-import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
+import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "../Floating/FloatingComponent";
-import { Squircle } from "../Squircle";
+import { Squircle } from "../../../shared/components/Squircle";
 
 const log = createLogger("MobileDictaphone");
 
@@ -58,7 +58,7 @@ export function MobileDictaphone() {
   const { createNote, updateNote } = useFileTree();
   const { handleRename } = useNote();
   const recorder = useAudioRecorder();
-  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
+  const { height: keyboardHeight, isOpen: isKeyboardOpen } = useKeyboard();
 
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -211,7 +211,7 @@ export function MobileDictaphone() {
   }, [status, recorder, close]);
 
   // Nettoyage si le composant se démonte pendant l'enregistrement
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: effect de nettoyage pur (unmount uniquement) — recorder est lu via la closure au moment du cleanup, pas une dep réactive
   useEffect(() => {
     return () => {
       if (recorder.isRecording) recorder.cancelRecording();

@@ -12,6 +12,7 @@ import {
   toggleCodeBlockCommand,
   toggleDidascalieInlineCommand,
   toggleHeadingCommand,
+  toggleHighlightInlineCommand,
   toggleLinkWithPromptCommand,
   toggleOrderedListCommand,
   togglePoetryCommand,
@@ -65,6 +66,12 @@ export const EDITOR_FORMATTING_GROUPS: FormattingGroup[] = [
         label: "Didascalie inline",
         cmdKey: toggleDidascalieInlineCommand.key,
         shortcut: "⌘D",
+      },
+      {
+        id: "highlight",
+        label: "Surligner",
+        cmdKey: toggleHighlightInlineCommand.key,
+        shortcut: "⌘⇧L",
       },
       {
         id: "link",

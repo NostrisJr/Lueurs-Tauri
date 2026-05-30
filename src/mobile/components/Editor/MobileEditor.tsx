@@ -1,9 +1,12 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
+import { NoteEditor } from "../../../shared/components/NoteEditor/NoteEditor";
+import type { Editor } from "../../../shared/components/NoteEditor/MarkdownEditor";
 import {
-  type EditorHandle,
-  NoteEditor,
-} from "../../../shared/components/NoteEditor/NoteEditor";
+  editorInsertAudioBlock,
+  editorRedo,
+  editorUndo,
+} from "../../../shared/components/NoteEditor/editorCommands";
 import {
   IconArrowUturnBackward,
   IconArrowUturnForward,
@@ -22,19 +25,20 @@ import {
   activeNoteAtom,
   dictaphoneModeAtom,
   displayModeAtom,
+  folderPathAtom,
   mobileNavigateAtom,
   mobileResetNavAtom,
   noteBackStackAtom,
   openTabIdsAtom,
   pendingAudioInsertAtom,
+  pendingDisplayModeAtom,
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { NoteType } from "../../../shared/lib/noteTypes";
 import { isAndroid, isIOS } from "../../../shared/lib/platform";
 
 import clsx from "clsx";
-import { useAndroidKeyboardOpen } from "../../hooks/useAndroidKeyboardOpen";
-import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
+import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileFormattingBar } from "./MobileFormattingBar";
 
@@ -48,22 +52,20 @@ export function MobileEditor() {
   const [pendingAudioInsert, setPendingAudioInsert] = useAtom(
     pendingAudioInsertAtom
   );
-  const [displayMode, setDisplayMode] = useAtom(displayModeAtom);
-  const displayModeHandlerRef = useRef<((mode: DisplayMode) => void) | null>(
-    null
-  );
-  const editorRef = useRef<EditorHandle | null>(null);
+  const displayMode = useAtomValue(displayModeAtom);
+  const setPendingDisplayMode = useSetAtom(pendingDisplayModeAtom);
+  const folderPath = useAtomValue(folderPathAtom);
+  const editorRef = useRef<Editor | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
   // Pour distinguer "changement de note" (restore) vs "changement clavier" (scroll caret)
   // dans l'effet unifié de scroll.
   const lastScrolledNoteIdRef = useRef<string | null>(null);
   const isBase = activeNote?.type === NoteType.BASE;
-  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
+  const { height: keyboardHeight, isOpen: isKeyboardOpen, isAndroidOpen: androidKbOpen } = useKeyboard();
   // Sur Android, le WebView est redimensionné par les insets natifs : visualViewport
   // ne voit plus le clavier (keyboardHeight reste à 0). On détecte l'ouverture via
-  // un hook dédié pour piloter l'affichage de la barre de styles.
-  const androidKbOpen = useAndroidKeyboardOpen();
+  // isAndroidOpen pour piloter l'affichage de la barre de styles.
   const effectiveKbOpen = isAndroid ? androidKbOpen : isKeyboardOpen;
   const totalMobileInset =
     keyboardHeight > 0 || (isAndroid && androidKbOpen)
@@ -115,13 +117,15 @@ export function MobileEditor() {
 
   // Consomme le bloc audio en attente après retour du dictaphone (insert-mode)
   useEffect(() => {
-    if (!pendingAudioInsert || !editorRef.current) return;
-    editorRef.current.insertAudioBlock(
+    if (!pendingAudioInsert) return;
+    editorInsertAudioBlock(
+      editorRef,
+      folderPath ?? "",
       pendingAudioInsert.path,
       pendingAudioInsert.title
     );
     setPendingAudioInsert(null);
-  }, [pendingAudioInsert, setPendingAudioInsert]);
+  }, [pendingAudioInsert, folderPath, setPendingAudioInsert]);
 
   if (!activeNote) return null;
 
@@ -143,7 +147,7 @@ export function MobileEditor() {
       <div className="flex-1 flex justify-end items-center gap-1">
         <button
           type="button"
-          onClick={() => editorRef.current?.undo()}
+          onClick={() => editorUndo(editorRef)}
           className="w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
           title="Annuler (⌘Z)"
         >
@@ -151,7 +155,7 @@ export function MobileEditor() {
         </button>
         <button
           type="button"
-          onClick={() => editorRef.current?.redo()}
+          onClick={() => editorRedo(editorRef)}
           className="w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
           title="Rétablir (⌘⇧Z)"
         >
@@ -171,8 +175,7 @@ export function MobileEditor() {
                 onClick={() => {
                   hapticImpact("light");
                   const next: DisplayMode = nextEntry.value;
-                  setDisplayMode(next);
-                  displayModeHandlerRef.current?.(next);
+                  setPendingDisplayMode(next);
                 }}
                 className="w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
                 title={currentEntry.label}
@@ -247,10 +250,9 @@ export function MobileEditor() {
         style={{ paddingBottom }}
       >
         <NoteEditor
-          ref={editorRef}
+          editorRef={editorRef}
           defaultCollapsedFrontmatter
           hideDisplayModeSelector
-          displayModeHandlerRef={displayModeHandlerRef}
         />
       </div>
 

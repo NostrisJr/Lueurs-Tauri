@@ -11,6 +11,11 @@ import {
   parseTableColumns,
   serializeTableColumns,
 } from "../lib/atoms";
+import {
+  type ButtonDef,
+  isButtonFormula,
+  parseButton,
+} from "../lib/FrontmatterPicker/buttonProperty";
 import { isSystemField } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { SystemField } from "../lib/noteTypes";
@@ -28,6 +33,8 @@ export interface TableColumn {
   width: number;
   // Propriété contraignante (valeur libre dans le template) vs imposée (valeur forcée)
   isImposed: boolean;
+  // Contrainte BUTTON : valeur choisie via dropdown parmi des options
+  enumConstraint?: ButtonDef;
   // Templates qui définissent cette propriété — pour le renommage
   templatePaths: string[];
 }
@@ -69,10 +76,19 @@ export function useTable({ base, onBaseChange }: UseTableProps) {
         continue;
       }
       seenKeys.add(key);
-      const isImposed = value !== "" && value !== null && value !== undefined;
+      const enumConstraint = isButtonFormula(value)
+        ? (parseButton(value as string) ?? undefined)
+        : undefined;
+      // Une contrainte BUTTON n'est jamais imposée (valeur éditable via dropdown)
+      const isImposed =
+        !enumConstraint &&
+        value !== "" &&
+        value !== null &&
+        value !== undefined;
       columns.push({
         key,
         isImposed,
+        enumConstraint,
         width: savedWidths[key] ?? DEFAULT_COL_WIDTH,
         templatePaths: [template.id],
       });

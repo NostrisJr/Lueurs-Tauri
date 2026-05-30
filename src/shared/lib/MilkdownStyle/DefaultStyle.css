@@ -57,9 +57,12 @@
 .milkdown .ProseMirror h6 {
   font-family: 'Inter', Arial, Helvetica, sans-serif;
   font-weight: 500;
-  line-height: normal;
+  /* line-height: 1 → la line box = hauteur du texte. Sans ce réglage, le
+     leading de `normal` (~1.21) agrandit le caret et décentre le chevron.
+     L'espace perdu au-dessus est rendu via margin-top (cf. 0.6em). */
+  line-height: 1;
   color: #1a1918;
-  margin-top: 0.5em;
+  margin-top: 0.6em;
   margin-bottom: 0;
 }
 
@@ -96,6 +99,44 @@
 .milkdown .ProseMirror>h6:first-child {
   margin-top: 0;
 }
+
+/* Marqueurs Markdown (#) affichés quand le curseur est sur le titre (live preview).
+   Même police/taille que le titre (hérités) ; grisés via opacity, façon Obsidian.
+   Le pseudo-élément est toujours présent mais replié (max-width: 0) : animer
+   max-width + opacity fait glisser le texte progressivement à l'entrée/sortie du
+   curseur. content n'étant pas animable, c'est la seule approche fluide. */
+.milkdown .ProseMirror h1 .heading-content::before { content: "# "; }
+.milkdown .ProseMirror h2 .heading-content::before { content: "## "; }
+.milkdown .ProseMirror h3 .heading-content::before { content: "### "; }
+.milkdown .ProseMirror h4 .heading-content::before { content: "#### "; }
+.milkdown .ProseMirror h5 .heading-content::before { content: "##### "; }
+.milkdown .ProseMirror h6 .heading-content::before { content: "###### "; }
+
+.milkdown .ProseMirror h1 .heading-content::before,
+.milkdown .ProseMirror h2 .heading-content::before,
+.milkdown .ProseMirror h3 .heading-content::before,
+.milkdown .ProseMirror h4 .heading-content::before,
+.milkdown .ProseMirror h5 .heading-content::before,
+.milkdown .ProseMirror h6 .heading-content::before {
+  display: inline-block;
+  overflow: hidden;
+  white-space: pre;
+  /* top (et non baseline) : overflow:hidden déplace la baseline d'un inline-block
+     vers son bord bas. Deux boîtes de même hauteur (line-height:1) alignées par
+     le haut ont des baselines confondues → les # s'alignent sur le texte. */
+  vertical-align: top;
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 0.16s ease, opacity 0.16s ease;
+}
+
+/* max-width par niveau (≈ nb de caractères) pour une durée d'animation uniforme */
+.milkdown .ProseMirror h1.heading-marker-visible .heading-content::before { max-width: 2.5ch; opacity: 0.3; }
+.milkdown .ProseMirror h2.heading-marker-visible .heading-content::before { max-width: 3.5ch; opacity: 0.3; }
+.milkdown .ProseMirror h3.heading-marker-visible .heading-content::before { max-width: 4.5ch; opacity: 0.3; }
+.milkdown .ProseMirror h4.heading-marker-visible .heading-content::before { max-width: 5.5ch; opacity: 0.3; }
+.milkdown .ProseMirror h5.heading-marker-visible .heading-content::before { max-width: 6.5ch; opacity: 0.3; }
+.milkdown .ProseMirror h6.heading-marker-visible .heading-content::before { max-width: 7.5ch; opacity: 0.3; }
 
 /* ─────────────────────────────────────────────────────────────────────────
    Paragraphe et inline
@@ -428,10 +469,15 @@
   color: var(--color-gray-400);
 }
 
-/* Pipes : non-éditables, légèrement décalées en couleur pour qu'on les voie
-   bien comme des marqueurs et non comme du contenu. */
-.milkdown .ProseMirror .didascalie-pipe {
-  color: var(--color-gray-400);
+/* Pipes purement présentation : pseudo-éléments non sélectionnables. La marque
+   étant non-inclusive et sans marques imbriquées, le run reste un seul span →
+   une seule pipe ouvrante et une seule fermante. */
+.milkdown .ProseMirror span[data-didascalie-inline]::before {
+  content: "| ";
+  user-select: none;
+}
+.milkdown .ProseMirror span[data-didascalie-inline]::after {
+  content: " |";
   user-select: none;
 }
 

@@ -1,8 +1,8 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
-  documentMapAtom,
   documentMapDistinguishedTypesAtom,
+  documentMapForActiveAtom,
   documentMapShowListsAtom,
   documentMapShowNavigatorAtom,
   documentMapShowTextAtom,
@@ -36,7 +36,7 @@ function findScrollContainer(el: HTMLElement): HTMLElement | null {
 
 // Rendu à l'intérieur du wrapper sticky de NoteEditor (height: 0, overflow: visible)
 export function DocumentNavigator() {
-  const { blocks, docSize } = useAtomValue(documentMapAtom);
+  const { blocks, docSize } = useAtomValue(documentMapForActiveAtom);
   const distinguishedTypes = useAtomValue(documentMapDistinguishedTypesAtom);
   const showNavigator = useAtomValue(documentMapShowNavigatorAtom);
   const showLists = useAtomValue(documentMapShowListsAtom);

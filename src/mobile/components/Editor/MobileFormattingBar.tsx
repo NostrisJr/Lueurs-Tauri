@@ -1,6 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
-import type { EditorHandle } from "../../../shared/components/NoteEditor/MarkdownEditor";
+import type { Editor } from "../../../shared/components/NoteEditor/MarkdownEditor";
+import {
+  editorBlockquote,
+  editorBold,
+  editorBulletList,
+  editorCodeBlock,
+  editorDedent,
+  editorDidascalieInline,
+  editorHeading,
+  editorHighlight,
+  editorIndent,
+  editorInlineCode,
+  editorItalic,
+  editorOrderedList,
+  editorParagraph,
+  editorPoetry,
+  editorStrike,
+  editorTaskList,
+} from "../../../shared/components/NoteEditor/editorCommands";
 import {
   IconAppleTerminalFill,
   IconBold,
@@ -9,6 +27,7 @@ import {
   IconChecklist,
   IconCodeInline,
   IconDecreaseIndent,
+  IconHighlighter,
   IconIncreaseIndent,
   IconItalic,
   IconKeyboardChevronCompactDown,
@@ -20,7 +39,7 @@ import {
 import { FloatingComponent } from "../Floating/FloatingComponent";
 
 interface Props {
-  editorRef: RefObject<EditorHandle | null>;
+  editorRef: RefObject<Editor | null>;
   keyboardHeight: number;
   isKeyboardOpen: boolean;
 }
@@ -29,7 +48,7 @@ interface Btn {
   label?: string;
   Icon?: React.FC<{ className?: string }>;
   title: string;
-  action: (e: EditorHandle) => void;
+  action: () => void;
   className?: string;
 }
 
@@ -56,79 +75,118 @@ export function MobileFormattingBar({
 
   if (!rendered) return null;
 
-  const e = () => editorRef.current;
-
   const groups: Btn[][] = [
     [
-      { Icon: IconBold, title: "Gras", action: (ed) => ed.bold() },
-      { Icon: IconItalic, title: "Italique", action: (ed) => ed.italic() },
-      { Icon: IconStrikethrough, title: "Barré", action: (ed) => ed.strike() },
+      { Icon: IconBold, title: "Gras", action: () => editorBold(editorRef) },
+      {
+        Icon: IconItalic,
+        title: "Italique",
+        action: () => editorItalic(editorRef),
+      },
+      {
+        Icon: IconStrikethrough,
+        title: "Barré",
+        action: () => editorStrike(editorRef),
+      },
+      {
+        Icon: IconHighlighter,
+        title: "Surligner",
+        action: () => editorHighlight(editorRef),
+      },
       {
         Icon: IconCodeInline,
         title: "Code inline",
-        action: (ed) => ed.inlineCode(),
+        action: () => editorInlineCode(editorRef),
         className: "font-mono",
       },
       {
         label: "|Abc|",
         title: "Didascalie inline",
-        action: (ed) => ed.didascalieInline(),
+        action: () => editorDidascalieInline(editorRef),
         className: "italic opacity-75",
       },
       {
         Icon: IconTextformat,
         title: "Texte normal",
-        action: (ed) => ed.paragraph(),
+        action: () => editorParagraph(editorRef),
       },
     ],
     [
-      { label: "H1", title: "Titre 1", action: (ed) => ed.heading(1) },
-      { label: "H2", title: "Titre 2", action: (ed) => ed.heading(2) },
-      { label: "H3", title: "Titre 3", action: (ed) => ed.heading(3) },
-      { label: "H4", title: "Titre 4", action: (ed) => ed.heading(4) },
-      { label: "H5", title: "Titre 5", action: (ed) => ed.heading(5) },
-      { label: "H6", title: "Titre 6", action: (ed) => ed.heading(6) },
+      {
+        label: "H1",
+        title: "Titre 1",
+        action: () => editorHeading(editorRef, 1),
+      },
+      {
+        label: "H2",
+        title: "Titre 2",
+        action: () => editorHeading(editorRef, 2),
+      },
+      {
+        label: "H3",
+        title: "Titre 3",
+        action: () => editorHeading(editorRef, 3),
+      },
+      {
+        label: "H4",
+        title: "Titre 4",
+        action: () => editorHeading(editorRef, 4),
+      },
+      {
+        label: "H5",
+        title: "Titre 5",
+        action: () => editorHeading(editorRef, 5),
+      },
+      {
+        label: "H6",
+        title: "Titre 6",
+        action: () => editorHeading(editorRef, 6),
+      },
     ],
     [
       {
         Icon: IconListBullet,
         title: "Liste à puces",
-        action: (ed) => ed.bulletList(),
+        action: () => editorBulletList(editorRef),
       },
       {
         Icon: IconListNumber,
         title: "Liste numérotée",
-        action: (ed) => ed.orderedList(),
+        action: () => editorOrderedList(editorRef),
       },
       {
         Icon: IconChecklist,
         title: "Liste de tâches",
-        action: (ed) => ed.taskList(),
+        action: () => editorTaskList(editorRef),
       },
       {
         Icon: IconIncreaseIndent,
         title: "Indenter",
-        action: (ed) => ed.indent(),
+        action: () => editorIndent(editorRef),
       },
       {
         Icon: IconDecreaseIndent,
         title: "Désindenter",
-        action: (ed) => ed.dedent(),
+        action: () => editorDedent(editorRef),
       },
     ],
     [
       {
         Icon: IconCharacterSquare,
         title: "Citation",
-        action: (ed) => ed.blockquote(),
+        action: () => editorBlockquote(editorRef),
       },
       {
         Icon: IconAppleTerminalFill,
         title: "Bloc de code",
-        action: (ed) => ed.codeBlock(),
+        action: () => editorCodeBlock(editorRef),
         className: "font-mono text-xs",
       },
-      { Icon: IconChartBarYaxis, title: "Poésie", action: (ed) => ed.poetry() },
+      {
+        Icon: IconChartBarYaxis,
+        title: "Poésie",
+        action: () => editorPoetry(editorRef),
+      },
     ],
   ];
 
@@ -173,10 +231,7 @@ export function MobileFormattingBar({
                   }
                 }}
                 onPointerUp={() => {
-                  if (!dragRef.current.isDragging) {
-                    const ed = e();
-                    if (ed) item.action(ed);
-                  }
+                  if (!dragRef.current.isDragging) item.action();
                 }}
                 className={`shrink-0 min-w-9 h-9 flex items-center justify-center px-2 rounded-full text-black hover:bg-white/20 active:bg-white/30 transition-colors select-none ${item.className ?? ""}`}
               >

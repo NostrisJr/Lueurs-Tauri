@@ -1,4 +1,4 @@
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { type DisplayMode, displayModeAtom } from "../../lib/atoms";
 import { DISPLAY_MODES } from "../../lib/displayModes";
 
@@ -7,10 +7,9 @@ interface Props {
 }
 
 export function DisplayModeSelector({ onModeChange }: Props) {
-  const [mode, setMode] = useAtom(displayModeAtom);
+  const mode = useAtomValue(displayModeAtom);
 
   function handleSelect(value: DisplayMode) {
-    setMode(value);
     onModeChange(value);
   }
 

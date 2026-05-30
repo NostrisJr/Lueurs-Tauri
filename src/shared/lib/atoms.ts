@@ -1,14 +1,19 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import {
+  DEFAULT_HIGHLIGHT_COLOR,
+  type HighlightColorId,
+} from "../plugins/highlight/colors";
+import {
   DEFAULT_DISTINGUISHED_TYPES,
   type DocumentMapState,
 } from "./documentMapConfig";
 
 import type { FolderNode, NoteFile, TreeNode } from "../hooks/useFileTree";
 import { flattenTree } from "../hooks/useFileTree";
+import { buttonColumns, resolveButtonKey } from "./fileTreeHelpers";
 import { createLogger } from "./logger";
-import { type KanbanColumn, SystemField } from "./noteTypes";
+import { type KanbanColumn, NoteType, SystemField } from "./noteTypes";
 
 const log = createLogger("atoms");
 
@@ -16,6 +21,8 @@ export const writingPathsRegistry = new Set<string>();
 export const searchAtom = atom("");
 export const sidebarCollapsedAtom = atom(false);
 export const settingsOpenAtom = atom(false);
+// Affichage du dictaphone desktop (rendu en overlay au-dessus de l'éditeur)
+export const dictaphoneOpenAtom = atom(false);
 // État du drag & drop dans le file tree
 export const dragSourceAtom = atom<string | null>(null);
 export const dragOverAtom = atom<string | null>(null);
@@ -24,9 +31,15 @@ export const loadingAtom = atom(false);
 export const treeAtom = atom<TreeNode[]>([]);
 export const errorAtom = atom<string | null>(null);
 
+// Couleur de surlignage par défaut (appliquée via raccourci ou sans couleur explicite)
+export const defaultHighlightColorAtom = atomWithStorage<HighlightColorId>(
+  "lueurs_default_highlight_color",
+  DEFAULT_HIGHLIGHT_COLOR,
+  undefined,
+  { getOnInit: true }
+);
+
 export type DisplayMode = "normal" | "livre";
-// Source de vérité UI — initialisé/synchronisé depuis le frontmatter par NoteEditor
-export const displayModeAtom = atom<DisplayMode>("normal");
 // Mode de lecture par défaut : appliqué aux nouvelles notes et aux notes sans __DisplayMode__
 export const defaultDisplayModeAtom = atomWithStorage<DisplayMode>(
   "lueurs_default_display_mode",
@@ -34,6 +47,17 @@ export const defaultDisplayModeAtom = atomWithStorage<DisplayMode>(
   undefined,
   { getOnInit: true }
 );
+
+// Justification du texte en mode livre (activée par défaut)
+export const textJustificationAtom = atomWithStorage<boolean>(
+  "lueurs_text_justify",
+  true,
+  undefined,
+  { getOnInit: true }
+);
+// displayModeAtom — dérivé du frontmatter de la note active, repli sur le défaut utilisateur.
+// L'écriture se fait via handleChange (frontmatter __DisplayMode__), qui propage ici automatiquement.
+// Défini plus bas après activeNoteAtom (dépendance).
 
 export const STORAGE_KEY = "lueurs_folder_path";
 // getOnInit: true → lit localStorage dès l'init de l'atom (pas après le montage)
@@ -149,12 +173,35 @@ export const activeNoteAtom = atom((get) => {
   return get(notesByIdAtom).get(id) ?? null;
 });
 
+// Dérivé : lit __DisplayMode__ de la note active, repli sur le défaut utilisateur.
+// Read-only — pour changer le mode, écrire dans le frontmatter via handleChange.
+export const displayModeAtom = atom<DisplayMode>((get) => {
+  const note = get(activeNoteAtom);
+  const saved = note?.frontmatter[SystemField.DISPLAY_MODE] as
+    | DisplayMode
+    | undefined;
+  if (saved === "livre" || saved === "normal") return saved;
+  return get(defaultDisplayModeAtom);
+});
+
+// Changement de mode d'affichage demandé par MobileEditor.
+// NoteEditor lit cet atom et l'applique au frontmatter via handleChange.
+// null = aucune demande en attente.
+export const pendingDisplayModeAtom = atom<DisplayMode | null>(null);
+
 // ── Navigateur de document ────────────────────────────────────────────────
 
+const EMPTY_DOCUMENT_MAP: DocumentMapState = { blocks: [], docSize: 0 };
+
 // Map calculée en temps réel par le plugin ProseMirror (non persistée)
-export const documentMapAtom = atom<DocumentMapState>({
-  blocks: [],
-  docSize: 0,
+export const documentMapAtom = atom<DocumentMapState>(EMPTY_DOCUMENT_MAP);
+
+// Dérivé : vide pour les bases (pas d'éditeur monté → carte jamais mise à jour),
+// sinon valeur courante de documentMapAtom. Évite l'effet de sync dans NoteEditor.
+export const documentMapForActiveAtom = atom((get) => {
+  const note = get(activeNoteAtom);
+  if (note?.type === NoteType.BASE) return EMPTY_DOCUMENT_MAP;
+  return get(documentMapAtom);
 });
 
 // Types de blocs à distinguer visuellement dans le navigateur (persistés)
@@ -256,10 +303,16 @@ export const kanbanCardsAtom = atom((get): KanbanCards => {
     | undefined;
   if (!kanbanKey) return {};
 
-  const columns = parseColumns(base.frontmatter[SystemField.KANBAN_COLUMNS]);
+  const notesById = get(notesByIdAtom);
+
+  // Clé BUTTON : colonnes dérivées des options du template (source de vérité unique).
+  // Clé libre : colonnes persistées dans __KanbanColumns__.
+  const buttonKey = resolveButtonKey(base, notesById, kanbanKey);
+  const columns = buttonKey
+    ? buttonColumns(buttonKey.def)
+    : parseColumns(base.frontmatter[SystemField.KANBAN_COLUMNS]);
   // Pas de guard sur columns.length — la colonne "Sans valeur" doit apparaître même si aucune colonne n'est configurée
 
-  const notesById = get(notesByIdAtom);
   const childrenPaths = base.frontmatter[SystemField.CHILDREN];
   const paths = Array.isArray(childrenPaths) ? (childrenPaths as string[]) : [];
   const childNotes = paths

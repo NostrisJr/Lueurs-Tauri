@@ -1,5 +1,5 @@
 import { platform } from "@tauri-apps/plugin-os";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
 
@@ -19,14 +19,7 @@ export function NoteSelector({
   placeholder = "Rechercher une note...",
 }: NoteSelectorProps) {
   const [query, setQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = platform() === "ios";
-
-  useEffect(() => {
-    // Délai pour laisser l'animation BottomSheet démarrer avant le focus
-    const t = setTimeout(() => inputRef.current?.focus(), 300);
-    return () => clearTimeout(t);
-  }, []);
 
   const filtered = notes.filter((n) =>
     n.name.toLowerCase().includes(query.toLowerCase())
@@ -40,7 +33,7 @@ export function NoteSelector({
     >
       <div className="px-2 py-1.5 border-b border-gray-100">
         <input
-          ref={inputRef}
+          ref={(el) => el?.focus()}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

@@ -1,7 +1,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { NoteEditor } from "../shared/components/NoteEditor/NoteEditor.tsx";
-import { registerDropListener } from "../shared/components/NoteEditor/dropListener.ts";
+import { registerDropListener } from "../shared/components/NoteEditor/lib/dropListener.ts";
 import {
   DESKTOP_HEADER_HEIGHT,
   useCaretScroll,
@@ -11,10 +11,14 @@ import { useNote } from "../shared/hooks/useNote";
 import { useVaultSync } from "../shared/hooks/useVaultSync";
 import {
   activeNoteAtom,
+  dictaphoneOpenAtom,
   folderPathAtom,
   loadingAtom,
+  pendingAudioInsertAtom,
   settingsOpenAtom,
 } from "../shared/lib/atoms";
+import { NoteType } from "../shared/lib/noteTypes";
+import { DesktopDictaphone } from "./components/Dictaphone/DesktopDictaphone.tsx";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
 import { SettingsModal } from "./components/Settings/SettingsModal";
 import { SideBar } from "./components/SideBar/SideBar.tsx";
@@ -30,6 +34,9 @@ export function DesktopApp() {
   const folderPath = useAtomValue(folderPathAtom);
   const loading = useAtomValue(loadingAtom);
   const setSettingsOpen = useSetAtom(settingsOpenAtom);
+  const dictaphoneOpen = useAtomValue(dictaphoneOpenAtom);
+  const setDictaphoneOpen = useSetAtom(dictaphoneOpenAtom);
+  const setPendingAudioInsert = useSetAtom(pendingAudioInsertAtom);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
@@ -54,13 +61,13 @@ export function DesktopApp() {
     return () => cancelAnimationFrame(raf);
   }, [activeNote]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initFolder est un callback stable (useCallback sans deps) — l'omettre évite une double exécution au montage
   useEffect(() => {
     if (folderPath) initFolder();
   }, [folderPath]);
 
   // Sur macOS : si aucun vault persisté, auto-init sur le dossier iCloud dédié
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: autoInitFolder est stable — n'exécuter qu'au montage, pas à chaque changement de la référence de fonction
   useEffect(() => {
     if (!folderPath) autoInitFolder();
   }, []);
@@ -105,7 +112,19 @@ export function DesktopApp() {
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">
         <TabBar />
 
-        <div className="flex-1 overflow-hidden">
+        <div className="relative flex-1 overflow-hidden">
+          {activeNote &&
+            activeNote.type !== NoteType.BASE &&
+            dictaphoneOpen && (
+              <DesktopDictaphone
+                onInsert={(path, title) => {
+                  setPendingAudioInsert({ path, title });
+                  setDictaphoneOpen(false);
+                }}
+                onClose={() => setDictaphoneOpen(false)}
+              />
+            )}
+
           <div
             ref={scrollContainerRef}
             className="w-full h-full overflow-auto overscroll-none"

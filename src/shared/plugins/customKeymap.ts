@@ -5,13 +5,20 @@ import {
   turnIntoTextCommand,
 } from "@milkdown/kit/preset/commonmark";
 import { toggleStrikethroughCommand } from "@milkdown/kit/preset/gfm";
-import { lift, setBlockType, wrapIn } from "@milkdown/kit/prose/commands";
+import { defaultHighlightColorRef } from "./highlight/defaultColorRef";
+import {
+  lift,
+  setBlockType,
+  toggleMark,
+  wrapIn,
+} from "@milkdown/kit/prose/commands";
 import { keymap } from "@milkdown/kit/prose/keymap";
+import type { MarkType, Node as ProseNode } from "@milkdown/kit/prose/model";
 import type { Schema } from "@milkdown/kit/prose/model";
 import { liftListItem, wrapInList } from "@milkdown/kit/prose/schema-list";
 import type { EditorState, Transaction } from "@milkdown/kit/prose/state";
 import type { Command } from "@milkdown/kit/prose/state";
-import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
+import { Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
 import { $command, $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../lib/logger";
 
@@ -39,6 +46,60 @@ function isInTaskList(state: EditorState, schema: Schema): boolean {
       return true;
   }
   return false;
+}
+
+// Curseur dans une liste (bullet ou ordered), quelle que soit la profondeur.
+function isInList(state: EditorState, schema: Schema): boolean {
+  const { $from } = state.selection;
+  for (let d = $from.depth; d > 0; d--) {
+    const t = $from.node(d).type;
+    if (t === schema.nodes.bullet_list || t === schema.nodes.ordered_list)
+      return true;
+  }
+  return false;
+}
+
+// Curseur (vide) dans le paragraphe vide d'un list_item.
+function isInEmptyListItem(state: EditorState, schema: Schema): boolean {
+  const { $from, empty } = state.selection;
+  if (!empty) return false;
+  const parent = $from.parent;
+  if (parent.type !== schema.nodes.paragraph || parent.content.size !== 0)
+    return false;
+  return $from.node(-1)?.type === schema.nodes.list_item;
+}
+
+// Sort complètement de toutes les listes imbriquées → paragraphe à la racine.
+// liftListItem en boucle sur les états intermédiaires, steps accumulés puis
+// rejoués sur l'état initial (même technique de composition qu'applyThenApply).
+function liftOutOfList(schema: Schema): Command {
+  return (state, dispatch) => {
+    if (!isInList(state, schema)) return false;
+    const liftCmd = liftListItem(schema.nodes.list_item);
+
+    // biome-ignore lint/suspicious/noExplicitAny: Step[] accumulés
+    const collected: any[] = [];
+    let intermediate = state;
+    // Garde-fou contre une boucle infinie sur structure inattendue
+    for (let i = 0; i < 20 && isInList(intermediate, schema); i++) {
+      // biome-ignore lint/suspicious/noExplicitAny: Transaction assignée dans le callback
+      let tr: any = null;
+      liftCmd(intermediate, (t) => {
+        tr = t;
+      });
+      if (!tr) break;
+      for (const step of (tr as Transaction).steps) collected.push(step);
+      intermediate = intermediate.apply(tr as Transaction);
+    }
+
+    if (collected.length === 0) return false;
+    if (dispatch) {
+      const combined = state.tr;
+      for (const step of collected) combined.step(step);
+      dispatch(combined.scrollIntoView());
+    }
+    return true;
+  };
 }
 
 function allBlocksAreHeading(
@@ -136,6 +197,33 @@ function applyWithEscape(
   const escape = buildEscapeCommand(state, schema);
   if (!escape) return false;
   return applyThenApply(state, dispatch, escape, apply);
+}
+
+// Plage contiguë portant `markType` autour de `pos` (toutes couleurs/marques
+// imbriquées confondues), ou null si `pos` n'est pas dans la marque.
+function markRangeAround(
+  doc: ProseNode,
+  pos: number,
+  markType: MarkType
+): { from: number; to: number } | null {
+  const has = (n: ProseNode | null | undefined) =>
+    !!n && markType.isInSet(n.marks);
+  const $pos = doc.resolve(pos);
+  if (!has($pos.nodeBefore) && !has($pos.nodeAfter)) return null;
+
+  let from = pos;
+  let to = pos;
+  for (;;) {
+    const before = doc.resolve(from).nodeBefore;
+    if (has(before) && before) from -= before.nodeSize;
+    else break;
+  }
+  for (;;) {
+    const after = doc.resolve(to).nodeAfter;
+    if (has(after) && after) to += after.nodeSize;
+    else break;
+  }
+  return { from, to };
 }
 
 // ── Commandes toggle exportées ─────────────────────────────────────────────
@@ -247,39 +335,58 @@ export const toggleDidascalieInlineCommand = $command(
   "ToggleDidascalieInline",
   (ctx) => () => (state, dispatch) => {
     const schema = ctx.get(schemaCtx);
-    const didascalieType = schema.nodes.didascalie_inline;
-    if (!didascalieType) return false;
+    const markType = schema.marks.didascalie_inline;
+    if (!markType) return false;
 
-    const { from, to, empty } = state.selection;
-    const { $from } = state.selection;
+    const { from, empty } = state.selection;
 
-    // Curseur dans une didascalie : on déballe le nœud (texte seul restitué)
-    for (let d = $from.depth; d > 0; d--) {
-      if ($from.node(d).type === didascalieType) {
-        const before = $from.before(d);
-        const after = $from.after(d);
-        const text = $from.node(d).textContent;
-        if (dispatch) {
-          const tr = state.tr.replaceWith(
-            before,
-            after,
-            text ? schema.text(text) : []
-          );
-          dispatch(tr);
-        }
-        return true;
-      }
+    // Curseur (vide) dans une didascalie : retirer la marque sur toute la plage.
+    if (empty) {
+      const range = markRangeAround(state.doc, from, markType);
+      if (!range) return false;
+      if (dispatch)
+        dispatch(state.tr.removeMark(range.from, range.to, markType));
+      return true;
     }
 
-    // Sélection vide hors didascalie : rien à faire
-    if (empty) return false;
+    // Sélection : toggle. addMark retire les marques exclues (excludes:"_").
+    return toggleMark(markType)(state, dispatch);
+  }
+);
 
-    // Wrap la sélection (texte uniquement — les marks sont perdus, le nœud
-    // n'autorise pas les marks pour éviter l'ambiguïté de parsing).
-    const text = state.doc.textBetween(from, to);
-    if (!text) return false;
-    const node = didascalieType.create(null, schema.text(text));
-    if (dispatch) dispatch(state.tr.replaceWith(from, to, node));
+export const toggleHighlightInlineCommand = $command(
+  "ToggleHighlightInline",
+  (ctx) => (payload?: { color?: string }) => (state, dispatch) => {
+    const schema = ctx.get(schemaCtx);
+    const hlType = schema.marks.highlight_inline;
+    if (!hlType) return false;
+
+    const { from, to, empty } = state.selection;
+
+    // Curseur (vide) dans un surlignage : retirer la marque sur toute la plage.
+    if (empty) {
+      const range = markRangeAround(state.doc, from, hlType);
+      if (!range) return false;
+      if (dispatch) dispatch(state.tr.removeMark(range.from, range.to, hlType));
+      return true;
+    }
+
+    const hasMark = state.doc.rangeHasMark(from, to, hlType);
+    // Déjà surligné + pas de couleur explicite → on retire (toggle off).
+    if (hasMark && !payload?.color) {
+      if (dispatch) dispatch(state.tr.removeMark(from, to, hlType));
+      return true;
+    }
+
+    // Applique (ou re-colore) : on nettoie d'abord pour éviter le chevauchement.
+    const color = payload?.color ?? defaultHighlightColorRef.current;
+    if (dispatch) {
+      const tr = state.tr
+        .removeMark(from, to, hlType)
+        .addMark(from, to, hlType.create({ color }));
+      dispatch(tr);
+    }
+    log.info("highlight inline appliqué via commande", { color, from, to });
     return true;
   }
 );
@@ -377,6 +484,18 @@ export const toggleLinkWithPromptCommand = $command(
 
 export const customKeymapPlugin = $prose((ctx) =>
   keymap({
+    // Entrée sur item vide → sortie complète de la liste (tous niveaux) vers
+    // la racine. Sinon false → splitListItem du preset (nouvel item).
+    Enter: (state, dispatch) => {
+      if (!isInEmptyListItem(state, state.schema)) return false;
+      return liftOutOfList(state.schema)(state, dispatch);
+    },
+    // Backspace sur item vide → remonte d'un seul niveau (liftListItem), au lieu
+    // du joinBackward natif qui empile un 2e paragraphe dans l'item précédent.
+    Backspace: (state, dispatch) => {
+      if (!isInEmptyListItem(state, state.schema)) return false;
+      return liftListItem(state.schema.nodes.list_item)(state, dispatch);
+    },
     // Marks (Mod-b, Mod-i déjà natifs dans le preset)
     "Mod-e": () => ctx.get(commandsCtx).call(toggleInlineCodeCommand.key),
     "Mod-Shift-s": () =>
@@ -392,6 +511,30 @@ export const customKeymapPlugin = $prose((ctx) =>
     "Mod-Shift-e": () => ctx.get(commandsCtx).call(toggleCodeBlockCommand.key),
     "Mod-Shift-p": () => ctx.get(commandsCtx).call(togglePoetryCommand.key),
     "Mod-d": () => ctx.get(commandsCtx).call(toggleDidascalieInlineCommand.key),
+    "Mod-Shift-l": () =>
+      ctx.get(commandsCtx).call(toggleHighlightInlineCommand.key),
+  })
+);
+
+// ── Échappement des marques inclusives en fin de bloc ──────────────────────
+// Les marques du preset (gras/italique/code/barré) sont inclusives : en fin de
+// bloc, le curseur reste « dans » la marque et on ne peut que continuer à taper
+// stylé. Première flèche droite en fin de bloc avec des marques actives → on
+// vide les stored marks (caret immobile, prochaine frappe non stylée) ; seconde
+// flèche → navigation normale. Sans effet sur nos marques non-inclusives.
+export const escapeInlineMarksPlugin = $prose(() =>
+  keymap({
+    ArrowRight: (state, dispatch, view) => {
+      const sel = state.selection;
+      if (!sel.empty) return false;
+      const $cursor = (sel as TextSelection).$cursor;
+      if (!$cursor) return false;
+      if (view && !view.endOfTextblock("forward")) return false;
+      const marks = state.storedMarks ?? $cursor.marks();
+      if (marks.length === 0) return false;
+      if (dispatch) dispatch(state.tr.setStoredMarks([]));
+      return true;
+    },
   })
 );
 
@@ -448,6 +591,13 @@ export const codeBasedShortcutsPlugin = $prose(
           if (!event.altKey && !event.shiftKey && event.code === "KeyD") {
             event.preventDefault();
             commands.call(toggleDidascalieInlineCommand.key);
+            return true;
+          }
+
+          // Mod+Shift : surlignage (KeyL)
+          if (!event.altKey && event.shiftKey && event.code === "KeyL") {
+            event.preventDefault();
+            commands.call(toggleHighlightInlineCommand.key);
             return true;
           }
 

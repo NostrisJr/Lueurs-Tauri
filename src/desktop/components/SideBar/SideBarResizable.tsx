@@ -6,7 +6,6 @@ import {
   IconFolder,
   IconFolderBadgePlus,
   IconMagnifyingglass,
-  IconSidebarLeft,
 } from "../../../shared/components/PlatformIcon";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
@@ -16,21 +15,20 @@ import {
   folderPathAtom,
   loadingAtom,
   searchAtom,
-  sidebarCollapsedAtom,
   treeAtom,
 } from "../../../shared/lib/atoms";
 import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
 import { ROW_ACTIVE, ROW_INACTIVE } from "../FileTree/FileNode";
 import { FileTree } from "../FileTree/FileTree";
+import { Squircle } from "../../../shared/components/Squircle";
 
-export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
+export function SideBarResizable() {
   const [search, setSearch] = useAtom(searchAtom);
   const loading = useAtomValue(loadingAtom);
   const tree = useAtomValue(treeAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const error = useAtomValue(errorAtom);
   const activeNote = useAtomValue(activeNoteAtom);
-  const sideBarCollapsed = useAtomValue(sidebarCollapsedAtom);
 
   const { pickFolder, reload } = useFileTree();
   const { handleCreateNote, handleCreateFolder, handleSelectNote } = useNote();
@@ -48,19 +46,9 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
   const isSearching = search.trim().length > 0;
 
   return (
-    <div className="relative flex flex-col h-full pt-7 overflow-clip [overflow-clip-margin:8px]">
+    <div className="relative flex flex-col h-full pt-7 overflow-clip">
       {/* ── Partie haute fixe ────────────────────────────── */}
       <div className="shrink-0 select-none">
-        {/* collapse la sidebar */}
-        <button
-          className={`absolute z-100 top-1 right-3 text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-opacity duration-300 ${sideBarCollapsed ? "opacity-0" : "opacity-100"}`}
-          type="button"
-          onClick={onToggle}
-          aria-label="Réduire la sidebar"
-          title="Réduire"
-        >
-          <IconSidebarLeft className="size-5" aria-hidden="true" />
-        </button>
         {/* En-tête */}
         <div className="flex items-center justify-between px-4 h-11">
           {/* Dossier actif */}
@@ -134,11 +122,12 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full outline-none text-gray-900 placeholder:text-gray-700 "
             />
+            {/* TODO : remplacer par une icône */}
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="text-gray-700 hover:text-gray-900 text-xs cursor-pointer"
+                className="text-gray-700 hover:text-gray-900 text-lg cursor-pointer"
               >
                 ✕
               </button>
@@ -174,11 +163,12 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
               </p>
             ) : (
               searchResults.map((note) => (
-                <div
+                <Squircle
+                  radius={16}
                   key={note.id}
                   onClick={(e) => handleSelectNote(note, e.metaKey)}
                   onKeyDown={(e) => e.key === "Enter" && handleSelectNote(note)}
-                  className={`select-none flex flex-col gap-0.5 rounded-lg px-2 py-2 cursor-pointer transition-colors ${activeNote?.id === note.id ? ROW_ACTIVE : ROW_INACTIVE}`}
+                  className={`select-none flex flex-col gap-0.5 px-2 py-2 cursor-pointer transition-colors ${activeNote?.id === note.id ? ROW_ACTIVE : ROW_INACTIVE}`}
                 >
                   <p className="text-xs font-medium truncate">{note.name}</p>
                   <p className="text-xs text-gray-400 truncate">
@@ -186,7 +176,7 @@ export function SideBarResizable({ onToggle }: { onToggle: () => void }) {
                       .replace(`${folderPath}/`, "")
                       .replace(`/${note.name}.md`, "") || "racine"}
                   </p>
-                </div>
+                </Squircle>
               ))
             )}
           </div>

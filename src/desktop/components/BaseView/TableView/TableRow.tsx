@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
 import type { TableColumn } from "../../../../shared/hooks/useTable";
@@ -30,13 +30,15 @@ export function TableRow({
   const noteResolver = (path: string) => notesById.get(path);
   const [titleDraft, setTitleDraft] = useState(note.name);
   const [editingTitle, setEditingTitle] = useState(false);
-  const titleRef = useRef<HTMLInputElement>(null);
+  // Ref stable → sélectionne le texte au montage de l'input d'édition uniquement
+  const titleInputRef = useCallback((el: HTMLInputElement | null) => {
+    el?.select();
+  }, []);
 
   function startTitleEdit(e: React.MouseEvent) {
     e.stopPropagation();
     setTitleDraft(note.name);
     setEditingTitle(true);
-    setTimeout(() => titleRef.current?.select(), 0);
   }
 
   function commitTitle() {
@@ -67,7 +69,7 @@ export function TableRow({
       >
         {editingTitle ? (
           <input
-            ref={titleRef}
+            ref={titleInputRef}
             // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture de l'édition
             autoFocus
             value={titleDraft}
@@ -91,6 +93,7 @@ export function TableRow({
           key={col.key}
           value={(note.frontmatter[col.key] as string) ?? ""}
           isImposed={col.isImposed}
+          enumConstraint={col.enumConstraint}
           width={col.width}
           frontmatter={note.frontmatter}
           noteResolver={noteResolver}

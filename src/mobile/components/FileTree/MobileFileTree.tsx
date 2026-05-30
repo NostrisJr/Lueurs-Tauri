@@ -1,13 +1,12 @@
 import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FolderNode, TreeNode } from "../../../shared/hooks/useFileTree";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
   dictaphoneModeAtom,
   folderPathAtom,
   folderStackAtom,
-  mobileContextMenuAtom,
   treeAtom,
 } from "../../../shared/lib/atoms";
 import { isIOS } from "../../../shared/lib/platform";
@@ -17,6 +16,7 @@ import {
   EASING,
   useMobileSwipeGesture,
 } from "../../hooks/useMobileSwipeGesture";
+import { usePushAnimation } from "../../hooks/usePushAnimation";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
 import { FileRow } from "./FileRow";
@@ -39,8 +39,6 @@ interface NodeListProps {
 }
 
 function NodeList({ nodes, onDrillIn }: NodeListProps) {
-  const setContextMenu = useSetAtom(mobileContextMenuAtom);
-
   if (nodes.length === 0) {
     return (
       <p className="text-sm text-gray-400 text-center py-12">Dossier vide</p>
@@ -54,13 +52,6 @@ function NodeList({ nodes, onDrillIn }: NodeListProps) {
           <FileRow
             node={node}
             onDrillIn={onDrillIn}
-            onLongPress={() =>
-              setContextMenu({
-                id: node.id,
-                name: node.name,
-                isFolder: node.kind === "folder",
-              })
-            }
           />
         </div>
       ))}
@@ -131,40 +122,20 @@ export function MobileFileTree() {
   }, [parentFolder, tree]);
 
   // ── Animation drill-in (push vers sous-dossier) ──────────────
-  // Les trois setters sont appelés dans le même handler d'événement React :
+  // Les setters sont appelés dans le même handler d'événement React :
   // React 18 les batche en un seul render, donc drillFrom capture les anciens
   // nœuds pendant que sortedNodes reflète déjà le nouveau dossier.
-  const isDrillingRef = useRef(false);
   const [drillFrom, setDrillFrom] = useState<TreeNode[] | null>(null);
-  const [drillPhase, setDrillPhase] = useState<"initial" | "animating" | null>(
-    null
-  );
-  const drillRafRef = useRef<number>(0);
-  const drillTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined
-  );
-
-  useEffect(() => {
-    if (drillPhase !== "initial") return;
-    drillRafRef.current = requestAnimationFrame(() => {
-      setDrillPhase("animating");
-      clearTimeout(drillTimeoutRef.current);
-      drillTimeoutRef.current = setTimeout(() => {
-        setDrillFrom(null);
-        setDrillPhase(null);
-        isDrillingRef.current = false;
-      }, DURATION);
-    });
-    return () => cancelAnimationFrame(drillRafRef.current);
-  }, [drillPhase]);
+  const {
+    phase: drillPhase,
+    isActive: isDrilling,
+    trigger: triggerDrill,
+  } = usePushAnimation(DURATION);
 
   function handleDrillIn(folder: FolderNode) {
     hapticImpact("light");
-    if (!isDrillingRef.current) {
-      isDrillingRef.current = true;
-      setDrillFrom([...sortedNodes]);
-      setDrillPhase("initial");
-    }
+    setDrillFrom([...sortedNodes]);
+    triggerDrill();
     setFolderStack((prev) => [...prev, folder]);
   }
 
@@ -173,8 +144,6 @@ export function MobileFileTree() {
   }
 
   // ── Animation swipe retour (drill-out) ───────────────────────
-  const isDrilling = drillPhase !== null && drillFrom !== null;
-
   const { swipeProgress, isAnimating, touchHandlers } = useMobileSwipeGesture(
     handleDrillOut,
     { enabled: canGoBack && !isDrilling }

@@ -24,6 +24,7 @@ import {
   EASING,
   useMobileSwipeGesture,
 } from "./hooks/useMobileSwipeGesture";
+import { usePushAnimation } from "./hooks/usePushAnimation";
 import "./MobileApp.css";
 
 function ViewRenderer({ view }: { view: MobileView }) {
@@ -73,44 +74,26 @@ export function MobileApp() {
   // est déjà à translateX(100%) avant que le navigateur ne peigne,
   // ce qui évite tout flash de la vue en position finale.
   const prevNavLengthRef = useRef(navStack.length);
-  const isPushActiveRef = useRef(false);
   const [pushFrom, setPushFrom] = useState<MobileView | null>(null);
-  const [pushPhase, setPushPhase] = useState<"initial" | "animating" | null>(
-    null
-  );
-  const pushRafRef = useRef<number>(0);
-  const pushTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined
-  );
+  const {
+    phase: pushPhase,
+    isActive: isPushActive,
+    trigger: triggerPush,
+  } = usePushAnimation(DURATION);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navStack.length est intentionnel — l'effet ne doit réagir qu'aux changements de taille (push/pop), pas aux mutations de contenu
   useLayoutEffect(() => {
     const prevLen = prevNavLengthRef.current;
     prevNavLengthRef.current = navStack.length;
-    if (navStack.length === prevLen + 1 && !isPushActiveRef.current) {
+    if (navStack.length === prevLen + 1) {
       const from = navStack[navStack.length - 2];
       if (!from) return;
-      isPushActiveRef.current = true;
       setPushFrom(from);
-      setPushPhase("initial");
+      triggerPush();
     }
-  }, [navStack.length]);
+  }, [navStack.length, triggerPush]);
 
-  // Déclenche la transition CSS après que le frame "initial" a été peint
-  useEffect(() => {
-    if (pushPhase !== "initial") return;
-    pushRafRef.current = requestAnimationFrame(() => {
-      setPushPhase("animating");
-      clearTimeout(pushTimeoutRef.current);
-      pushTimeoutRef.current = setTimeout(() => {
-        setPushFrom(null);
-        setPushPhase(null);
-        isPushActiveRef.current = false;
-      }, DURATION);
-    });
-    return () => cancelAnimationFrame(pushRafRef.current);
-  }, [pushPhase]);
-
-  const isPushing = pushPhase !== null && pushFrom !== null;
+  const isPushing = isPushActive && pushFrom !== null;
 
   // ── Animation swipe retour ────────────────────────────────────
   const { swipeProgress, isAnimating, touchHandlers } = useMobileSwipeGesture(

@@ -1,6 +1,16 @@
 import { Command } from "@tauri-apps/plugin-shell";
 import type { NoteFile, TreeNode } from "../hooks/useFileTree";
-import { NoteType, isFunctionalBaseField } from "./noteTypes";
+import {
+  type ButtonDef,
+  isButtonFormula,
+  parseButton,
+} from "./FrontmatterPicker/buttonProperty";
+import {
+  type KanbanColumn,
+  NoteType,
+  SystemField,
+  isFunctionalBaseField,
+} from "./noteTypes";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -105,6 +115,25 @@ export function computeTemplateProps(
       const isMissing = !(key in updated);
       const templateHasValue =
         value !== "" && value !== null && value !== undefined;
+
+      // Contrainte BUTTON : l'héritier reçoit le default (jamais la formule),
+      // et n'est jamais forcé. Une valeur non permise est écrasée par le default.
+      const def = isButtonFormula(value) ? parseButton(value) : null;
+      if (def) {
+        if (isMissing) {
+          updated[key] = def.default;
+          changed.push(key);
+        } else {
+          const current = updated[key];
+          const cur = typeof current === "string" ? current : "";
+          const allowed = def.options.some((o) => o.value === cur);
+          if (!allowed && cur !== def.default) {
+            updated[key] = def.default;
+            changed.push(key);
+          }
+        }
+        continue;
+      }
 
       if (isMissing) {
         updated[key] = value ?? "";
@@ -267,6 +296,51 @@ export function getFreeProps(templateFrontmatter: Frontmatter): string[] {
         (value === "" || value === undefined)
     )
     .map(([key]) => key);
+}
+
+/** Propriétés contraintes BUTTON d'un template — également utilisables comme KanbanKey
+ *  (leurs colonnes sont alors dérivées des options, voir resolveButtonKey). */
+export function getButtonProps(templateFrontmatter: Frontmatter): string[] {
+  return Object.entries(templateFrontmatter)
+    .filter(([key, value]) => !isSystemField(key) && isButtonFormula(value))
+    .map(([key]) => key);
+}
+
+/**
+ * Si `key` est définie comme propriété BUTTON dans au moins un template de la base,
+ * renvoie la def (du premier template trouvé) et tous les templates qui la définissent.
+ * null sinon (clé libre classique).
+ */
+export function resolveButtonKey(
+  base: NoteFile,
+  notesById: Map<string, NoteFile>,
+  key: string
+): { def: ButtonDef; templates: NoteFile[] } | null {
+  const templatePaths = base.frontmatter[SystemField.TEMPLATE];
+  if (!Array.isArray(templatePaths)) return null;
+
+  let def: ButtonDef | null = null;
+  const templates: NoteFile[] = [];
+  for (const path of templatePaths as string[]) {
+    const t = notesById.get(path);
+    const v = t?.frontmatter[key];
+    if (!t || !isButtonFormula(v)) continue;
+    const parsed = parseButton(v);
+    if (!parsed) continue;
+    if (!def) def = parsed;
+    templates.push(t);
+  }
+  return def ? { def, templates } : null;
+}
+
+/** Colonnes Kanban dérivées d'une def BUTTON : ordre des options, couleurs incluses.
+ *  L'id vaut la valeur (label === value pour une colonne contrainte). */
+export function buttonColumns(def: ButtonDef): KanbanColumn[] {
+  return def.options.map((o) => ({
+    id: o.value,
+    label: o.value,
+    color: o.color,
+  }));
 }
 
 // ── Tri ───────────────────────────────────────────────────────────────────────

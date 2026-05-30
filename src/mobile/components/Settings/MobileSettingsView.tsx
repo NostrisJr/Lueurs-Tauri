@@ -4,30 +4,32 @@ import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
   defaultDisplayModeAtom,
+  defaultHighlightColorAtom,
   folderPathAtom,
   mobileGoBackAtom,
+  textJustificationAtom,
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { isAndroid } from "../../../shared/lib/platform";
+import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
 import { hapticImpact } from "../../lib/haptics";
-import { Squircle } from "../Squircle";
-
-function vaultDisplayName(uri: string): string {
-  const last = decodeURIComponent(uri.split("/").pop() ?? uri);
-  const afterColon = last.includes(":")
-    ? last.split(":").slice(1).join(":")
-    : last;
-  return afterColon.split("/").pop() ?? afterColon;
-}
+import { vaultDisplayName } from "../../lib/vault";
+import { Squircle } from "../../../shared/components/Squircle";
 
 const descriptions: Record<string, string> = {
   normal: "Sans empattement, aligné à gauche",
-  livre: "Serif, justifié, indentation",
+  livre: "Serif, indentation",
 };
 
 export function MobileSettingsView() {
   const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(
     defaultDisplayModeAtom
+  );
+  const [defaultHighlightColor, setDefaultHighlightColor] = useAtom(
+    defaultHighlightColorAtom
+  );
+  const [textJustification, setTextJustification] = useAtom(
+    textJustificationAtom
   );
   const goBack = useSetAtom(mobileGoBackAtom);
   const folderPath = useAtomValue(folderPathAtom);
@@ -93,6 +95,82 @@ export function MobileSettingsView() {
         <p className="mt-2 text-xs text-gray-400 px-1">
           Appliqué aux nouvelles notes et aux notes sans mode défini.
         </p>
+
+        {/* Justification du texte en mode livre */}
+        <div
+          className="mt-4"
+          style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
+        >
+          <Squircle
+            radius={18}
+            className="overflow-hidden bg-white border border-gray-100"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                hapticImpact("light");
+                setTextJustification((v) => !v);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-base text-gray-900">
+                  Justifier le texte en mode livre
+                </p>
+              </div>
+              <div
+                className={`w-11 h-6 rounded-full transition-colors shrink-0 ${
+                  textJustification ? "bg-amber-500" : "bg-gray-200"
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white shadow m-0.5 transition-transform ${
+                    textJustification ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </div>
+            </button>
+          </Squircle>
+        </div>
+
+        {/* Couleur de surlignage par défaut */}
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+          Couleur de surlignage par défaut
+        </p>
+        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+          <Squircle
+            radius={18}
+            className="overflow-hidden bg-white border border-gray-100 px-4 py-4"
+          >
+            <div className="flex gap-3 flex-wrap">
+              {HIGHLIGHT_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  title={c.label}
+                  onClick={() => {
+                    hapticImpact("light");
+                    setDefaultHighlightColor(c.id);
+                  }}
+                  className="relative w-8 h-8 rounded-full border-2 transition-all active:scale-110"
+                  style={{
+                    background: c.solid,
+                    borderColor:
+                      defaultHighlightColor === c.id
+                        ? "#374151"
+                        : "transparent",
+                  }}
+                >
+                  {defaultHighlightColor === c.id && (
+                    <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">
+                      ✓
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </Squircle>
+        </div>
 
         {isAndroid && (
           <>

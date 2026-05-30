@@ -28,6 +28,9 @@ interface Props {
   ) => Promise<void>;
   onRenameColumn: (colId: string, newLabel: string) => Promise<void>;
   onAddColumn: (label: string) => void;
+  onDeleteColumn: (colId: string) => void;
+  // Défini uniquement pour une clé BUTTON → pastille couleur cliquable
+  onSetColumnColor?: (colId: string, color: string | undefined) => void;
 }
 
 export function MobileKanbanView({
@@ -36,6 +39,8 @@ export function MobileKanbanView({
   onMoveCard,
   onRenameColumn,
   onAddColumn,
+  onDeleteColumn,
+  onSetColumnColor,
 }: Props) {
   const [activeNote, setActiveNote] = useState<NoteFile | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
@@ -115,6 +120,8 @@ export function MobileKanbanView({
             column={col}
             notes={cards[col.id] ?? []}
             onRename={onRenameColumn}
+            onDelete={onDeleteColumn}
+            onSetColor={onSetColumnColor}
           />
         ))}
 
@@ -124,6 +131,7 @@ export function MobileKanbanView({
             column={{ id: NO_VALUE_COLUMN_ID, label: "Sans valeur" }}
             notes={cards[NO_VALUE_COLUMN_ID]}
             onRename={() => {}}
+            onDelete={() => {}}
             virtual
           />
         )}

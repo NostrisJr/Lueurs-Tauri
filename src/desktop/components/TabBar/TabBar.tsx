@@ -19,9 +19,11 @@ import {
   activeNoteIdAtom,
   notesByIdAtom,
   openTabIdsAtom,
+  sidebarCollapsedAtom,
 } from "../../../shared/lib/atoms";
 import { createLogger } from "../../../shared/lib/logger";
 import { TabItem, TabOverlay } from "./TabItem.tsx";
+import { clsx } from "clsx";
 
 const log = createLogger("TabBar");
 
@@ -30,6 +32,7 @@ export function TabBar() {
   const openTabIds = useAtomValue(openTabIdsAtom);
   const activeNoteId = useAtomValue(activeNoteIdAtom);
   const notesById = useAtomValue(notesByIdAtom);
+  const sideBarCollapsed = useAtomValue(sidebarCollapsedAtom);
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const { handleCloseTab, pushHistory } = useNote();
@@ -80,7 +83,12 @@ export function TabBar() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex z-100 gap-1 h-8 bg-gray-100 inset-shadow-xs rounded-full p-0.75 mt-2 mx-2 overflow-x-auto shrink-0 scroll-hidden">
+      <div
+        className={clsx(
+          "flex z-100 gap-1 h-8 bg-gray-100 inset-shadow-xs rounded-full p-0.75 mt-2 mx-2 overflow-x-auto shrink-0 scroll-hidden transition-[margin] duration-200",
+          sideBarCollapsed && "ml-30 mt-3"
+        )}
+      >
         <SortableContext
           items={openTabIds}
           strategy={horizontalListSortingStrategy}

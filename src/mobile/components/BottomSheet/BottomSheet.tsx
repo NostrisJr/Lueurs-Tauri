@@ -15,8 +15,8 @@
  */
 import { type ReactNode, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
-import { Squircle } from "../Squircle";
+import { useKeyboard } from "../../hooks/useKeyboard";
+import { Squircle } from "../../../shared/components/Squircle";
 
 interface Props {
   onClose: () => void;
@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function BottomSheet({ onClose, children, title }: Props) {
-  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
+  const { height: keyboardHeight, isOpen: isKeyboardOpen } = useKeyboard();
   const startYRef = useRef(0);
   const [swipe, setSwipe] = useState(0);
 

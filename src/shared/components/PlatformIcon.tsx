@@ -27,6 +27,7 @@ import {
   sfFolder,
   sfFolderBadgePlus,
   sfGearshape,
+  sfHighlighter,
   sfIncreaseIndent,
   sfItalic,
   sfKeyboardChevronCompactDown,
@@ -170,6 +171,9 @@ export const IconFolder = mk(sfFolder, "folder_open");
 export const IconFolderBadgePlus = mk(sfFolderBadgePlus, "create_new_folder");
 
 export const IconGearshape = mk(sfGearshape, "settings");
+
+// surlignage (toolbar markdown)
+export const IconHighlighter = mk(sfHighlighter, "format_ink_highlighter");
 
 export const IconIncreaseIndent = mk(
   sfIncreaseIndent,

@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useSetAtom } from "jotai";
-import { useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
 import { navigateToNoteAtom } from "../../../../shared/lib/atoms";
@@ -16,7 +16,10 @@ export function MobileKanbanCard({ note }: Props) {
   const navigateToNote = useSetAtom(navigateToNoteAtom);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note.name);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Ref stable → sélectionne le texte au montage de l'input d'édition uniquement
+  const editInputRef = useCallback((el: HTMLInputElement | null) => {
+    el?.select();
+  }, []);
 
   const {
     attributes,
@@ -30,7 +33,6 @@ export function MobileKanbanCard({ note }: Props) {
   function beginEdit() {
     setDraft(note.name);
     setEditing(true);
-    setTimeout(() => inputRef.current?.select(), 0);
   }
 
   function startEdit(e: React.MouseEvent) {
@@ -73,7 +75,7 @@ export function MobileKanbanCard({ note }: Props) {
     >
       {editing ? (
         <input
-          ref={inputRef}
+          ref={editInputRef}
           // biome-ignore lint/a11y/noAutofocus: focus intentionnel
           autoFocus
           value={draft}

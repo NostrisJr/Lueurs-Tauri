@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 import {
@@ -6,16 +7,16 @@ import {
   IconFolder,
 } from "../../../shared/components/PlatformIcon";
 import type { FolderNode, NoteFile } from "../../../shared/hooks/useFileTree";
+import { mobileContextMenuAtom } from "../../../shared/lib/atoms";
 import { isIOS } from "../../../shared/lib/platform";
 import { useLongPress } from "../../hooks/useLongPress";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
-import { Squircle } from "../Squircle";
+import { Squircle } from "../../../shared/components/Squircle";
 import { getPreviewLines } from "./helpers";
 
 interface Props {
   node: FolderNode | NoteFile;
   onDrillIn: (folder: FolderNode) => void;
-  onLongPress: () => void;
   onClick?: () => void;
 }
 
@@ -79,8 +80,9 @@ function FolderContent({ folder }: { folder: FolderNode }) {
   );
 }
 
-export function FileRow({ node, onDrillIn, onLongPress, onClick }: Props) {
+export function FileRow({ node, onDrillIn, onClick }: Props) {
   const selectNote = useMobileSelectNote();
+  const setContextMenu = useSetAtom(mobileContextMenuAtom);
 
   function handleClick() {
     if (onClick) {
@@ -94,7 +96,15 @@ export function FileRow({ node, onDrillIn, onLongPress, onClick }: Props) {
     }
   }
 
-  const longPress = useLongPress(onLongPress, handleClick);
+  function handleLongPress() {
+    setContextMenu({
+      id: node.id,
+      name: node.name,
+      isFolder: node.kind === "folder",
+    });
+  }
+
+  const longPress = useLongPress(handleLongPress, handleClick);
 
   const isFolder = node.kind === "folder";
 

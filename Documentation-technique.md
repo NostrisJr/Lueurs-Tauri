@@ -396,6 +396,8 @@ La commande reçoit un `TemplateChange` :
 - `removeProp` — supprime la propriété
 - `renameProp { old_key, new_key, template_value }` — renomme avec résolution de conflit
 - `forceValue` — impose une valeur
+- `renameEnumValue { key, old_value, new_value }` — renomme une valeur d'un bouton : met `key` à `new_value` chez les héritiers qui valaient exactement `old_value` (voir [Propriétés à valeurs contraintes (BUTTON)](#propriétés-à-valeurs-contraintes-button))
+- `enforceEnum { key, options, default }` — réconciliation : si la valeur de `key` n'est ni dans `options` ni égale à `default`, la réécrit avec `default`
 
 Pour le renommage, Rust parse le frontmatter YAML, détecte si `new_key` est déjà présent (conflit), et applique la règle : valeur du template si propriété imposée ; pour une propriété contraignante, la valeur de `old_key` prime si non vide (prop héritée > prop personnalisée), sinon la valeur existante de `new_key` est conservée. En plus du renommage de clé, Rust met à jour les références à `old_key` dans toutes les formules `$$...$$` des autres propriétés de la même note : `self.old_key` → `self.new_key` et `agg(old_key,` → `agg(new_key,` (avec vérification de frontière de mot pour éviter les faux positifs sur les noms préfixés).
 
@@ -429,7 +431,19 @@ Les bases héritières d'un template sont exclues du batch Rust (elles ne reçoi
 
 ### Résolution des propriétés template (frontend)
 
-`computeTemplateProps` (`fileTreeHelpers.ts`) calcule les propriétés qu'une note doit recevoir d'après ses templates. Elle distingue propriétés imposées (valeur non vide dans le template) et contraignantes (valeur vide), et ne modifie jamais une valeur déjà renseignée par la note pour une propriété contraignante.
+`computeTemplateProps` (`fileTreeHelpers.ts`) calcule les propriétés qu'une note doit recevoir d'après ses templates. Elle distingue propriétés imposées (valeur non vide dans le template) et contraignantes (valeur vide), et ne modifie jamais une valeur déjà renseignée par la note pour une propriété contraignante. Pour une propriété BUTTON, elle attribue le `default` à la création et réécrit toute valeur non permise vers le `default` (filet de sécurité au chargement, en complément de `enforceEnum` côté live).
+
+### Propriétés à valeurs contraintes (BUTTON)
+
+`$$BUTTON([v1;v2;v3],default)$$` déclaré dans un template définit une liste de valeurs autorisées. C'est une contrainte **déclarative** : contrairement aux formules `round`/`agg`/`ref`, un BUTTON n'est jamais évalué dans le sandbox. L'héritier ne stocke que la valeur littérale choisie (jamais la formule).
+
+**Parsing (`buttonProperty.ts`).** `parseButton` renvoie `{ options: ButtonOption[]; default }`, où `ButtonOption = { value; color? }`. Séparateur `;` à l'intérieur des crochets (évite le conflit avec la `,` des arguments). `default` vide → première valeur. Une option peut être colorée via `=={color}label==` / `==label==` (syntaxe reprise du surlignage) ; couleur omise → `defaultHighlightColorRef.current` (réglage courant). `diffButtonOptions` compare **par valeur** (la couleur n'affecte pas les héritiers) avec la même heuristique 1-retirée/1-ajoutée que `diffFrontmatter` pour détecter un renommage.
+
+**Contraintes.** `useTemplateConstraints` expose, en plus de `lockedKeys`/`lockedValues`, une `Map<key, ButtonDef>` (`enumConstraints`) : une clé BUTTON est verrouillée mais **pas** dans `lockedValues` (valeur éditable). `useTable` calcule de même un `enumConstraint` par colonne (`isImposed = false` pour un BUTTON).
+
+**Propagation des changements du template.** `diffFrontmatter` (`useTemplateSync`) détecte qu'une valeur reste un BUTTON entre `prev` et `next` (n'émet donc jamais de `forceValue`) et, via `diffButtonOptions`, pousse un `renameEnumValue` par renommage de valeur et un `enforceEnum` si des options ont disparu. Un `addProp` d'un BUTTON envoie le `default` (pas la formule). La mise à jour chirurgicale du tree applique la même logique localement.
+
+**Rendu.** `EnumValueSelector` (`shared/components`) — pill + dropdown (réutilise `AnchoredDropdown`, donc compatible mobile) — affiche la valeur dans sa couleur (mapping highlight→Tailwind dans `enumPillColors.ts`, fond `-400`/texte `-600`, `purple`→`purple`, `yellow`→`amber`). Utilisé dans `FrontmatterValue`, `TableCell` et `MobileTableCell`. `enumValueState` distingue `valid` / `placeholder` (valeur = default hors-liste) / `invalid` (signalé en rouge, en attendant la réécriture). Dans le frontmatter du **template**, la vue compactée passe par `ButtonOptionsEditor` : pills surlignées + dot color-picker au survol (palette `HIGHLIGHT_COLORS`) qui réécrit la formule via `serializeButton` ; un clic sur le fond bascule en édition brute de la formule.
 
 ---
 
@@ -461,6 +475,25 @@ Toutes les commandes structurelles sont exportées depuis `customKeymap.ts` et e
 
 - `buildEscapeCommand(state, schema)` — retourne la commande de sortie adaptée à la structure courante (liste → `liftListItem`, blockquote → `lift`, heading/code_block → `setBlockType(paragraph)`)
 - `applyThenApply(state, dispatch, first, second)` — exécute `first` sans dispatcher, applique son résultat sur un état intermédiaire, exécute `second` sur cet état intermédiaire, puis accumule tous les steps dans une transaction combinée. Les positions restent correctes car chaque jeu de steps est calculé relatif au document issu des steps précédents.
+
+### Sortie de liste : override Entrée / Backspace
+
+Le preset commonmark mappe `Enter` → `splitListItem`, `Backspace` → `liftFirstListItem` (= `joinBackward`), `Tab`/`Shift-Tab` → `sinkListItem`/`liftListItem`. Le schéma `list_item` du preset a pour contenu `paragraph block*` : un item peut donc contenir plusieurs paragraphes. Deux comportements natifs étaient gênants :
+
+- **Sortie d'une liste imbriquée par Entrée** : `splitListItem` ne sort qu'**un niveau à la fois** (il splitte l'item parent), jamais directement à la racine.
+- **Backspace sur un item vide** : `joinBackward` fusionne le paragraphe vide comme **2e paragraphe de l'item précédent** (autorisé par `paragraph block*`). Visuellement, une ligne sans puce apparaît alors qu'on est toujours *dans* l'item du dessus → un `Tab`/`Shift-Tab` suivant indentait l'item visible au-dessus, et la frappe modifiait son rendu (item passé en « loose »).
+
+**Override** (dans `customKeymapPlugin`, `customKeymap.ts`) — `Enter` et `Backspace` sont interceptés **avant** le preset (cf. *Précédence des keymaps* ci-dessous) :
+
+- `Enter` sur le paragraphe vide d'un `list_item` → `liftOutOfList` : sort de **tous** les niveaux d'un coup. Sinon `return false` → `splitListItem` natif (nouvel item).
+- `Backspace` sur le paragraphe vide d'un `list_item` → `liftListItem` une seule fois (remonte d'un niveau, structure propre). Sinon `return false` → comportement natif. Comme on ne passe plus par `joinBackward`, le paragraphe piégé ne peut plus se former.
+- `Tab`/`Shift-Tab` ne sont **pas** overridés : ils redeviennent sains mécaniquement une fois le piège du Backspace supprimé.
+
+`liftOutOfList(schema)` applique `liftListItem` en boucle sur les états intermédiaires tant que la sélection reste dans une liste, accumule les steps et les rejoue en une transaction unique sur l'état initial — même technique de composition que `applyThenApply` (positions valides car chaque step est calculé sur le document issu des steps précédents). Garde-fou à 20 itérations contre une structure inattendue.
+
+### Précédence des keymaps (pourquoi l'override fonctionne)
+
+À la création de la vue, le cœur Milkdown assemble les plugins ProseMirror ainsi : `[...prosePlugins, stateTracker, customInputRules, keymap(km.build())]`. Tous les `$useKeymap` (preset inclus : `listItemKeymap`, `headingKeymap`…) sont fusionnés dans le **dernier** plugin via un `KeymapManager` (tri par `priority`, chaînage `chainCommands`). Or `customKeymapPlugin` est un `$prose(keymap(...))` qui vit dans `prosePlugins`, donc **placé avant** ce keymap fusionné. ProseMirror essaie les plugins dans l'ordre du tableau et s'arrête au premier `handleKeyDown` qui renvoie `true` → nos handlers `Enter`/`Backspace` passent avant `splitListItem`/`liftFirstListItem` du preset. S'ils renvoient `false`, le preset reprend la main normalement.
 
 ### Désactivation du keymap du preset pour les titres
 
@@ -505,6 +538,79 @@ Le hook `useContextMenu` construit un menu natif macOS via `@tauri-apps/api/menu
 Les labels incluent les raccourcis directement dans le texte (`"Gras\t⌘B"`) car Tauri 2 n'affiche pas les `accelerator` dans les menus contextuels popup.
 
 L'insertion de tableau utilise `insert()` de `@milkdown/kit/utils` qui parse du markdown et insère la tranche résultante à la position du curseur. L'insertion d'image et d'audio ouvre un dialog natif Tauri (`@tauri-apps/plugin-dialog`) puis délègue à `insertImageBlock` / `insertAudioBlock` déjà disponibles dans `MarkdownEditor`.
+
+**Snapshot de la sélection.** Le menu natif Tauri vole le focus de la WebView : quand l'`action` d'un item s'exécute (après `menu.popup()`), la sélection ProseMirror n'est plus active. Les commandes structurelles (titres/listes) s'en sortaient car elles se résolvent depuis une position de bloc, mais toutes les commandes opérant sur `state.selection` (code inline, gras, surlignage, didascalie…) faisaient silencieusement un no-op. Fix : on capture `{from, to}` au moment du clic droit, puis avant chaque commande on `view.focus()` et on restaure la sélection via `TextSelection.create` avant d'appeler la commande.
+
+---
+
+## Styles inline : marques ProseMirror, pas nœuds (`didascalie`, `highlight`)
+
+### Décision : marque (`$mark`) et non nœud inline à contenu
+
+Didascalie (`||texte||`) et surlignage (`=={color}texte==`) ont d'abord été implémentés comme des **nœuds inline à contenu éditable** (`content: "text*"` / `"inline*"`), rendus par un NodeView avec des spans délimiteurs `contenteditable=false`. Cette modélisation est un anti-pattern ProseMirror : **WebKit ne sait pas placer ni déplacer le caret sur la position neutre juste après un tel nœud quand il termine un bloc texte**. Tous les bugs observés en découlaient :
+
+- impossible d'atteindre une position après le dernier mot stylé (caret piégé dans le contenu) ;
+- la frappe du délimiteur final / la navigation flèche renvoyaient le caret en début de ligne (position modèle-valide mais non mappable à un caret DOM en fin de bloc) ;
+- Entrée scindait le paragraphe *à travers* le nœud → nœud vide recréé à la ligne ;
+- Backspace ne supprimait pas un nœud inline vide depuis l'intérieur.
+
+**Une marque règle tout à la racine** : ProseMirror gère nativement les frontières de marques (le curseur vit dans du texte ordinaire, la marque est juste une décoration). Plus de NodeView, plus de plugin de navigation custom.
+
+| Aspect | Nœud inline à contenu | Marque |
+|---|---|---|
+| Frontières du caret | à gérer manuellement (cassé sous WebKit) | natives |
+| Entrée / Backspace | comportements custom requis | natifs |
+| Schéma | `$node` + `content` + NodeView | `$mark` + `toDOM` |
+| Sérialisation | `addNode("text", "||")` autour de `next(content)` | `withMark(mark, type, …)` + handler remark-stringify |
+| Délimiteurs visuels | spans `contenteditable=false` | pseudo-éléments CSS `::before`/`::after` |
+| Sélection cible des toggles | nœud (`replaceWith`, `setNodeMarkup`) | plage de texte (`toggleMark`, `addMark`/`removeMark`) |
+
+### Sérialisation (le point délicat)
+
+Le runner `toMarkdown` de la marque appelle `state.withMark(mark, "didascalie_inline")` (resp. `"highlight"` avec `{ color }`). `withMark` ouvre un nœud mdast `{ type, children, …props, isMark: true }` qui enveloppe le run de texte marqué — mais remark-stringify ne connaît pas ces types custom.
+
+Le handler de sérialisation est donc enregistré **dans le plugin remark lui-même** : l'attacher unified lit `this.data().toMarkdownExtensions` et y pousse un `handlers` pour le type. Possible car le cœur Milkdown construit **une seule** instance remark (parse + stringify) en réduisant tous les plugins `$remark` via `.use()` ; remark-stringify lit `toMarkdownExtensions` depuis les data du processeur.
+
+```ts
+// remark-inline.ts (didascalie)
+function remarkDidascalieInline(this: any) {
+  const data = this.data();
+  (data.toMarkdownExtensions ||= []).push({
+    handlers: {
+      didascalie_inline(node, _p, state, info) {
+        const exit = state.enter("didascalie_inline");
+        const value = state.containerPhrasing(node, { ...info, before: "|", after: "|" });
+        exit();
+        return `||${value}||`;
+      },
+    },
+  });
+  return (tree) => processInlineChildren(tree); // parsing texte → nœud mdast (inchangé)
+}
+```
+
+Le parsing (texte `||texte||` → nœud mdast → `openMark`/`next`/`closeMark`) est symétrique et inchangé par rapport à la version nœud.
+
+### Sortie de style propre
+
+- `inclusive: false` sur les deux marques : le curseur juste après la marque n'est **pas** dedans → on tape du texte normal après le dernier mot, même en fin de ligne. C'est ce qui résout définitivement le symptôme « je ne peux que continuer à écrire dans le style ».
+- `excludes: "_"` sur la didascalie : aucune marque imbriquée. Indispensable car `||**x**||` se reparserait en `||` + strong + `||` (les `||` se retrouvent dans des text nodes séparés) → didascalie perdue. Le surlignage, lui, autorise les marques internes (limitation préexistante : `=={c}**x**==` ne se re-détecte pas, car même problème de text nodes scindés ; non régressif).
+
+### Input rules — `markRule`
+
+Les deux input rules utilisent `markRule(regex, markType, options)` de `@milkdown/kit/prose` (au lieu d'un `InputRule` custom). `markRule` retire les délimiteurs, applique la marque sur le seul groupe capturé, et **réinitialise les stored marks** → on continue à taper hors marque. Le plugin `inputRules` saute déjà nativement les blocs de code et les marques code (`spec.code`), donc pas de garde-fou manuel à maintenir.
+
+### Color-picker (surlignage)
+
+Le picker (`color-picker.ts`) opérait sur le nœud (`nodeAt`, `setNodeMarkup`, `replaceWith`). En marque, il faut la **plage contiguë** : `highlightRangeAt(state, pos, hlType)` part de `posAtDOM(target, 0)` puis étend à gauche/droite tant que `nodeBefore`/`nodeAfter` portent la marque highlight de même couleur (la marque peut couvrir plusieurs text nodes si du gras/italique la traverse). Re-colorer = `removeMark` puis `addMark` sur la plage ; supprimer = `removeMark`.
+
+### Toggles
+
+`toggleDidascalieInlineCommand` / `toggleHighlightInlineCommand` : sur sélection vide à l'intérieur de la marque, on l'enlève sur toute la plage contiguë (helper `markRangeAround` dans `customKeymap.ts`) ; sur sélection, `toggleMark` (didascalie) ou applique/re-colore (highlight). Les noms de commandes et leurs `.key` sont conservés → aucun appelant externe à toucher (`editorCommands.ts`, `formattingMenuData.ts`, barre mobile).
+
+### Échappement des marques inclusives du preset
+
+Les marques du preset (gras/italique/code/barré) restent **inclusives** (leurs schémas sont bundlés dans `commonmark`/`gfm`, override global trop risqué). `escapeInlineMarksPlugin` (keymap) gère le cas en fin de bloc : première `ArrowRight` en fin de textblock avec marques actives → `setStoredMarks([])` (caret immobile, frappe suivante non stylée) ; seconde `ArrowRight` → navigation normale (les stored marks valent désormais `[]`, donc le handler rend la main). Sans effet sur nos marques non-inclusives (leurs marques n'apparaissent pas dans `$cursor.marks()` en fin de run).
 
 ---
 

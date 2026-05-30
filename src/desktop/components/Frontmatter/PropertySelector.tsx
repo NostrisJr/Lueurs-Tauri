@@ -1,11 +1,9 @@
 import { platform } from "@tauri-apps/plugin-os";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
+import type { PropertyOption } from "./lib/frontmatterUtils";
 
-export interface PropertyOption {
-  key: string;
-  displayName: string;
-}
+export type { PropertyOption };
 
 interface Props {
   options: PropertyOption[];
@@ -21,14 +19,7 @@ export function PropertySelector({
   anchorRef,
 }: Props) {
   const [query, setQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = platform() === "ios";
-
-  useEffect(() => {
-    // Délai pour laisser l'animation BottomSheet démarrer avant le focus
-    const t = setTimeout(() => inputRef.current?.focus(), 300);
-    return () => clearTimeout(t);
-  }, []);
 
   const filtered = options.filter((o) =>
     o.displayName.toLowerCase().includes(query.toLowerCase())
@@ -38,7 +29,7 @@ export function PropertySelector({
     <AnchoredDropdown anchorRef={anchorRef} onClose={onClose}>
       <div className="px-2 py-1.5 border-b border-gray-100">
         <input
-          ref={inputRef}
+          ref={(el) => el?.focus()}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

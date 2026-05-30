@@ -1,9 +1,8 @@
 import { MilkdownProvider } from "@milkdown/react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
-import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { BaseView } from "../../../desktop/components/BaseView/BaseView";
-import { DesktopDictaphone } from "../../../desktop/components/Dictaphone/DesktopDictaphone";
 import { FrontmatterEditor } from "../../../desktop/components/Frontmatter/FrontmatterEditor";
 import { MobileBaseView } from "../../../mobile/components/BaseView/MobileBaseView";
 import type { Frontmatter } from "../../hooks/useFileTree";
@@ -11,74 +10,60 @@ import { useNote } from "../../hooks/useNote.ts";
 import {
   type DisplayMode,
   activeNoteAtom,
-  defaultDisplayModeAtom,
-  displayModeAtom,
-  documentMapAtom,
+  dictaphoneOpenAtom,
   folderPathAtom,
+  pendingAudioInsertAtom,
+  pendingDisplayModeAtom,
 } from "../../lib/atoms";
 import { NoteType, SystemField } from "../../lib/noteTypes";
 import { isDesktop, isMobile } from "../../lib/platform";
+import type { Editor } from "./MarkdownEditor";
 import { DocumentNavigator } from "./DocumentNavigator.tsx";
-import { EditorToolbar } from "./EditorToolbar.tsx";
-import { type EditorHandle, MarkdownEditor } from "./MarkdownEditor.tsx";
+import { MarkdownEditor } from "./MarkdownEditor.tsx";
 import { NoteHeader } from "./NoteHeader.tsx";
-
-export type { EditorHandle };
+import { editorInsertAudioBlock } from "./editorCommands";
 
 interface Props {
   defaultCollapsedFrontmatter?: boolean;
   hideDisplayModeSelector?: boolean;
-  displayModeHandlerRef?: React.MutableRefObject<
-    ((mode: DisplayMode) => void) | null
-  >;
+  /** Ref externe reçue depuis le parent (ex: MobileEditor). */
+  editorRef?: React.MutableRefObject<Editor | null>;
 }
 
-export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  {
-    defaultCollapsedFrontmatter = false,
-    hideDisplayModeSelector = false,
-    displayModeHandlerRef,
-  },
-  ref
-) {
+export function NoteEditor({
+  defaultCollapsedFrontmatter = false,
+  hideDisplayModeSelector = false,
+  editorRef: externalEditorRef,
+}: Props) {
   const { handleRename, handleChange } = useNote();
   const activeNote = useAtomValue(activeNoteAtom);
   const folderPath = useAtomValue(folderPathAtom);
-  const setDisplayMode = useSetAtom(displayModeAtom);
-  const setDocumentMap = useSetAtom(documentMapAtom);
-  const defaultDisplayMode = useAtomValue(defaultDisplayModeAtom);
-  const internalRef = useRef<EditorHandle | null>(null);
-  const [dictaphoneOpen, setDictaphoneOpen] = useState(false);
-  const isBase = activeNote?.type === NoteType.BASE;
-
-  // Vide la carte quand on passe sur une base (pas de MarkdownEditor → plugin jamais déclenché)
-  useEffect(() => {
-    if (isBase) setDocumentMap({ blocks: [], docSize: 0 });
-  }, [isBase, setDocumentMap]);
-
-  // Sync atom depuis le frontmatter à chaque changement de note ; repli sur le défaut utilisateur
-  useEffect(() => {
-    const saved = activeNote?.frontmatter[SystemField.DISPLAY_MODE] as
-      | DisplayMode
-      | undefined;
-    setDisplayMode(
-      saved === "livre" || saved === "normal" ? saved : defaultDisplayMode
-    );
-  }, [
-    setDisplayMode,
-    defaultDisplayMode,
-    activeNote?.frontmatter[SystemField.DISPLAY_MODE],
-  ]);
-
-  // Connecte à la fois le ref interne (pour la toolbar) et le ref externe (pour le parent)
-  const setRef = useCallback(
-    (instance: EditorHandle | null) => {
-      internalRef.current = instance;
-      if (typeof ref === "function") ref(instance);
-      else if (ref) ref.current = instance;
-    },
-    [ref]
+  const pendingDisplayMode = useAtomValue(pendingDisplayModeAtom);
+  const setPendingDisplayMode = useSetAtom(pendingDisplayModeAtom);
+  const setDictaphoneOpen = useSetAtom(dictaphoneOpenAtom);
+  const [pendingAudioInsert, setPendingAudioInsert] = useAtom(
+    pendingAudioInsertAtom
   );
+
+  // Ref interne pour la toolbar desktop
+  const internalEditorRef = useRef<Editor | null>(null);
+  // La ref externe prime si fournie (MobileEditor), sinon on utilise l'interne
+  const resolvedEditorRef = externalEditorRef ?? internalEditorRef;
+
+  // Insertion audio venue du dictaphone desktop (overlay rendu dans DesktopApp).
+  // Sur mobile, c'est MobileEditor qui consomme pendingAudioInsertAtom.
+  useEffect(() => {
+    if (!isDesktop || !pendingAudioInsert) return;
+    editorInsertAudioBlock(
+      resolvedEditorRef,
+      folderPath ?? "",
+      pendingAudioInsert.path,
+      pendingAudioInsert.title
+    );
+    setPendingAudioInsert(null);
+  }, [pendingAudioInsert, folderPath, resolvedEditorRef, setPendingAudioInsert]);
+
+  const isBase = activeNote?.type === NoteType.BASE;
 
   function handleBodyChange(newBody: string) {
     if (!activeNote) return;
@@ -98,36 +83,30 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     });
   }
 
+  // Consomme les changements de mode initiés depuis MobileEditor via atom.
+  // Flush synchrone au render — évite un useEffect qui ajouterait un cycle.
+  if (pendingDisplayMode !== null) {
+    setPendingDisplayMode(null);
+    if (activeNote) {
+      handleChange(activeNote.body, {
+        ...activeNote.frontmatter,
+        [SystemField.DISPLAY_MODE]: pendingDisplayMode,
+      });
+    }
+  }
+
   return (
     <div className="min-h-full w-full">
       {activeNote && folderPath && (
-        <>
+        <div className="flex flex-col h-full justify-center">
           <NoteHeader
             hideDisplayModeSelector={hideDisplayModeSelector}
             onRename={async (newName) => {
               await handleRename(activeNote.id, newName, false);
             }}
             onDisplayModeChange={handleDisplayModeChange}
-            displayModeHandlerRef={displayModeHandlerRef}
+            onRecord={() => setDictaphoneOpen(true)}
           />
-
-          {!isBase && isDesktop && (
-            <div className="relative select-none">
-              <EditorToolbar
-                editorRef={internalRef}
-                onRecord={() => setDictaphoneOpen(true)}
-              />
-              {dictaphoneOpen && (
-                <DesktopDictaphone
-                  onInsert={(path, title) => {
-                    internalRef.current?.insertAudioBlock(path, title);
-                    setDictaphoneOpen(false);
-                  }}
-                  onClose={() => setDictaphoneOpen(false)}
-                />
-              )}
-            </div>
-          )}
 
           <div className="relative pb-10">
             <FrontmatterEditor
@@ -157,7 +136,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
             ) : (
               <MilkdownProvider key={activeNote.id}>
                 <MarkdownEditor
-                  ref={setRef}
+                  editorRef={resolvedEditorRef}
                   node={activeNote}
                   vaultPath={folderPath}
                   onChange={handleBodyChange}
@@ -165,8 +144,8 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
               </MilkdownProvider>
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
-});
+}

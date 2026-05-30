@@ -1,41 +1,11 @@
+import { schemaCtx } from "@milkdown/kit/core";
 import { InputRule, inputRules } from "@milkdown/kit/prose/inputrules";
+import { markRule } from "@milkdown/kit/prose";
 import { TextSelection } from "@milkdown/kit/prose/state";
 import { $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../../lib/logger";
 
 const log = createLogger("didascalie-input-rules");
-
-// Règle inline : `||texte||` (à la fermeture du second ||) → nœud didascalie_inline.
-// Le pattern exclut les pipes intermédiaires.
-const inlineDidascalieRule = new InputRule(
-  /\|\|([^|]+)\|\|$/,
-  (state, match, start, end) => {
-    const schema = state.schema;
-    const didascalieType = schema.nodes.didascalie_inline;
-    if (!didascalieType) return null;
-
-    // Ne pas déclencher si on est déjà dans une didascalie ou un nœud code
-    const $start = state.doc.resolve(start);
-    for (let d = $start.depth; d > 0; d--) {
-      const t = $start.node(d).type.name;
-      if (t === "didascalie_inline" || t === "code_block") return null;
-    }
-
-    const text = match[1];
-    if (!text) return null;
-
-    const node = didascalieType.create(null, schema.text(text));
-    const tr = state.tr.replaceWith(start, end, node);
-    // Place le curseur APRÈS le nœud (sortie du bloc inline pour continuer à taper)
-    const after = start + node.nodeSize;
-    tr.setSelection(TextSelection.create(tr.doc, after));
-    log.info("didascalie inline créée via input rule", {
-      text,
-      pattern: "||texte||",
-    });
-    return tr;
-  }
-);
 
 // Helper : transforme un paragraphe vide contenant exactement `marker` en
 // nœud `wrapperType` contenant un paragraphe vide (curseur dedans).
@@ -75,8 +45,16 @@ const blockPoetryRule = new InputRule(/^§§$/, (state, _match, start, end) => {
   return tr;
 });
 
-export const didascalieInputRulesPlugin = $prose(() =>
-  inputRules({
+export const didascalieInputRulesPlugin = $prose((ctx) => {
+  const didascalieType = ctx.get(schemaCtx).marks.didascalie_inline;
+  // `||texte||` → applique la marque didascalie sur `texte` (markRule retire les
+  // pipes et réinitialise les stored marks → on continue à taper hors marque).
+  const inlineDidascalieRule = markRule(/\|\|([^|]+)\|\|$/, didascalieType, {
+    beforeDispatch: ({ match }) => {
+      log.info("didascalie inline créée via input rule", { text: match[1] });
+    },
+  });
+  return inputRules({
     rules: [inlineDidascalieRule, blockPoetryRule],
-  })
-);
+  });
+});

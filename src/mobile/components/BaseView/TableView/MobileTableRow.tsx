@@ -92,6 +92,7 @@ export function MobileTableRow({
           key={col.key}
           value={(note.frontmatter[col.key] as string) ?? ""}
           isImposed={col.isImposed}
+          enumConstraint={col.enumConstraint}
           frontmatter={note.frontmatter}
           noteResolver={noteResolver}
           onCommit={(val) => onCellCommit(col.key, val)}

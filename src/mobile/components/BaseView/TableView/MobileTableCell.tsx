@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { EnumValueSelector } from "../../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
+import type { ButtonDef } from "../../../../shared/lib/FrontmatterPicker/buttonProperty";
 import { computeFormula, isFormula } from "../../../../shared/lib/formulas";
 
 interface Props {
   value: string;
   isImposed: boolean;
+  enumConstraint?: ButtonDef;
   frontmatter: Record<string, unknown>;
   noteResolver: (path: string) => NoteFile | undefined;
   onCommit: (value: string) => void;
@@ -15,6 +18,7 @@ const CELL_WIDTH = 140;
 export function MobileTableCell({
   value,
   isImposed,
+  enumConstraint,
   frontmatter,
   noteResolver,
   onCommit,
@@ -32,11 +36,27 @@ export function MobileTableCell({
     onCommit(draft);
   }
 
+  // ── Contrainte BUTTON : dropdown ──────────────────────────────────────────
+  if (enumConstraint) {
+    return (
+      <div
+        className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none flex items-center"
+        style={{ width: CELL_WIDTH }}
+      >
+        <EnumValueSelector
+          value={value}
+          constraint={enumConstraint}
+          onChange={onCommit}
+        />
+      </div>
+    );
+  }
+
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
     <div
       className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none"
       style={{ width: CELL_WIDTH }}
-      // biome-ignore lint/a11y/useKeyWithClickEvents: édition inline
       onClick={() => {
         if (!isImposed && !formula) {
           setDraft(value);

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Squircle } from "../Squircle";
+import { Squircle } from "../../../shared/components/Squircle";
 
 interface FloatingComponentProps {
   className?: string;

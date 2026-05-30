@@ -1,20 +1,21 @@
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { activeNoteAtom, notesByIdAtom } from "../../shared/lib/atoms";
-import { isSystemField } from "../../shared/lib/fileTreeHelpers";
+import {
+  type ButtonDef,
+  isButtonFormula,
+  parseButton,
+} from "../../shared/lib/FrontmatterPicker/buttonProperty";
+import { isSystemField, toArray } from "../../shared/lib/fileTreeHelpers";
 import { NoteType } from "../../shared/lib/noteTypes";
-
-function toArray(value: unknown): string[] {
-  if (!value) return [];
-  if (Array.isArray(value)) return value as string[];
-  return [value as string];
-}
 
 export interface TemplateConstraints {
   /** Clés provenant d'un template — non renommables, non supprimables. */
   lockedKeys: Set<string>;
   /** Clés dont la valeur est imposée par un template — input désactivé. */
   lockedValues: Set<string>;
+  /** Clés contraintes par un BUTTON — valeur choisie via dropdown. */
+  enumConstraints: Map<string, ButtonDef>;
 }
 
 /**
@@ -31,6 +32,7 @@ export function useTemplateConstraints(): TemplateConstraints {
     const empty = {
       lockedKeys: new Set<string>(),
       lockedValues: new Set<string>(),
+      enumConstraints: new Map<string, ButtonDef>(),
     };
     if (!activeNote || activeNote.type === NoteType.BASE) return empty;
 
@@ -43,6 +45,7 @@ export function useTemplateConstraints(): TemplateConstraints {
 
     const lockedKeys = new Set<string>();
     const lockedValues = new Set<string>();
+    const enumConstraints = new Map<string, ButtonDef>();
 
     for (const templatePath of [
       ...new Set([...directTemplates, ...inheritedTemplates]),
@@ -52,12 +55,22 @@ export function useTemplateConstraints(): TemplateConstraints {
       for (const [key, value] of Object.entries(template.frontmatter)) {
         if (isSystemField(key)) continue;
         lockedKeys.add(key);
+        // BUTTON : contrainte de valeurs, pas une valeur imposée (dropdown éditable)
+        // def calculé via ternaire pour ne pas rétrécir le type de `value`
+        const def =
+          typeof value === "string" && isButtonFormula(value)
+            ? parseButton(value)
+            : null;
+        if (def) {
+          enumConstraints.set(key, def);
+          continue;
+        }
         if (value !== "" && value !== null && value !== undefined) {
           lockedValues.add(key);
         }
       }
     }
 
-    return { lockedKeys, lockedValues };
+    return { lockedKeys, lockedValues, enumConstraints };
   }, [activeNote, notesById]);
 }

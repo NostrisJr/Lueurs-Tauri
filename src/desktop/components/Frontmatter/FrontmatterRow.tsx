@@ -59,9 +59,10 @@ export function FrontmatterRow({
   const selectorAnchorRef = useRef<HTMLButtonElement>(null);
 
   const rows = useAtomValue(rowsAtom);
-  const { lockedKeys, lockedValues } = useTemplateConstraints();
+  const { lockedKeys, lockedValues, enumConstraints } = useTemplateConstraints();
   const isKeyLocked = lockedKeys.has(row.key);
   const isValueLocked = lockedValues.has(row.key);
+  const enumConstraint = enumConstraints.get(row.key);
 
   const editingKey = useAtomValue(editingKeyAtom);
   const setEditingKey = useSetAtom(editingKeyAtom);
@@ -244,6 +245,7 @@ export function FrontmatterRow({
         isNoteArray={row.isNoteArray}
         isSystem={row.isSystem}
         isValueLocked={isValueLocked}
+        enumConstraint={enumConstraint}
         formulaVars={formulaVars}
         formulaChildren={formulaChildren}
         noteResolver={noteResolver}

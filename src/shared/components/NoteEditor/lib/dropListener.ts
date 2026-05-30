@@ -2,7 +2,7 @@
 // La ref est partagée : useDropHandler la peuple à chaque montage de MarkdownEditor.
 
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { createLogger } from "../../lib/logger";
+import { createLogger } from "../../../lib/logger";
 
 const log = createLogger("dropListener");
 

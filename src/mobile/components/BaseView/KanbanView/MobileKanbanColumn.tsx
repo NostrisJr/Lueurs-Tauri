@@ -4,6 +4,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useEffect, useRef, useState } from "react";
+import { ColorDotPicker } from "../../../../shared/components/FrontmatterPicker/ColorDotPicker";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
 import { MobileKanbanCard } from "./MobileKanbanCard";
@@ -12,6 +13,9 @@ interface Props {
   column: KanbanColumnType;
   notes: NoteFile[];
   onRename: (colId: string, newLabel: string) => void;
+  onDelete: (colId: string) => void;
+  // Défini uniquement pour les colonnes d'une clé BUTTON → pastille couleur cliquable
+  onSetColor?: (colId: string, color: string | undefined) => void;
   virtual?: boolean;
 }
 
@@ -19,6 +23,8 @@ export function MobileKanbanColumn({
   column,
   notes,
   onRename,
+  onDelete,
+  onSetColor,
   virtual = false,
 }: Props) {
   const [editing, setEditing] = useState(false);
@@ -56,6 +62,17 @@ export function MobileKanbanColumn({
     >
       {/* Header colonne */}
       <div className="flex items-center gap-2 mb-3 px-1">
+        {/* Pastille couleur cliquable — colonnes d'une clé BUTTON.
+            Pas de survol sur mobile → toujours visible, atténuée si aucune couleur. */}
+        {!virtual && onSetColor && (
+          <ColorDotPicker
+            color={column.color}
+            onColor={(c) => onSetColor(column.id, c)}
+            className={`size-3 rounded-full shrink-0 ${
+              column.color ? "" : "opacity-40"
+            }`}
+          />
+        )}
         {!virtual && editing ? (
           <input
             ref={inputRef}
@@ -80,6 +97,15 @@ export function MobileKanbanColumn({
           </button>
         )}
         <span className="text-sm text-gray-400 shrink-0">{notes.length}</span>
+        {!virtual && (
+          <button
+            type="button"
+            onClick={() => onDelete(column.id)}
+            className="shrink-0 text-gray-300 active:text-red-400 px-1"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Drop zone */}

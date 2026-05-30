@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
   defaultDisplayModeAtom,
+  defaultHighlightColorAtom,
   documentMapDistinguishedTypesAtom,
   documentMapShowListsAtom,
   documentMapShowNavigatorAtom,
   documentMapShowTextAtom,
   folderPathAtom,
   settingsOpenAtom,
+  textJustificationAtom,
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import {
@@ -17,12 +19,19 @@ import {
   BLOCK_TYPE_COLORS,
   BLOCK_TYPE_LABELS,
 } from "../../../shared/lib/documentMapConfig";
+import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
 
 export function SettingsModal() {
   const [open, setOpen] = useAtom(settingsOpenAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(
     defaultDisplayModeAtom
+  );
+  const [defaultHighlightColor, setDefaultHighlightColor] = useAtom(
+    defaultHighlightColorAtom
+  );
+  const [textJustification, setTextJustification] = useAtom(
+    textJustificationAtom
   );
   const [distinguishedTypes, setDistinguishedTypes] = useAtom(
     documentMapDistinguishedTypesAtom
@@ -114,6 +123,54 @@ export function SettingsModal() {
               <p className="text-xs text-gray-400">
                 Appliqué aux nouvelles notes et aux notes sans mode défini.
               </p>
+            </div>
+
+            {/* Justification du texte en mode livre */}
+            <div className="space-y-1.5 pt-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={textJustification}
+                  onChange={() => setTextJustification((v) => !v)}
+                  className="rounded accent-gray-800 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700">
+                  Justifier le texte en mode livre
+                </span>
+              </label>
+            </div>
+
+            {/* Couleur de surlignage par défaut */}
+            <div className="space-y-1.5 pt-3">
+              <p className="text-xs text-gray-500">
+                Couleur de surlignage par défaut (raccourci ⌘⇧L)
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {HIGHLIGHT_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    title={c.label}
+                    onClick={() => setDefaultHighlightColor(c.id)}
+                    className="relative w-6 h-6 rounded-full border-2 transition-all cursor-default"
+                    style={{
+                      background: c.solid,
+                      borderColor:
+                        defaultHighlightColor === c.id
+                          ? "#374151"
+                          : "transparent",
+                      transform:
+                        defaultHighlightColor === c.id ? "scale(1.15)" : "",
+                    }}
+                  >
+                    {defaultHighlightColor === c.id && (
+                      <span className="absolute inset-0 flex items-center justify-center text-white text-[9px] font-bold">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
 

@@ -7,6 +7,7 @@ import { activeNoteAtom, skipPropagationAtom } from "../../../shared/lib/atoms";
 import { isSystemField } from "../../../shared/lib/fileTreeHelpers";
 import {
   NoteType,
+  type NoteTypeValue,
   getAddableFields,
   getFieldDef,
   isFunctionalBaseField,
@@ -45,8 +46,7 @@ export function FrontmatterEditor({
     if (defaultCollapsed) setCollapsed(true);
   }, [activeNote?.id, defaultCollapsed]);
 
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  const noteType = (activeNote?.type as any) ?? null;
+  const noteType = (activeNote?.type as NoteTypeValue | null) ?? null;
   const isTemplate = activeNote?.type === NoteType.TEMPLATE;
 
   async function commit(updatedRows: Row[]) {

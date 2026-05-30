@@ -1,18 +1,17 @@
 import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BottomSheet } from "../../../mobile/components/BottomSheet/BottomSheet";
 import { type DisplayMode, activeNoteAtom } from "../../lib/atoms";
 import { EditableText } from "../EditableText.tsx";
 import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
+import { IconMicrophoneFill } from "../PlatformIcon.tsx";
 
 interface Props {
   onRename: (newName: string) => Promise<void>;
   onDisplayModeChange: (mode: DisplayMode) => void;
   hideDisplayModeSelector: boolean;
-  displayModeHandlerRef?: React.MutableRefObject<
-    ((mode: DisplayMode) => void) | null
-  >;
+  onRecord?: () => void;
 }
 
 const isMobile = platform() === "ios" || platform() === "android";
@@ -21,18 +20,11 @@ export function NoteHeader({
   onRename,
   onDisplayModeChange,
   hideDisplayModeSelector,
-  displayModeHandlerRef,
+  onRecord,
 }: Props) {
   const activeNote = useAtomValue(activeNoteAtom);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
-
-  // Expose le handler au parent (mobile) via ref
-  useEffect(() => {
-    if (displayModeHandlerRef) {
-      displayModeHandlerRef.current = onDisplayModeChange;
-    }
-  });
 
   if (!activeNote) return null;
 
@@ -96,9 +88,21 @@ export function NoteHeader({
           onSave={async (newName: string) => onRename(newName)}
         />
       )}
-      {!hideDisplayModeSelector && (
-        <DisplayModeSelector onModeChange={onDisplayModeChange} />
-      )}
+      <div className="flex items-center gap-3">
+        {onRecord && (
+          <button
+            type="button"
+            onClick={onRecord}
+            title="Enregistrement vocal"
+            className="p-0.5 text-gray-500 hover:text-red-500 transition-colors bg-transparent rounded-full size-10 flex items-center justify-center hover:bg-gray-100"
+          >
+            <IconMicrophoneFill className="size-4.5" aria-hidden="true" />
+          </button>
+        )}
+        {!hideDisplayModeSelector && (
+          <DisplayModeSelector onModeChange={onDisplayModeChange} />
+        )}
+      </div>
     </div>
   );
 }

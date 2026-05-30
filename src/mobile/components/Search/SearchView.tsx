@@ -3,11 +3,10 @@ import { useMemo, useState } from "react";
 import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
 import {
-  mobileContextMenuAtom,
   mobileGoBackAtom,
   treeAtom,
 } from "../../../shared/lib/atoms";
-import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
+import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
 import { FileRow } from "../FileTree/FileRow";
@@ -17,9 +16,8 @@ export function SearchView() {
   const [query, setQuery] = useState("");
   const tree = useAtomValue(treeAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
-  const setContextMenu = useSetAtom(mobileContextMenuAtom);
   const allNotes = useMemo(() => flattenTree(tree), [tree]);
-  const { keyboardHeight } = useKeyboardHeight();
+  const { height: keyboardHeight } = useKeyboard();
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
@@ -59,13 +57,6 @@ export function SearchView() {
                   key={note.id}
                   node={note}
                   onDrillIn={() => {}}
-                  onLongPress={() =>
-                    setContextMenu({
-                      id: note.id,
-                      name: note.name,
-                      isFolder: false,
-                    })
-                  }
                 />
               ))}
             </div>

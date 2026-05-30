@@ -1,6 +1,13 @@
 import { platform } from "@tauri-apps/plugin-os";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ButtonOptionsEditor } from "../../../shared/components/FrontmatterPicker/ButtonOptionsEditor";
+import { EnumValueSelector } from "../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import {
+  type ButtonDef,
+  isButtonFormula,
+  parseButton,
+} from "../../../shared/lib/FrontmatterPicker/buttonProperty";
 import {
   computeFormula,
   dehumanizeFormula,
@@ -10,8 +17,9 @@ import {
 import { type NoteTypeValue, SystemField } from "../../../shared/lib/noteTypes";
 import { NoteChip } from "./NoteChip";
 import { NoteSelector } from "./NoteSelector";
-import { type PropertyOption, PropertySelector } from "./PropertySelector";
+import { PropertySelector } from "./PropertySelector";
 import { TypeSelector } from "./TypeSelector";
+import { REF_PROP_TRIGGER_RE, getNoteProperties } from "./lib/frontmatterUtils";
 
 interface Props {
   fieldKey: string;
@@ -19,6 +27,7 @@ interface Props {
   isNoteArray: boolean;
   isSystem: boolean;
   isValueLocked: boolean;
+  enumConstraint?: ButtonDef;
   formulaVars?: Record<string, unknown>;
   formulaChildren?: NoteFile[];
   noteResolver?: (path: string) => NoteFile | undefined;
@@ -29,21 +38,13 @@ interface Props {
   noteName: (path: string) => string;
 }
 
-// Détecte ref("NomNote"). juste avant la position curseur
-const REF_PROP_TRIGGER_RE = /ref\("([^"]+)"\)\.$/;
-
-function getNoteProperties(note: NoteFile): PropertyOption[] {
-  return Object.keys(note.frontmatter)
-    .filter((k) => k !== SystemField.TYPE && k !== SystemField.CHILDREN)
-    .map((key) => ({ key, displayName: key.replace(/^__|__$/g, "") }));
-}
-
 export function FrontmatterValue({
   fieldKey,
   value,
   isNoteArray,
   isSystem,
   isValueLocked,
+  enumConstraint,
   formulaVars,
   formulaChildren,
   noteResolver,
@@ -162,6 +163,22 @@ export function FrontmatterValue({
         value={value as string}
         onChange={(type: NoteTypeValue) => onTextChange(type)}
       />
+    );
+  }
+
+  // ── Contrainte BUTTON (valeur choisie via dropdown) ───────────────────────
+  if (enumConstraint) {
+    return (
+      <div className="flex-1 mt-0.5">
+        <EnumValueSelector
+          value={value as string}
+          constraint={enumConstraint}
+          onChange={(v) => {
+            onTextChange(v);
+            onTextBlur();
+          }}
+        />
+      </div>
     );
   }
 
@@ -286,6 +303,21 @@ export function FrontmatterValue({
             />
           )}
         </div>
+      );
+    }
+
+    // Vue compactée d'un BUTTON : valeurs surlignées + dot pour rechoisir la couleur
+    const buttonDef = isButtonFormula(strValue) ? parseButton(strValue) : null;
+    if (buttonDef && !isValueLocked) {
+      return (
+        <ButtonOptionsEditor
+          def={buttonDef}
+          onChange={(formula) => {
+            onTextChange(formula);
+            onTextBlur();
+          }}
+          onEditRaw={() => setEditingFormula(true)}
+        />
       );
     }
 

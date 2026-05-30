@@ -44,9 +44,12 @@ export type BaseViewType = (typeof BaseViewEnum)[keyof typeof BaseViewEnum];
 
 // Persistée en YAML dans __KanbanColumns__ de la base.
 // id : clé stable (jamais modifiée), label : valeur écrite dans les notes enfants.
+// color : id couleur highlight, uniquement pour les clés BUTTON (colonnes dérivées
+// des options du template, voir resolveButtonKey).
 export interface KanbanColumn {
   id: string;
   label: string;
+  color?: string;
 }
 
 // ── Définition des propriétés système ─────────────────────────────────────

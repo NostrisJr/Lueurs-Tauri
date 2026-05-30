@@ -1,34 +1,29 @@
 import { useAtomValue } from "jotai";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { EnumValueSelector } from "../../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import type {
   Frontmatter,
   NoteFile,
 } from "../../../../shared/hooks/useFileTree";
 import { notesByNameAtom } from "../../../../shared/lib/atoms";
+import type { ButtonDef } from "../../../../shared/lib/FrontmatterPicker/buttonProperty";
 import {
   computeFormula,
   dehumanizeFormula,
   humanizeFormula,
   isFormula,
 } from "../../../../shared/lib/formulas";
-import { SystemField } from "../../../../shared/lib/noteTypes";
 import { NoteSelector } from "../../Frontmatter/NoteSelector";
+import { PropertySelector } from "../../Frontmatter/PropertySelector";
 import {
-  type PropertyOption,
-  PropertySelector,
-} from "../../Frontmatter/PropertySelector";
-
-const REF_PROP_TRIGGER_RE = /ref\("([^"]+)"\)\.$/;
-
-function getNoteProperties(note: NoteFile): PropertyOption[] {
-  return Object.keys(note.frontmatter)
-    .filter((k) => k !== SystemField.TYPE && k !== SystemField.CHILDREN)
-    .map((key) => ({ key, displayName: key.replace(/^__|__$/g, "") }));
-}
+  REF_PROP_TRIGGER_RE,
+  getNoteProperties,
+} from "../../Frontmatter/lib/frontmatterUtils";
 
 interface Props {
   value: string;
   isImposed: boolean;
+  enumConstraint?: ButtonDef;
   width: number;
   frontmatter: Frontmatter;
   noteResolver?: (path: string) => NoteFile | undefined;
@@ -39,6 +34,7 @@ interface Props {
 export function TableCell({
   value,
   isImposed,
+  enumConstraint,
   width,
   frontmatter,
   noteResolver,
@@ -52,6 +48,11 @@ export function TableCell({
     null
   );
   const inputRef = useRef<HTMLInputElement>(null);
+  // Ref stable → assigne inputRef et sélectionne le texte au montage de l'input d'édition uniquement
+  const editInputRef = useCallback((el: HTMLInputElement | null) => {
+    inputRef.current = el;
+    el?.select();
+  }, []);
   const selectorOpenRef = useRef(false);
   const triggerCursorRef = useRef(0);
 
@@ -123,7 +124,6 @@ export function TableCell({
     if (isImposed) return;
     setDraft(value);
     setEditing(true);
-    setTimeout(() => inputRef.current?.select(), 0);
   }
 
   function commit(rawValue: string) {
@@ -153,6 +153,22 @@ export function TableCell({
     : value;
   const isError = displayValue === "#ERREUR";
 
+  // ── Contrainte BUTTON : dropdown au lieu de l'édition texte ───────────────
+  if (enumConstraint) {
+    return (
+      <div
+        style={{ width }}
+        className="shrink-0 border-r border-gray-100 px-3 flex items-center last:border-none"
+      >
+        <EnumValueSelector
+          value={value}
+          constraint={enumConstraint}
+          onChange={onCommit}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       style={{ width }}
@@ -168,7 +184,7 @@ export function TableCell({
       {editing ? (
         <div className="relative">
           <input
-            ref={inputRef}
+            ref={editInputRef}
             // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture de l'édition
             autoFocus
             value={toDisplay(draft)}

@@ -18,16 +18,7 @@ import {
 import { isIOS } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
 import { hapticImpact } from "../../lib/haptics";
-
-// Fonctionne pour les chemins POSIX et les URI SAF Android (content://...primary%3AMonDossier).
-function vaultDisplayName(uri: string): string {
-  const last = decodeURIComponent(uri.split("/").pop() ?? uri);
-  // URI SAF : "primary:path/to/folder" → extraire le dernier segment du chemin
-  const afterColon = last.includes(":")
-    ? last.split(":").slice(1).join(":")
-    : last;
-  return afterColon.split("/").pop() ?? afterColon;
-}
+import { vaultDisplayName } from "../../lib/vault";
 
 export function FileTreeHeader() {
   const folderStack = useAtomValue(folderStackAtom);

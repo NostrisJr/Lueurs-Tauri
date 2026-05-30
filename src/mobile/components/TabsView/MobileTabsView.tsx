@@ -90,7 +90,6 @@ export function MobileTabsView() {
                 <FileRow
                   node={note}
                   onDrillIn={() => {}}
-                  onLongPress={() => {}}
                   onClick={() => handleSelectTab(id)}
                 />
                 <button

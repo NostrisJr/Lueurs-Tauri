@@ -4,6 +4,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useEffect, useRef, useState } from "react";
+import { ColorDotPicker } from "../../../../shared/components/FrontmatterPicker/ColorDotPicker";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
 import { KanbanCard } from "./KanbanCard";
@@ -12,6 +13,9 @@ interface Props {
   column: KanbanColumnType;
   notes: NoteFile[];
   onRename: (colId: string, newLabel: string) => void;
+  onDelete: (colId: string) => void;
+  // Défini uniquement pour les colonnes d'une clé BUTTON → pastille couleur cliquable
+  onSetColor?: (colId: string, color: string | undefined) => void;
   // Colonne virtuelle — header non éditable, style distinct
   virtual?: boolean;
 }
@@ -20,6 +24,8 @@ export function KanbanColumn({
   column,
   notes,
   onRename,
+  onDelete,
+  onSetColor,
   virtual = false,
 }: Props) {
   const [editing, setEditing] = useState(false);
@@ -51,9 +57,20 @@ export function KanbanColumn({
   }
 
   return (
-    <div className="flex flex-col w-64 shrink-0">
+    <div className="flex flex-col w-64 shrink-0 group/col">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3 px-1">
+        {/* Pastille couleur cliquable — colonnes d'une clé BUTTON.
+            Couleur définie → toujours visible ; sinon → au survol. */}
+        {!virtual && onSetColor && (
+          <ColorDotPicker
+            color={column.color}
+            onColor={(c) => onSetColor(column.id, c)}
+            className={`size-2.5 rounded-full shrink-0 cursor-pointer transition-opacity ${
+              column.color ? "" : "opacity-0 group-hover/col:opacity-100"
+            }`}
+          />
+        )}
         {!virtual && editing ? (
           <input
             ref={inputRef}
@@ -80,6 +97,16 @@ export function KanbanColumn({
         <span className="ml-auto text-xs text-gray-400 shrink-0">
           {notes.length}
         </span>
+        {!virtual && (
+          <button
+            type="button"
+            onClick={() => onDelete(column.id)}
+            title="Supprimer la colonne"
+            className="shrink-0 text-gray-300 hover:text-red-400 opacity-0 group-hover/col:opacity-100 transition-opacity cursor-pointer"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Drop zone */}

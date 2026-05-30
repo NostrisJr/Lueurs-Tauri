@@ -31,6 +31,9 @@ interface Props {
   ) => Promise<void>;
   onRenameColumn: (colId: string, newLabel: string) => Promise<void>;
   onAddColumn: (label: string) => void;
+  onDeleteColumn: (colId: string) => void;
+  // Défini uniquement pour une clé BUTTON → pastille couleur cliquable
+  onSetColumnColor?: (colId: string, color: string | undefined) => void;
 }
 
 export function KanbanView({
@@ -39,6 +42,8 @@ export function KanbanView({
   onMoveCard,
   onRenameColumn,
   onAddColumn,
+  onDeleteColumn,
+  onSetColumnColor,
 }: Props) {
   const [activeNote, setActiveNote] = useState<NoteFile | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
@@ -56,7 +61,7 @@ export function KanbanView({
     return null;
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: findColumnOfNote est une fonction locale dont la stabilité est garantie par cards (déjà en dep) — l'ajouter créerait une dépendance circulaire
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const noteId = event.active.id as string;
@@ -69,7 +74,7 @@ export function KanbanView({
     [cards]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: findColumnOfNote est couverte par cards ; setters Jotai sont stables et inutile à lister
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       setActiveNote(null);
@@ -129,6 +134,8 @@ export function KanbanView({
             column={col}
             notes={cards[col.id] ?? []}
             onRename={onRenameColumn}
+            onDelete={onDeleteColumn}
+            onSetColor={onSetColumnColor}
           />
         ))}
 
@@ -139,6 +146,7 @@ export function KanbanView({
             column={{ id: NO_VALUE_COLUMN_ID, label: "Sans valeur" }}
             notes={cards[NO_VALUE_COLUMN_ID]}
             onRename={() => {}}
+            onDelete={() => {}}
             virtual
           />
         )}

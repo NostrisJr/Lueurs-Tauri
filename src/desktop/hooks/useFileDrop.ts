@@ -20,6 +20,14 @@ import { resolveDestName } from "../../shared/lib/vaultIO";
 
 const log = createLogger("useFileDrop");
 
+// ── Types ─────────────────────────────────────────────────────────────────
+
+interface WebviewDragDropPayload {
+  type: "enter" | "over" | "leave" | "drop";
+  paths?: string[];
+  position?: { x: number; y: number };
+}
+
 // ── Helpers purs ───────────────────────────────────────────────────────────
 
 function toFolderPath(id: string): string {
@@ -58,6 +66,21 @@ async function getTitlebarInfo(): Promise<{ physical: number; dpr: number }> {
   ]);
   titlebarCache = { physical, dpr };
   return titlebarCache;
+}
+
+// Surveille les changements de DPR (passage entre écrans Retina / non-Retina).
+// matchMedia + re-enregistrement récursif : chaque requête ne fire qu'une fois.
+let dprCleanup: (() => void) | null = null;
+function trackDprChanges(): void {
+  dprCleanup?.();
+  const mql = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  const handler = () => {
+    titlebarCache = null;
+    log.info("DPR changé — cache titlebar invalidé");
+    trackDprChanges();
+  };
+  mql.addEventListener("change", handler);
+  dprCleanup = () => mql.removeEventListener("change", handler);
 }
 
 // Convertit les coordonnées brutes wry en CSS px relatifs au viewport.
@@ -135,17 +158,13 @@ export function useFileDrop(): FileDrop {
   const { moveNode, reload } = useFileTree();
   const { propagateNoteRename, propagateFolderRename } = usePathPropagation();
 
-  const moveNodeRef = useRef(moveNode);
-  moveNodeRef.current = moveNode;
-  const reloadRef = useRef(reload);
-  reloadRef.current = reload;
-  const propagateNoteRenameRef = useRef(propagateNoteRename);
-  propagateNoteRenameRef.current = propagateNoteRename;
-  const propagateFolderRenameRef = useRef(propagateFolderRename);
-  propagateFolderRenameRef.current = propagateFolderRename;
+  // Refs miroirs — un seul objet pour éviter les fermetures périmées dans les callbacks singleton
+  const cbRef = useRef({ moveNode, reload, propagateNoteRename, propagateFolderRename });
+  cbRef.current = { moveNode, reload, propagateNoteRename, propagateFolderRename };
 
   // ── Listener Tauri : drop externe uniquement ───────────────────────────
   useEffect(() => {
+    trackDprChanges();
     tauriUnlisten?.();
     tauriUnlisten = null;
     let cancelled = false;
@@ -156,12 +175,10 @@ export function useFileDrop(): FileDrop {
     import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => {
       getCurrentWebview()
         .onDragDropEvent(async (event) => {
-          // biome-ignore lint/suspicious/noExplicitAny: payload Tauri
-          const payload = event.payload as any;
+          const payload = event.payload as WebviewDragDropPayload;
 
           if (payload.type === "enter") {
-            const paths: string[] =
-              (payload.paths as string[] | undefined) ?? [];
+            const paths: string[] = payload.paths ?? [];
             const mdPaths = paths.filter((p) => p.endsWith(".md"));
             if (mdPaths.length > 0) {
               pendingMdPaths = mdPaths;
@@ -242,6 +259,8 @@ export function useFileDrop(): FileDrop {
       cancelled = true;
       tauriUnlisten?.();
       tauriUnlisten = null;
+      dprCleanup?.();
+      dprCleanup = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -352,13 +371,13 @@ export function useFileDrop(): FileDrop {
     if (!isValidMove(sourceId, targetFolderPath)) return;
 
     const isFolder = !sourceId.endsWith(".md");
-    const newPath = await moveNodeRef.current(sourceId, targetFolderPath);
+    const newPath = await cbRef.current.moveNode(sourceId, targetFolderPath);
     if (!newPath) return;
 
     if (isFolder) {
-      await propagateFolderRenameRef.current(sourceId, newPath);
+      await cbRef.current.propagateFolderRename(sourceId, newPath);
     } else {
-      await propagateNoteRenameRef.current(sourceId, newPath);
+      await cbRef.current.propagateNoteRename(sourceId, newPath);
     }
 
     const currentActive = store.get(activeNoteIdAtom);
@@ -397,7 +416,6 @@ export function useFileDrop(): FileDrop {
           const finalContent = serializeFrontmatter(safeFrontmatter, body);
           const destName = await resolveDestName(targetFolderPath, fileName);
           const targetPath = `${targetFolderPath}/${destName}`;
-          // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
           await writeTextFile(targetPath, finalContent, {
             baseDir: null,
           } as any);
@@ -408,7 +426,7 @@ export function useFileDrop(): FileDrop {
       })
     );
 
-    reloadRef.current();
+    cbRef.current.reload();
   }
 
   return { onPointerDown };

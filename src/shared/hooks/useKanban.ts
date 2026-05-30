@@ -1,6 +1,12 @@
 import { message } from "@tauri-apps/plugin-dialog";
 import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
+import { useTemplateSync } from "../../desktop/hooks/useTemplateSync";
+import {
+  type ButtonDef,
+  parseButton,
+  serializeButton,
+} from "../lib/FrontmatterPicker/buttonProperty";
 import {
   type KanbanCards,
   NO_VALUE_COLUMN_ID,
@@ -10,7 +16,12 @@ import {
   parseColumns,
   serializeColumns,
 } from "../lib/atoms";
-import { getFreeProps } from "../lib/fileTreeHelpers";
+import {
+  buttonColumns,
+  getButtonProps,
+  getFreeProps,
+  resolveButtonKey,
+} from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { type KanbanColumn, SystemField } from "../lib/noteTypes";
 import type { Frontmatter, NoteFile } from "./useFileTree";
@@ -37,14 +48,16 @@ export function getAvailableKanbanKeys(
   )
     return [];
 
-  // Dédupliquer — plusieurs templates peuvent avoir la même propriété libre
+  // Dédupliquer — plusieurs templates peuvent avoir la même propriété
   const seen = new Set<string>();
   return templatePaths.flatMap((path) => {
     const template = notesById.get(path);
     if (!template) return [];
-    return getFreeProps(template.frontmatter).filter(
-      (k) => !seen.has(k) && seen.add(k)
-    );
+    // Props libres (valeur vide) + props contraintes BUTTON
+    return [
+      ...getFreeProps(template.frontmatter),
+      ...getButtonProps(template.frontmatter),
+    ].filter((k) => !seen.has(k) && seen.add(k));
   });
 }
 
@@ -78,13 +91,22 @@ export function getTemplateValues(
 export function useKanban({ base, onBaseChange }: UseKanbanProps) {
   const notesById = useAtomValue(notesByIdAtom);
   const persistPatch = usePersistNote();
+  const { onTemplateChange } = useTemplateSync();
 
   const kanbanKey = base.frontmatter[SystemField.KANBAN_KEY] as
     | string
     | undefined;
+
+  // Clé BUTTON : colonnes dérivées des options du/des template(s) (avec couleurs),
+  // toute mutation de colonne édite la formule BUTTON et se propage via onTemplateChange.
+  // Clé libre : colonnes persistées dans __KanbanColumns__, propagation manuelle.
+  const buttonKey = kanbanKey
+    ? resolveButtonKey(base, notesById, kanbanKey)
+    : null;
   const persistedColumns = parseColumns(
     base.frontmatter[SystemField.KANBAN_COLUMNS]
   );
+  const columns = buttonKey ? buttonColumns(buttonKey.def) : persistedColumns;
 
   const childNotes = (() => {
     const paths = Array.isArray(base.frontmatter[SystemField.CHILDREN])
@@ -106,10 +128,19 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
 
   // ── Initialisation / changement de clé ────────────────────────────────
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const initKanban = useCallback(
     (key: string) => {
       log.info("initialisation kanban", { baseId: base.id, key });
+
+      // Clé BUTTON : colonnes dérivées des options du template, pas de __KanbanColumns__
+      if (resolveButtonKey(base, notesById, key)) {
+        onBaseChange({
+          ...base.frontmatter,
+          [SystemField.VIEW]: "kanban",
+          [SystemField.KANBAN_KEY]: key,
+        });
+        return;
+      }
 
       // Valeurs depuis les notes enfant (non vides)
       const fromNotes = [
@@ -140,7 +171,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
         [SystemField.KANBAN_COLUMNS]: serializeColumns(columns),
       });
     },
-    [base, childNotes, onBaseChange]
+    [base, childNotes, notesById, onBaseChange]
   );
 
   // ── Suppression de la vue ──────────────────────────────────────────────
@@ -166,7 +197,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
       const isNoValueTarget = toColId === NO_VALUE_COLUMN_ID;
       const toCol = isNoValueTarget
         ? { id: NO_VALUE_COLUMN_ID, label: "" }
-        : persistedColumns.find((c) => c.id === toColId);
+        : columns.find((c) => c.id === toColId);
       if (!toCol) {
         log.warn("colonne cible introuvable", { toColId });
         return;
@@ -223,16 +254,45 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
         });
       }
     },
-    [kanbanKey, persistedColumns, childNotes, persistPatch]
+    [kanbanKey, columns, childNotes, persistPatch]
   );
 
   // ── Gestion des colonnes ──────────────────────────────────────────────
 
-  const addColumn = useCallback(
-    (label: string) => {
-      log.info("ajout colonne", { baseId: base.id, label });
-      const newCol: KanbanColumn = { id: generateColumnId(), label };
+  // Clé BUTTON : édite la formule du/des template(s) puis propage aux héritiers
+  // via onTemplateChange (renameEnumValue / enforceEnum déjà gérés par le pipeline).
+  const mutateButtonTemplates = useCallback(
+    async (mutate: (def: ButtonDef) => ButtonDef) => {
+      if (!kanbanKey || !buttonKey) return;
+      for (const template of buttonKey.templates) {
+        const def = parseButton(template.frontmatter[kanbanKey] as string);
+        if (!def) continue;
+        const prev = template.frontmatter;
+        const next: Frontmatter = {
+          ...template.frontmatter,
+          [kanbanKey]: serializeButton(mutate(def)),
+        };
+        await persistPatch(template.id, next, template.body);
+        await onTemplateChange(template.id, prev, next);
+      }
+    },
+    [kanbanKey, buttonKey, persistPatch, onTemplateChange]
+  );
 
+  const addColumn = useCallback(
+    async (label: string) => {
+      log.info("ajout colonne", { baseId: base.id, label });
+
+      if (buttonKey) {
+        await mutateButtonTemplates((def) =>
+          def.options.some((o) => o.value === label)
+            ? def
+            : { ...def, options: [...def.options, { value: label }] }
+        );
+        return;
+      }
+
+      const newCol: KanbanColumn = { id: generateColumnId(), label };
       onBaseChange({
         ...base.frontmatter,
         [SystemField.KANBAN_COLUMNS]: serializeColumns([
@@ -246,15 +306,27 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
         [newCol.id]: [],
       }));
     },
-    [base, persistedColumns, onBaseChange]
+    [base, buttonKey, persistedColumns, onBaseChange, mutateButtonTemplates]
   );
 
   const renameColumn = useCallback(
     async (colId: string, newLabel: string) => {
-      const col = persistedColumns.find((c) => c.id === colId);
+      const col = columns.find((c) => c.id === colId);
       if (!col || !kanbanKey) return;
 
       log.info("renommage colonne", { colId, oldLabel: col.label, newLabel });
+
+      // Clé BUTTON : renomme l'option dans le template → propagation auto aux héritiers
+      if (buttonKey) {
+        await mutateButtonTemplates((def) => ({
+          ...def,
+          options: def.options.map((o) =>
+            o.value === col.label ? { ...o, value: newLabel } : o
+          ),
+          default: def.default === col.label ? newLabel : def.default,
+        }));
+        return;
+      }
 
       onBaseChange({
         ...base.frontmatter,
@@ -299,7 +371,73 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
         });
       }
     },
-    [base, persistedColumns, kanbanKey, childNotes, onBaseChange, persistPatch]
+    [
+      base,
+      columns,
+      persistedColumns,
+      buttonKey,
+      kanbanKey,
+      childNotes,
+      onBaseChange,
+      persistPatch,
+      mutateButtonTemplates,
+    ]
+  );
+
+  // Supprime une colonne. Clé BUTTON : retire l'option du template (les héritiers
+  // concernés retombent sur le default via enforceEnum). Clé libre : retire la
+  // colonne de __KanbanColumns__ (les notes concernées passent en « Sans valeur »).
+  const removeColumn = useCallback(
+    async (colId: string) => {
+      const col = columns.find((c) => c.id === colId);
+      if (!col) return;
+
+      log.info("suppression colonne", { colId, label: col.label });
+
+      if (buttonKey) {
+        await mutateButtonTemplates((def) => {
+          const options = def.options.filter((o) => o.value !== col.label);
+          const def_ =
+            def.default === col.label ? (options[0]?.value ?? "") : def.default;
+          return { options, default: def_ };
+        });
+        return;
+      }
+
+      onBaseChange({
+        ...base.frontmatter,
+        [SystemField.KANBAN_COLUMNS]: serializeColumns(
+          persistedColumns.filter((c) => c.id !== colId)
+        ),
+      });
+    },
+    [
+      base,
+      columns,
+      buttonKey,
+      persistedColumns,
+      onBaseChange,
+      mutateButtonTemplates,
+    ]
+  );
+
+  // Recolore une colonne BUTTON → modifie la couleur de l'option dans le template.
+  // Sans effet sur les héritiers (ils ne stockent que la valeur, pas la couleur).
+  const setColumnColor = useCallback(
+    async (colId: string, color: string | undefined) => {
+      const col = columns.find((c) => c.id === colId);
+      if (!col || !buttonKey) return;
+
+      log.info("recoloration colonne", { colId, label: col.label, color });
+
+      await mutateButtonTemplates((def) => ({
+        ...def,
+        options: def.options.map((o) =>
+          o.value === col.label ? { ...o, color } : o
+        ),
+      }));
+    },
+    [columns, buttonKey, mutateButtonTemplates]
   );
 
   const reorderColumns = useCallback(
@@ -315,7 +453,8 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
 
   return {
     kanbanKey,
-    columns: persistedColumns,
+    isButtonKey: !!buttonKey,
+    columns,
     cards,
     availableKeys: getAvailableKanbanKeys(base, notesById),
     initKanban,
@@ -323,6 +462,8 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
     moveCard,
     addColumn,
     renameColumn,
+    removeColumn,
+    setColumnColor,
     reorderColumns,
   };
 }

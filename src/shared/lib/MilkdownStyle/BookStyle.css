@@ -22,10 +22,14 @@
 }
 
 .mode-livre .milkdown .ProseMirror p {
-    text-align: justify;
     text-indent: 1.5em;
     padding: 0.4em 0;
-    /* Typographie correcte : la dernière ligne (ou ligne unique) n'est pas étirée */
+}
+
+/* Justification activée via réglage utilisateur */
+.mode-livre.text-justified .milkdown .ProseMirror p {
+    text-align: justify;
+    /* La dernière ligne (ou ligne unique) n'est pas étirée */
     text-align-last: left;
 }
 

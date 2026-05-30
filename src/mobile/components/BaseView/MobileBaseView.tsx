@@ -36,6 +36,9 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
     moveCard,
     addColumn,
     renameColumn,
+    removeColumn,
+    setColumnColor,
+    isButtonKey,
   } = useKanban({ base, onBaseChange });
 
   const currentView =
@@ -133,6 +136,8 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
           onMoveCard={moveCard}
           onRenameColumn={renameColumn}
           onAddColumn={addColumn}
+          onDeleteColumn={removeColumn}
+          onSetColumnColor={isButtonKey ? setColumnColor : undefined}
         />
       ) : (
         <MobileTableView base={base} onBaseChange={onBaseChange} />

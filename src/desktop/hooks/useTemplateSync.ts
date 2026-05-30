@@ -15,6 +15,11 @@ import {
   writingPathsRegistry,
 } from "../../shared/lib/atoms";
 import {
+  diffButtonOptions,
+  isButtonFormula,
+  parseButton,
+} from "../../shared/lib/FrontmatterPicker/buttonProperty";
+import {
   flattenTree,
   isSystemField,
   toArray,
@@ -38,7 +43,21 @@ type TemplateChange =
       new_key: string;
       template_value?: string;
     }
-  | { type: "forceValue"; key: string; value: string };
+  | { type: "forceValue"; key: string; value: string }
+  // Renommage d'une valeur permise dans un BUTTON → maj des héritiers qui l'avaient choisie
+  | {
+      type: "renameEnumValue";
+      key: string;
+      old_value: string;
+      new_value: string;
+    }
+  // Réconciliation BUTTON : écrase par le default toute valeur non permise
+  | {
+      type: "enforceEnum";
+      key: string;
+      options: string[];
+      default: string;
+    };
 
 interface PropagateResult {
   modified: number;
@@ -311,6 +330,17 @@ export function useTemplateSync() {
               change.new_key,
               change.template_value
             );
+          } else if (
+            change.type === "renameEnumValue" &&
+            fm[change.key] === change.old_value
+          ) {
+            newFm = { ...fm, [change.key]: change.new_value };
+          } else if (change.type === "enforceEnum" && change.key in fm) {
+            const cur = fm[change.key];
+            const curStr = typeof cur === "string" ? cur : "";
+            if (!change.options.includes(curStr) && curStr !== change.default) {
+              newFm = { ...fm, [change.key]: change.default };
+            }
           }
 
           if (newFm) {
@@ -423,29 +453,76 @@ function diffFrontmatter(
   const removed = prevKeys.filter((k) => !(k in next));
 
   if (added.length === 1 && removed.length === 1) {
+    const newVal = next[added[0]] as string | undefined;
     changes.push({
       type: "renameProp",
       old_key: removed[0],
       new_key: added[0],
-      template_value: next[added[0]] as string | undefined,
+      // BUTTON : traité comme contrainte (template_value vide) → préserve la valeur de l'héritier
+      template_value: newVal && isButtonFormula(newVal) ? "" : newVal,
     });
     return changes;
   }
 
   for (const key of added) {
-    changes.push({
-      type: "addProp",
-      key,
-      value: next[key] as string | undefined,
-    });
+    const v = next[key] as string | undefined;
+    // BUTTON : l'héritier reçoit le default (jamais la formule)
+    if (v && isButtonFormula(v)) {
+      changes.push({
+        type: "addProp",
+        key,
+        value: parseButton(v)?.default ?? "",
+      });
+    } else {
+      changes.push({ type: "addProp", key, value: v });
+    }
   }
   for (const key of removed) {
     changes.push({ type: "removeProp", key });
   }
 
   for (const key of nextKeys) {
-    if (key in prev && prev[key] !== next[key] && next[key]) {
-      changes.push({ type: "forceValue", key, value: next[key] as string });
+    if (!(key in prev) || prev[key] === next[key]) continue;
+    const prevVal = prev[key];
+    const nextVal = next[key];
+
+    // Propriété BUTTON : pas de forceValue (contrainte, pas valeur imposée).
+    // Un renommage d'option se propage aux héritiers qui l'avaient choisie.
+    // (defs parsées via ternaire pour ne pas rétrécir le type de nextVal après continue)
+    const nextDef =
+      typeof nextVal === "string" && isButtonFormula(nextVal)
+        ? parseButton(nextVal)
+        : null;
+    if (nextDef) {
+      const prevDef =
+        typeof prevVal === "string" && isButtonFormula(prevVal)
+          ? parseButton(prevVal)
+          : null;
+      if (prevDef) {
+        const optionsDiff = diffButtonOptions(prevDef, nextDef);
+        for (const r of optionsDiff.renames) {
+          changes.push({
+            type: "renameEnumValue",
+            key,
+            old_value: r.old,
+            new_value: r.new,
+          });
+        }
+        // Options retirées → les héritiers qui les avaient deviennent invalides : reset au default
+        if (optionsDiff.removed.length > 0) {
+          changes.push({
+            type: "enforceEnum",
+            key,
+            options: nextDef.options.map((o) => o.value),
+            default: nextDef.default,
+          });
+        }
+      }
+      continue;
+    }
+
+    if (typeof nextVal === "string" && nextVal) {
+      changes.push({ type: "forceValue", key, value: nextVal });
     }
   }
 

@@ -2,6 +2,7 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 import { createLogger } from "../../lib/logger";
+import { Squircle } from "../Squircle";
 
 const log = createLogger("WaveformDisplay");
 
@@ -174,10 +175,12 @@ export function WaveformDisplay({
   }, [isActive]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ width, height, display: "block" }}
-      className="px-4 rounded-2xl bg-gray-50"
-    />
+    <Squircle radius={22} className="bg-gray-200">
+      <canvas
+        ref={canvasRef}
+        style={{ width, height, display: "block" }}
+        className="px-4 rounded-4xl bg-gray-200"
+      />
+    </Squircle>
   );
 }

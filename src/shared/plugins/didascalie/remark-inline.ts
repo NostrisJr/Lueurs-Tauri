@@ -72,7 +72,28 @@ function processInlineChildren(parent: AnyNode): void {
   }
 }
 
-function remarkDidascalieInline() {
+// Attacher unified : (1) enregistre un handler remark-stringify qui sérialise
+// le nœud mdast `didascalie_inline` en `||texte||`, (2) transforme le texte
+// `||texte||` en nœud `didascalie_inline` à la lecture.
+function remarkDidascalieInline(this: AnyNode) {
+  const data = this.data();
+  const toMarkdownExtensions =
+    data.toMarkdownExtensions || (data.toMarkdownExtensions = []);
+  toMarkdownExtensions.push({
+    handlers: {
+      didascalie_inline(node: AnyNode, _parent: AnyNode, state: AnyNode, info: AnyNode) {
+        const exit = state.enter("didascalie_inline");
+        const value = state.containerPhrasing(node, {
+          ...info,
+          before: "|",
+          after: "|",
+        });
+        exit();
+        return `||${value}||`;
+      },
+    },
+  });
+
   return (tree: Root) => {
     processInlineChildren(tree as AnyNode);
   };

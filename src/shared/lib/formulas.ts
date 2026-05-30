@@ -7,10 +7,15 @@
 //   round(n, decimals?)         — arrondi
 //   iif(cond, alors, sinon)     — conditionnel
 //   agg(col, op)                — agrégation sur les enfants (bases uniquement)
+//   BUTTON([a;b;c],def)         — contrainte de valeurs (déclaratif, jamais calculé — voir buttonProperty.ts)
 // Opérateurs : + - * / () > < >= <= === !==
 
 import type { NoteFile } from "../hooks/useFileTree";
 import { type AggregationOp, computeAggregation } from "./aggregations";
+import {
+  isButtonFormula,
+  parseButton,
+} from "./FrontmatterPicker/buttonProperty";
 
 const FORMULA_RE = /^\$\$(.+)\$\$$/s;
 
@@ -63,6 +68,13 @@ export function computeFormula(
 ): string {
   const match = FORMULA_RE.exec(raw);
   if (!match) return raw;
+
+  // BUTTON est déclaratif (contrainte de template), jamais évalué : aperçu lisible
+  // pour la note template elle-même (les héritiers ne stockent qu'un littéral).
+  if (isButtonFormula(raw)) {
+    const def = parseButton(raw);
+    return def ? def.options.map((o) => o.value).join(" · ") : raw;
+  }
 
   const expr = match[1].trim();
 
@@ -123,7 +135,7 @@ export function computeFormula(
         if (!note) return {};
         const fm = note.frontmatter as Record<string, unknown>;
         // Récupérer les enfants de la note référencée (nécessaire si c'est une base avec agg())
-        const rawChildren = fm["__Children__"];
+        const rawChildren = fm.__Children__;
         const childPaths: string[] = Array.isArray(rawChildren)
           ? (rawChildren as string[])
           : typeof rawChildren === "string" && rawChildren

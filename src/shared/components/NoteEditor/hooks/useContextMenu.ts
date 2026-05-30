@@ -1,6 +1,7 @@
 import type { Editor } from "@milkdown/kit/core";
-import { commandsCtx } from "@milkdown/kit/core";
+import { commandsCtx, editorViewCtx } from "@milkdown/kit/core";
 import { insertHrCommand } from "@milkdown/kit/preset/commonmark";
+import { TextSelection } from "@milkdown/kit/prose/state";
 import { insert } from "@milkdown/kit/utils";
 import {
   Menu,
@@ -13,6 +14,8 @@ import { platform } from "@tauri-apps/plugin-os";
 import { useEffect } from "react";
 import type { RefObject } from "react";
 import { createLogger } from "../../../lib/logger";
+import { toggleHighlightInlineCommand } from "../../../plugins/customKeymap";
+import { HIGHLIGHT_COLORS } from "../../../plugins/highlight/colors";
 import { EDITOR_FORMATTING_GROUPS } from "../formattingMenuData";
 
 const log = createLogger("useContextMenu");
@@ -33,11 +36,30 @@ export function useContextMenu(
     const handler = async (e: MouseEvent) => {
       e.preventDefault();
 
+      // Le menu natif Tauri vole le focus → la sélection ProseMirror est perdue
+      // quand l'action s'exécute. On la capture au clic droit et on la restaure
+      // avant chaque commande (sinon les toggles sur sélection font no-op).
+      let savedSelection: { from: number; to: number } | null = null;
+      editorRef.current?.action((ctx) => {
+        const { from, to } = ctx.get(editorViewCtx).state.selection;
+        savedSelection = { from, to };
+      });
+
       // biome-ignore lint/suspicious/noExplicitAny: CmdKey générique Milkdown
       const call = (cmdKey: any, payload?: any) =>
-        editorRef.current?.action((ctx) =>
-          ctx.get(commandsCtx).call(cmdKey, payload)
-        );
+        editorRef.current?.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          view.focus();
+          if (savedSelection) {
+            const { from, to } = savedSelection;
+            view.dispatch(
+              view.state.tr.setSelection(
+                TextSelection.create(view.state.doc, from, to)
+              )
+            );
+          }
+          ctx.get(commandsCtx).call(cmdKey, payload);
+        });
 
       try {
         const submenus = await Promise.all(
@@ -55,6 +77,24 @@ export function useContextMenu(
             return Submenu.new({ text: group.label, items: menuItems });
           })
         );
+
+        const highlightSubmenu = await Submenu.new({
+          text: "Surligner",
+          items: await Promise.all([
+            // Raccourci par défaut
+            MenuItem.new({
+              text: "Couleur par défaut\t⌘⇧L",
+              action: () => call(toggleHighlightInlineCommand.key),
+            }),
+            ...HIGHLIGHT_COLORS.map((c) =>
+              MenuItem.new({
+                text: c.label,
+                action: () =>
+                  call(toggleHighlightInlineCommand.key, { color: c.id }),
+              })
+            ),
+          ]),
+        });
 
         const insertSubmenu = await Submenu.new({
           text: "Insérer",
@@ -121,6 +161,7 @@ export function useContextMenu(
             await PredefinedMenuItem.new({ item: "Paste" }),
             await PredefinedMenuItem.new({ item: "Separator" }),
             ...submenus,
+            highlightSubmenu,
             insertSubmenu,
             await PredefinedMenuItem.new({ item: "Separator" }),
             await PredefinedMenuItem.new({ item: "SelectAll" }),
