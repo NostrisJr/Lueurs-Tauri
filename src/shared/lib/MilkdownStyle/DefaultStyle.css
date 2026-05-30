@@ -35,7 +35,39 @@
   line-height: 1.5;
   color: #1a1918;
 
-  caret-color: #f4af2f;
+  caret-color: transparent;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Caret custom — positionné via coordsAtPos, taille = font-size (sans line-height)
+   ───────────────────────────────────────────────────────────────────────── */
+
+.custom-caret {
+  position: fixed;
+  width: 2px;
+  margin: 0 .5px;
+  background-color: #f4af2f;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 10;
+  animation: caret-blink 1s ease-in-out infinite;
+  transition: left 90ms cubic-bezier(0.2, 0, 0, 1), top 90ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.custom-caret.no-transition {
+  transition: none;
+}
+
+@keyframes caret-blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
 }
 
 /* Sélection de texte */
@@ -105,12 +137,29 @@
    Le pseudo-élément est toujours présent mais replié (max-width: 0) : animer
    max-width + opacity fait glisser le texte progressivement à l'entrée/sortie du
    curseur. content n'étant pas animable, c'est la seule approche fluide. */
-.milkdown .ProseMirror h1 .heading-content::before { content: "# "; }
-.milkdown .ProseMirror h2 .heading-content::before { content: "## "; }
-.milkdown .ProseMirror h3 .heading-content::before { content: "### "; }
-.milkdown .ProseMirror h4 .heading-content::before { content: "#### "; }
-.milkdown .ProseMirror h5 .heading-content::before { content: "##### "; }
-.milkdown .ProseMirror h6 .heading-content::before { content: "###### "; }
+.milkdown .ProseMirror h1 .heading-content::before {
+  content: "# ";
+}
+
+.milkdown .ProseMirror h2 .heading-content::before {
+  content: "## ";
+}
+
+.milkdown .ProseMirror h3 .heading-content::before {
+  content: "### ";
+}
+
+.milkdown .ProseMirror h4 .heading-content::before {
+  content: "#### ";
+}
+
+.milkdown .ProseMirror h5 .heading-content::before {
+  content: "##### ";
+}
+
+.milkdown .ProseMirror h6 .heading-content::before {
+  content: "###### ";
+}
 
 .milkdown .ProseMirror h1 .heading-content::before,
 .milkdown .ProseMirror h2 .heading-content::before,
@@ -127,16 +176,39 @@
   vertical-align: top;
   max-width: 0;
   opacity: 0;
-  transition: max-width 0.16s ease, opacity 0.16s ease;
+  transition: max-width 0.1s ease, opacity 0.1s ease;
 }
 
 /* max-width par niveau (≈ nb de caractères) pour une durée d'animation uniforme */
-.milkdown .ProseMirror h1.heading-marker-visible .heading-content::before { max-width: 2.5ch; opacity: 0.3; }
-.milkdown .ProseMirror h2.heading-marker-visible .heading-content::before { max-width: 3.5ch; opacity: 0.3; }
-.milkdown .ProseMirror h3.heading-marker-visible .heading-content::before { max-width: 4.5ch; opacity: 0.3; }
-.milkdown .ProseMirror h4.heading-marker-visible .heading-content::before { max-width: 5.5ch; opacity: 0.3; }
-.milkdown .ProseMirror h5.heading-marker-visible .heading-content::before { max-width: 6.5ch; opacity: 0.3; }
-.milkdown .ProseMirror h6.heading-marker-visible .heading-content::before { max-width: 7.5ch; opacity: 0.3; }
+.milkdown .ProseMirror h1.heading-marker-visible .heading-content::before {
+  max-width: 2.5ch;
+  opacity: 0.3;
+}
+
+.milkdown .ProseMirror h2.heading-marker-visible .heading-content::before {
+  max-width: 3.5ch;
+  opacity: 0.3;
+}
+
+.milkdown .ProseMirror h3.heading-marker-visible .heading-content::before {
+  max-width: 4.5ch;
+  opacity: 0.3;
+}
+
+.milkdown .ProseMirror h4.heading-marker-visible .heading-content::before {
+  max-width: 5.5ch;
+  opacity: 0.3;
+}
+
+.milkdown .ProseMirror h5.heading-marker-visible .heading-content::before {
+  max-width: 6.5ch;
+  opacity: 0.3;
+}
+
+.milkdown .ProseMirror h6.heading-marker-visible .heading-content::before {
+  max-width: 7.5ch;
+  opacity: 0.3;
+}
 
 /* ─────────────────────────────────────────────────────────────────────────
    Paragraphe et inline
@@ -476,6 +548,7 @@
   content: "| ";
   user-select: none;
 }
+
 .milkdown .ProseMirror span[data-didascalie-inline]::after {
   content: " |";
   user-select: none;

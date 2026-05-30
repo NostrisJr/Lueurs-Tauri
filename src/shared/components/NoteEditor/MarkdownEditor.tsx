@@ -27,7 +27,7 @@ import {
 } from "../../lib/atoms";
 import type { DocumentMapState } from "../../lib/documentMapConfig";
 import { createLogger } from "../../lib/logger";
-import { isAndroid } from "../../lib/platform";
+import { isAndroid, isDesktop } from "../../lib/platform";
 import { createAudioBlockPlugin } from "../../plugins/audio-block/audioBlockPlugin";
 import {
   codeBasedShortcutsPlugin,
@@ -57,6 +57,7 @@ import {
 } from "../../plugins/heading-fold";
 import { poetryBlockPlugin } from "../../plugins/poetry-block/poetryBlockPlugin";
 import { taskListPlugin } from "../../plugins/task-list/taskListPlugin";
+import { customCaretPlugin } from "../../plugins/custom-caret/customCaretPlugin";
 import { wordHighlightPlugin } from "../../plugins/word-highlight/wordHighlightPlugin";
 import { dropHandlerRef } from "./lib/dropListener";
 import { editorScrollToPos } from "./editorCommands";
@@ -290,6 +291,8 @@ export function MarkdownEditor({
       .use(customKeymapPlugin)
       .use(escapeInlineMarksPlugin)
       .use(codeBasedShortcutsPlugin);
+
+    if (isDesktop) editor.use(customCaretPlugin);
 
     editorRef.current = editor;
     log.info("Editor initialisé");

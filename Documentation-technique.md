@@ -447,6 +447,47 @@ Les bases héritières d'un template sont exclues du batch Rust (elles ne reçoi
 
 ---
 
+## Caret personnalisé (`customCaretPlugin`)
+
+### Pourquoi remplacer le caret natif
+
+Deux défauts du caret natif dans un `contenteditable` ProseMirror :
+
+1. **Hauteur dictée par `line-height`.** Sur les paragraphes (`line-height: 1.5`), le caret mesurait 24 px alors que le texte fait 16 px. Sur les titres (`line-height: 1`), le problème n'existait pas.
+2. **Déplacement sans transition.** Le caret saute de position en position, sans fluidité.
+
+### Implémentation (`src/shared/plugins/custom-caret/customCaretPlugin.ts`)
+
+Plugin ProseMirror enregistré via `$prose` (même pattern que `wordHighlightPlugin`). Il utilise le hook `view()` de ProseMirror pour gérer un `<div class="custom-caret">` unique en `position: fixed` dans `document.body`.
+
+**Positionnement.** À chaque `update()`, `view.coordsAtPos(from)` donne les coordonnées viewport du curseur. La taille de fonte courante est lue via `getComputedStyle(el).fontSize` sur l'élément DOM au curseur — ce qui donne la bonne valeur à tous les niveaux de titre. Hauteur du caret = `fontSize × 1.3`, centré verticalement dans la line-box.
+
+**Transitions.** `transition: left 90ms cubic-bezier(0.2, 0, 0, 1)` pour les déplacements normaux. La classe `.no-transition` (qui pose `transition: none`) est appliquée pour les sauts > 120 px (clic lointain, Ctrl+Home) et pendant le scroll — sans quoi le caret glisserait en retard derrière le texte.
+
+**Scroll.** `document.addEventListener("scroll", ..., true)` en capture phase repositionne le caret sur tout événement scroll, quel que soit le conteneur.
+
+**Clignotement.** `@keyframes caret-blink` sur `opacity`. L'animation est réinitialisée (`style.animation = "none"` puis restaurée via `requestAnimationFrame`) à chaque déplacement du curseur, pour repartir de visible.
+
+**Desktop uniquement.** Le plugin n'est ajouté à l'éditeur que si `isDesktop` — les plateformes mobiles conservent leur caret natif.
+
+### Limitation WebKit : `max-width` sur pseudo-élément
+
+Lorsque le curseur entre dans un titre, `headingMarkerPlugin` ajoute la classe `heading-marker-visible` au `<h1>`, déclenchant une transition CSS `max-width: 0 → 2.5ch` sur le pseudo-élément `::before` de `.heading-content`. Ce pseudo-élément pousse le texte vers la droite visuellement.
+
+**Le problème :** dans WKWebView (Tauri/macOS), `getBoundingClientRect()` — utilisé en interne par `view.coordsAtPos()` — ne reflète pas les valeurs intermédiaires d'une transition `max-width` sur un pseudo-élément. La valeur finale n'est accessible qu'une fois la transition terminée. Les appels à `coordsAtPos()` pendant la transition retournent donc toujours la position pré-animation, quelle que soit la cadence d'appel.
+
+**La solution :** écouter `transitionend` sur `editorView.dom`. L'événement fire sur `.heading-content` (l'élément propriétaire du `::before`) avec `e.propertyName === "max-width"`, et bubble jusqu'au `.ProseMirror`. À la réception, `reposition()` est appelé une dernière fois en mode snap (`no-transition`) pour corriger la position du caret.
+
+```typescript
+editorView.dom.addEventListener("transitionend", (e: TransitionEvent) => {
+  if (e.propertyName === "max-width") reposition(editorView, true);
+});
+```
+
+Pendant les 160 ms de la transition, le caret reste à la position pré-animation, puis snappe à la position finale. C'est le comportement le plus honnête compte tenu de la limitation WKWebView.
+
+---
+
 ## Raccourcis clavier et menu contextuel de l'éditeur
 
 ### Architecture
@@ -662,6 +703,22 @@ Le NodeView crée un `<div>` conteneur, y monte un arbre React via `createRoot`,
 ### Sélection et focus
 
 Cliquer sur le bouton play ou la waveform appelle `view.dispatch(tr.setSelection(NodeSelection.create(...)))` + `view.focus()` explicitement — nécessaire parce que `stopEvent` retourne `true` pour ces éléments, empêchant ProseMirror de traiter le click et de créer la sélection lui-même.
+
+---
+
+## Plugins rendus en React : quand migrer (et quand non)
+
+Historiquement tous les plugins manipulent le DOM impérativement. Le bloc audio fait exception : son rendu est un composant React+Tailwind monté via `createRoot`. Cette philosophie facilite le restylage (classes Tailwind au lieu de `style.cssText`), mais elle ne convient **pas à tous les plugins**. Règle de décision retenue :
+
+**Migrable avec gros bénéfice — widget flottant singleton.** Le picker de couleur du surlignage (`highlight/HighlightColorPicker.tsx`) suit ce modèle. Un **seul** root React vit dans `document.body` ; le plugin ProseMirror (`color-picker.ts`, `handleDOMEvents.mouseover/mouseleave` + `highlightRangeAt`) reste inchangé et appelle `show`/`hide`. La logique métier (`applyColor`, `removeHighlight`) ne bouge pas — seul le rendu passe de DOM impératif à React. C'est le cas idéal : aucun contenu éditable, un singleton (zéro coût par nœud), et un visuel riche (dropdown, swatches) qui gagne énormément à être en Tailwind.
+
+**Non migré volontairement — NodeViews à `contentDOM` (task-list, heading-fold).** Deux raisons cumulées :
+1. **Coût perf.** Un NodeView est instancié *par nœud*. Migrer en React monterait un root React par `<li>` et par heading — potentiellement des centaines dans un document. Le singleton du picker n'a pas ce problème.
+2. **Le style est piloté par l'élément parent, pas par le chrome.** Le chevron de fold dépend de `h{n}[data-folded]` et de `h{n}:hover` (pseudo-classe CSS sur le heading) ; la checkbox dépend de `li[data-checked]` et d'unités `em` relatives. Reproduire ces états en Tailwind dans le composant React imposerait de traquer le survol en JS et de fragmenter le style. Le CSS d'état centralisé est ici supérieur.
+
+**Si on migre quand même un NodeView : React ne possède que le chrome, jamais le `contentDOM`.** Le pattern sûr est de monter le root React sur un `<span contentEditable="false">` **frère** du `contentDOM` (que ProseMirror garde sous son contrôle exclusif), et non sur le conteneur entier. Cela évite la guerre de réconciliation React ↔ ProseMirror (curseur qui saute, caractères perdus). Ce pattern n'a pas été nécessaire jusqu'ici, les NodeViews restant en DOM impératif.
+
+**Non concerné — marks et decorations.** `didascalie`, la marque `highlight`, `word-highlight` n'ont pas de NodeView : leur rendu passe par `toDOM` (marks) ou des `Decoration` à base de classes. Leur visuel est déjà 100 % CSS, donc déjà trivial à restyler — rien à migrer.
 
 ---
 
