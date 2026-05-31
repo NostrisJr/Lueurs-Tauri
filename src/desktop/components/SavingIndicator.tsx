@@ -1,15 +1,25 @@
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { IconCheckmark } from "../../shared/components/PlatformIcon";
-import { activeNoteAtom, savingAtom } from "../../shared/lib/atoms";
+import { useDocStats } from "../../shared/hooks/useDocStats";
+import {
+  activeNoteAtom,
+  pageFormatAtom,
+  savingAtom,
+} from "../../shared/lib/atoms";
 
-type DisplayState = "saving" | "saved" | "hidden";
+type SaveState = "saving" | "saved" | "hidden";
 
+// Encart de statut bas-droite : stats du document (pages/mots) en permanence,
+// et état de sauvegarde affiché en ligne puis estompé.
 function SavingIndicator() {
   const activeNote = useAtomValue(activeNoteAtom);
   const saving = useAtomValue(savingAtom);
-  const [displayState, setDisplayState] = useState<DisplayState>("hidden");
-  const [opaque, setOpaque] = useState(false);
+  const pageFormat = useAtomValue(pageFormatAtom);
+  const stats = useDocStats();
+
+  const [saveState, setSaveState] = useState<SaveState>("hidden");
+  const [saveOpaque, setSaveOpaque] = useState(false);
 
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -17,26 +27,22 @@ function SavingIndicator() {
 
   useEffect(() => {
     if (saving) {
-      // Annuler toutes les transitions en cours
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       if (unmountTimerRef.current) clearTimeout(unmountTimerRef.current);
-
-      setDisplayState("saving");
-      setOpaque(true);
+      setSaveState("saving");
+      setSaveOpaque(true);
     } else {
-      // Garder l'état "sauvegarde" encore 1s après la dernière modification
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      // Garder "Sauvegarde" 1s après la dernière modification, puis "Sauvegardé",
+      // puis estompage du seul sous-indicateur (les stats restent visibles).
       savedTimerRef.current = setTimeout(() => {
-        setDisplayState("saved");
-
-        // Après 3s en état "sauvegardé", lancer le fade out
+        setSaveState("saved");
         if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
         hideTimerRef.current = setTimeout(() => {
-          setOpaque(false);
-          // Démonter après la fin de la transition CSS
+          setSaveOpaque(false);
           unmountTimerRef.current = setTimeout(() => {
-            setDisplayState("hidden");
+            setSaveState("hidden");
           }, 500);
         }, 3000);
       }, 1000);
@@ -49,17 +55,27 @@ function SavingIndicator() {
     };
   }, [saving]);
 
-  if (!activeNote || displayState === "hidden") return null;
+  if (!activeNote) return null;
+  // Rien à afficher tant qu'on n'a ni stats ni état de sauvegarde
+  if (!stats && saveState === "hidden") return null;
 
   return (
-    <div
-      className={`liquid-glass-shadow rounded-xl absolute bottom-2 right-4 px-2 min-w-40 flex justify-start transition-opacity duration-300 ${opaque ? "opacity-100" : "opacity-0"}`}
-    >
-      <div className="flex justify-end items-center px-4 h-8">
-        <span className="flex items-baseline gap-1.5 text-xs text-gray-500">
-          <IconCheckmark className="size-3" aria-hidden="true" />
-          {displayState === "saving" ? "Sauvegarde..." : "Sauvegardé"}
-        </span>
+    <div className="liquid-glass-shadow rounded-xl absolute bottom-2 right-4 px-2 flex justify-end">
+      <div className="flex items-center gap-3 px-4 h-8 text-xs text-gray-500">
+        {saveState !== "hidden" && (
+          <span
+            className={`flex items-baseline gap-1.5 transition-opacity duration-300 ${saveOpaque ? "opacity-100" : "opacity-0"}`}
+          >
+            <IconCheckmark className="size-3" aria-hidden="true" />
+            {saveState === "saving" ? "Sauvegarde..." : "Sauvegardé"}
+          </span>
+        )}
+        {stats && (
+          <span className="tabular-nums whitespace-nowrap">
+            ~{stats.pages} p. {pageFormat} · {stats.words}{" "}
+            {stats.words > 1 ? "mots" : "mot"}
+          </span>
+        )}
       </div>
     </div>
   );

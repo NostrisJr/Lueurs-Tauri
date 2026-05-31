@@ -10,6 +10,7 @@ import {
   documentMapShowNavigatorAtom,
   documentMapShowTextAtom,
   folderPathAtom,
+  pageFormatAtom,
   settingsOpenAtom,
   textJustificationAtom,
 } from "../../../shared/lib/atoms";
@@ -19,6 +20,7 @@ import {
   BLOCK_TYPE_COLORS,
   BLOCK_TYPE_LABELS,
 } from "../../../shared/lib/documentMapConfig";
+import { PAGE_FORMATS, type PageFormat } from "../../../shared/lib/pageMetrics";
 import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
 
 export function SettingsModal() {
@@ -33,6 +35,7 @@ export function SettingsModal() {
   const [textJustification, setTextJustification] = useAtom(
     textJustificationAtom
   );
+  const [pageFormat, setPageFormat] = useAtom(pageFormatAtom);
   const [distinguishedTypes, setDistinguishedTypes] = useAtom(
     documentMapDistinguishedTypesAtom
   );
@@ -168,6 +171,29 @@ export function SettingsModal() {
                         ✓
                       </span>
                     )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Format de référence de l'indicateur pages/mots */}
+            <div className="space-y-1.5 pt-3">
+              <p className="text-xs text-gray-500">
+                Format de référence de l'indicateur de pages
+              </p>
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+                {(Object.keys(PAGE_FORMATS) as PageFormat[]).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setPageFormat(value)}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-all cursor-default ${
+                      pageFormat === value
+                        ? "bg-white shadow-sm text-gray-800 font-medium"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {PAGE_FORMATS[value].label}
                   </button>
                 ))}
               </div>

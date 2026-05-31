@@ -1,4 +1,4 @@
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useState } from "react";
 import { EditableText } from "../../../shared/components/EditableText";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider.tsx";
@@ -12,13 +12,73 @@ import {
 } from "../../../shared/components/PlatformIcon";
 import {
   type FolderNode,
+  type MediaFile,
   type NoteFile,
   type TreeNode,
   useFileTree,
 } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
-import { dragOverAtom, dragSourceAtom } from "../../../shared/lib/atoms";
+import {
+  activeNoteIdAtom,
+  dragOverAtom,
+  dragSourceAtom,
+  selectedIdsAtom,
+  selectionAnchorAtom,
+  treeAtom,
+} from "../../../shared/lib/atoms";
+import { vaultIO } from "../../../shared/lib/vaultIO";
 import { useFileDragCtx } from "./FileDragCtx";
+
+// ── Helpers range selection ────────────────────────────────────────────────────
+
+// Collecte tous les IDs descendants d'un nœud dossier (notes + médias + sous-dossiers).
+function collectDescendantIds(nodes: TreeNode[], folderId: string, out: Set<string>): boolean {
+  for (const node of nodes) {
+    if (node.id === folderId && node.kind === "folder") {
+      function addAll(ns: TreeNode[]) {
+        for (const n of ns) {
+          out.add(n.id);
+          if (n.kind === "folder") addAll(n.children);
+        }
+      }
+      addAll(node.children);
+      return true;
+    }
+    if (node.kind === "folder" && collectDescendantIds(node.children, folderId, out)) return true;
+  }
+  return false;
+}
+
+// Calcule la sélection par plage depuis l'ancre jusqu'à targetId via l'ordre DOM.
+// Les dossiers dans la plage incluent aussi tous leurs descendants (depuis treeAtom).
+function computeRangeSelection(
+  anchorId: string,
+  targetId: string,
+  tree: TreeNode[]
+): Set<string> {
+  const allVisible = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-node-id]")
+  ).map((el) => el.dataset.nodeId!);
+
+  const anchorIdx = allVisible.indexOf(anchorId);
+  const targetIdx = allVisible.indexOf(targetId);
+  if (anchorIdx < 0 || targetIdx < 0) return new Set([targetId]);
+
+  const start = Math.min(anchorIdx, targetIdx);
+  const end = Math.max(anchorIdx, targetIdx);
+  const rangeIds = allVisible.slice(start, end + 1);
+
+  const result = new Set<string>();
+  for (const id of rangeIds) {
+    result.add(id);
+    // Si c'est un dossier, ajouter tous ses descendants
+    const hasExt = /\.[^/]+$/.test(id.split("/").pop() ?? "");
+    if (!hasExt) {
+      collectDescendantIds(tree, id, result);
+    }
+  }
+  return result;
+}
 
 // ── Styles partagés ────────────────────────────────────────────────────────────
 
@@ -51,6 +111,8 @@ export function TreeNodes({
             activeId={activeId}
             depth={depth}
           />
+        ) : node.kind === "media" ? (
+          <MediaNodeComponent key={node.id} node={node} activeId={activeId} />
         ) : (
           <FileNodeComponent key={node.id} node={node} activeId={activeId} />
         )
@@ -73,14 +135,36 @@ function FileNodeComponent({
   const dnd = useFileDragCtx();
   const dragSource = useAtomValue(dragSourceAtom);
   const isDragging = dragSource === node.id;
+  const [selectedIds, setSelectedIds] = useAtom(selectedIdsAtom);
+  const [anchor, setAnchor] = useAtom(selectionAnchorAtom);
+  const isSelected = selectedIds.has(node.id);
+  const store = useStore();
+
+  function handleClick(e: React.MouseEvent) {
+    if (e.shiftKey) {
+      e.preventDefault();
+      if (anchor) {
+        setSelectedIds(computeRangeSelection(anchor, node.id, store.get(treeAtom)));
+      } else {
+        setSelectedIds(new Set([node.id]));
+        setAnchor(node.id);
+      }
+    } else {
+      setSelectedIds(new Set());
+      setAnchor(node.id);
+      handleSelectNote(node, e.metaKey);
+    }
+  }
 
   return (
     <>
       <div
+        data-node-id={node.id}
         onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
-        onClick={(e) => handleSelectNote(node, e.metaKey)}
+        onClick={handleClick}
         onKeyDown={(e) => e.key === "Enter" && handleSelectNote(node)}
-        className={`${ROW_BASE} ${isActive ? ROW_ACTIVE : ROW_INACTIVE} ${isDragging ? ROW_DRAGGING : ""}`}
+        onContextMenu={(e) => dnd.onContextMenu(e, node.id, "file")}
+        className={`${ROW_BASE} ${isActive || isSelected ? ROW_ACTIVE : ROW_INACTIVE} ${isDragging ? ROW_DRAGGING : ""}`}
       >
         <div className="flex items-center gap-2 min-w-0">
           <NodeIconProvider
@@ -111,6 +195,68 @@ function FileNodeComponent({
   );
 }
 
+// ── Nœud média ────────────────────────────────────────────────────────────────
+
+function MediaNodeComponent({
+  node,
+  activeId,
+}: {
+  node: MediaFile;
+  activeId: string | null;
+}) {
+  const isActive = activeId === node.id;
+  const setActiveNoteId = useSetAtom(activeNoteIdAtom);
+  const { reload } = useFileTree();
+  const dnd = useFileDragCtx();
+  const dragSource = useAtomValue(dragSourceAtom);
+  const isDragging = dragSource === node.id;
+  const [selectedIds, setSelectedIds] = useAtom(selectedIdsAtom);
+  const [anchor, setAnchor] = useAtom(selectionAnchorAtom);
+  const isSelected = selectedIds.has(node.id);
+  const store = useStore();
+
+  function handleClick(e: React.MouseEvent) {
+    if (e.shiftKey) {
+      e.preventDefault();
+      if (anchor) {
+        setSelectedIds(computeRangeSelection(anchor, node.id, store.get(treeAtom)));
+      } else {
+        setSelectedIds(new Set([node.id]));
+        setAnchor(node.id);
+      }
+    } else {
+      setSelectedIds(new Set());
+      setAnchor(node.id);
+      setActiveNoteId(node.id);
+    }
+  }
+
+  async function handleRename(newName: string) {
+    const dotIdx = node.fileName.lastIndexOf(".");
+    const ext = dotIdx > 0 ? node.fileName.slice(dotIdx) : "";
+    const newFileName = `${newName}${ext}`;
+    const parentPath = node.id.split("/").slice(0, -1).join("/");
+    await vaultIO.rename(node.id, newFileName);
+    setActiveNoteId(`${parentPath}/${newFileName}`);
+    reload();
+  }
+
+  return (
+    <div
+      data-node-id={node.id}
+      onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
+      onClick={handleClick}
+      onContextMenu={(e) => dnd.onContextMenu(e, node.id, "media")}
+      className={`${ROW_BASE} ${isActive || isSelected ? ROW_ACTIVE : ROW_INACTIVE} ${isDragging ? ROW_DRAGGING : ""}`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <NodeIconProvider node={node} className="size-4 text-gray-400 shrink-0" />
+        <EditableText value={node.name} onSave={handleRename} />
+      </div>
+    </div>
+  );
+}
+
 // ── Nœud dossier ──────────────────────────────────────────────────────────────
 
 function FolderNodeComponent({
@@ -131,6 +277,10 @@ function FolderNodeComponent({
   const dragOver = useAtomValue(dragOverAtom);
   const isDragging = dragSource === node.id;
   const isOver = dragOver === node.id;
+  const [selectedIds, setSelectedIds] = useAtom(selectedIdsAtom);
+  const [anchor, setAnchor] = useAtom(selectionAnchorAtom);
+  const isSelected = selectedIds.has(node.id);
+  const store = useStore();
 
   // La note __folder__ est celle qui porte exactement le même nom que ce dossier
   const folderNoteId = `${node.id}/${node.name}.md`;
@@ -141,13 +291,31 @@ function FolderNodeComponent({
     (child) => !(child.kind === "file" && child.name === node.name)
   );
 
+  function handleFolderShiftClick(e: React.MouseEvent) {
+    if (!e.shiftKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (anchor) {
+      setSelectedIds(computeRangeSelection(anchor, node.id, store.get(treeAtom)));
+    } else {
+      // Sélectionner le dossier + tous ses descendants
+      const ids = new Set([node.id]);
+      collectDescendantIds(store.get(treeAtom), node.id, ids);
+      setSelectedIds(ids);
+      setAnchor(node.id);
+    }
+  }
+
   return (
     <>
       <div data-dropzone={node.id} className={isDragging ? ROW_DRAGGING : ""}>
         {/* En-tête du dossier */}
         <div
+          data-node-id={node.id}
           onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
-          className={`${ROW_BASE} ${isActive ? ROW_ACTIVE : isOver ? "bg-amber-400/20 text-gray-700" : ROW_INACTIVE}`}
+          onClick={handleFolderShiftClick}
+          onContextMenu={(e) => dnd.onContextMenu(e, node.id, "folder")}
+          className={`${ROW_BASE} ${isActive || isSelected ? ROW_ACTIVE : isOver ? "bg-amber-400/20 text-gray-700" : ROW_INACTIVE}`}
         >
           {/* Flèche : toggle seul */}
           <button
@@ -172,12 +340,15 @@ function FolderNodeComponent({
             )}
           </button>
 
-          {/* Icône + nom : ouvre la note __folder__ */}
+          {/* Icône + nom : ouvre la note __folder__ (ou shift-sélectionne) */}
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
           <div
             className="flex items-center gap-2 min-w-0 flex-1"
             onClick={(e) => {
+              if (e.shiftKey) return; // géré par le parent
               setOpen(true);
+              setSelectedIds(new Set());
+              setAnchor(node.id);
               handleOpenFolder(node, e.metaKey);
             }}
           >
@@ -265,4 +436,4 @@ function FolderNodeComponent({
   );
 }
 
-export { FileNodeComponent, FolderNodeComponent };
+export { FileNodeComponent, FolderNodeComponent, MediaNodeComponent };

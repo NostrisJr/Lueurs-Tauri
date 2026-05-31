@@ -10,6 +10,7 @@ import { useFileTree } from "../shared/hooks/useFileTree";
 import { useNote } from "../shared/hooks/useNote";
 import { useVaultSync } from "../shared/hooks/useVaultSync";
 import {
+  activeMediaAtom,
   activeNoteAtom,
   dictaphoneOpenAtom,
   folderPathAtom,
@@ -19,6 +20,8 @@ import {
 } from "../shared/lib/atoms";
 import { NoteType } from "../shared/lib/noteTypes";
 import { DesktopDictaphone } from "./components/Dictaphone/DesktopDictaphone.tsx";
+import { MediaViewer } from "./components/MediaViewer/MediaViewer.tsx";
+import { useMenuEvents } from "./hooks/useMenuEvents";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
 import { SettingsModal } from "./components/Settings/SettingsModal";
 import { SideBar } from "./components/SideBar/SideBar.tsx";
@@ -29,8 +32,10 @@ export function DesktopApp() {
   const { pickFolder, initFolder, autoInitFolder } = useFileTree();
   const { handleCreateNote } = useNote();
   useVaultSync();
+  useMenuEvents();
 
   const activeNote = useAtomValue(activeNoteAtom);
+  const activeMedia = useAtomValue(activeMediaAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const loading = useAtomValue(loadingAtom);
   const setSettingsOpen = useSetAtom(settingsOpenAtom);
@@ -132,6 +137,8 @@ export function DesktopApp() {
           >
             {activeNote ? (
               <NoteEditor key={activeNote.id} />
+            ) : activeMedia ? (
+              <MediaViewer key={activeMedia.id} media={activeMedia} />
             ) : (
               <div className="h-full flex flex-col items-center justify-center gap-3">
                 <p className="text-sm text-gray-400">

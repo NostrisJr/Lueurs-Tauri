@@ -6,7 +6,7 @@ import {
   editorInsertAudioBlock,
   editorRedo,
   editorUndo,
-} from "../../../shared/components/NoteEditor/editorCommands";
+} from "../../../shared/components/NoteEditor/lib/editorCommands";
 import {
   IconArrowUturnBackward,
   IconArrowUturnForward,
@@ -62,7 +62,11 @@ export function MobileEditor() {
   // dans l'effet unifié de scroll.
   const lastScrolledNoteIdRef = useRef<string | null>(null);
   const isBase = activeNote?.type === NoteType.BASE;
-  const { height: keyboardHeight, isOpen: isKeyboardOpen, isAndroidOpen: androidKbOpen } = useKeyboard();
+  const {
+    height: keyboardHeight,
+    isOpen: isKeyboardOpen,
+    isAndroidOpen: androidKbOpen,
+  } = useKeyboard();
   // Sur Android, le WebView est redimensionné par les insets natifs : visualViewport
   // ne voit plus le clavier (keyboardHeight reste à 0). On détecte l'ouverture via
   // isAndroidOpen pour piloter l'affichage de la barre de styles.
@@ -252,7 +256,6 @@ export function MobileEditor() {
         <NoteEditor
           editorRef={editorRef}
           defaultCollapsedFrontmatter
-          hideDisplayModeSelector
         />
       </div>
 

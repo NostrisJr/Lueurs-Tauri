@@ -23,7 +23,9 @@ import {
   sfDecreaseIndent,
   sfDocument,
   sfDocumentBadgePlus,
+  sfDocumentViewfinder,
   sfEllipsis,
+  sfFilm,
   sfFolder,
   sfFolderBadgePlus,
   sfGearshape,
@@ -36,6 +38,7 @@ import {
   sfMagnifyingglass,
   sfMicrophoneFill,
   sfPauseFill,
+  sfPhoto,
   sfPlayFill,
   sfPlus,
   sfPlusCircle,
@@ -225,3 +228,17 @@ export const IconWaveform = mk(sfWaveform, "graphic_eq");
 export const IconXCircle = mk(sfXCircle, "cancel");
 
 export const IconXmark = mk(sfXmark, "close");
+
+// ── Médias ───────────────────────────────────────────────────────────────────
+
+// image (file tree + viewer)
+export const IconPhoto = mk(sfPhoto, "image");
+
+// vidéo (file tree + viewer)
+export const IconFilmIcon = mk(sfFilm, "movie");
+
+// audio (file tree) — même icône que dans le bloc audio pour la cohérence
+export const IconMusicNote = mk(sfWaveform, "graphic_eq");
+
+// PDF (file tree + viewer)
+export const IconDocumentPdf = mk(sfDocumentViewfinder, "picture_as_pdf");

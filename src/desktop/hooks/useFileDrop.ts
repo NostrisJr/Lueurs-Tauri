@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { useSetAtom, useStore } from "jotai";
+import { readDir } from "@tauri-apps/plugin-fs";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useEffect, useRef } from "react";
 import { useFileTree } from "../../shared/hooks/useFileTree";
 import { usePathPropagation } from "../../shared/hooks/usePathPropagation";
@@ -9,14 +9,16 @@ import {
   dragOverAtom,
   dragSourceAtom,
   folderPathAtom,
+  selectedIdsAtom,
 } from "../../shared/lib/atoms";
-import {
-  ensureType,
-  parseFrontmatter,
-  serializeFrontmatter,
-} from "../../shared/lib/fileTreeHelpers";
 import { createLogger } from "../../shared/lib/logger";
-import { resolveDestName } from "../../shared/lib/vaultIO";
+import {
+  BASE_NULL,
+  importFolderRecursive,
+  importMdFile,
+  importMediaFile,
+} from "../../shared/lib/importUtils";
+import { getMediaType } from "../../shared/lib/vaultIO";
 
 const log = createLogger("useFileDrop");
 
@@ -155,12 +157,13 @@ export function useFileDrop(): FileDrop {
   const setDragSource = useSetAtom(dragSourceAtom);
   const setDragOver = useSetAtom(dragOverAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
+  const selectedIds = useAtomValue(selectedIdsAtom);
   const { moveNode, reload } = useFileTree();
   const { propagateNoteRename, propagateFolderRename } = usePathPropagation();
 
   // Refs miroirs — un seul objet pour éviter les fermetures périmées dans les callbacks singleton
-  const cbRef = useRef({ moveNode, reload, propagateNoteRename, propagateFolderRename });
-  cbRef.current = { moveNode, reload, propagateNoteRename, propagateFolderRename };
+  const cbRef = useRef({ moveNode, reload, propagateNoteRename, propagateFolderRename, selectedIds });
+  cbRef.current = { moveNode, reload, propagateNoteRename, propagateFolderRename, selectedIds };
 
   // ── Listener Tauri : drop externe uniquement ───────────────────────────
   useEffect(() => {
@@ -168,7 +171,8 @@ export function useFileDrop(): FileDrop {
     tauriUnlisten?.();
     tauriUnlisten = null;
     let cancelled = false;
-    let pendingMdPaths: string[] = [];
+    // Tous les paths droppés (notes .md, médias, dossiers)
+    let pendingPaths: string[] = [];
     // Dernière cible vue en "over" — utilisée en fallback si le drop arrive hors viewport
     let lastOverTargetId: string | null = null;
 
@@ -179,13 +183,12 @@ export function useFileDrop(): FileDrop {
 
           if (payload.type === "enter") {
             const paths: string[] = payload.paths ?? [];
-            const mdPaths = paths.filter((p) => p.endsWith(".md"));
-            if (mdPaths.length > 0) {
-              pendingMdPaths = mdPaths;
+            if (paths.length > 0) {
+              pendingPaths = paths;
               lastOverTargetId = null;
-              log.info("drop externe .md entré", { count: mdPaths.length });
+              log.info("drop externe entré", { count: paths.length });
             }
-          } else if (payload.type === "over" && pendingMdPaths.length > 0) {
+          } else if (payload.type === "over" && pendingPaths.length > 0) {
             // "over" fire de manière fiable pour les drags Finder (pas pour les drags internes).
             if (payload.position) {
               const { physical, dpr } = await getTitlebarInfo();
@@ -203,10 +206,10 @@ export function useFileDrop(): FileDrop {
               }
             }
           } else if (payload.type === "leave") {
-            pendingMdPaths = [];
+            pendingPaths = [];
             lastOverTargetId = null;
             setDragOver(null);
-          } else if (payload.type === "drop" && pendingMdPaths.length > 0) {
+          } else if (payload.type === "drop" && pendingPaths.length > 0) {
             // Les coordonnées Tauri sont dans le frame fenêtre macOS.
             // Correction selon le mode titlebar via toViewportCoords.
             // Si le drop arrive hors viewport (cssY < 0), on utilise la dernière cible vue en "over".
@@ -231,14 +234,14 @@ export function useFileDrop(): FileDrop {
             if (targetId) {
               log.info("drop externe", {
                 targetId,
-                count: pendingMdPaths.length,
+                count: pendingPaths.length,
               });
               await handleExternalDropFromPaths(
                 toFolderPath(targetId),
-                pendingMdPaths
+                pendingPaths
               );
             }
-            pendingMdPaths = [];
+            pendingPaths = [];
           }
         })
         .then((fn) => {
@@ -279,13 +282,19 @@ export function useFileDrop(): FileDrop {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === "INPUT" || tag === "TEXTAREA") return;
 
+    // Si la source est dans la sélection multi, on drag tous les items sélectionnés
+    const currentSelection = cbRef.current.selectedIds;
+    const isMultiDrag = currentSelection.size > 0 && currentSelection.has(sourceId);
+    const dragIds = isMultiDrag ? [...currentSelection] : [sourceId];
+    const ghostLabel = dragIds.length > 1 ? `${dragIds.length} éléments` : sourceName;
+
     const startX = e.clientX;
     const startY = e.clientY;
     const THRESHOLD = 5;
 
     const state: PointerDragState = {
       sourceId,
-      sourceName,
+      sourceName: ghostLabel,
       dragging: false,
       ghostEl: null,
       currentTargetId: null,
@@ -343,15 +352,15 @@ export function useFileDrop(): FileDrop {
     };
 
     state.upHandler = (ue: PointerEvent) => {
-      const { sourceId: src, dragging, currentTargetId } = state;
+      const { dragging, currentTargetId } = state;
       cleanup();
 
       setDragSource(null);
       setDragOver(null);
 
       if (dragging && currentTargetId && ue.type === "pointerup") {
-        log.info("pointer drop", { sourceId: src, targetId: currentTargetId });
-        handleInternalDrop(src, toFolderPath(currentTargetId));
+        log.info("pointer drop", { dragIds, targetId: currentTargetId });
+        handleInternalDrop(dragIds, toFolderPath(currentTargetId));
       } else if (dragging) {
         log.info("pointer drag annulé");
       }
@@ -365,31 +374,40 @@ export function useFileDrop(): FileDrop {
   // ── Logique métier ─────────────────────────────────────────────────────
 
   async function handleInternalDrop(
-    sourceId: string,
+    sourceIds: string[],
     targetFolderPath: string
   ) {
-    if (!isValidMove(sourceId, targetFolderPath)) return;
-
-    const isFolder = !sourceId.endsWith(".md");
-    const newPath = await cbRef.current.moveNode(sourceId, targetFolderPath);
-    if (!newPath) return;
-
-    if (isFolder) {
-      await cbRef.current.propagateFolderRename(sourceId, newPath);
-    } else {
-      await cbRef.current.propagateNoteRename(sourceId, newPath);
-    }
-
     const currentActive = store.get(activeNoteIdAtom);
-    if (currentActive) {
-      if (!isFolder && currentActive === sourceId) {
-        setActiveNoteId(newPath);
-      } else if (isFolder && currentActive.startsWith(`${sourceId}/`)) {
-        setActiveNoteId(currentActive.replace(sourceId, newPath));
-      }
-    }
 
-    log.info("déplacement terminé", { sourceId, newPath, isFolder });
+    // Déplacements séquentiels pour éviter les conflits sur l'arbre
+    for (const sourceId of sourceIds) {
+      if (!isValidMove(sourceId, targetFolderPath)) continue;
+
+      const sourceName = sourceId.split("/").pop() ?? "";
+      const fileExt = /\.[^/]+$/.test(sourceName);
+      const isNote = sourceName.endsWith(".md");
+      const isFolder = !fileExt;
+
+      const newPath = await cbRef.current.moveNode(sourceId, targetFolderPath);
+      if (!newPath) continue;
+
+      if (isFolder) {
+        await cbRef.current.propagateFolderRename(sourceId, newPath);
+      } else if (isNote) {
+        await cbRef.current.propagateNoteRename(sourceId, newPath);
+      }
+      // Les médias n'ont pas de références frontmatter à propager
+
+      if (currentActive) {
+        if (!isFolder && currentActive === sourceId) {
+          setActiveNoteId(newPath);
+        } else if (isFolder && currentActive.startsWith(`${sourceId}/`)) {
+          setActiveNoteId(currentActive.replace(sourceId, newPath));
+        }
+      }
+
+      log.info("déplacement terminé", { sourceId, newPath, isFolder });
+    }
   }
 
   async function handleExternalDropFromPaths(
@@ -401,27 +419,25 @@ export function useFileDrop(): FileDrop {
 
     await Promise.all(
       paths.map(async (srcPath) => {
+        const fileName = srcPath.split("/").pop() ?? "";
         try {
-          // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
-          const content = await readTextFile(srcPath, { baseDir: null } as any);
-          const { frontmatter, body } = parseFrontmatter(content);
-          const fileName = srcPath.split("/").pop() ?? "note.md";
-          const noteName = fileName.replace(/\.md$/, "");
-          const parentFolderName = targetFolderPath.split("/").pop() ?? "";
-          const safeFrontmatter = ensureType(
-            frontmatter,
-            noteName,
-            parentFolderName
-          );
-          const finalContent = serializeFrontmatter(safeFrontmatter, body);
-          const destName = await resolveDestName(targetFolderPath, fileName);
-          const targetPath = `${targetFolderPath}/${destName}`;
-          await writeTextFile(targetPath, finalContent, {
-            baseDir: null,
-          } as any);
-          log.info("fichier .md copié", { targetPath });
+          if (fileName.endsWith(".md")) {
+            await importMdFile(srcPath, targetFolderPath);
+          } else if (getMediaType(fileName)) {
+            await importMediaFile(srcPath, targetFolderPath, fileName);
+          } else {
+            // Tenter un import dossier (readDir réussit ssi c'est un répertoire)
+            const parts = srcPath.split("/");
+            const folderName = fileName || parts[parts.length - 1] || "Dossier";
+            try {
+              await readDir(srcPath, BASE_NULL);
+              await importFolderRecursive(srcPath, targetFolderPath, folderName);
+            } catch {
+              log.info("chemin ignoré (ni note, ni média, ni dossier)", { srcPath });
+            }
+          }
         } catch (err) {
-          log.error("échec copie .md externe", { srcPath, err });
+          log.error("échec import externe", { srcPath, err });
         }
       })
     );

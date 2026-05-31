@@ -7,6 +7,7 @@ import { createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { createLogger } from "../../lib/logger";
 import { HighlightColorPicker, type PickerState } from "./HighlightColorPicker";
+import { isMobile } from "../../lib/platform";
 
 const log = createLogger("highlight-color-picker");
 
@@ -108,13 +109,14 @@ function showPickerAt(
 
   // Positionné à gauche de la marque, centré verticalement (dotSize logique = 20)
   const rect = markEl.getBoundingClientRect();
-  const dotSize = 20;
-  const gap = 3;
+  const dotSize = isMobile ? 16 : 12;
+
   pickerState = {
     color,
+    size: dotSize,
     position: {
-      left: rect.left - dotSize / 2 - gap,
-      top: rect.top + rect.height / 2 - dotSize / 2,
+      left: rect.left - dotSize / 2,
+      top: rect.top - dotSize / 2,
     },
   };
   render();

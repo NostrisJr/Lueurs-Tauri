@@ -277,7 +277,7 @@ Le repliement est purement visuel : il ne modifie pas le markdown et est réinit
 
 ### Réorganisation interne (drag & drop dans le vault)
 
-Les notes et dossiers du vault sont réorganisables par glisser-déposer directement dans l'explorateur de fichiers. Pour déplacer un élément :
+Les notes, médias et dossiers du vault sont réorganisables par glisser-déposer directement dans l'explorateur de fichiers. Pour déplacer un élément :
 
 1. Maintenir le clic sur une note ou un dossier et commencer à glisser — un aperçu flottant apparaît avec le nom de l'élément.
 2. Glisser vers le dossier de destination, qui se colore en ambre au survol.
@@ -285,9 +285,86 @@ Les notes et dossiers du vault sont réorganisables par glisser-déposer directe
 
 Le renommage des chemins est automatiquement propagé : les références à la note dans les autres notes (`__Base__`, `__Children__`, etc.) sont mises à jour. Si une note déplacée était ouverte, elle reste active à son nouveau chemin. Appuyer sur **Échap** pendant le glisser annule l'opération.
 
-### Import depuis l'explorateur de fichiers (Finder)
+**Déplacement de plusieurs éléments.** Maintenir **Maj** et cliquer sur les notes ou médias à sélectionner — tous les éléments entre le premier et le dernier sélectionné sont inclus dans la sélection (plage visuelle, y compris le contenu des dossiers ouverts). Une fois plusieurs éléments sélectionnés, glisser l'un d'eux déplace l'ensemble vers la destination. Le ghost affiche le nombre d'éléments sélectionnés. Cliquer sans Maj efface la sélection.
 
-Il est possible de faire glisser des fichiers `.md` depuis le Finder directement dans la fenêtre Lueurs pour les importer dans le vault. Glisser le fichier sur un dossier dans l'explorateur le copie dans ce dossier ; glisser sur la zone vide le copie à la racine du vault. Les champs système (`__Type__`, etc.) sont ajoutés automatiquement au frontmatter lors de l'import.
+### Import depuis l'explorateur de fichiers (desktop)
+
+Il est possible de faire glisser des fichiers et dossiers depuis le Finder directement dans la fenêtre Lueurs pour les importer dans le vault.
+
+- **Notes `.md`** — copiées dans le dossier cible. Les champs système (`__Type__`, etc.) sont ajoutés automatiquement au frontmatter.
+- **Fichiers médias** (images, audio, vidéo, PDF) — copiés tels quels dans le dossier cible.
+- **Dossiers** — importés récursivement avec leur structure complète. Une note `__folder__` est créée pour chaque dossier importé ; si le dossier source en contenait déjà une, son contenu est préservé. Les sous-dossiers et leurs médias sont importés de la même manière.
+
+Glisser sur un dossier dans l'explorateur copie dans ce dossier ; glisser sur la zone vide copie à la racine du vault. Plusieurs fichiers ou dossiers peuvent être glissés simultanément.
+
+---
+
+## Fichiers médias
+
+Lueurs affiche et lit les fichiers images, audio, vidéo et PDF présents dans le vault, directement dans l'interface.
+
+### Formats supportés
+
+| Type | Extensions |
+|---|---|
+| Image | `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.svg` |
+| Audio | `.mp3`, `.m4a`, `.wav`, `.ogg`, `.aac` |
+| Vidéo | `.mp4`, `.mov`, `.webm` |
+| PDF | `.pdf` |
+
+### File tree
+
+Les fichiers médias apparaissent dans l'explorateur à la suite des notes (`.md`), avec une icône distincte selon leur type. Leur nom est modifiable en place (double-clic sur le nom), ce qui renomme le fichier sur le disque. Le menu contextuel (clic droit / appui long) permet de révéler, importer ou supprimer un fichier média comme pour les notes.
+
+Les fichiers médias ne sont pas filtrés par Lueurs — tous les fichiers de format reconnu présents dans le vault sont visibles.
+
+### Visionneuse
+
+Cliquer sur un fichier média l'ouvre dans la visionneuse intégrée, à la place de l'éditeur. La visionneuse affiche :
+
+- **En-tête** : type et extension du fichier, titre éditable. Modifier le titre renomme le fichier sur le disque.
+- **Image** : affichage direct, taille naturelle limitée à la zone visible.
+- **Audio** : lecteur avec waveform, bouton play/pause, barre de progression cliquable. Le design est identique au bloc audio intégré dans les notes.
+- **Vidéo** : lecteur vidéo avec contrôles natifs du navigateur.
+- **PDF** : rendu dans un cadre intégré.
+
+---
+
+## Menu Fichier (desktop, macOS)
+
+Le menu **Fichier** de la barre de menu macOS donne accès à trois actions rapides :
+
+### Importer des fichiers ou dossiers…
+
+Ouvre le sélecteur de fichiers natif macOS, qui permet de choisir un ou plusieurs fichiers et/ou dossiers à importer. Les éléments sélectionnés sont importés à la racine du vault, avec la même logique que le glisser-déposer depuis le Finder (notes, médias, dossiers récursifs).
+
+### Révéler dans le Finder
+
+Ouvre le Finder et sélectionne la note ou le fichier média actuellement ouvert. Si rien n'est ouvert, ouvre le vault.
+
+### Supprimer la note
+
+Déplace la note actuellement ouverte vers la corbeille du Finder.
+
+---
+
+## Menu contextuel (clic droit / appui long)
+
+Un menu contextuel natif est disponible sur chaque élément de l'explorateur de fichiers.
+
+**Desktop** — clic droit sur une note, un média ou un dossier.
+
+**Mobile** — appui long sur une note ou un dossier.
+
+### Actions disponibles
+
+| Action | Comportement |
+|---|---|
+| **Renommer** (mobile) | Ouvre un champ de saisie pour renommer l'élément |
+| **Importer des fichiers ou dossiers…** | Ouvre le sélecteur de fichiers natif. La destination est le dossier cliqué (si clic droit sur un dossier) ou le dossier contenant la note/média (si clic droit sur un fichier) |
+| **Afficher dans les Fichiers / Révéler dans le Finder** | Ouvre l'explorateur système et sélectionne l'élément |
+| **Partager** (mobile) | Partage via le menu natif iOS/Android |
+| **Mettre à la poubelle / Supprimer** | Supprime l'élément. Pour les dossiers non vides, une confirmation est demandée |
 
 ---
 

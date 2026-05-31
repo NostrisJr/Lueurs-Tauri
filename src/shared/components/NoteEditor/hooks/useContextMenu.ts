@@ -16,7 +16,7 @@ import type { RefObject } from "react";
 import { createLogger } from "../../../lib/logger";
 import { toggleHighlightInlineCommand } from "../../../plugins/customKeymap";
 import { HIGHLIGHT_COLORS } from "../../../plugins/highlight/colors";
-import { EDITOR_FORMATTING_GROUPS } from "../formattingMenuData";
+import { EDITOR_FORMATTING_GROUPS } from "../lib/formattingMenuData";
 
 const log = createLogger("useContextMenu");
 

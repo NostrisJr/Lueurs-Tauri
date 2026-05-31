@@ -1,12 +1,15 @@
+import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
 import type { TreeNode } from "../../../shared/hooks/useFileTree";
+import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
   folderPathAtom,
   mobileContextMenuAtom,
 } from "../../../shared/lib/atoms";
+import { importPaths } from "../../../shared/lib/importUtils";
 import { createLogger } from "../../../shared/lib/logger";
 import { hapticImpact } from "../../lib/haptics";
 import { BottomSheet } from "./BottomSheet";
@@ -19,6 +22,7 @@ export function MobileContextMenu() {
   const [target, setTarget] = useAtom(mobileContextMenuAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const { handleRename, handleDeleteNote, handleDeleteFolder } = useNote();
+  const { reload } = useFileTree();
 
   const [step, setStep] = useState<Step>("menu");
   const [renameValue, setRenameValue] = useState("");
@@ -31,14 +35,70 @@ export function MobileContextMenu() {
     setRenameValue("");
   }
 
-  async function handleAction(idx: number) {
-    if (!target) return;
-    switch (idx) {
-      case 0:
+  // Dossier cible pour l'import : le dossier lui-même, ou le parent de la note
+  const importTargetPath = target.isFolder
+    ? target.id
+    : target.id.split("/").slice(0, -1).join("/");
+
+  interface Action {
+    label: string;
+    destructive?: boolean;
+    onPress: () => void | Promise<void>;
+  }
+
+  const actions: Action[] = [
+    {
+      label: "Renommer",
+      onPress: () => {
         setRenameValue(target.name);
         setStep("rename");
-        break;
-      case 1:
+      },
+    },
+    {
+      label: "Importer des fichiers…",
+      onPress: async () => {
+        close();
+        try {
+          const selected = await openFilePicker({ multiple: true });
+          if (!selected) return;
+          const paths = Array.isArray(selected) ? selected : [selected];
+          await importPaths(importTargetPath, paths);
+          reload();
+          log.info("import mobile terminé", { count: paths.length, importTargetPath });
+        } catch (err) {
+          log.error("import mobile échoué", err);
+        }
+      },
+    },
+    {
+      label: "Afficher dans les Fichiers",
+      onPress: async () => {
+        if (folderPath) {
+          const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+          const abs = `${prefix}${target.id}`;
+          const parent = abs.substring(0, abs.lastIndexOf("/"));
+          await openPath(parent).catch((err) =>
+            log.error("impossible d'ouvrir dans les Fichiers", err)
+          );
+        }
+        close();
+      },
+    },
+    {
+      label: "Partager",
+      onPress: async () => {
+        if (folderPath && navigator.share) {
+          const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
+          const abs = `${prefix}${target.id}`;
+          await navigator.share({ title: target.name, text: abs }).catch(() => {});
+        }
+        close();
+      },
+    },
+    {
+      label: "Supprimer",
+      destructive: true,
+      onPress: async () => {
         hapticImpact("medium");
         log.info("delete", { id: target.id, isFolder: target.isFolder });
         if (target.isFolder) {
@@ -53,34 +113,9 @@ export function MobileContextMenu() {
           await handleDeleteNote(target.id);
         }
         close();
-        break;
-      case 2:
-        if (folderPath) {
-          const prefix = folderPath.endsWith("/")
-            ? folderPath
-            : `${folderPath}/`;
-          const abs = `${prefix}${target.id}`;
-          const parent = abs.substring(0, abs.lastIndexOf("/"));
-          await openPath(parent).catch((err) =>
-            log.error("impossible d'ouvrir dans les Fichiers", err)
-          );
-        }
-        close();
-        break;
-      case 3:
-        if (folderPath && navigator.share) {
-          const prefix = folderPath.endsWith("/")
-            ? folderPath
-            : `${folderPath}/`;
-          const abs = `${prefix}${target.id}`;
-          await navigator
-            .share({ title: target.name, text: abs })
-            .catch(() => {});
-        }
-        close();
-        break;
-    }
-  }
+      },
+    },
+  ];
 
   async function handleRenameConfirm() {
     if (!target || !renameValue.trim() || renameValue === target.name) {
@@ -124,26 +159,19 @@ export function MobileContextMenu() {
     );
   }
 
-  const actions = [
-    "Renommer",
-    "Supprimer",
-    "Afficher dans les Fichiers",
-    "Partager",
-  ] as const;
-
   return (
     <BottomSheet onClose={close} title={target.name}>
       <div className="flex flex-col divide-y divide-gray-100">
-        {actions.map((label, idx) => (
+        {actions.map((action) => (
           <button
-            key={label}
+            key={action.label}
             type="button"
-            onClick={() => handleAction(idx)}
+            onClick={action.onPress}
             className={`w-full px-4 py-4 text-left text-base active:bg-gray-50 transition-colors ${
-              idx === 1 ? "text-red-500" : "text-gray-900"
+              action.destructive ? "text-red-500" : "text-gray-900"
             }`}
           >
-            {label}
+            {action.label}
           </button>
         ))}
       </div>

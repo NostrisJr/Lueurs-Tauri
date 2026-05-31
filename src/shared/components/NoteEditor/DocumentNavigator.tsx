@@ -9,20 +9,14 @@ import {
   scrollToPosAtom,
 } from "../../lib/atoms";
 import { BLOCK_TYPE_COLORS } from "../../lib/documentMapConfig";
+import clsx from "clsx";
 
 const DOT_TYPES = new Set(["image", "audio_block"]);
 
 // Largeurs px des barres de titre par niveau (conteneur = 20px)
-const HEADING_WIDTHS = ["w-5", "w-4", "w-[13px]", "w-2.5", "w-2", "w-1.5"];
+const HEADING_WIDTHS = ["w-6", "w-5", "w-4", "w-3.5", "w-3", "w-2.5"];
 // Épaisseurs des barres de titre par niveau
-const HEADING_HEIGHTS = [
-  "h-[2.5px]",
-  "h-0.5",
-  "h-[1.5px]",
-  "h-[1.5px]",
-  "h-[1.5px]",
-  "h-[1.5px]",
-];
+const HEADING_HEIGHT = "h-[2.5px]";
 
 function findScrollContainer(el: HTMLElement): HTMLElement | null {
   let parent = el.parentElement;
@@ -83,77 +77,82 @@ export function DocumentNavigator() {
     // Conteneur clippé : limite la hauteur visible à la fenêtre
     <div
       ref={clipRef}
-      className="absolute right-5 top-10 w-5 overflow-hidden"
+      className="absolute right-5 top-10 w-10 overflow-hidden"
       //TODO : faire un calcul propre avec la hauteur du header ? là le 150px est un peu au doigt mouillé
       style={{ maxHeight: "calc(100vh - 150px)" }}
     >
       {/* Contenu translateY en sync avec le scroll de la page */}
-      <div ref={innerRef} className="flex flex-col items-end gap-1.25">
+      <div ref={innerRef} className="flex flex-col items-end">
         {blocks.map((block) => {
-          // ── Titres : barre horizontale, largeur ∝ niveau ──
+          let inner: React.ReactNode = null;
+
+          // ── Titres ──
           if (block.typeName === "heading") {
             const lvl = Math.max(0, Math.min(5, (block.level ?? 1) - 1));
-            return (
-              // biome-ignore lint/a11y/useKeyWithClickEvents: minimap visuelle
+            inner = (
               <div
-                key={block.pos}
-                data-nav-mark
-                className={`${HEADING_WIDTHS[lvl]} ${HEADING_HEIGHTS[lvl]} bg-gray-400/70 rounded-[1px] shrink-0 cursor-pointer hover:bg-gray-400/90 transition-colors`}
-                onClick={() => setScrollToPos(block.pos)}
+                className={clsx(
+                  `${HEADING_WIDTHS[lvl]}`,
+                  HEADING_HEIGHT,
+                  "bg-gray-400/70 rounded-full shrink-0 transition-all",
+                  "group-hover:bg-gray-400/90 group-hover:scale-x-130 group-hover:scale-y-120 group-hover:translate-x-[-30%]"
+                )}
               />
             );
           }
 
           // ── Blocs distingués ──
-          if (distinguishedTypes.includes(block.typeName)) {
+          else if (distinguishedTypes.includes(block.typeName)) {
             const color =
               (BLOCK_TYPE_COLORS as Record<string, string>)[block.typeName] ??
               "#6b7280";
 
-            // Objets (image, audio) → point rond
-            if (DOT_TYPES.has(block.typeName)) {
-              return (
-                // biome-ignore lint/a11y/useKeyWithClickEvents: minimap visuelle
-                <div
-                  key={block.pos}
-                  data-nav-mark
-                  className="w-1 h-1 rounded-full shrink-0 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
-                  style={{ background: color }}
-                  onClick={() => setScrollToPos(block.pos)}
-                />
-              );
-            }
-
-            // Blocs structurés → barre verticale fine
-            return (
-              // biome-ignore lint/a11y/useKeyWithClickEvents: minimap visuelle
+            inner = DOT_TYPES.has(block.typeName) ? (
               <div
-                key={block.pos}
-                data-nav-mark
-                className="w-0.5 h-2 shrink-0 cursor-pointer opacity-75 hover:opacity-100 transition-opacity"
+                className={clsx(
+                  "size-1 rounded-full shrink-0 opacity-80 transition-all",
+                  "group-hover:opacity-100 group-hover:size-2 group-hover:-translate-x-0.5"
+                )}
                 style={{ background: color }}
-                onClick={() => setScrollToPos(block.pos)}
+              />
+            ) : (
+              <div
+                className={clsx(
+                  "w-1 h-1 rounded-full shrink-0 opacity-75 transition-all",
+                  "group-hover:opacity-100 group-hover:w-3 group-hover:h-1.5 group-hover:-translate-x-0.5"
+                )}
+                style={{ background: color }}
               />
             );
           }
 
-          // ── Texte et listes : barre muted, si activés ──
-          if (
+          // ── Texte et listes ──
+          else if (
             (block.typeName === "paragraph" && showText) ||
             (block.typeName === "list" && showLists)
           ) {
-            return (
-              // biome-ignore lint/a11y/useKeyWithClickEvents: minimap visuelle
+            inner = (
               <div
-                key={block.pos}
-                data-nav-mark
-                className="w-0.5 h-1.75 shrink-0 cursor-pointer bg-gray-500/20 hover:bg-gray-500/30 transition-colors"
-                onClick={() => setScrollToPos(block.pos)}
+                className={clsx(
+                  "w-0.5 h-1.75 shrink-0 bg-gray-500/20 group-hover:bg-gray-500/30 transition-all",
+                  "group-hover:w-3 group-hover:-translate-x-0.5 group-hover:rounded-full"
+                )}
               />
             );
           }
 
-          return null;
+          if (inner === null) return null;
+
+          return (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: minimap visuelle
+            <div
+              key={block.pos}
+              className="flex items-center justify-end py-1 w-full group cursor-pointer"
+              onClick={() => setScrollToPos(block.pos)}
+            >
+              {inner}
+            </div>
+          );
         })}
       </div>
     </div>

@@ -17,22 +17,20 @@ import {
 } from "../../lib/atoms";
 import { NoteType, SystemField } from "../../lib/noteTypes";
 import { isDesktop, isMobile } from "../../lib/platform";
-import type { Editor } from "./MarkdownEditor";
 import { DocumentNavigator } from "./DocumentNavigator.tsx";
+import type { Editor } from "./MarkdownEditor";
 import { MarkdownEditor } from "./MarkdownEditor.tsx";
 import { NoteHeader } from "./NoteHeader.tsx";
-import { editorInsertAudioBlock } from "./editorCommands";
+import { editorInsertAudioBlock } from "./lib/editorCommands.ts";
 
 interface Props {
   defaultCollapsedFrontmatter?: boolean;
-  hideDisplayModeSelector?: boolean;
   /** Ref externe reçue depuis le parent (ex: MobileEditor). */
   editorRef?: React.MutableRefObject<Editor | null>;
 }
 
 export function NoteEditor({
   defaultCollapsedFrontmatter = false,
-  hideDisplayModeSelector = false,
   editorRef: externalEditorRef,
 }: Props) {
   const { handleRename, handleChange } = useNote();
@@ -61,9 +59,15 @@ export function NoteEditor({
       pendingAudioInsert.title
     );
     setPendingAudioInsert(null);
-  }, [pendingAudioInsert, folderPath, resolvedEditorRef, setPendingAudioInsert]);
+  }, [
+    pendingAudioInsert,
+    folderPath,
+    resolvedEditorRef,
+    setPendingAudioInsert,
+  ]);
 
   const isBase = activeNote?.type === NoteType.BASE;
+  const isNote = !isBase;
 
   function handleBodyChange(newBody: string) {
     if (!activeNote) return;
@@ -100,7 +104,7 @@ export function NoteEditor({
       {activeNote && folderPath && (
         <div className="flex flex-col h-full justify-center">
           <NoteHeader
-            hideDisplayModeSelector={hideDisplayModeSelector}
+            isNote={isNote}
             onRename={async (newName) => {
               await handleRename(activeNote.id, newName, false);
             }}
@@ -115,7 +119,8 @@ export function NoteEditor({
             />
 
             {/* Ancre sticky — hauteur nulle, le navigateur sort en overflow-visible */}
-            {!isBase && (
+            {/* Pas de rendu en mobile, UI trop compliquée/chargée sinon (pas assze de largeur pour le faire passer dans le padding) */}
+            {!isBase && !isMobile && (
               <div className="sticky top-10 h-0 overflow-visible z-10">
                 <DocumentNavigator />
               </div>

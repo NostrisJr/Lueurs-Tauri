@@ -1,10 +1,11 @@
 import { atom } from "jotai";
 import { activeNoteAtom } from "../../../../shared/lib/atoms";
 import { frontmatterFieldEqual } from "../../../../shared/lib/fileTreeHelpers";
+import { SYSTEM_FIELDS as SYSTEM_FIELD_DEFS } from "../../../../shared/lib/noteTypes";
 import { type Row, toFrontmatter, toRows } from "./frontmatterUtils";
 
-const SYSTEM_FIELDS = ["__Children__", "__Base__", "__Template__", "__Type__"];
-const SYSTEM_FIELDS_SET = new Set(SYSTEM_FIELDS);
+const SYSTEM_FIELDS = SYSTEM_FIELD_DEFS.map((f) => f.key);
+const SYSTEM_FIELDS_SET: Set<string> = new Set(SYSTEM_FIELDS);
 
 const rowsOverrideAtom = atom<{ noteId: string; rows: Row[] } | null>(null);
 

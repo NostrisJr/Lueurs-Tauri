@@ -560,15 +560,22 @@ export async function moveNode(
 
   writingPathsRegistry.add(sourceId);
   try {
-    await vaultIO.rename(sourceId, destName);
+    // Déplacement cross-dossier via le chemin de destination complet.
+    // vaultIO.rename ne change que le nom dans le même dossier — on utilise move().
+    await vaultIO.move(sourceId, newPath);
   } finally {
     writingPathsRegistry.delete(sourceId);
   }
 
-  const isFolder = !sourceId.endsWith(".md");
+  // Un dossier n'a pas d'extension de fichier.
+  // Les médias (.jpg, .mp3…) ont une extension mais ne sont pas des dossiers.
+  const fileExt = /\.[^/]+$/.test(sourceName);
+  const isNote = sourceName.endsWith(".md");
+  const isFolder = !fileExt;
   const folderPath = store.get(folderPathAtom);
 
-  if (!isFolder) {
+  if (isNote) {
+    // Mise à jour optimiste de l'arbre en mémoire
     const note = flattenTree(store.get(treeAtom)).find(
       (n) => n.id === sourceId
     );
@@ -584,6 +591,7 @@ export async function moveNode(
       );
     }
   } else if (folderPath) {
+    // Dossier ou média : rechargement complet (inclut les médias via loadTree)
     await reload(store, folderPath);
   }
 

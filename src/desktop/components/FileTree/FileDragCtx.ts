@@ -1,9 +1,18 @@
 import { createContext, useContext } from "react";
 import type { FileDrop } from "../../hooks/useFileDrop";
+import type { NodeKind } from "../../hooks/useNodeContextMenu";
 
-export const FileDragCtx = createContext<FileDrop | null>(null);
+export interface FileActions extends FileDrop {
+  onContextMenu: (
+    e: React.MouseEvent,
+    nodeId: string,
+    nodeKind: NodeKind
+  ) => void;
+}
 
-export function useFileDragCtx(): FileDrop {
+export const FileDragCtx = createContext<FileActions | null>(null);
+
+export function useFileDragCtx(): FileActions {
   const ctx = useContext(FileDragCtx);
   if (!ctx) throw new Error("useFileDragCtx doit être utilisé dans FileTree");
   return ctx;

@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 use tokio::task::JoinSet;
+
+#[cfg(target_os = "macos")]
+use tauri::menu::{Menu, MenuBuilder, MenuItem, PredefinedMenuItem, SubmenuBuilder};
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 #[cfg(target_os = "android")]
@@ -61,6 +64,76 @@ struct NotePatch {
     raw_content: String,
 }
 
+// ── Picker import macOS ────────────────────────────────────────────────────
+
+/// Ouvre un NSOpenPanel permettant de sélectionner plusieurs fichiers ET dossiers.
+/// Doit être appelé depuis le thread principal (menu event handler).
+#[cfg(target_os = "macos")]
+fn open_import_picker_macos() -> Vec<String> {
+    use cocoa::base::{id, nil, YES};
+    use cocoa::foundation::NSString;
+    use objc::{class, msg_send, sel, sel_impl};
+    use std::ffi::CStr;
+    use std::os::raw::c_char;
+
+    unsafe {
+        let panel: id = msg_send![class!(NSOpenPanel), openPanel];
+
+        let _: () = msg_send![panel, setAllowsMultipleSelection: YES];
+        let _: () = msg_send![panel, setCanChooseFiles: YES];
+        let _: () = msg_send![panel, setCanChooseDirectories: YES];
+        let _: () = msg_send![panel, setResolvesAliases: YES];
+
+        let prompt_ns: id = NSString::alloc(nil).init_str("Importer");
+        let _: () = msg_send![panel, setPrompt: prompt_ns];
+
+        let title_ns: id = NSString::alloc(nil).init_str("Importer des fichiers ou dossiers");
+        let _: () = msg_send![panel, setTitle: title_ns];
+
+        // NSModalResponseOK = 1
+        let response: i64 = msg_send![panel, runModal];
+
+        if response != 1 {
+            return vec![];
+        }
+
+        let urls: id = msg_send![panel, URLs];
+        let count: usize = msg_send![urls, count];
+        let mut paths = Vec::with_capacity(count);
+
+        for i in 0..count {
+            let url: id = msg_send![urls, objectAtIndex: i];
+            let path: id = msg_send![url, path];
+            let utf8: *const c_char = msg_send![path, UTF8String];
+            if !utf8.is_null() {
+                let s = CStr::from_ptr(utf8).to_string_lossy().into_owned();
+                paths.push(s);
+            }
+        }
+        paths
+    }
+}
+
+/// Ouvre le picker de fichiers macOS (NSOpenPanel, fichiers + dossiers)
+/// depuis JavaScript, en revenant sur le thread principal.
+#[tauri::command]
+#[cfg(target_os = "macos")]
+async fn open_import_picker(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let (tx, rx) = tokio::sync::oneshot::channel::<Vec<String>>();
+    app.run_on_main_thread(move || {
+        let paths = open_import_picker_macos();
+        let _ = tx.send(paths);
+    })
+    .map_err(|e| format!("{:?}", e))?;
+    rx.await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+async fn open_import_picker() -> Result<Vec<String>, String> {
+    Ok(vec![])
+}
+
 // ── Entrée Tauri ───────────────────────────────────────────────────────────
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -113,6 +186,103 @@ pub fn run() {
                     eprintln!("[icloud] container path: {:?}", path);
                 });
             }
+
+            // ── Menu macOS ─────────────────────────────────────────────────
+            #[cfg(target_os = "macos")]
+            {
+                let app_name = app
+                    .config()
+                    .product_name
+                    .clone()
+                    .unwrap_or_else(|| "Lueurs".to_string());
+
+                let app_submenu = SubmenuBuilder::new(app, app_name)
+                    .about(None)
+                    .separator()
+                    .services()
+                    .separator()
+                    .hide()
+                    .hide_others()
+                    .show_all()
+                    .separator()
+                    .quit()
+                    .build()?;
+
+                let import_item = MenuItem::with_id(
+                    app,
+                    "import-files",
+                    "Importer des fichiers ou dossiers\u{2026}",
+                    true,
+                    None::<&str>,
+                )?;
+                let reveal_item = MenuItem::with_id(
+                    app,
+                    "reveal-in-finder",
+                    "Révéler dans le Finder",
+                    true,
+                    None::<&str>,
+                )?;
+                let delete_item = MenuItem::with_id(
+                    app,
+                    "delete-note",
+                    "Supprimer la note",
+                    true,
+                    None::<&str>,
+                )?;
+
+                let file_submenu = SubmenuBuilder::new(app, "Fichier")
+                    .item(&import_item)
+                    .separator()
+                    .item(&reveal_item)
+                    .item(&delete_item)
+                    .build()?;
+
+                let edit_submenu = SubmenuBuilder::new(app, "Édition")
+                    .undo()
+                    .redo()
+                    .separator()
+                    .cut()
+                    .copy()
+                    .paste()
+                    .select_all()
+                    .build()?;
+
+                let window_submenu = SubmenuBuilder::new(app, "Fenêtre")
+                    .minimize()
+                    .separator()
+                    .close_window()
+                    .build()?;
+
+                let menu = MenuBuilder::new(app)
+                    .item(&app_submenu)
+                    .item(&file_submenu)
+                    .item(&edit_submenu)
+                    .item(&window_submenu)
+                    .build()?;
+
+                app.set_menu(menu)?;
+
+                let handle = app.handle().clone();
+                app.on_menu_event(move |_app, event| {
+                    let id = event.id().0.as_str();
+                    match id {
+                        "import-files" => {
+                            let paths = open_import_picker_macos();
+                            if !paths.is_empty() {
+                                let _ = handle.emit("menu:import-files", paths);
+                            }
+                        }
+                        "reveal-in-finder" => {
+                            let _ = handle.emit("menu:reveal-in-finder", ());
+                        }
+                        "delete-note" => {
+                            let _ = handle.emit("menu:delete-note", ());
+                        }
+                        _ => {}
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -126,6 +296,7 @@ pub fn run() {
             get_icloud_path_macos,
             show_action_sheet,
             show_rename_prompt,
+            open_import_picker,
             #[cfg(target_os = "android")]
             vault_pick_dir,
             #[cfg(target_os = "android")]

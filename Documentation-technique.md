@@ -35,6 +35,7 @@ Les modifications sont appliquées immédiatement en mémoire (mise à jour opti
 | `get_titlebar_height(window)` | Hauteur physique de la titlebar macOS (`inner_position.y - outer_position.y`) |
 | `get_scale_factor(window)` | DPR de la fenêtre (identique à `window.devicePixelRatio`) |
 | `get_icloud_path()` | Retourne le chemin du container iCloud (iOS et macOS) |
+| `open_import_picker()` | NSOpenPanel macOS (fichiers + dossiers), appelable depuis JS via `run_on_main_thread` + canal oneshot |
 
 ---
 
@@ -79,6 +80,39 @@ Implémenté avec `@dnd-kit/sortable` (`horizontalListSortingStrategy`) pour le 
 
 ---
 
+## Fichiers médias dans le vault
+
+### Nouveau variant `MediaFile` dans `TreeNode`
+
+`TreeNode = NoteFile | FolderNode | MediaFile`. `MediaFile` contient `id` (chemin absolu), `name` (sans extension), `fileName` (avec extension) et `mediaType: "image" | "audio" | "video" | "pdf"`.
+
+`loadTree` (`vaultIO.ts`) reconnaît maintenant les extensions médias via la table `MEDIA_EXTENSIONS` et crée des nœuds `MediaFile`. Les médias sont triés après les notes dans `sortNodes` (ordre : dossiers → notes → médias).
+
+`flattenTree` ne retourne que des `NoteFile` (comportement inchangé). Pour les médias, `mediaByIdAtom` les indexe par ID en traversant le tree indépendamment.
+
+### Atoms
+
+- `mediaByIdAtom` — `Map<string, MediaFile>` recalculée à chaque changement de `treeAtom`.
+- `activeMediaAtom` — dérivé : retourne le `MediaFile` dont l'ID correspond à `activeNoteIdAtom`, ou `null`.
+- `selectedIdsAtom` — `Set<string>` pour la multi-sélection du file tree (notes + médias + dossiers).
+- `selectionAnchorAtom` — `string | null`, dernier item cliqué sans Maj (ancre de plage).
+
+### Routing dans `DesktopApp`
+
+```
+activeNoteAtom (NoteFile)  → NoteEditor
+activeMediaAtom (MediaFile) → MediaViewer
+aucun                       → écran vide
+```
+
+`activeNoteAtom` reste `NoteFile | null` (non modifié). Cliquer un `MediaFile` dans le file tree appelle `setActiveNoteId(node.id)` directement, sans passer par `handleSelectNote` (qui est spécifique aux `.md`).
+
+### StandaloneAudioPlayer
+
+`src/desktop/components/MediaViewer/StandaloneAudioPlayer.tsx` — version sans couplage ProseMirror d'`AudioBlockComponent`. Partage `drawWaveform` (waveform.ts) et les fonctions `nativeAudioPlayer` pour la cohérence visuelle et comportementale. Lit le fichier via `readFile` du plugin FS plutôt que via `readAudioData` de la config du plugin (le chemin est absolu dans ce contexte).
+
+---
+
 ## Drag & Drop interne (réorganisation du vault)
 
 ### Pourquoi pointer events et non HTML5 DnD
@@ -101,11 +135,48 @@ Les **pointer events** (`pointermove`) sont des événements DOM purs que WebKit
 - `pointerup` exécute le déplacement si une dropzone valide est présente ; `Échap` annule
 - Les refs stables (`moveNodeRef`, `propagateNoteRenameRef`, etc.) garantissent que les callbacks dans les closures sont toujours à jour sans recréer les listeners
 
+### `vaultIO.move` — déplacement cross-dossier
+
+`vaultIO.rename(uri, newName)` ne change que le dernier segment du chemin (renommage dans le même dossier). Pour déplacer un fichier vers un autre dossier, `vaultIO.move(sourceUri, destUri)` appelle directement `rename(source, dest)` du plugin FS avec le chemin de destination complet. `moveNode` utilise `move()` au lieu de `rename()` depuis cette correction.
+
+La détection `isFolder` dans `moveNode` utilise `!(/\.[^/]+$/.test(sourceName))` (absence d'extension) pour distinguer un dossier d'un fichier média — l'ancienne logique `!endsWith(".md")` traitait les médias comme des dossiers.
+
+### Multi-sélection et déplacement groupé
+
+**Sélection par plage.** Chaque ligne du file tree porte `data-node-id`. Au Maj+Clic, `computeRangeSelection(anchor, target, tree)` interroge le DOM (`querySelectorAll("[data-node-id]")`) pour obtenir l'ordre visuel, extrait les IDs entre les deux indices, puis étend les dossiers de la plage en ajoutant récursivement leurs descendants depuis `treeAtom` (`collectDescendantIds`). Les dossiers fermés voient leurs enfants inclus même s'ils ne sont pas dans le DOM.
+
+**Drag multi-sélection.** Si l'item draggé est dans `selectedIdsAtom`, `onPointerDown` construit `dragIds = [...selectedIds]` ; sinon `dragIds = [sourceId]`. Le ghost affiche `"N éléments"`. `handleInternalDrop` boucle sur `dragIds` en séquentiel (évite les conflits d'arbre concurrent) et appelle `moveNode` + propagation pour chaque ID.
+
 ### Propagation après déplacement
 
-`handleInternalDrop` appelle `moveNode` (renommage FS), puis `propagateNoteRename` ou `propagateFolderRename` pour mettre à jour toutes les références dans le vault. Si la note active fait partie du sous-arbre déplacé, `activeNoteIdAtom` est mis à jour avec le nouveau chemin.
+`handleInternalDrop` appelle `moveNode` (déplacement FS), puis `propagateFolderRename` ou `propagateNoteRename` pour mettre à jour toutes les références dans le vault. Les médias n'ont pas de références frontmatter — aucune propagation n'est déclenchée pour eux. Si la note active fait partie du sous-arbre déplacé, `activeNoteIdAtom` est mis à jour avec le nouveau chemin.
 
 ---
+
+## Import de fichiers et dossiers
+
+### `importUtils.ts` — source de vérité partagée
+
+Trois points d'entrée dans l'app déclenchent un import : le drag & drop depuis le Finder, le menu Fichier macOS, et le menu contextuel. Tous passent par les mêmes fonctions dans `src/shared/lib/importUtils.ts` :
+
+- `importMdFile(srcPath, destFolder)` — lit, injecte `__Type__`, résout les conflits de nom, écrit.
+- `importMediaFile(srcPath, destFolder, fileName)` — copie byte-à-byte, résout les conflits de nom.
+- `importFolderRecursive(srcPath, destParentPath, folderName)` — crée le dossier via `vaultIO.createDir`, cherche une `FolderName.md` existante dans la source (la réutilise si présente pour préserver le contenu), puis itère récursivement sur `.md`, médias et sous-dossiers.
+- `importPaths(targetFolderPath, paths[])` — dispatch par type, catch par chemin.
+
+### NSOpenPanel macOS — picker fichiers + dossiers
+
+Le picker natif `NSOpenPanel` avec `canChooseFiles = YES` et `canChooseDirectories = YES` permet de sélectionner à la fois des fichiers et des dossiers dans une seule boîte de dialogue, ce que l'API `@tauri-apps/plugin-dialog` ne peut pas faire (elle distingue fichiers ou dossiers).
+
+Deux points d'appel :
+
+1. **Depuis `on_menu_event` (menu bar)** — le callback est déjà sur le thread principal macOS. `open_import_picker_macos()` appelle `[NSOpenPanel runModal]` de façon synchrone (NSPanel gère son propre run loop) et retourne les chemins. Si non vide, `app.emit("menu:import-files", paths)`.
+
+2. **Depuis JavaScript (menu contextuel)** — commande `open_import_picker(AppHandle)` : `app.run_on_main_thread(|| { … tx.send(paths) })` + `rx.await`. Le canal `tokio::sync::oneshot` permet à la commande async de bloquer proprement en attendant la réponse du thread principal.
+
+### Mobile — dialog picker
+
+Sur iOS/Android, l'import passe par `open({ multiple: true })` de `@tauri-apps/plugin-dialog` qui affiche le sélecteur de documents natif (Files/SAF). Les chemins retournés sont traités par `importPaths`. Sur Android, les URI SAF ne sont pas toujours lisibles avec `readTextFile({ baseDir: null })` — les échecs sont loggués silencieusement par item.
 
 ## Drag & Drop externe (import depuis Finder)
 
@@ -139,6 +210,38 @@ const cssY = (rawY + titlebarPhysical) / dpr;
 Le signe est `+titlebar` (pas `-`) car wry soustrait déjà l'offset title bar lors de la conversion macOS → CSS, créant un décalage négatif qu'il faut compenser. Ces valeurs sont ensuite passées à `document.elementFromPoint` pour identifier le dossier cible.
 
 L'offset est mis en cache après le premier drop (un seul `invoke` Rust pour la durée de vie de l'application).
+
+---
+
+## Menu Fichier macOS et menus contextuels
+
+### Menu Fichier (barre de menu macOS)
+
+Construit dans `setup()` via `SubmenuBuilder` de Tauri. Structure complète : App menu (À propos, Services, Masquer, Quitter), Fichier, Édition (prédéfinis Undo/Redo/Cut/Copy/Paste/SelectAll), Fenêtre (Minimize, CloseWindow). La liste des API disponibles sur `SubmenuBuilder` est plus restreinte que l'équivalent JS — `zoom()` n'existe pas, seul `minimize()` et `close_window()` sont disponibles pour la fenêtre.
+
+`on_menu_event` sur l'`AppHandle` clôné : pour `"import-files"`, appelle `open_import_picker_macos()` directement (déjà sur le thread principal) et émet le résultat. Pour `"reveal-in-finder"` et `"delete-note"`, émet l'event sans payload.
+
+`useMenuEvents` hook (frontend) écoute ces trois events via `@tauri-apps/api/event listen`. La suppression via menu passe par `handleDeleteNote` de `useNote` (même chemin que le bouton 🗑️ du file tree). Le révéler passe par `osascript tell application "Finder" to reveal POSIX file` — `plugin-opener`'s `revealItemInDir` crashait sur macOS (appel `NSWorkspace` hors thread principal dans la Rust side du plugin).
+
+### Menu contextuel natif (desktop)
+
+Utilise `@tauri-apps/api/menu` : `Menu.new({ items })` + `menu.popup()`. Nécessite `"core:menu:default"` dans les capabilities. Le menu est construit à la demande à chaque clic droit (pas de menu persistent) — `MenuItem.new({ text, action })` crée un item avec callback JavaScript, `PredefinedMenuItem.new({ item: "Separator" })` pour les séparateurs.
+
+Le hook `useNodeContextMenu` est instancié une fois dans `FileTree.tsx` et distribué via le contexte `FileDragCtx` (étendu en `FileActions = FileDrop & { onContextMenu }`). Chaque composant nœud appelle `dnd.onContextMenu(e, nodeId, nodeKind)` dans son handler `onContextMenu`.
+
+**Cible d'import.** Dossier cliqué → lui-même ; note ou média cliqué → dossier parent. Calculé au moment du clic, passé dans la closure de l'item "Importer".
+
+**Suppression.** Notes et médias → `handleDeleteNote` (tabs, navigation, cleanupNoteFromBases, writingPathsRegistry, update arbre optimiste). Dossiers → `handleDeleteFolder` (look-up du `FolderNode` depuis `treeAtom` via `findFolderById`, confirmation si non vide). Même source de vérité que le bouton 🗑️ du file tree.
+
+### Menu contextuel mobile (bottom sheet)
+
+`MobileContextMenu.tsx` utilise un tableau d'objets `{ label, destructive?, onPress }` au lieu d'un `switch(idx)` fragile. L'item "Importer des fichiers…" appelle `open({ multiple: true })` puis `importPaths(targetFolderPath, paths)` + `reload()`. L'ordre suit la convention iOS : destructif en dernier.
+
+### Commandes Tauri
+
+| Commande | Description |
+|---|---|
+| `open_import_picker(AppHandle)` | NSOpenPanel (fichiers + dossiers) depuis JS via run_on_main_thread + oneshot |
 
 ---
 

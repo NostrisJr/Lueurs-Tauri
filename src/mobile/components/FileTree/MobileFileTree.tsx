@@ -45,9 +45,12 @@ function NodeList({ nodes, onDrillIn }: NodeListProps) {
     );
   }
 
+  // Les médias ne sont pas encore supportés sur mobile
+  const noteAndFolderNodes = nodes.filter((n) => n.kind !== "media") as (typeof nodes[number] & { kind: "file" | "folder" })[];
+
   return (
     <div className="flex flex-col gap-2 w-full">
-      {nodes.map((node) => (
+      {noteAndFolderNodes.map((node) => (
         <div key={node.id} className="w-11/12 mx-auto">
           <FileRow
             node={node}

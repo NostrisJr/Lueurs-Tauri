@@ -26,7 +26,17 @@ export interface FolderNode {
   children: TreeNode[];
 }
 
-export type TreeNode = NoteFile | FolderNode;
+export type MediaType = "image" | "audio" | "video" | "pdf";
+
+export interface MediaFile {
+  kind: "media";
+  id: string;       // chemin absolu
+  name: string;     // nom sans extension
+  fileName: string; // "photo.jpg"
+  mediaType: MediaType;
+}
+
+export type TreeNode = NoteFile | FolderNode | MediaFile;
 
 export { flattenTree };
 export type { Frontmatter };

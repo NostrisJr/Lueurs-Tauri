@@ -18,7 +18,7 @@ import {
   editorPoetry,
   editorStrike,
   editorTaskList,
-} from "../../../shared/components/NoteEditor/editorCommands";
+} from "../../../shared/components/NoteEditor/lib/editorCommands";
 import {
   IconAppleTerminalFill,
   IconBold,

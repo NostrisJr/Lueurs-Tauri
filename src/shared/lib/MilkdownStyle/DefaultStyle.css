@@ -1,22 +1,6 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Navigateur de document — marks de la minimap
-   ───────────────────────────────────────────────────────────────────────── */
-
-[data-nav-mark] {
-  cursor: pointer;
-  pointer-events: auto;
-  transition: opacity 120ms ease, transform 120ms ease;
-  transform-origin: right center;
-}
-
-[data-nav-mark]:hover {
-  opacity: 1 !important;
-  transform: scaleX(3) scaleY(1.25);
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
    Conteneur ProseMirror — base
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -545,12 +529,14 @@
    étant non-inclusive et sans marques imbriquées, le run reste un seul span →
    une seule pipe ouvrante et une seule fermante. */
 .milkdown .ProseMirror span[data-didascalie-inline]::before {
-  content: "| ";
+  content: "|";
+  padding-right: 0.25em;
   user-select: none;
 }
 
 .milkdown .ProseMirror span[data-didascalie-inline]::after {
-  content: " |";
+  content: "|";
+  padding-left: 0.25em;
   user-select: none;
 }
 
@@ -571,6 +557,9 @@
   padding: 16px 16px 80px;
   font-size: 16px;
   /*ne modifie pas du tout la taille de la police...*/
+
+  /*overwrite du caret transparent natif. sur mobile, on n'a pas le plugin custom de caret*/
+  caret-color: var(--color-amber-400);
 }
 
 /* Décalage des headings pour faire de la place au chevron de fold */

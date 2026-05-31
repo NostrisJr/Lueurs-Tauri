@@ -8,7 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
  */
 import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
-import type { NoteFile, TreeNode } from "../hooks/useFileTree";
+import type { MediaFile, MediaType, NoteFile, TreeNode } from "../hooks/useFileTree";
 import { writingPathsRegistry } from "./atoms";
 import {
   type Frontmatter,
@@ -93,6 +93,18 @@ export const vaultIO = {
     // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
     await mkdir(path, { baseDir: null } as any);
     return path;
+  },
+
+  // Déplace un fichier ou dossier vers un chemin de destination complet.
+  // Contrairement à rename() qui change uniquement le nom dans le même dossier,
+  // move() peut changer de dossier parent.
+  async move(sourceUri: string, destUri: string): Promise<void> {
+    if (isAndroid) {
+      throw new Error("vaultIO.move non supporté sur Android");
+    }
+    const { rename } = await import("@tauri-apps/plugin-fs");
+    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+    await rename(sourceUri, destUri, { baseDir: null } as any);
   },
 
   // Renomme et retourne le nouvel URI/chemin.
@@ -290,6 +302,31 @@ export function noteFromRaw(
   };
 }
 
+// ── Extensions médias reconnues ───────────────────────────────────────────────
+
+const MEDIA_EXTENSIONS: Record<string, MediaType> = {
+  jpg: "image",
+  jpeg: "image",
+  png: "image",
+  gif: "image",
+  webp: "image",
+  svg: "image",
+  mp3: "audio",
+  m4a: "audio",
+  wav: "audio",
+  ogg: "audio",
+  aac: "audio",
+  mp4: "video",
+  mov: "video",
+  webm: "video",
+  pdf: "pdf",
+};
+
+export function getMediaType(fileName: string): MediaType | null {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return MEDIA_EXTENSIONS[ext] ?? null;
+}
+
 // ── Chargement récursif ────────────────────────────────────────────────────────
 
 export async function loadTree(
@@ -336,6 +373,20 @@ export async function loadTree(
         }
 
         nodes.push(note);
+      } else {
+        const mediaType = getMediaType(entry.name);
+        if (mediaType) {
+          const dotIdx = entry.name.lastIndexOf(".");
+          const name = dotIdx > 0 ? entry.name.slice(0, dotIdx) : entry.name;
+          const mediaFile: MediaFile = {
+            kind: "media",
+            id: fullPath,
+            name,
+            fileName: entry.name,
+            mediaType,
+          };
+          nodes.push(mediaFile);
+        }
       }
     })
   );

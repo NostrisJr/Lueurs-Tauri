@@ -138,7 +138,7 @@ export function SideBarResizable() {
 
       {/* ── Partie scrollable ─────────────────────────────── */}
       <div
-        className="flex-1 overflow-y-auto scroll-thin py-2"
+        className="flex-1 overflow-y-auto scroll-thin py-2 pb-10"
         style={{
           maskImage:
             "linear-gradient(to bottom, transparent 0px, black 20px, black calc(100% - 36px), transparent 100%)",

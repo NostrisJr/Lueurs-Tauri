@@ -1,6 +1,7 @@
 import { useAtomValue } from "jotai";
 import { dragOverAtom, folderPathAtom } from "../../../shared/lib/atoms";
 import { useFileDrop } from "../../hooks/useFileDrop";
+import { useNodeContextMenu } from "../../hooks/useNodeContextMenu";
 import { FileDragCtx } from "./FileDragCtx";
 import { TreeNodes } from "./FileNode";
 
@@ -15,12 +16,22 @@ interface FileTreeProps {
 
 export function FileTree({ nodes, activeId }: FileTreeProps) {
   const dnd = useFileDrop();
+  const showContextMenu = useNodeContextMenu();
   const folderPath = useAtomValue(folderPathAtom);
   const dragOver = useAtomValue(dragOverAtom);
   const isRootOver = folderPath ? dragOver === folderPath : false;
 
+  function onContextMenu(
+    e: React.MouseEvent,
+    nodeId: string,
+    nodeKind: "file" | "folder" | "media"
+  ) {
+    e.preventDefault();
+    showContextMenu(nodeId, nodeKind);
+  }
+
   return (
-    <FileDragCtx.Provider value={dnd}>
+    <FileDragCtx.Provider value={{ ...dnd, onContextMenu }}>
       <div
         data-dropzone={folderPath ?? undefined}
         className={`px-2 py-1 min-h-full transition-colors ${isRootOver ? "bg-amber-100/30" : ""}`}

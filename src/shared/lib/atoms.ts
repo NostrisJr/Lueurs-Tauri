@@ -9,11 +9,12 @@ import {
   type DocumentMapState,
 } from "./documentMapConfig";
 
-import type { FolderNode, NoteFile, TreeNode } from "../hooks/useFileTree";
+import type { FolderNode, MediaFile, NoteFile, TreeNode } from "../hooks/useFileTree";
 import { flattenTree } from "../hooks/useFileTree";
 import { buttonColumns, resolveButtonKey } from "./fileTreeHelpers";
 import { createLogger } from "./logger";
 import { type KanbanColumn, NoteType, SystemField } from "./noteTypes";
+import type { PageFormat } from "./pageMetrics";
 
 const log = createLogger("atoms");
 
@@ -26,6 +27,10 @@ export const dictaphoneOpenAtom = atom(false);
 // État du drag & drop dans le file tree
 export const dragSourceAtom = atom<string | null>(null);
 export const dragOverAtom = atom<string | null>(null);
+// IDs sélectionnés via Shift+Click dans le file tree (pour le déplacement multi-notes)
+export const selectedIdsAtom = atom<Set<string>>(new Set<string>());
+// Ancre de la plage de sélection — dernier item cliqué sans Shift
+export const selectionAnchorAtom = atom<string | null>(null);
 export const savingAtom = atom(false);
 export const loadingAtom = atom(false);
 export const treeAtom = atom<TreeNode[]>([]);
@@ -55,6 +60,15 @@ export const textJustificationAtom = atomWithStorage<boolean>(
   undefined,
   { getOnInit: true }
 );
+
+// Format de référence de l'indicateur pages/mots (équivalent A4/A5)
+export const pageFormatAtom = atomWithStorage<PageFormat>(
+  "lueurs_page_format",
+  "A4",
+  undefined,
+  { getOnInit: true }
+);
+
 // displayModeAtom — dérivé du frontmatter de la note active, repli sur le défaut utilisateur.
 // L'écriture se fait via handleChange (frontmatter __DisplayMode__), qui propage ici automatiquement.
 // Défini plus bas après activeNoteAtom (dépendance).
@@ -166,11 +180,31 @@ export const notesByNameAtom = atom((get) => {
   return map;
 });
 
+// Index id → MediaFile, recalculé à chaque changement de treeAtom
+export const mediaByIdAtom = atom((get) => {
+  const map = new Map<string, MediaFile>();
+  function traverse(nodes: TreeNode[]) {
+    for (const node of nodes) {
+      if (node.kind === "media") map.set(node.id, node);
+      else if (node.kind === "folder") traverse(node.children);
+    }
+  }
+  traverse(get(treeAtom));
+  return map;
+});
+
 // Dérivé : toujours synchronisé avec l'arbre, jamais de snapshot
 export const activeNoteAtom = atom((get) => {
   const id = get(activeNoteIdAtom);
   if (!id) return null;
   return get(notesByIdAtom).get(id) ?? null;
+});
+
+// Fichier média actif — null si la note active est une note .md ou si rien n'est ouvert
+export const activeMediaAtom = atom((get) => {
+  const id = get(activeNoteIdAtom);
+  if (!id) return null;
+  return get(mediaByIdAtom).get(id) ?? null;
 });
 
 // Dérivé : lit __DisplayMode__ de la note active, repli sur le défaut utilisateur.

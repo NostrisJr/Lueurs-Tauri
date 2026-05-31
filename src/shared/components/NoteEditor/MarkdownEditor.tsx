@@ -59,8 +59,9 @@ import { poetryBlockPlugin } from "../../plugins/poetry-block/poetryBlockPlugin"
 import { taskListPlugin } from "../../plugins/task-list/taskListPlugin";
 import { customCaretPlugin } from "../../plugins/custom-caret/customCaretPlugin";
 import { wordHighlightPlugin } from "../../plugins/word-highlight/wordHighlightPlugin";
+import { activeEditorRef } from "./lib/activeEditorRef";
 import { dropHandlerRef } from "./lib/dropListener";
-import { editorScrollToPos } from "./editorCommands";
+import { editorScrollToPos } from "./lib/editorCommands";
 import { useContextMenu } from "./hooks/useContextMenu";
 import { useDropHandler } from "./hooks/useDropHandler";
 import {
@@ -295,15 +296,28 @@ export function MarkdownEditor({
     if (isDesktop) editor.use(customCaretPlugin);
 
     editorRef.current = editor;
+    activeEditorRef.current = editor;
     log.info("Editor initialisé");
     return editor;
   });
+
+  // Libère la ref module-level au démontage (changement de note / fermeture)
+  useEffect(() => {
+    return () => {
+      if (activeEditorRef.current === editorRef.current) {
+        activeEditorRef.current = null;
+      }
+    };
+  }, [editorRef]);
 
   const justifyClass =
     displayMode === "livre" && textJustification ? "text-justified" : "";
 
   return (
-    <div ref={wrapperRef} className={`h-full mode-${displayMode} ${justifyClass}`}>
+    <div
+      ref={wrapperRef}
+      className={`h-full mode-${displayMode} ${justifyClass}`}
+    >
       <Milkdown />
     </div>
   );

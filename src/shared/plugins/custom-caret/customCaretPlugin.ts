@@ -46,7 +46,8 @@ export const customCaretPlugin = $prose(
           caret.style.display = "block";
         }
 
-        function update(view: typeof editorView, fromScroll = false) {
+        function update(view: typeof editorView, prevState?: unknown) {
+          const fromScroll = typeof prevState === "boolean" ? prevState : false;
           reposition(view, fromScroll);
           if (!fromScroll) {
             caret.style.animation = "none";

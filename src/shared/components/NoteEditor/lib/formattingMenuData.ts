@@ -7,17 +7,17 @@ import {
 } from "@milkdown/kit/preset/commonmark";
 import { toggleStrikethroughCommand } from "@milkdown/kit/preset/gfm";
 import {
-  toggleBlockquoteCommand,
-  toggleBulletListCommand,
-  toggleCodeBlockCommand,
   toggleDidascalieInlineCommand,
-  toggleHeadingCommand,
   toggleHighlightInlineCommand,
   toggleLinkWithPromptCommand,
+  toggleHeadingCommand,
   toggleOrderedListCommand,
-  togglePoetryCommand,
+  toggleBulletListCommand,
   toggleTaskListCommand,
-} from "../../plugins/customKeymap";
+  toggleBlockquoteCommand,
+  toggleCodeBlockCommand,
+  togglePoetryCommand,
+} from "../../../plugins/customKeymap";
 
 export interface FormattingItem {
   id: string;

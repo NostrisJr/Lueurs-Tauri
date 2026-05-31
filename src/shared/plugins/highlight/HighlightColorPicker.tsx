@@ -5,9 +5,11 @@
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { HIGHLIGHT_COLORS, getHighlightSolid } from "./colors";
+import { isMobile } from "../../lib/platform";
 
 export type PickerState = {
   color: string;
+  size: number;
   position: { left: number; top: number };
 };
 
@@ -20,9 +22,6 @@ export type HighlightColorPickerProps = {
   onScheduleHide: () => void;
   onClickOutside: () => void;
 };
-
-// Touch = mobile : cible plus grande pour le dot
-const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 
 export function HighlightColorPicker({
   state,
@@ -53,12 +52,10 @@ export function HighlightColorPicker({
 
   if (!state) return null;
 
-  const dotSize = isTouchDevice ? 16 : 12;
-
   return (
     <div
       ref={ref}
-      className="fixed z-[9999] flex items-center"
+      className="fixed z-10 flex items-center"
       style={{ left: state.position.left, top: state.position.top }}
       onMouseEnter={onCancelHide}
       onMouseLeave={onScheduleHide}
@@ -70,16 +67,16 @@ export function HighlightColorPicker({
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="shrink-0 cursor-pointer rounded-full border-[1.5px] border-white/80 p-0 shadow-[0_1px_4px_rgba(0,0,0,0.25)] outline-none transition-transform touch-none hover:scale-[1.2]"
+        className="shrink-0 cursor-pointer rounded-full border border-white/80 p-0 shadow-sm outline-none transition-transform touch-none hover:scale-[1.2]"
         style={{
-          width: dotSize,
-          height: dotSize,
+          width: state.size,
+          height: state.size,
           background: getHighlightSolid(state.color),
         }}
       />
 
       {open && (
-        <div className="absolute left-0 top-[18px] flex w-[120px] flex-wrap gap-[5px] rounded-[10px] border border-black/[0.08] bg-white p-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.12)]">
+        <div className="absolute left-0 top-4.5 flex w-30 flex-wrap gap-1.5 rounded-[10px] border border-black/8 bg-white p-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.12)]">
           {HIGHLIGHT_COLORS.map((c) => (
             <button
               key={c.id}

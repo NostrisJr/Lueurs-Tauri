@@ -23,6 +23,7 @@ import {
   useFileTree,
 } from "./useFileTree";
 import { usePathPropagation } from "./usePathPropagation";
+import { NoteType } from "../lib/noteTypes";
 
 const log = createLogger("useNote");
 
@@ -85,7 +86,7 @@ export function useNote() {
       });
     }
 
-    const isTemplate = activeNote.type === "__template__";
+    const isTemplate = activeNote.type === NoteType.TEMPLATE;
     const noteId = activeNote.id;
 
     // updateNote met l'arbre à jour à chaque frappe (activeNote.frontmatter avance)
@@ -189,7 +190,12 @@ export function useNote() {
   async function handleDeleteFolder(node: TreeNode) {
     const countFiles = (n: TreeNode): number => {
       if (n.kind === "file") return 1;
-      return n.children.reduce((sum, child) => sum + countFiles(child), 0);
+      if (n.kind === "folder")
+        return n.children.reduce(
+          (sum: number, child: TreeNode) => sum + countFiles(child),
+          0
+        );
+      return 0;
     };
 
     const fileCount = node.kind === "folder" ? countFiles(node) : 0;
@@ -246,8 +252,9 @@ export function useNote() {
     isFolder: boolean
   ) {
     const note = !isFolder ? (notesById.get(oldPath) ?? null) : null;
+    //TODO: pouprquoi ne pas utiliser les vrais types ?
     const isFolderNote =
-      note?.type === "__folder__" &&
+      note?.type === NoteType.FOLDER &&
       note.name === oldPath.split("/").slice(-2, -1)[0];
 
     if (isFolderNote) {

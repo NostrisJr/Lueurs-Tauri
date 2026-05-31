@@ -345,9 +345,15 @@ export function buttonColumns(def: ButtonDef): KanbanColumn[] {
 
 // ── Tri ───────────────────────────────────────────────────────────────────────
 
+function kindOrder(kind: string): number {
+  if (kind === "folder") return 0;
+  if (kind === "file") return 1;
+  return 2; // media après les notes
+}
+
 export function sortNodes(nodes: TreeNode[]): TreeNode[] {
   return [...nodes].sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === "folder" ? -1 : 1;
+    if (a.kind !== b.kind) return kindOrder(a.kind) - kindOrder(b.kind);
     return a.name.localeCompare(b.name, "fr", { numeric: true });
   });
 }
@@ -450,9 +456,11 @@ export function updateFolderInTree(
 }
 
 export function flattenTree(nodes: TreeNode[]): NoteFile[] {
-  return nodes.flatMap((node) =>
-    node.kind === "file" ? [node] : flattenTree(node.children)
-  );
+  return nodes.flatMap((node) => {
+    if (node.kind === "file") return [node];
+    if (node.kind === "folder") return flattenTree(node.children);
+    return [];
+  });
 }
 
 // ── Corbeille ─────────────────────────────────────────────────────────────────

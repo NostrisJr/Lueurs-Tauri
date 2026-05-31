@@ -4,14 +4,16 @@ import { useState } from "react";
 import { BottomSheet } from "../../../mobile/components/BottomSheet/BottomSheet";
 import { type DisplayMode, activeNoteAtom } from "../../lib/atoms";
 import { EditableText } from "../EditableText.tsx";
-import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
 import { IconMicrophoneFill } from "../PlatformIcon.tsx";
+import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
 
 interface Props {
   onRename: (newName: string) => Promise<void>;
-  onDisplayModeChange: (mode: DisplayMode) => void;
-  hideDisplayModeSelector: boolean;
+  onDisplayModeChange?: (mode: DisplayMode) => void;
+  isNote: boolean;
   onRecord?: () => void;
+  /** Override du nom affiché — utilisé pour les médias où activeNoteAtom est null. */
+  name?: string;
 }
 
 const isMobile = platform() === "ios" || platform() === "android";
@@ -19,18 +21,20 @@ const isMobile = platform() === "ios" || platform() === "android";
 export function NoteHeader({
   onRename,
   onDisplayModeChange,
-  hideDisplayModeSelector,
+  isNote,
   onRecord,
+  name: nameProp,
 }: Props) {
   const activeNote = useAtomValue(activeNoteAtom);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
 
-  if (!activeNote) return null;
+  const displayName = nameProp ?? activeNote?.name;
+  if (!displayName) return null;
 
   async function handleRenameConfirm() {
     const trimmed = renameValue.trim();
-    if (!trimmed || trimmed === activeNote?.name) {
+    if (!trimmed || trimmed === displayName) {
       setRenameOpen(false);
       return;
     }
@@ -45,17 +49,17 @@ export function NoteHeader({
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: tap mobile */}
           <span
             onClick={() => {
-              setRenameValue(activeNote.name);
+              setRenameValue(displayName);
               setRenameOpen(true);
             }}
             className="cursor-pointer truncate hover:bg-gray-100 items-baseline px-1"
           >
-            {activeNote.name}
+            {displayName}
           </span>
           {renameOpen && (
             <BottomSheet
               onClose={() => setRenameOpen(false)}
-              title="Renommer la note"
+              title="Renommer"
             >
               <div className="px-2 pt-2 flex flex-col gap-4">
                 <input
@@ -84,12 +88,12 @@ export function NoteHeader({
       ) : (
         <EditableText
           className=" hover:bg-gray-100"
-          value={activeNote.name}
+          value={displayName}
           onSave={async (newName: string) => onRename(newName)}
         />
       )}
       <div className="flex items-center gap-3">
-        {onRecord && (
+        {isNote && !isMobile && onRecord && (
           <button
             type="button"
             onClick={onRecord}
@@ -99,7 +103,7 @@ export function NoteHeader({
             <IconMicrophoneFill className="size-4.5" aria-hidden="true" />
           </button>
         )}
-        {!hideDisplayModeSelector && (
+        {isNote && !isMobile && onDisplayModeChange && (
           <DisplayModeSelector onModeChange={onDisplayModeChange} />
         )}
       </div>

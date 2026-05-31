@@ -6,11 +6,7 @@
  * injection audio…) sans passer par useImperativeHandle.
  */
 import type { Editor } from "@milkdown/kit/core";
-import {
-  commandsCtx,
-  editorViewCtx,
-  schemaCtx,
-} from "@milkdown/kit/core";
+import { commandsCtx, editorViewCtx, schemaCtx } from "@milkdown/kit/core";
 import {
   toggleInlineCodeCommand,
   turnIntoTextCommand,
@@ -27,7 +23,7 @@ import {
   toggleOrderedListCommand,
   togglePoetryCommand,
   toggleTaskListCommand,
-} from "../../plugins/customKeymap";
+} from "../../../plugins/customKeymap";
 import type { CmdKey } from "@milkdown/kit/core";
 
 export type EditorRef = { current: Editor | null };
@@ -90,7 +86,10 @@ export function editorStrike(editorRef: EditorRef) {
   });
 }
 
-export function editorHeading(editorRef: EditorRef, level: 1 | 2 | 3 | 4 | 5 | 6) {
+export function editorHeading(
+  editorRef: EditorRef,
+  level: 1 | 2 | 3 | 4 | 5 | 6
+) {
   editorRef.current?.action((ctx) => {
     const view = ctx.get(editorViewCtx);
     const schema = ctx.get(schemaCtx);
