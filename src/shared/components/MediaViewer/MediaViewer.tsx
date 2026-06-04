@@ -3,11 +3,11 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useSetAtom } from "jotai";
 import { useId } from "react";
-import { NoteHeader } from "../../../shared/components/NoteEditor/NoteHeader";
-import { useFileTree } from "../../../shared/hooks/useFileTree";
-import type { MediaFile } from "../../../shared/hooks/useFileTree";
-import { activeNoteIdAtom } from "../../../shared/lib/atoms";
-import { vaultIO } from "../../../shared/lib/vaultIO";
+import { NoteHeader } from "../NoteEditor/NoteHeader";
+import { useFileTree } from "../../hooks/useFileTree";
+import type { MediaFile } from "../../hooks/useFileTree";
+import { activeNoteIdAtom } from "../../lib/atoms";
+import { vaultIO } from "../../lib/vaultIO";
 import { StandaloneAudioPlayer } from "./StandaloneAudioPlayer";
 
 export function MediaViewer({ media }: { media: MediaFile }) {
@@ -29,11 +29,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
 
   return (
     <div className="flex flex-col min-h-full w-full">
-      <NoteHeader
-        isNote={false}
-        name={media.name}
-        onRename={handleRename}
-      />
+      <NoteHeader isNote={false} name={media.name} onRename={handleRename} />
 
       <div className="px-10 py-6 max-w-3xl mx-auto w-full">
         <p className="text-xs text-gray-400 mb-6 uppercase tracking-wide">
@@ -55,7 +51,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
         )}
 
         {media.mediaType === "audio" && (
-          <div className="max-w-lg">
+          <div className="w-full">
             <StandaloneAudioPlayer filePath={media.id} nodeId={audioNodeId} />
           </div>
         )}

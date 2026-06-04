@@ -428,6 +428,46 @@ export function addNodeInTree(
   });
 }
 
+/**
+ * Filtre l'arborescence pour n'afficher que les nœuds appartenant à `spaceName`.
+ *
+ * Règles :
+ * - Une note est dans l'espace si son frontmatter __space__ contient le nom.
+ * - Un dossier est dans l'espace si sa note-dossier (même nom) a __space__ → tout
+ *   son contenu est inclus inchangé (propagation totale).
+ * - Si le dossier n'est pas tagué, on filtre ses enfants récursivement ; il n'apparaît
+ *   que s'il contient au moins un descendant dans l'espace.
+ * - Les médias n'ont pas de frontmatter → ils sont inclus uniquement si leur dossier
+ *   parent est tagué (cas du push inchangé ci-dessus).
+ */
+export function filterTreeBySpace(
+  nodes: TreeNode[],
+  spaceName: string
+): TreeNode[] {
+  const result: TreeNode[] = [];
+  for (const node of nodes) {
+    if (node.kind === "folder") {
+      const folderNote = node.children.find(
+        (c): c is NoteFile => c.kind === "file" && c.name === node.name
+      );
+      const spaces = toArray(folderNote?.frontmatter[SystemField.SPACE]);
+      if (spaces.includes(spaceName)) {
+        result.push(node);
+      } else {
+        const filteredChildren = filterTreeBySpace(node.children, spaceName);
+        if (filteredChildren.length > 0) {
+          result.push({ ...node, children: filteredChildren });
+        }
+      }
+    } else if (node.kind === "file") {
+      const spaces = toArray(node.frontmatter[SystemField.SPACE]);
+      if (spaces.includes(spaceName)) result.push(node);
+    }
+    // MediaFile : inclus uniquement via le dossier parent tagué (push inchangé)
+  }
+  return result;
+}
+
 export function updateFolderInTree(
   nodes: TreeNode[],
   oldPath: string,

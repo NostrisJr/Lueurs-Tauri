@@ -153,7 +153,11 @@ export function MarkdownEditor({
 
   const insertImageBlock = useCallback(
     (srcPath: string, alt: string) => {
-      log.info("insertion image", { srcPath, alt });
+      const vaultPrefix = vaultPath.endsWith("/") ? vaultPath : `${vaultPath}/`;
+      const relativePath = srcPath.startsWith(vaultPrefix)
+        ? srcPath.slice(vaultPrefix.length)
+        : srcPath;
+      log.info("insertion image", { relativePath, alt });
       if (!editorRef.current) {
         log.warn("éditeur non monté");
         return;
@@ -168,7 +172,7 @@ export function MarkdownEditor({
         }
         const { state, dispatch } = view;
         const paragraph = schema.nodes.paragraph;
-        const imageNode = imageType.create({ src: srcPath, alt, title: alt });
+        const imageNode = imageType.create({ src: relativePath, alt, title: alt });
         const block = paragraph ? paragraph.create(null, imageNode) : imageNode;
         const insertPos = state.selection.$to.after();
         const tr = state.tr.insert(insertPos, block);
@@ -177,7 +181,7 @@ export function MarkdownEditor({
         log.info("image insérée", { insertPos });
       });
     },
-    [editorRef]
+    [vaultPath, editorRef]
   );
 
   useDropHandler({
@@ -188,7 +192,7 @@ export function MarkdownEditor({
     dropHandlerRef,
   });
 
-  useContextMenu(editorRef, wrapperRef, insertImageBlock, insertAudioBlock);
+  useContextMenu(editorRef, wrapperRef, insertImageBlock, insertAudioBlock, vaultPath);
 
   useEditor((root) => {
     log.info("initialisation Editor", {

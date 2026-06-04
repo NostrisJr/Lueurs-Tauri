@@ -14,6 +14,7 @@ import { platform } from "@tauri-apps/plugin-os";
 import { useEffect } from "react";
 import type { RefObject } from "react";
 import { createLogger } from "../../../lib/logger";
+import { vaultIO } from "../../../lib/vaultIO";
 import { toggleHighlightInlineCommand } from "../../../plugins/customKeymap";
 import { HIGHLIGHT_COLORS } from "../../../plugins/highlight/colors";
 import { EDITOR_FORMATTING_GROUPS } from "../lib/formattingMenuData";
@@ -24,7 +25,8 @@ export function useContextMenu(
   editorRef: RefObject<Editor | null>,
   wrapperRef: RefObject<HTMLDivElement | null>,
   insertImageBlock: (srcPath: string, alt: string) => void,
-  insertAudioBlock: (srcPath: string, title: string) => void
+  insertAudioBlock: (srcPath: string, title: string) => void,
+  vaultPath: string
 ) {
   useEffect(() => {
     // Menu natif Tauri — desktop uniquement
@@ -112,7 +114,17 @@ export function useContextMenu(
                 });
                 if (path) {
                   log.info("image sélectionnée via dialog", { path });
-                  insertImageBlock(path as string, "image");
+                  try {
+                    const destPath = await vaultIO.copyResourceToVault(
+                      path as string,
+                      vaultPath,
+                      "images"
+                    );
+                    const alt = (path as string).split("/").pop()?.replace(/\.[^.]+$/, "") ?? "image";
+                    insertImageBlock(destPath, alt);
+                  } catch (err) {
+                    log.error("échec copie image dans vault", err);
+                  }
                 }
               },
             }),
@@ -129,8 +141,17 @@ export function useContextMenu(
                 });
                 if (path) {
                   log.info("audio sélectionné via dialog", { path });
-                  const filename = (path as string).split("/").pop() ?? "audio";
-                  insertAudioBlock(path as string, filename);
+                  try {
+                    const destPath = await vaultIO.copyResourceToVault(
+                      path as string,
+                      vaultPath,
+                      "audio"
+                    );
+                    const title = (path as string).split("/").pop()?.replace(/\.[^.]+$/, "") ?? "audio";
+                    insertAudioBlock(destPath, title);
+                  } catch (err) {
+                    log.error("échec copie audio dans vault", err);
+                  }
                 }
               },
             }),
@@ -177,5 +198,5 @@ export function useContextMenu(
 
     el.addEventListener("contextmenu", handler);
     return () => el.removeEventListener("contextmenu", handler);
-  }, [editorRef, wrapperRef, insertImageBlock, insertAudioBlock]);
+  }, [editorRef, wrapperRef, insertImageBlock, insertAudioBlock, vaultPath]);
 }

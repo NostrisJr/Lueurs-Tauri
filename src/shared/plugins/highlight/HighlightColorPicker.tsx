@@ -5,7 +5,6 @@
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { HIGHLIGHT_COLORS, getHighlightSolid } from "./colors";
-import { isMobile } from "../../lib/platform";
 
 export type PickerState = {
   color: string;

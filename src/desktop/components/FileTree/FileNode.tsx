@@ -22,6 +22,7 @@ import {
   activeNoteIdAtom,
   dragOverAtom,
   dragSourceAtom,
+  openTabIdsAtom,
   selectedIdsAtom,
   selectionAnchorAtom,
   treeAtom,
@@ -32,7 +33,11 @@ import { useFileDragCtx } from "./FileDragCtx";
 // ── Helpers range selection ────────────────────────────────────────────────────
 
 // Collecte tous les IDs descendants d'un nœud dossier (notes + médias + sous-dossiers).
-function collectDescendantIds(nodes: TreeNode[], folderId: string, out: Set<string>): boolean {
+function collectDescendantIds(
+  nodes: TreeNode[],
+  folderId: string,
+  out: Set<string>
+): boolean {
   for (const node of nodes) {
     if (node.id === folderId && node.kind === "folder") {
       function addAll(ns: TreeNode[]) {
@@ -44,7 +49,11 @@ function collectDescendantIds(nodes: TreeNode[], folderId: string, out: Set<stri
       addAll(node.children);
       return true;
     }
-    if (node.kind === "folder" && collectDescendantIds(node.children, folderId, out)) return true;
+    if (
+      node.kind === "folder" &&
+      collectDescendantIds(node.children, folderId, out)
+    )
+      return true;
   }
   return false;
 }
@@ -144,7 +153,9 @@ function FileNodeComponent({
     if (e.shiftKey) {
       e.preventDefault();
       if (anchor) {
-        setSelectedIds(computeRangeSelection(anchor, node.id, store.get(treeAtom)));
+        setSelectedIds(
+          computeRangeSelection(anchor, node.id, store.get(treeAtom))
+        );
       } else {
         setSelectedIds(new Set([node.id]));
         setAnchor(node.id);
@@ -206,6 +217,8 @@ function MediaNodeComponent({
 }) {
   const isActive = activeId === node.id;
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
+  const [openTabIds, setOpenTabIds] = useAtom(openTabIdsAtom);
+  const { handleSelectNote, handleDeleteMedia } = useNote();
   const { reload } = useFileTree();
   const dnd = useFileDragCtx();
   const dragSource = useAtomValue(dragSourceAtom);
@@ -219,7 +232,9 @@ function MediaNodeComponent({
     if (e.shiftKey) {
       e.preventDefault();
       if (anchor) {
-        setSelectedIds(computeRangeSelection(anchor, node.id, store.get(treeAtom)));
+        setSelectedIds(
+          computeRangeSelection(anchor, node.id, store.get(treeAtom))
+        );
       } else {
         setSelectedIds(new Set([node.id]));
         setAnchor(node.id);
@@ -227,7 +242,7 @@ function MediaNodeComponent({
     } else {
       setSelectedIds(new Set());
       setAnchor(node.id);
-      setActiveNoteId(node.id);
+      handleSelectNote(node, e.metaKey);
     }
   }
 
@@ -236,12 +251,17 @@ function MediaNodeComponent({
     const ext = dotIdx > 0 ? node.fileName.slice(dotIdx) : "";
     const newFileName = `${newName}${ext}`;
     const parentPath = node.id.split("/").slice(0, -1).join("/");
+    const newId = `${parentPath}/${newFileName}`;
     await vaultIO.rename(node.id, newFileName);
-    setActiveNoteId(`${parentPath}/${newFileName}`);
+    if (openTabIds.includes(node.id)) {
+      setOpenTabIds(openTabIds.map((id) => (id === node.id ? newId : id)));
+    }
+    setActiveNoteId(newId);
     reload();
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
     <div
       data-node-id={node.id}
       onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
@@ -250,9 +270,24 @@ function MediaNodeComponent({
       className={`${ROW_BASE} ${isActive || isSelected ? ROW_ACTIVE : ROW_INACTIVE} ${isDragging ? ROW_DRAGGING : ""}`}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <NodeIconProvider node={node} className="size-4 text-gray-400 shrink-0" />
+        <NodeIconProvider
+          node={node}
+          className="size-4 text-gray-400 shrink-0"
+        />
         <EditableText value={node.name} onSave={handleRename} />
       </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDeleteMedia(node.id);
+        }}
+        aria-label={`Mettre ${node.name} à la poubelle`}
+        title="Mettre à la poubelle"
+        className="hidden group-hover:block rounded text-gray-300 hover:text-red-400 transition-all cursor-pointer"
+      >
+        <IconTrash className="size-3" aria-hidden="true" />
+      </button>
     </div>
   );
 }
@@ -296,7 +331,9 @@ function FolderNodeComponent({
     e.preventDefault();
     e.stopPropagation();
     if (anchor) {
-      setSelectedIds(computeRangeSelection(anchor, node.id, store.get(treeAtom)));
+      setSelectedIds(
+        computeRangeSelection(anchor, node.id, store.get(treeAtom))
+      );
     } else {
       // Sélectionner le dossier + tous ses descendants
       const ids = new Set([node.id]);
@@ -310,6 +347,7 @@ function FolderNodeComponent({
     <>
       <div data-dropzone={node.id} className={isDragging ? ROW_DRAGGING : ""}>
         {/* En-tête du dossier */}
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
         <div
           data-node-id={node.id}
           onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}

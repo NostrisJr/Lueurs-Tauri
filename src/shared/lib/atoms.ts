@@ -9,12 +9,22 @@ import {
   type DocumentMapState,
 } from "./documentMapConfig";
 
-import type { FolderNode, MediaFile, NoteFile, TreeNode } from "../hooks/useFileTree";
+import type {
+  FolderNode,
+  MediaFile,
+  NoteFile,
+  TreeNode,
+} from "../hooks/useFileTree";
 import { flattenTree } from "../hooks/useFileTree";
-import { buttonColumns, resolveButtonKey } from "./fileTreeHelpers";
+import {
+  buttonColumns,
+  filterTreeBySpace,
+  resolveButtonKey,
+} from "./fileTreeHelpers";
 import { createLogger } from "./logger";
 import { type KanbanColumn, NoteType, SystemField } from "./noteTypes";
 import type { PageFormat } from "./pageMetrics";
+import type { VaultConfig } from "./vaultConfig";
 
 const log = createLogger("atoms");
 
@@ -61,6 +71,14 @@ export const textJustificationAtom = atomWithStorage<boolean>(
   { getOnInit: true }
 );
 
+// Affichage du dossier resources/ dans le file tree
+export const showResourcesAtom = atomWithStorage<boolean>(
+  "lueurs_show_resources",
+  false,
+  undefined,
+  { getOnInit: true }
+);
+
 // Format de référence de l'indicateur pages/mots (équivalent A4/A5)
 export const pageFormatAtom = atomWithStorage<PageFormat>(
   "lueurs_page_format",
@@ -92,6 +110,40 @@ export const tabHistoryAtom = atom<string[]>([]);
 
 // Pile de navigation intra-éditeur (ex. base → enfant via tableau/kanban)
 export const noteBackStackAtom = atom<string[]>([]);
+
+// ── Espaces ───────────────────────────────────────────────────────────────
+
+// Config vault chargée au démarrage (null = non chargée ou Android)
+export const vaultConfigAtom = atom<VaultConfig | null>(null);
+
+// Nom de l'espace actif (null = "Tout" — aucun filtre)
+export const activeSpaceAtom = atomWithStorage<string | null>(
+  "lueurs_active_space",
+  null,
+  undefined,
+  { getOnInit: true }
+);
+
+export interface SpaceNavState {
+  openTabIds: string[];
+  activeNoteId: string | null;
+  tabHistory: string[];
+  noteBackStack: string[];
+}
+
+// État de navigation sauvegardé par espace (clé "__all__" = état de "Tout")
+export const spaceNavStateAtom = atom<Record<string, SpaceNavState>>({});
+
+// Arbre filtré par espace actif (dérivé)
+export const filteredTreeAtom = atom((get) => {
+  const tree = get(treeAtom);
+  const space = get(activeSpaceAtom);
+  if (!space) return tree;
+  const spaces = get(vaultConfigAtom)?.spaces ?? [];
+  // Espace inexistant dans la config (valeur obsolète en localStorage) → arbre complet
+  if (!spaces.some((s) => s.name === space)) return tree;
+  return filterTreeBySpace(tree, space);
+});
 
 // ── Navigation mobile ─────────────────────────────────────────────────────
 
@@ -205,6 +257,12 @@ export const activeMediaAtom = atom((get) => {
   const id = get(activeNoteIdAtom);
   if (!id) return null;
   return get(mediaByIdAtom).get(id) ?? null;
+});
+
+// Lookup unifié pour les onglets : une note ou un média par id.
+export const tabNodeByIdAtom = atom((get) => {
+  return (id: string): NoteFile | MediaFile | undefined =>
+    get(notesByIdAtom).get(id) ?? get(mediaByIdAtom).get(id);
 });
 
 // Dérivé : lit __DisplayMode__ de la note active, repli sur le défaut utilisateur.

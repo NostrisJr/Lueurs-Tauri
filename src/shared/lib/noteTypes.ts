@@ -26,6 +26,7 @@ export const SystemField = {
   TABLE_AGGREGATIONS: "__TableAggregations__",
   DEFAULT_FOLDER: "__DefaultFolder__",
   DISPLAY_MODE: "__DisplayMode__",
+  SPACE: "__space__",
 } as const;
 
 export type SystemFieldKey = (typeof SystemField)[keyof typeof SystemField];

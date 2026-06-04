@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   IconArrowClockwise,
   IconDocumentBadgePlus,
@@ -7,32 +8,129 @@ import {
   IconFolderBadgePlus,
   IconMagnifyingglass,
 } from "../../../shared/components/PlatformIcon";
+import { Squircle } from "../../../shared/components/Squircle";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
+import type { TreeNode } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
   activeNoteAtom,
+  activeSpaceAtom,
   errorAtom,
+  filteredTreeAtom,
   folderPathAtom,
   loadingAtom,
   searchAtom,
   treeAtom,
+  vaultConfigAtom,
 } from "../../../shared/lib/atoms";
 import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
 import { ROW_ACTIVE, ROW_INACTIVE } from "../FileTree/FileNode";
 import { FileTree } from "../FileTree/FileTree";
-import { Squircle } from "../../../shared/components/Squircle";
+import { SpaceSwitcher } from "./SpaceSwitcher";
+
+const SLIDE_PX = 14;
+const EXIT_MS = 130;
+const ENTER_MS = 150;
 
 export function SideBarResizable() {
   const [search, setSearch] = useAtom(searchAtom);
   const loading = useAtomValue(loadingAtom);
   const tree = useAtomValue(treeAtom);
+  const filteredTree = useAtomValue(filteredTreeAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const error = useAtomValue(errorAtom);
   const activeNote = useAtomValue(activeNoteAtom);
+  const activeSpace = useAtomValue(activeSpaceAtom);
+  const vaultConfig = useAtomValue(vaultConfigAtom);
 
   const { pickFolder, reload } = useFileTree();
   const { handleCreateNote, handleCreateFolder, handleSelectNote } = useNote();
   const allNotes = useMemo(() => flattenTree(tree), [tree]);
+
+  // ── Animation de transition entre espaces ──────────────────────────────────
+
+  const [displayTree, setDisplayTree] = useState<TreeNode[]>(filteredTree);
+  const [slideStyle, setSlideStyle] = useState<CSSProperties>({});
+  const isAnimatingRef = useRef(false);
+  // Toujours à jour pour être lisible dans les callbacks asynchrones
+  const latestFilteredTreeRef = useRef<TreeNode[]>(filteredTree);
+  latestFilteredTreeRef.current = filteredTree;
+
+  const prevSpaceRef = useRef<string | null | undefined>(undefined);
+
+  // Effet 1 — déclenche l'animation au changement d'espace.
+  // Déclaré EN PREMIER pour que isAnimatingRef soit true avant l'effet 2 (même batch).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    const prevSpace = prevSpaceRef.current;
+
+    // Premier montage : initialisation silencieuse
+    if (prevSpace === undefined) {
+      prevSpaceRef.current = activeSpace;
+      setDisplayTree(latestFilteredTreeRef.current);
+      return;
+    }
+
+    prevSpaceRef.current = activeSpace;
+
+    const spaces = vaultConfig?.spaces ?? [];
+    const keys: (string | null)[] = [null, ...spaces.map((s) => s.name)];
+    const prevIdx = keys.indexOf(prevSpace ?? null);
+    const currIdx = keys.indexOf(activeSpace ?? null);
+    // exitSign < 0 → glisse à gauche ; exitSign > 0 → glisse à droite
+    const exitSign = currIdx > prevIdx ? -1 : 1;
+
+    isAnimatingRef.current = true;
+
+    // Phase 1 : sortie de l'arbre courant
+    setSlideStyle({
+      transform: `translateX(${exitSign * SLIDE_PX}px)`,
+      opacity: 0,
+      transition: `transform ${EXIT_MS}ms ease-in, opacity ${EXIT_MS}ms ease-in`,
+      pointerEvents: "none",
+    });
+
+    const t = setTimeout(() => {
+      // Phase 2 : placement instantané du nouvel arbre côté opposé (sans transition)
+      setDisplayTree(latestFilteredTreeRef.current);
+      setSlideStyle({
+        transform: `translateX(${-exitSign * SLIDE_PX}px)`,
+        opacity: 0,
+        transition: "none",
+        pointerEvents: "none",
+      });
+
+      // Phase 3 : entrée (double rAF pour forcer un paint entre les deux états)
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          setSlideStyle({
+            transform: "translateX(0)",
+            opacity: 1,
+            transition: `transform ${ENTER_MS}ms ease-out, opacity ${ENTER_MS}ms ease-out`,
+          });
+          setTimeout(() => {
+            setSlideStyle({});
+            isAnimatingRef.current = false;
+          }, ENTER_MS + 10);
+        })
+      );
+    }, EXIT_MS + 10);
+
+    return () => {
+      clearTimeout(t);
+      isAnimatingRef.current = false;
+    };
+  }, [activeSpace]); // vaultConfig/filteredTree accédés via refs — pas de dépendance voulue
+
+  // Effet 2 — synchronise displayTree pendant l'état normal (notes ajoutées/supprimées).
+  // L'effet 1 (déclaré avant) a déjà positionné isAnimatingRef à true dans le même batch.
+  useEffect(() => {
+    if (!isAnimatingRef.current) {
+      setDisplayTree(filteredTree);
+    }
+  }, [filteredTree]);
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   const searchResults = useMemo(() => {
     if (!search.trim()) return [];
@@ -138,12 +236,12 @@ export function SideBarResizable() {
 
       {/* ── Partie scrollable ─────────────────────────────── */}
       <div
-        className="flex-1 overflow-y-auto scroll-thin py-2 pb-10"
+        className="flex-1 overflow-y-auto scroll-thin py-2 pb-4"
         style={{
           maskImage:
-            "linear-gradient(to bottom, transparent 0px, black 20px, black calc(100% - 36px), transparent 100%)",
+            "linear-gradient(to bottom, transparent 0px, black 20px, black calc(100% - 20px), transparent 100%)",
           WebkitMaskImage:
-            "linear-gradient(to bottom, transparent 0px, black 20px, black calc(100% - 36px), transparent 100%)",
+            "linear-gradient(to bottom, transparent 0px, black 20px, black calc(100% - 20px), transparent 100%)",
         }}
       >
         {loading && (
@@ -182,11 +280,15 @@ export function SideBarResizable() {
           </div>
         )}
 
-        {/* Arborescence */}
+        {/* Arborescence avec animation de transition entre espaces */}
         {!loading && !error && !isSearching && (
-          <FileTree nodes={tree} activeId={activeNote?.id ?? null} />
+          <div style={slideStyle}>
+            <FileTree nodes={displayTree} activeId={activeNote?.id ?? null} />
+          </div>
         )}
       </div>
+
+      <SpaceSwitcher />
     </div>
   );
 }

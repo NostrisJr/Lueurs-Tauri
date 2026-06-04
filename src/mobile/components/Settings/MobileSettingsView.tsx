@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from "jotai";
 import { useSetAtom } from "jotai";
+import { useState } from "react";
 import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
@@ -7,10 +8,14 @@ import {
   defaultHighlightColorAtom,
   folderPathAtom,
   mobileGoBackAtom,
+  showResourcesAtom,
   textJustificationAtom,
+  treeAtom,
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
+import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
 import { isAndroid } from "../../../shared/lib/platform";
+import { vaultIO } from "../../../shared/lib/vaultIO";
 import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
 import { hapticImpact } from "../../lib/haptics";
 import { vaultDisplayName } from "../../lib/vault";
@@ -22,18 +27,45 @@ const descriptions: Record<string, string> = {
 };
 
 export function MobileSettingsView() {
-  const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(
-    defaultDisplayModeAtom
-  );
-  const [defaultHighlightColor, setDefaultHighlightColor] = useAtom(
-    defaultHighlightColorAtom
-  );
-  const [textJustification, setTextJustification] = useAtom(
-    textJustificationAtom
-  );
+  const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(defaultDisplayModeAtom);
+  const [defaultHighlightColor, setDefaultHighlightColor] = useAtom(defaultHighlightColorAtom);
+  const [textJustification, setTextJustification] = useAtom(textJustificationAtom);
+  const [showResources, setShowResources] = useAtom(showResourcesAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
   const folderPath = useAtomValue(folderPathAtom);
-  const { pickFolder } = useFileTree();
+  const tree = useAtomValue(treeAtom);
+  const { pickFolder, reload } = useFileTree();
+
+  type CleanStatus = null | "running" | { count: number } | "error";
+  const [cleanStatus, setCleanStatus] = useState<CleanStatus>(null);
+
+  async function handleCleanResources() {
+    if (!folderPath) return;
+    setCleanStatus("running");
+    try {
+      const notes = flattenTree(tree);
+      const referenced = new Set<string>();
+      const RE = /resources\/(?:images|audio)\/([^)\s"'\]\\]+)/g;
+      for (const note of notes) {
+        for (const m of note.body.matchAll(RE)) referenced.add(m[1]);
+      }
+      let count = 0;
+      for (const sub of ["images", "audio"] as const) {
+        try {
+          const entries = await vaultIO.readDir(`${folderPath}/resources/${sub}`);
+          for (const e of entries) {
+            if (!e.isDir && !referenced.has(e.name)) {
+              await vaultIO.delete(e.uri);
+              count++;
+            }
+          }
+        } catch { /* dossier absent */ }
+      }
+      setCleanStatus({ count });
+    } catch {
+      setCleanStatus("error");
+    }
+  }
 
   return (
     <div className="flex flex-col h-full w-full fixed bg-gray-100">
@@ -169,6 +201,50 @@ export function MobileSettingsView() {
                 </button>
               ))}
             </div>
+          </Squircle>
+        </div>
+
+        {/* Ressources */}
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+          Ressources
+        </p>
+        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+          <Squircle radius={18} className="overflow-hidden bg-white border border-gray-100">
+            <button
+              type="button"
+              onClick={() => {
+                hapticImpact("light");
+                setShowResources((v) => !v);
+                reload();
+              }}
+              className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors border-b border-gray-100"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-base text-gray-900">Afficher les ressources</p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors shrink-0 ${showResources ? "bg-amber-500" : "bg-gray-200"}`}>
+                <div className={`w-5 h-5 rounded-full bg-white shadow m-0.5 transition-transform ${showResources ? "translate-x-5" : "translate-x-0"}`} />
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => { hapticImpact("light"); handleCleanResources(); }}
+              disabled={cleanStatus === "running" || !folderPath}
+              className="w-full flex items-center justify-between px-4 py-4 text-left active:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <p className="text-base text-gray-900">
+                {cleanStatus === "running" ? "Nettoyage…" : "Nettoyer les ressources"}
+              </p>
+              {cleanStatus !== null && cleanStatus !== "running" && (
+                <span className="text-sm text-gray-400">
+                  {cleanStatus === "error"
+                    ? "Erreur"
+                    : cleanStatus.count === 0
+                      ? "Rien à nettoyer"
+                      : `${cleanStatus.count} supprimé${cleanStatus.count > 1 ? "s" : ""}`}
+                </span>
+              )}
+            </button>
           </Squircle>
         </div>
 

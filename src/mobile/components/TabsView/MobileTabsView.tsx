@@ -10,8 +10,8 @@ import {
   mobileNavigateAtom,
   mobileResetNavAtom,
   noteBackStackAtom,
-  notesByIdAtom,
   openTabIdsAtom,
+  tabNodeByIdAtom,
 } from "../../../shared/lib/atoms";
 import { hapticImpact } from "../../lib/haptics";
 import { FileRow } from "../FileTree/FileRow";
@@ -20,7 +20,7 @@ import { isIOS } from "../../../shared/lib/platform";
 
 export function MobileTabsView() {
   const openTabIds = useAtomValue(openTabIdsAtom);
-  const notesById = useAtomValue(notesByIdAtom);
+  const tabNodeById = useAtomValue(tabNodeByIdAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
   const resetNav = useSetAtom(mobileResetNavAtom);
   const navigate = useSetAtom(mobileNavigateAtom);
@@ -82,13 +82,13 @@ export function MobileTabsView() {
           </p>
         ) : (
           openTabIds.map((id) => {
-            const note = notesById.get(id);
-            if (!note) return null;
+            const node = tabNodeById(id);
+            if (!node) return null;
 
             return (
               <div key={id} className="relative w-11/12 mx-auto">
                 <FileRow
-                  node={note}
+                  node={node}
                   onDrillIn={() => {}}
                   onClick={() => handleSelectTab(id)}
                 />

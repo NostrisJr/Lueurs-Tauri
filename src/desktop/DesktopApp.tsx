@@ -20,7 +20,7 @@ import {
 } from "../shared/lib/atoms";
 import { NoteType } from "../shared/lib/noteTypes";
 import { DesktopDictaphone } from "./components/Dictaphone/DesktopDictaphone.tsx";
-import { MediaViewer } from "./components/MediaViewer/MediaViewer.tsx";
+import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
 import { useMenuEvents } from "./hooks/useMenuEvents";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
 import { SettingsModal } from "./components/Settings/SettingsModal";

@@ -7,8 +7,8 @@ import {
   IconPauseFill,
   IconPlayFill,
   IconWaveform,
-} from "../../../shared/components/PlatformIcon";
-import { createLogger } from "../../../shared/lib/logger";
+} from "../PlatformIcon";
+import { createLogger } from "../../lib/logger";
 import {
   nativeIsActive,
   nativeLoad,
@@ -16,9 +16,9 @@ import {
   nativePlay,
   nativeSeek,
   nativeSubscribe,
-} from "../../../shared/lib/nativeAudioPlayer";
-import { isMobile } from "../../../shared/lib/platform";
-import { drawWaveform } from "../../../shared/plugins/audio-block/waveform";
+} from "../../lib/nativeAudioPlayer";
+import { isMobile } from "../../lib/platform";
+import { drawWaveform } from "../../plugins/audio-block/waveform";
 
 const log = createLogger("standalone-audio-player");
 
@@ -50,7 +50,9 @@ export function StandaloneAudioPlayer({
   nodeId: string;
 }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [waveformStatus, setWaveformStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [waveformStatus, setWaveformStatus] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressOverlayRef = useRef<HTMLDivElement>(null);
@@ -107,7 +109,9 @@ export function StandaloneAudioPlayer({
               waveformReadyRef.current = true;
               setWaveformStatus("ready");
               if (timeRightRef.current) {
-                timeRightRef.current.textContent = fmtTime(audioBuffer.duration);
+                timeRightRef.current.textContent = fmtTime(
+                  audioBuffer.duration
+                );
               }
             },
             (err) => {
@@ -171,17 +175,28 @@ export function StandaloneAudioPlayer({
       if (progressOverlayRef.current) {
         progressOverlayRef.current.style.width = `${pct}%`;
       }
-      if (timeLeftRef.current) timeLeftRef.current.textContent = fmtTime(currentTime);
-      if (timeRightRef.current && d > 0) timeRightRef.current.textContent = fmtTime(d);
-      if (waveformReadyRef.current && canvasRef.current && (canvasRef.current as any)._drawBars) {
+      if (timeLeftRef.current)
+        timeLeftRef.current.textContent = fmtTime(currentTime);
+      if (timeRightRef.current && d > 0)
+        timeRightRef.current.textContent = fmtTime(d);
+      if (
+        waveformReadyRef.current &&
+        canvasRef.current &&
+        (canvasRef.current as any)._drawBars
+      ) {
         (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
       }
 
       if (status === "ended") {
         setIsPlaying(false);
-        if (progressOverlayRef.current) progressOverlayRef.current.style.width = "0%";
+        if (progressOverlayRef.current)
+          progressOverlayRef.current.style.width = "0%";
         if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
-        if (waveformReadyRef.current && canvasRef.current && (canvasRef.current as any)._drawBars) {
+        if (
+          waveformReadyRef.current &&
+          canvasRef.current &&
+          (canvasRef.current as any)._drawBars
+        ) {
           (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
         }
       } else {
@@ -211,7 +226,8 @@ export function StandaloneAudioPlayer({
         buf.duration
       );
       const pct = (pos / buf.duration) * 100;
-      if (progressOverlayRef.current) progressOverlayRef.current.style.width = `${pct}%`;
+      if (progressOverlayRef.current)
+        progressOverlayRef.current.style.width = `${pct}%`;
       if (timeLeftRef.current) timeLeftRef.current.textContent = fmtTime(pos);
       if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars) {
         (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
@@ -227,7 +243,8 @@ export function StandaloneAudioPlayer({
     safeStopSource(sourceRef);
     if (resetPosition) {
       playOffsetRef.current = 0;
-      if (progressOverlayRef.current) progressOverlayRef.current.style.width = "0%";
+      if (progressOverlayRef.current)
+        progressOverlayRef.current.style.width = "0%";
       if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
       if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars) {
         (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
@@ -240,11 +257,17 @@ export function StandaloneAudioPlayer({
     if (isMobile) {
       if (nativeIsActive(nodeId)) {
         if (isPlaying) {
-          try { setIsPlaying((await nativePause()).isPlaying); }
-          catch (err) { log.error("pause échouée", err); }
+          try {
+            setIsPlaying((await nativePause()).isPlaying);
+          } catch (err) {
+            log.error("pause échouée", err);
+          }
         } else {
-          try { setIsPlaying((await nativePlay(nodeId)).isPlaying); }
-          catch (err) { log.error("reprise échouée", err); }
+          try {
+            setIsPlaying((await nativePlay(nodeId)).isPlaying);
+          } catch (err) {
+            log.error("reprise échouée", err);
+          }
         }
       } else {
         try {
@@ -289,7 +312,8 @@ export function StandaloneAudioPlayer({
         playOffsetRef.current = 0;
         stopDesktopRaf();
         setIsPlaying(false);
-        if (progressOverlayRef.current) progressOverlayRef.current.style.width = "0%";
+        if (progressOverlayRef.current)
+          progressOverlayRef.current.style.width = "0%";
         if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
         if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars) {
           (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
@@ -324,7 +348,8 @@ export function StandaloneAudioPlayer({
         playOffsetRef.current = 0;
         stopDesktopRaf();
         setIsPlaying(false);
-        if (progressOverlayRef.current) progressOverlayRef.current.style.width = "0%";
+        if (progressOverlayRef.current)
+          progressOverlayRef.current.style.width = "0%";
         if (timeLeftRef.current) timeLeftRef.current.textContent = "0:00";
         if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars) {
           (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", 0);
@@ -337,8 +362,10 @@ export function StandaloneAudioPlayer({
     } else {
       playOffsetRef.current = newOffset;
       const pct = (newOffset / buf.duration) * 100;
-      if (progressOverlayRef.current) progressOverlayRef.current.style.width = `${pct}%`;
-      if (timeLeftRef.current) timeLeftRef.current.textContent = fmtTime(newOffset);
+      if (progressOverlayRef.current)
+        progressOverlayRef.current.style.width = `${pct}%`;
+      if (timeLeftRef.current)
+        timeLeftRef.current.textContent = fmtTime(newOffset);
       if (waveformReadyRef.current && (canvasRef.current as any)?._drawBars) {
         (canvasRef.current as any)._drawBars("rgba(0,0,0,0.18)", pct / 100);
       }
@@ -348,7 +375,8 @@ export function StandaloneAudioPlayer({
   async function handleWaveformTouch(e: React.TouchEvent<HTMLDivElement>) {
     e.preventDefault();
     const touch = e.changedTouches[0];
-    if (!touch || !nativeIsActive(nodeId) || nativeDurationRef.current <= 0) return;
+    if (!touch || !nativeIsActive(nodeId) || nativeDurationRef.current <= 0)
+      return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = (touch.clientX - rect.left) / rect.width;
     try {
@@ -359,9 +387,8 @@ export function StandaloneAudioPlayer({
   }
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
     <div
-      className="flex flex-col rounded-2xl relative select-none px-5 py-3 border bg-gray-50 border-black/10"
+      className="flex flex-col rounded-2xl relative select-none px-5 py-3 border bg-gray-50 border-black/10 w-full"
       style={{ fontFamily: "'Inter', Arial, Helvetica, sans-serif" }}
     >
       {/* Icône */}
@@ -393,7 +420,9 @@ export function StandaloneAudioPlayer({
         />
         {waveformStatus !== "ready" && (
           <div className="absolute inset-0 flex items-center justify-center text-[11px] text-gray-400 tracking-[0.02em]">
-            {waveformStatus === "loading" ? "Chargement de l'audio..." : "Aperçu audio indisponible"}
+            {waveformStatus === "loading"
+              ? "Chargement de l'audio..."
+              : "Aperçu audio indisponible"}
           </div>
         )}
       </div>
@@ -406,7 +435,14 @@ export function StandaloneAudioPlayer({
           className="w-8 h-8 rounded-full bg-amber-400/80 text-white border-none cursor-pointer flex items-center justify-center shrink-0 p-0 transition-[transform,background] duration-120 hover:bg-amber-400 hover:scale-[1.06] active:scale-95"
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={isMobile ? (e) => e.preventDefault() : undefined}
-          onTouchEnd={isMobile ? async (e) => { e.preventDefault(); await togglePlayback(); } : undefined}
+          onTouchEnd={
+            isMobile
+              ? async (e) => {
+                  e.preventDefault();
+                  await togglePlayback();
+                }
+              : undefined
+          }
           onClick={isMobile ? undefined : () => togglePlayback()}
         >
           {isPlaying ? (

@@ -18,6 +18,7 @@ import { createLogger } from "../lib/logger";
 import {
   type FolderNode,
   type Frontmatter,
+  type MediaFile,
   type NoteFile,
   type TreeNode,
   useFileTree,
@@ -29,6 +30,7 @@ const log = createLogger("useNote");
 
 export function useNote() {
   const activeNote = useAtomValue(activeNoteAtom);
+  const activeNoteId = useAtomValue(activeNoteIdAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const openTabIds = useAtomValue(openTabIdsAtom);
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
@@ -124,25 +126,26 @@ export function useNote() {
     setTimeout(() => setSaving(false), 1200);
   }
 
-  function handleSelectNote(note: NoteFile, openInNewTab = false) {
+  // Ouvre une note ou un média dans les onglets (logique partagée).
+  function handleSelectNote(node: NoteFile | MediaFile, openInNewTab = false) {
     if (openInNewTab) {
       // Cmd+clic : ajouter un nouvel onglet si pas déjà présent
-      if (!openTabIds.includes(note.id)) {
-        setOpenTabIds([...openTabIds, note.id]);
+      if (!openTabIds.includes(node.id)) {
+        setOpenTabIds([...openTabIds, node.id]);
       }
-    } else if (openTabIds.includes(note.id)) {
-      // Note déjà ouverte : juste l'activer
-    } else if (activeNote) {
-      // Remplacer l'onglet actif
+    } else if (openTabIds.includes(node.id)) {
+      // Déjà ouvert : juste l'activer
+    } else if (activeNoteId) {
+      // Remplacer l'onglet actif (note ou média)
       setOpenTabIds(
-        openTabIds.map((id) => (id === activeNote.id ? note.id : id))
+        openTabIds.map((id) => (id === activeNoteId ? node.id : id))
       );
     } else {
       // Aucun onglet actif : créer le premier
-      setOpenTabIds([note.id]);
+      setOpenTabIds([node.id]);
     }
-    setActiveNoteId(note.id);
-    pushHistory(note.id);
+    setActiveNoteId(node.id);
+    pushHistory(node.id);
     setSearch("");
   }
 
@@ -185,6 +188,21 @@ export function useNote() {
     await cleanupNoteFromBases(fileId);
     await deleteNote(fileId);
     log.info("suppression terminée", { fileId });
+  }
+
+  async function handleDeleteMedia(fileId: string) {
+    const newTabIds = openTabIds.filter((id) => id !== fileId);
+    setOpenTabIds(newTabIds);
+
+    if (activeNoteId === fileId) {
+      const idx = openTabIds.indexOf(fileId);
+      const newActive = newTabIds[idx - 1] ?? newTabIds[idx] ?? null;
+      setActiveNoteId(newActive);
+    }
+
+    log.info("suppression média", { fileId });
+    await deleteNote(fileId);
+    log.info("suppression média terminée", { fileId });
   }
 
   async function handleDeleteFolder(node: TreeNode) {
@@ -301,8 +319,8 @@ export function useNote() {
     const newHistory = tabHistory.filter((id) => id !== tabId);
     setTabHistory(newHistory);
 
-    // Si c'est l'onglet actif, revenir au dernier onglet visité encore ouvert
-    if (activeNote?.id === tabId) {
+    // Si c'est l'onglet actif (note ou média), revenir au dernier onglet visité encore ouvert
+    if (activeNoteId === tabId) {
       const newActive =
         [...newHistory].reverse().find((id) => newTabIds.includes(id)) ?? null;
       setActiveNoteId(newActive);
@@ -314,6 +332,7 @@ export function useNote() {
     handleSelectNote,
     handleOpenFolder,
     handleDeleteNote,
+    handleDeleteMedia,
     handleDeleteFolder,
     handleCreateNote,
     handleCreateFolder,

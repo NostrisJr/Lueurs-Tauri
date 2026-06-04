@@ -13,13 +13,13 @@ import {
 } from "@dnd-kit/sortable";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
-import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import type { MediaFile, NoteFile } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
   activeNoteIdAtom,
-  notesByIdAtom,
   openTabIdsAtom,
   sidebarCollapsedAtom,
+  tabNodeByIdAtom,
 } from "../../../shared/lib/atoms";
 import { createLogger } from "../../../shared/lib/logger";
 import { TabItem, TabOverlay } from "./TabItem.tsx";
@@ -31,7 +31,7 @@ export function TabBar() {
   // Tous les hooks en premier — avant tout return conditionnel
   const openTabIds = useAtomValue(openTabIdsAtom);
   const activeNoteId = useAtomValue(activeNoteIdAtom);
-  const notesById = useAtomValue(notesByIdAtom);
+  const tabNodeById = useAtomValue(tabNodeByIdAtom);
   const sideBarCollapsed = useAtomValue(sidebarCollapsedAtom);
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
@@ -66,16 +66,16 @@ export function TabBar() {
   if (openTabIds.length === 0) return null;
 
   const tabs = openTabIds
-    .map((tabId) => ({ tabId, note: notesById.get(tabId) }))
+    .map((tabId) => ({ tabId, note: tabNodeById(tabId) }))
     .filter(
-      (item): item is { tabId: string; note: NoteFile } =>
+      (item): item is { tabId: string; note: NoteFile | MediaFile } =>
         item.note !== undefined
     );
 
-  const draggingNote = draggingId ? notesById.get(draggingId) : null;
+  const draggingNote = draggingId ? tabNodeById(draggingId) : null;
 
   if (openTabIds.length <= 1) {
-    return <div className=" w-full h-10" />;
+    return <div className=" w-full h-11" />;
   }
   return (
     <DndContext
@@ -85,8 +85,8 @@ export function TabBar() {
     >
       <div
         className={clsx(
-          "flex z-100 gap-1 h-8 bg-gray-100 inset-shadow-xs rounded-full p-0.75 mt-2 mx-2 overflow-x-auto shrink-0 scroll-hidden transition-[margin] duration-200",
-          sideBarCollapsed && "ml-30 mt-3"
+          "flex z-100 gap-1 h-8 bg-gray-100 inset-shadow-xs rounded-full p-0.75 mt-3 mx-4 overflow-x-auto shrink-0 scroll-hidden transition-[margin] duration-200",
+          sideBarCollapsed && "ml-30"
         )}
       >
         <SortableContext

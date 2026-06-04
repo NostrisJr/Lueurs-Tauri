@@ -1,6 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
 import { useEffect } from "react";
 import { createLogger } from "../../../lib/logger";
+import { vaultIO } from "../../../lib/vaultIO";
 
 const log = createLogger("useDropHandler");
 
@@ -38,19 +38,6 @@ async function writeTmp(file: File, fileName: string): Promise<string> {
   return tmpPath;
 }
 
-async function copyToVault(
-  srcPath: string,
-  vaultPath: string,
-  subDir: "audio" | "images",
-  filename: string
-): Promise<string> {
-  return invoke<string>("copy_resource_to_vault", {
-    srcPath,
-    vaultPath,
-    subDir,
-    filename,
-  });
-}
 
 interface Params {
   wrapperRef: React.RefObject<HTMLDivElement | null>;
@@ -73,18 +60,12 @@ export function useDropHandler({
     dropHandlerRef.current = async (paths: string[]) => {
       for (const srcPath of paths) {
         const filename = srcPath.split(/[/\\]/).pop() ?? "";
-        const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
         const title = filename.replace(/\.[^.]+$/, "");
 
         if (isAudioPath(srcPath)) {
           log.info("drop audio détecté", { srcPath });
           try {
-            const destPath = await copyToVault(
-              srcPath,
-              vaultPath,
-              "audio",
-              safeName
-            );
+            const destPath = await vaultIO.copyResourceToVault(srcPath, vaultPath, "audio");
             insertAudioBlock(destPath, title);
             log.info("audio déposé", { destPath });
           } catch (err) {
@@ -93,13 +74,7 @@ export function useDropHandler({
         } else if (isImagePath(srcPath)) {
           log.info("drop image détecté", { srcPath });
           try {
-            // destPath = chemin absolu stocké dans le markdown ; le NodeView convertit en asset://
-            const destPath = await copyToVault(
-              srcPath,
-              vaultPath,
-              "images",
-              safeName
-            );
+            const destPath = await vaultIO.copyResourceToVault(srcPath, vaultPath, "images");
             insertImageBlock(destPath, title);
             log.info("image déposée", { destPath });
           } catch (err) {
@@ -143,12 +118,7 @@ export function useDropHandler({
           const ext = file.name.match(/\.[^.]+$/)?.[0] ?? ".mp3";
           const uniqueName = `audio_${Date.now()}_${i}${ext}`;
           const tmpPath = await writeTmp(file, uniqueName);
-          const destPath = await copyToVault(
-            tmpPath,
-            vaultPath,
-            "audio",
-            uniqueName
-          );
+          const destPath = await vaultIO.copyResourceToVault(tmpPath, vaultPath, "audio");
           insertAudioBlock(destPath, file.name.replace(/\.[^.]+$/, ""));
           log.info("audio collé", { destPath });
         } catch (err) {
@@ -162,13 +132,7 @@ export function useDropHandler({
           // Nom unique basé sur timestamp+index — file.name vaut toujours "image.png" depuis le presse-papiers
           const uniqueName = `image_${Date.now()}_${i}${extFromMime(file.type)}`;
           const tmpPath = await writeTmp(file, uniqueName);
-          const destPath = await copyToVault(
-            tmpPath,
-            vaultPath,
-            "images",
-            uniqueName
-          );
-          // chemin absolu → markdown ; le NodeView convertit en asset:// à l'affichage
+          const destPath = await vaultIO.copyResourceToVault(tmpPath, vaultPath, "images");
           insertImageBlock(destPath, uniqueName.replace(/\.[^.]+$/, ""));
           log.info("image collée", { destPath });
         } catch (err) {

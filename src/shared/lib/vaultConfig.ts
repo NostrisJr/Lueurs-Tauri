@@ -30,10 +30,15 @@ const CONFIG_FILE = "config.json";
 const CURRENT_VERSION = 1;
 
 export interface VaultSpace {
+  // Identifiant stable pour React (non utilisé comme clé métier — le nom est la clé métier)
   id: string;
+  // Identifiant unique ET label d'affichage (utilisé dans __space__ du frontmatter)
   name: string;
-  // Chemin relatif au vault root. "" = vault entier.
-  rootPath: string;
+  icon?: string;
+  // Couleur accent de la sidebar (hex, ex. "#6366f1")
+  color?: string;
+  // Afficher uniquement l'icône dans le sélecteur (nécessite icon)
+  iconOnly?: boolean;
 }
 
 export interface VaultConfig {
@@ -46,7 +51,7 @@ function makeDefaultConfig(): VaultConfig {
   return {
     version: CURRENT_VERSION,
     vaultId: crypto.randomUUID(),
-    spaces: [{ id: "default", name: "Tout", rootPath: "" }],
+    spaces: [],
   };
 }
 
@@ -84,6 +89,13 @@ export async function readVaultConfig(
     ) {
       log.warn("config marqueur invalide", { filePath });
       return null;
+    }
+    // Migration : assigner un id aux espaces qui n'en ont pas (configs antérieures)
+    const needsMigration = parsed.spaces.some((s) => !s.id);
+    if (needsMigration) {
+      parsed.spaces = parsed.spaces.map((s) =>
+        s.id ? s : { ...s, id: crypto.randomUUID() }
+      );
     }
     return parsed;
   } catch {

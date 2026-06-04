@@ -43,7 +43,7 @@ export function NoteHeader({
   }
 
   return (
-    <div className="border-b border-gray-100 sticky top-0 z-20 bg-white w-full flex min-w-0 px-4 py-2 text-3xl h-12.75 font-header text-left items-center justify-between gap-2">
+    <div className="border-b border-gray-100 sticky top-0 z-20 bg-white w-full flex min-w-0 px-4 py-2 text-3xl h-13 font-header text-left items-center justify-between gap-2">
       {isMobile ? (
         <>
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: tap mobile */}
@@ -57,10 +57,7 @@ export function NoteHeader({
             {displayName}
           </span>
           {renameOpen && (
-            <BottomSheet
-              onClose={() => setRenameOpen(false)}
-              title="Renommer"
-            >
+            <BottomSheet onClose={() => setRenameOpen(false)} title="Renommer">
               <div className="px-2 pt-2 flex flex-col gap-4">
                 <input
                   // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture

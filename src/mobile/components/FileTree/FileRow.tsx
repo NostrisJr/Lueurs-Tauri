@@ -6,7 +6,7 @@ import {
   IconChevronRight,
   IconFolder,
 } from "../../../shared/components/PlatformIcon";
-import type { FolderNode, NoteFile } from "../../../shared/hooks/useFileTree";
+import type { FolderNode, MediaFile, NoteFile } from "../../../shared/hooks/useFileTree";
 import { mobileContextMenuAtom } from "../../../shared/lib/atoms";
 import { isIOS } from "../../../shared/lib/platform";
 import { useLongPress } from "../../hooks/useLongPress";
@@ -15,7 +15,7 @@ import { Squircle } from "../../../shared/components/Squircle";
 import { getPreviewLines } from "./helpers";
 
 interface Props {
-  node: FolderNode | NoteFile;
+  node: FolderNode | NoteFile | MediaFile;
   onDrillIn: (folder: FolderNode) => void;
   onClick?: () => void;
 }
@@ -80,15 +80,28 @@ function FolderContent({ folder }: { folder: FolderNode }) {
   );
 }
 
+function MediaContent({ media }: { media: MediaFile }) {
+  const label: Record<string, string> = { image: "Image", audio: "Audio", video: "Vidéo", pdf: "PDF" };
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      <NodeIconProvider
+        node={media}
+        className={clsx("text-gray-400 shrink-0", isIOS ? "size-4" : "size-5")}
+      />
+      <div className="min-w-0">
+        <p className="text-base font-semibold text-gray-900 truncate">{media.name}</p>
+        <p className="text-sm text-gray-400">{label[media.mediaType] ?? media.mediaType} · {media.fileName.split(".").pop()?.toUpperCase()}</p>
+      </div>
+    </div>
+  );
+}
+
 export function FileRow({ node, onDrillIn, onClick }: Props) {
   const selectNote = useMobileSelectNote();
   const setContextMenu = useSetAtom(mobileContextMenuAtom);
 
   function handleClick() {
-    if (onClick) {
-      onClick();
-      return;
-    }
+    if (onClick) { onClick(); return; }
     if (node.kind === "folder") {
       onDrillIn(node);
     } else {
@@ -97,16 +110,11 @@ export function FileRow({ node, onDrillIn, onClick }: Props) {
   }
 
   function handleLongPress() {
-    setContextMenu({
-      id: node.id,
-      name: node.name,
-      isFolder: node.kind === "folder",
-    });
+    if (node.kind === "media") return;
+    setContextMenu({ id: node.id, name: node.name, isFolder: node.kind === "folder" });
   }
 
   const longPress = useLongPress(handleLongPress, handleClick);
-
-  const isFolder = node.kind === "folder";
 
   return (
     <Squircle
@@ -116,13 +124,15 @@ export function FileRow({ node, onDrillIn, onClick }: Props) {
     >
       <div
         className={`px-4 py-2 flex ${
-          isFolder
+          node.kind === "folder"
             ? "items-center gap-3 h-12"
-            : "flex-col justify-center min-h-20 h-fit"
+            : "flex-col justify-center min-h-16 h-fit"
         }`}
       >
-        {isFolder ? (
+        {node.kind === "folder" ? (
           <FolderContent folder={node} />
+        ) : node.kind === "media" ? (
+          <MediaContent media={node} />
         ) : (
           <NoteContent note={node} />
         )}

@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconXmark } from "../../../shared/components/PlatformIcon";
-import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import type { MediaFile, NoteFile } from "../../../shared/hooks/useFileTree";
 
 export function TabItem({
   tabId,
@@ -12,7 +12,7 @@ export function TabItem({
   onClose,
 }: {
   tabId: string;
-  note: NoteFile;
+  note: NoteFile | MediaFile;
   isActive: boolean;
   isGhost?: boolean;
   onSelect: () => void;
@@ -58,7 +58,7 @@ export function TabItem({
 export function TabOverlay({
   note,
   isActive,
-}: { note: NoteFile; isActive: boolean }) {
+}: { note: NoteFile | MediaFile; isActive: boolean }) {
   return (
     <div
       className={`relative flex items-center justify-center gap-2 px-4 py-1 rounded-full whitespace-nowrap shrink-0 cursor-grabbing shadow-md ${isActive ? "bg-white text-black" : "bg-gray-50 text-gray-400"}`}

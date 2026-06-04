@@ -11,7 +11,9 @@ import {
   errorAtom,
   folderPathAtom,
   loadingAtom,
+  showResourcesAtom,
   treeAtom,
+  vaultConfigAtom,
   writingPathsRegistry,
 } from "./atoms";
 import {
@@ -31,7 +33,11 @@ import {
 import { createLogger } from "./logger";
 import { NoteType } from "./noteTypes";
 import { isAndroid } from "./platform";
-import { ensureVaultConfig, findVaultRoot } from "./vaultConfig";
+import {
+  ensureVaultConfig,
+  findVaultRoot,
+  readVaultConfig,
+} from "./vaultConfig";
 import {
   allowVaultScope,
   applyAllTemplates,
@@ -84,7 +90,8 @@ export async function reload(store: JotaiStore, path: string): Promise<void> {
   store.set(loadingAtom, true);
   store.set(errorAtom, null);
   try {
-    const nodes = await loadTree(path, path);
+    const showResources = store.get(showResourcesAtom);
+    const nodes = await loadTree(path, path, showResources);
     const finalNodes = await applyAllTemplates(nodes, path);
     store.set(treeAtom, finalNodes);
   } catch (e) {
@@ -177,9 +184,10 @@ export async function initFolder(store: JotaiStore): Promise<void> {
   if (!folderPath) return;
   log.info("restauration vault au démarrage", { folderPath });
   await allowVaultScope(folderPath);
-  // Migration : si le marqueur n'existe pas encore (vault pré-marqueur), le créer
-  // au niveau du folderPath actuel — comportement strictement identique à avant.
-  if (!isAndroid) await ensureVaultConfig(folderPath);
+  if (!isAndroid) {
+    const config = await ensureVaultConfig(folderPath);
+    if (config) store.set(vaultConfigAtom, config);
+  }
   await reload(store, folderPath);
   await startWatcher(store, folderPath);
 }
@@ -196,6 +204,8 @@ export async function autoInitFolder(store: JotaiStore): Promise<void> {
   store.set(activeNoteIdAtom, null);
   store.set(errorAtom, null);
   store.set(folderPathAtom, resolved);
+  const config = await readVaultConfig(resolved);
+  if (config) store.set(vaultConfigAtom, config);
   await reload(store, resolved);
   await startWatcher(store, resolved);
 }
@@ -214,6 +224,8 @@ export async function switchVault(
   store.set(activeNoteIdAtom, null);
   store.set(errorAtom, null);
   store.set(folderPathAtom, resolved);
+  const config = await readVaultConfig(resolved);
+  if (config) store.set(vaultConfigAtom, config);
   await reload(store, resolved);
   await startWatcher(store, resolved);
 }

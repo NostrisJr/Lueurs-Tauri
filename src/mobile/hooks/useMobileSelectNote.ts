@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai";
-import type { NoteFile } from "../../shared/hooks/useFileTree";
+import type { MediaFile, NoteFile } from "../../shared/hooks/useFileTree";
 import {
   activeNoteIdAtom,
   mobileNavigateAtom,
@@ -13,12 +13,13 @@ export function useMobileSelectNote() {
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
 
-  return (note: NoteFile) => {
+  // Ouvre une note ou un média dans les onglets (même chemin).
+  return (node: NoteFile | MediaFile) => {
     setNoteBackStack([]);
     setOpenTabIds((prev) =>
-      prev.includes(note.id) ? prev : [...prev, note.id]
+      prev.includes(node.id) ? prev : [...prev, node.id]
     );
-    setActiveNoteId(note.id);
+    setActiveNoteId(node.id);
     navigate("editor");
   };
 }

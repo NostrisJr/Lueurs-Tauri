@@ -1,10 +1,12 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IconFolder } from "../shared/components/PlatformIcon";
+import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
 import { useFileTree } from "../shared/hooks/useFileTree";
 import { useVaultSync } from "../shared/hooks/useVaultSync";
 import {
   type MobileView,
+  activeMediaAtom,
   dictaphoneModeAtom,
   folderPathAtom,
   mobileGoBackAtom,
@@ -27,10 +29,16 @@ import {
 import { usePushAnimation } from "./hooks/usePushAnimation";
 import "./MobileApp.css";
 
+function EditorOrMediaViewer() {
+  const activeMedia = useAtomValue(activeMediaAtom);
+  if (activeMedia) return <MediaViewer key={activeMedia.id} media={activeMedia} />;
+  return <MobileEditor />;
+}
+
 function ViewRenderer({ view }: { view: MobileView }) {
   switch (view) {
     case "editor":
-      return <MobileEditor />;
+      return <EditorOrMediaViewer />;
     case "tabs":
       return <MobileTabsView />;
     case "search":

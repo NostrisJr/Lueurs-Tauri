@@ -54,6 +54,40 @@ html {
   background: transparent;
 }
 
+/* ── Sidebar accent (espaces) ────────────────────────────────────────────── */
+
+/* Permet d'animer la couleur dans des gradients via CSS transition.
+   WebKit interpole '<color>' quand la valeur de la custom property change. */
+@property --sidebar-accent {
+  syntax: '<color>';
+  initial-value: white;
+  inherits: true;
+}
+
+@property --sidebar-infuse {
+  syntax: '<color>';
+  initial-value: transparent;
+  inherits: true;
+}
+
+/* Bordure en gradient : div absolu positionné 1px autour de l'aside.
+   DOM order avant l'aside → peint derrière (z-index: auto, même stacking context). */
+.sidebar-gradient-border {
+  position: absolute;
+  border-radius: 1.2rem;
+  pointer-events: none;
+  background: linear-gradient(135deg, var(--sidebar-accent), white);
+  transition: --sidebar-accent 380ms ease;
+}
+
+/* Infusion : gradient intérieur, animé via la même mécanique */
+.sidebar-infuse-overlay {
+  background: linear-gradient(135deg, var(--sidebar-infuse), transparent 65%);
+  transition: --sidebar-infuse 380ms ease;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 .liquid-glass {
   /* Frosted glass */
   backdrop-filter: blur(20px) saturate(180%) brightness(1.1);

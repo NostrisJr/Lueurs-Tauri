@@ -138,6 +138,23 @@ export const vaultIO = {
     }
     return null;
   },
+
+  // Copie un fichier externe dans resources/{subDir}/ du vault.
+  // Retourne le chemin absolu de destination (à relativiser côté appelant).
+  async copyResourceToVault(
+    srcPath: string,
+    vaultPath: string,
+    subDir: "images" | "audio"
+  ): Promise<string> {
+    const filename = srcPath.split(/[/\\]/).pop() ?? "resource";
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    return invoke<string>("copy_resource_to_vault", {
+      srcPath,
+      vaultPath,
+      subDir,
+      filename: safeName,
+    });
+  },
 };
 
 // ── Chemins relatifs ───────────────────────────────────────────────────────────
@@ -331,7 +348,8 @@ export function getMediaType(fileName: string): MediaType | null {
 
 export async function loadTree(
   dirPath: string,
-  vaultPath?: string
+  vaultPath?: string,
+  showResources = false
 ): Promise<TreeNode[]> {
   const entries = await vaultIO.readDir(dirPath);
   const nodes: TreeNode[] = [];
@@ -339,16 +357,13 @@ export async function loadTree(
   await Promise.all(
     entries.map(async (entry) => {
       if (!entry.name || entry.name.startsWith(".")) return;
-      if (
-        entry.isDir &&
-        (entry.name === "resources" || entry.name === "config")
-      )
-        return;
+      if (entry.isDir && entry.name === "config") return;
+      if (entry.isDir && entry.name === "resources" && !showResources) return;
 
       const fullPath = entry.uri;
 
       if (entry.isDir) {
-        const children = await loadTree(fullPath, vaultPath);
+        const children = await loadTree(fullPath, vaultPath, showResources);
         nodes.push({
           kind: "folder",
           id: fullPath,
