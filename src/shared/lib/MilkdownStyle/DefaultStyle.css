@@ -550,6 +550,27 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Correcteur Hugo : soulignage ondulé (rouge = orthographe, bleu = grammaire)
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror .hugo-spell,
+.milkdown .ProseMirror .hugo-grammar {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.milkdown .ProseMirror .hugo-spell {
+  text-decoration-color: var(--color-red-500);
+}
+
+.milkdown .ProseMirror .hugo-grammar {
+  text-decoration-color: var(--color-blue-500);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Mobile
    ───────────────────────────────────────────────────────────────────────── */
 

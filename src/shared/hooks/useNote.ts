@@ -6,6 +6,7 @@ import { useTemplateSync } from "../../desktop/hooks/useTemplateSync";
 import {
   activeNoteAtom,
   activeNoteIdAtom,
+  activeSpaceAtom,
   folderPathAtom,
   notesByIdAtom,
   openTabIdsAtom,
@@ -15,6 +16,7 @@ import {
 } from "../lib/atoms";
 import { frontmatterEqual } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
+import { NoteType } from "../lib/noteTypes";
 import {
   type FolderNode,
   type Frontmatter,
@@ -24,7 +26,6 @@ import {
   useFileTree,
 } from "./useFileTree";
 import { usePathPropagation } from "./usePathPropagation";
-import { NoteType } from "../lib/noteTypes";
 
 const log = createLogger("useNote");
 
@@ -38,6 +39,7 @@ export function useNote() {
   const setSearch = useSetAtom(searchAtom);
   const notesById = useAtomValue(notesByIdAtom);
   const folderPath = useAtomValue(folderPathAtom);
+  const activeSpace = useAtomValue(activeSpaceAtom);
 
   const tabHistory = useAtomValue(tabHistoryAtom);
   const setTabHistory = useSetAtom(tabHistoryAtom);
@@ -253,7 +255,7 @@ export function useNote() {
 
   async function handleCreateNote() {
     if (!folderPath) return;
-    const newNote = await createNote(folderPath);
+    const newNote = await createNote(folderPath, activeSpace);
     setOpenTabIds([...openTabIds, newNote.id]);
     setActiveNoteId(newNote.id);
     pushHistory(newNote.id);
@@ -261,7 +263,7 @@ export function useNote() {
 
   async function handleCreateFolder() {
     if (!folderPath) return;
-    await createFolder(folderPath);
+    await createFolder(folderPath, activeSpace);
   }
 
   async function handleRename(

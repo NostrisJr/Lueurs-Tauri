@@ -46,6 +46,14 @@ export const customCaretPlugin = $prose(
           caret.style.display = "block";
         }
 
+        // Auto-focus au montage pour rendre le caret visible dès l'ouverture (surtout sur notes vides).
+        requestAnimationFrame(() => {
+          if (!editorView.destroy) {
+            editorView.focus();
+            reposition(editorView, true);
+          }
+        });
+
         function update(view: typeof editorView, prevState?: unknown) {
           const fromScroll = typeof prevState === "boolean" ? prevState : false;
           reposition(view, fromScroll);

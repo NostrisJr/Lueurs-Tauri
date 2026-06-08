@@ -199,7 +199,7 @@ export function FrontmatterValue({
         ))}
         {paths.length === 0 && (
           <span className="text-gray-300 italic text-xs mt-0.5">
-            aucune note
+            {fieldKey === SystemField.SPACE ? "aucun espace" : "aucune note"}
           </span>
         )}
       </div>

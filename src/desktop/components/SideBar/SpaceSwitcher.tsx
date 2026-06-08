@@ -2,6 +2,7 @@ import { clsx } from "clsx";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import {
+  KEY_ALL,
   type SpaceNavState,
   activeNoteIdAtom,
   activeSpaceAtom,
@@ -11,8 +12,6 @@ import {
   tabHistoryAtom,
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
-
-const KEY_ALL = "__all__";
 
 export function SpaceSwitcher() {
   const vaultConfig = useAtomValue(vaultConfigAtom);

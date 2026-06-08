@@ -1,19 +1,41 @@
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
+import { useState } from "react";
 import {
   defaultDisplayModeAtom,
   defaultHighlightColorAtom,
+  ignoredWordsAtom,
   pageFormatAtom,
+  spellcheckEnabledAtom,
   textJustificationAtom,
 } from "../../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../../shared/lib/displayModes";
-import { PAGE_FORMATS, type PageFormat } from "../../../../shared/lib/pageMetrics";
+import {
+  PAGE_FORMATS,
+  type PageFormat,
+} from "../../../../shared/lib/pageMetrics";
 import { HIGHLIGHT_COLORS } from "../../../../shared/plugins/highlight/colors";
+import { IgnoredWordsView } from "./IgnoredWordsView";
 
 export function EditeurTab() {
-  const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(defaultDisplayModeAtom);
-  const [defaultHighlightColor, setDefaultHighlightColor] = useAtom(defaultHighlightColorAtom);
-  const [textJustification, setTextJustification] = useAtom(textJustificationAtom);
+  const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(
+    defaultDisplayModeAtom
+  );
+  const [defaultHighlightColor, setDefaultHighlightColor] = useAtom(
+    defaultHighlightColorAtom
+  );
+  const [textJustification, setTextJustification] = useAtom(
+    textJustificationAtom
+  );
+  const [spellcheckEnabled, setSpellcheckEnabled] = useAtom(
+    spellcheckEnabledAtom
+  );
   const [pageFormat, setPageFormat] = useAtom(pageFormatAtom);
+  const ignoredWords = useAtomValue(ignoredWordsAtom);
+  const [showIgnored, setShowIgnored] = useState(false);
+
+  // Vue dédiée des mots ignorés — remplace le contenu de l'onglet (liste longue).
+  if (showIgnored)
+    return <IgnoredWordsView onBack={() => setShowIgnored(false)} />;
 
   return (
     <div className="space-y-5">
@@ -48,8 +70,33 @@ export function EditeurTab() {
           onChange={() => setTextJustification((v) => !v)}
           className="rounded accent-gray-800 cursor-pointer"
         />
-        <span className="text-sm text-gray-700">Justifier le texte en mode livre</span>
+        <span className="text-sm text-gray-700">
+          Justifier le texte en mode livre
+        </span>
       </label>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={spellcheckEnabled}
+          onChange={() => setSpellcheckEnabled((v) => !v)}
+          className="rounded accent-gray-800 cursor-pointer"
+        />
+        <span className="text-sm text-gray-700">
+          Correcteur orthographique et grammatical
+        </span>
+      </label>
+
+      {spellcheckEnabled && (
+        <button
+          type="button"
+          onClick={() => setShowIgnored(true)}
+          className="flex w-fit items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-700 transition-colors cursor-default hover:bg-gray-50"
+        >
+          Consulter les mots ignorés
+          <span className="text-xs text-gray-400">{ignoredWords.length}</span>
+        </button>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs text-gray-500">
@@ -65,7 +112,8 @@ export function EditeurTab() {
               className="relative w-6 h-6 rounded-full border-2 transition-all cursor-default"
               style={{
                 background: c.solid,
-                borderColor: defaultHighlightColor === c.id ? "#374151" : "transparent",
+                borderColor:
+                  defaultHighlightColor === c.id ? "#374151" : "transparent",
                 transform: defaultHighlightColor === c.id ? "scale(1.15)" : "",
               }}
             >

@@ -24,7 +24,7 @@ import {
 import { createLogger } from "./logger";
 import { type KanbanColumn, NoteType, SystemField } from "./noteTypes";
 import type { PageFormat } from "./pageMetrics";
-import type { VaultConfig } from "./vaultConfig";
+import { type VaultConfig, writeVaultConfig } from "./vaultConfig";
 
 const log = createLogger("atoms");
 
@@ -45,6 +45,9 @@ export const savingAtom = atom(false);
 export const loadingAtom = atom(false);
 export const treeAtom = atom<TreeNode[]>([]);
 export const errorAtom = atom<string | null>(null);
+
+// Notification transitoire bas-centre (auto-disparition). Réinitialiser à null la masque.
+export const toastAtom = atom<string | null>(null);
 
 // Couleur de surlignage par défaut (appliquée via raccourci ou sans couleur explicite)
 export const defaultHighlightColorAtom = atomWithStorage<HighlightColorId>(
@@ -75,6 +78,14 @@ export const textJustificationAtom = atomWithStorage<boolean>(
 export const showResourcesAtom = atomWithStorage<boolean>(
   "lueurs_show_resources",
   false,
+  undefined,
+  { getOnInit: true }
+);
+
+// Correcteur orthographique et grammatical (Hugo) activé (par défaut activé)
+export const spellcheckEnabledAtom = atomWithStorage<boolean>(
+  "lueurs_spellcheck_enabled",
+  true,
   undefined,
   { getOnInit: true }
 );
@@ -116,6 +127,25 @@ export const noteBackStackAtom = atom<string[]>([]);
 // Config vault chargée au démarrage (null = non chargée ou Android)
 export const vaultConfigAtom = atom<VaultConfig | null>(null);
 
+// Mots ignorés par le correcteur (dérivé de la config) — lecture seule
+export const ignoredWordsAtom = atom(
+  (get) => get(vaultConfigAtom)?.ignoredWords ?? []
+);
+
+// Écriture des mots ignorés : persiste la config et met à jour l'atom.
+export const updateIgnoredWordsAtom = atom(
+  null,
+  async (get, set, updater: (prev: string[]) => string[]) => {
+    const folderPath = get(folderPathAtom);
+    const config = get(vaultConfigAtom);
+    if (!folderPath || !config) return;
+    const ignoredWords = updater(config.ignoredWords ?? []);
+    const updated = { ...config, ignoredWords };
+    await writeVaultConfig(folderPath, updated);
+    set(vaultConfigAtom, updated);
+  }
+);
+
 // Nom de l'espace actif (null = "Tout" — aucun filtre)
 export const activeSpaceAtom = atomWithStorage<string | null>(
   "lueurs_active_space",
@@ -123,6 +153,9 @@ export const activeSpaceAtom = atomWithStorage<string | null>(
   undefined,
   { getOnInit: true }
 );
+
+// Clé d'espace pour les états indexés par espace (null = "Tout")
+export const KEY_ALL = "__all__";
 
 export interface SpaceNavState {
   openTabIds: string[];
@@ -133,6 +166,35 @@ export interface SpaceNavState {
 
 // État de navigation sauvegardé par espace (clé "__all__" = état de "Tout")
 export const spaceNavStateAtom = atom<Record<string, SpaceNavState>>({});
+
+// État d'ouverture des dossiers, indexé par espace puis par chemin de dossier.
+// Source de vérité persistée (survit au redémarrage et aux reload d'import).
+export const openFoldersBySpaceAtom = atomWithStorage<
+  Record<string, Record<string, boolean>>
+>("lueurs_open_folders", {});
+
+// Tranche de l'espace actif — même API qu'un Record<chemin, bool> classique.
+// Tout le routage par espace vit ici : le composant consommateur l'ignore.
+// Absent = défaut basé sur la profondeur (cf. FolderNodeComponent).
+export const openFoldersAtom = atom(
+  (get) => get(openFoldersBySpaceAtom)[get(activeSpaceAtom) ?? KEY_ALL] ?? {},
+  (
+    get,
+    set,
+    update:
+      | Record<string, boolean>
+      | ((prev: Record<string, boolean>) => Record<string, boolean>)
+  ) => {
+    const key = get(activeSpaceAtom) ?? KEY_ALL;
+    set(openFoldersBySpaceAtom, (prev) => {
+      const cur = prev[key] ?? {};
+      return {
+        ...prev,
+        [key]: typeof update === "function" ? update(cur) : update,
+      };
+    });
+  }
+);
 
 // Arbre filtré par espace actif (dérivé)
 export const filteredTreeAtom = atom((get) => {

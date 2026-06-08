@@ -6,18 +6,20 @@ import { useFileTree } from "../../shared/hooks/useFileTree";
 import { usePathPropagation } from "../../shared/hooks/usePathPropagation";
 import {
   activeNoteIdAtom,
+  activeSpaceAtom,
   dragOverAtom,
   dragSourceAtom,
   folderPathAtom,
   selectedIdsAtom,
+  toastAtom,
 } from "../../shared/lib/atoms";
-import { createLogger } from "../../shared/lib/logger";
 import {
   BASE_NULL,
   importFolderRecursive,
   importMdFile,
   importMediaFile,
 } from "../../shared/lib/importUtils";
+import { createLogger } from "../../shared/lib/logger";
 import { getMediaType } from "../../shared/lib/vaultIO";
 
 const log = createLogger("useFileDrop");
@@ -162,8 +164,20 @@ export function useFileDrop(): FileDrop {
   const { propagateNoteRename, propagateFolderRename } = usePathPropagation();
 
   // Refs miroirs — un seul objet pour éviter les fermetures périmées dans les callbacks singleton
-  const cbRef = useRef({ moveNode, reload, propagateNoteRename, propagateFolderRename, selectedIds });
-  cbRef.current = { moveNode, reload, propagateNoteRename, propagateFolderRename, selectedIds };
+  const cbRef = useRef({
+    moveNode,
+    reload,
+    propagateNoteRename,
+    propagateFolderRename,
+    selectedIds,
+  });
+  cbRef.current = {
+    moveNode,
+    reload,
+    propagateNoteRename,
+    propagateFolderRename,
+    selectedIds,
+  };
 
   // ── Listener Tauri : drop externe uniquement ───────────────────────────
   useEffect(() => {
@@ -284,9 +298,11 @@ export function useFileDrop(): FileDrop {
 
     // Si la source est dans la sélection multi, on drag tous les items sélectionnés
     const currentSelection = cbRef.current.selectedIds;
-    const isMultiDrag = currentSelection.size > 0 && currentSelection.has(sourceId);
+    const isMultiDrag =
+      currentSelection.size > 0 && currentSelection.has(sourceId);
     const dragIds = isMultiDrag ? [...currentSelection] : [sourceId];
-    const ghostLabel = dragIds.length > 1 ? `${dragIds.length} éléments` : sourceName;
+    const ghostLabel =
+      dragIds.length > 1 ? `${dragIds.length} éléments` : sourceName;
 
     const startX = e.clientX;
     const startY = e.clientY;
@@ -417,12 +433,15 @@ export function useFileDrop(): FileDrop {
     const vaultPath = store.get(folderPathAtom);
     if (!vaultPath) return;
 
+    // Espace actif → les notes/dossiers importés y sont rattachés (médias non taguables).
+    const space = store.get(activeSpaceAtom);
+
     await Promise.all(
       paths.map(async (srcPath) => {
         const fileName = srcPath.split("/").pop() ?? "";
         try {
           if (fileName.endsWith(".md")) {
-            await importMdFile(srcPath, targetFolderPath);
+            await importMdFile(srcPath, targetFolderPath, space);
           } else if (getMediaType(fileName)) {
             await importMediaFile(srcPath, targetFolderPath, fileName);
           } else {
@@ -431,9 +450,16 @@ export function useFileDrop(): FileDrop {
             const folderName = fileName || parts[parts.length - 1] || "Dossier";
             try {
               await readDir(srcPath, BASE_NULL);
-              await importFolderRecursive(srcPath, targetFolderPath, folderName);
+              await importFolderRecursive(
+                srcPath,
+                targetFolderPath,
+                folderName,
+                space
+              );
             } catch {
-              log.info("chemin ignoré (ni note, ni média, ni dossier)", { srcPath });
+              log.info("chemin ignoré (ni note, ni média, ni dossier)", {
+                srcPath,
+              });
             }
           }
         } catch (err) {
@@ -441,6 +467,22 @@ export function useFileDrop(): FileDrop {
         }
       })
     );
+
+    // Médias droppés à la racine du vault alors qu'un espace est actif : faute de
+    // frontmatter, ils ne peuvent pas être rattachés à l'espace → ils restent à la racine.
+    if (space && targetFolderPath === vaultPath) {
+      const mediaCount = paths.filter((p) =>
+        getMediaType(p.split("/").pop() ?? "")
+      ).length;
+      if (mediaCount > 0) {
+        store.set(
+          toastAtom,
+          mediaCount > 1
+            ? `${mediaCount} médias importés à la racine du vault : un média ne peut pas être rattaché à l'espace « ${space} ».`
+            : `Média importé à la racine du vault : il ne peut pas être rattaché à l'espace « ${space} ».`
+        );
+      }
+    }
 
     cbRef.current.reload();
   }

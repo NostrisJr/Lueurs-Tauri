@@ -1,14 +1,22 @@
 // Fonctions d'import de fichiers et dossiers vers le vault.
 // Partagées entre useFileDrop (drag & drop) et useMenuEvents (menu File).
 
-import { readDir, readFile, readTextFile, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { createLogger } from "./logger";
-import { NoteType } from "./noteTypes";
 import {
+  readDir,
+  readFile,
+  readTextFile,
+  writeFile,
+  writeTextFile,
+} from "@tauri-apps/plugin-fs";
+import {
+  type Frontmatter,
   ensureType,
   parseFrontmatter,
   serializeFrontmatter,
+  toArray,
 } from "./fileTreeHelpers";
+import { createLogger } from "./logger";
+import { NoteType, SystemField } from "./noteTypes";
 import { getMediaType, resolveDestName, vaultIO } from "./vaultIO";
 
 const log = createLogger("importUtils");
@@ -16,13 +24,28 @@ const log = createLogger("importUtils");
 // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
 export const BASE_NULL = { baseDir: null } as any;
 
-export async function importMdFile(srcPath: string, destFolderPath: string): Promise<void> {
+// Rattache l'import à l'espace actif en ajoutant son nom au champ __space__.
+function tagSpace(fm: Frontmatter, space?: string | null): Frontmatter {
+  if (!space) return fm;
+  const existing = toArray(fm[SystemField.SPACE]);
+  if (!existing.includes(space)) fm[SystemField.SPACE] = [...existing, space];
+  return fm;
+}
+
+export async function importMdFile(
+  srcPath: string,
+  destFolderPath: string,
+  space?: string | null
+): Promise<void> {
   const content = await readTextFile(srcPath, BASE_NULL);
   const { frontmatter, body } = parseFrontmatter(content);
   const fileName = srcPath.split("/").pop() ?? "note.md";
   const noteName = fileName.replace(/\.md$/, "");
   const parentFolderName = destFolderPath.split("/").pop() ?? "";
-  const safeFrontmatter = ensureType(frontmatter, noteName, parentFolderName);
+  const safeFrontmatter = tagSpace(
+    ensureType(frontmatter, noteName, parentFolderName),
+    space
+  );
   const finalContent = serializeFrontmatter(safeFrontmatter, body);
   const destName = await resolveDestName(destFolderPath, fileName);
   await writeTextFile(`${destFolderPath}/${destName}`, finalContent, BASE_NULL);
@@ -43,7 +66,8 @@ export async function importMediaFile(
 export async function importFolderRecursive(
   srcPath: string,
   destParentPath: string,
-  folderName: string
+  folderName: string,
+  space?: string | null
 ): Promise<void> {
   const destName = await resolveDestName(destParentPath, folderName);
   const destPath = await vaultIO.createDir(destParentPath, destName);
@@ -55,7 +79,9 @@ export async function importFolderRecursive(
     return;
   }
 
-  // Folder note : réutiliser celle de la source si elle existe
+  // Folder note : réutiliser celle de la source si elle existe.
+  // Le tag d'espace n'est posé que sur la note-dossier de tête : les enfants
+  // sont inclus par propagation totale (cf. filterTreeBySpace), inutile de les taguer.
   const srcFolderNoteFileName = `${folderName}.md`;
   const srcFolderNoteEntry = entries.find(
     (e) => e.name === srcFolderNoteFileName && !e.isDirectory
@@ -63,14 +89,20 @@ export async function importFolderRecursive(
 
   let folderNoteContent: string;
   if (srcFolderNoteEntry) {
-    const raw = await readTextFile(`${srcPath}/${srcFolderNoteFileName}`, BASE_NULL);
+    const raw = await readTextFile(
+      `${srcPath}/${srcFolderNoteFileName}`,
+      BASE_NULL
+    );
     const { frontmatter, body } = parseFrontmatter(raw);
     frontmatter.__Type__ = NoteType.FOLDER;
-    folderNoteContent = serializeFrontmatter(frontmatter, body);
+    folderNoteContent = serializeFrontmatter(
+      tagSpace(frontmatter, space),
+      body
+    );
   } else {
     const fm = ensureType({}, destName, destParentPath.split("/").pop() ?? "");
     fm.__Type__ = NoteType.FOLDER;
-    folderNoteContent = serializeFrontmatter(fm, "");
+    folderNoteContent = serializeFrontmatter(tagSpace(fm, space), "");
   }
   await vaultIO.writeFile(`${destPath}/${destName}.md`, folderNoteContent);
 
@@ -93,16 +125,18 @@ export async function importFolderRecursive(
 }
 
 // Point d'entrée commun : importe un tableau de chemins (notes, médias, dossiers).
+// space : espace actif à rattacher aux notes/dossiers importés (null = aucun).
 export async function importPaths(
   targetFolderPath: string,
-  paths: string[]
+  paths: string[],
+  space?: string | null
 ): Promise<void> {
   await Promise.all(
     paths.map(async (srcPath) => {
       const fileName = srcPath.split("/").pop() ?? "";
       try {
         if (fileName.endsWith(".md")) {
-          await importMdFile(srcPath, targetFolderPath);
+          await importMdFile(srcPath, targetFolderPath, space);
         } else if (getMediaType(fileName)) {
           await importMediaFile(srcPath, targetFolderPath, fileName);
         } else {
@@ -111,9 +145,16 @@ export async function importPaths(
           const folderName = fileName || parts[parts.length - 1] || "Dossier";
           try {
             await readDir(srcPath, BASE_NULL);
-            await importFolderRecursive(srcPath, targetFolderPath, folderName);
+            await importFolderRecursive(
+              srcPath,
+              targetFolderPath,
+              folderName,
+              space
+            );
           } catch {
-            log.info("chemin ignoré (ni note, ni média, ni dossier)", { srcPath });
+            log.info("chemin ignoré (ni note, ni média, ni dossier)", {
+              srcPath,
+            });
           }
         }
       } catch (err) {

@@ -1,13 +1,53 @@
-import { useAtom, useAtomValue } from "jotai";
-import { folderPathAtom, vaultConfigAtom } from "../../../../shared/lib/atoms";
-import { type VaultSpace, writeVaultConfig } from "../../../../shared/lib/vaultConfig";
-import { EmojiPicker } from "../EmojiPicker";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import {
+  folderPathAtom,
+  notesByIdAtom,
+  treeAtom,
+  vaultConfigAtom,
+} from "../../../../shared/lib/atoms";
+import { toArray } from "../../../../shared/lib/fileTreeHelpers";
+import { SystemField } from "../../../../shared/lib/noteTypes";
+import {
+  type VaultSpace,
+  writeVaultConfig,
+} from "../../../../shared/lib/vaultConfig";
+import { persistNotePatch } from "../../../../shared/lib/vaultIO";
+import { SpaceRow } from "./SpaceRow";
 
 export function EspacesTab() {
   const folderPath = useAtomValue(folderPathAtom);
   const [vaultConfig, setVaultConfig] = useAtom(vaultConfigAtom);
+  const notesById = useAtomValue(notesByIdAtom);
+  const setTree = useSetAtom(treeAtom);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
-  if (!vaultConfig) return <p className="text-sm text-gray-400">Aucun vault chargé.</p>;
+  if (!vaultConfig)
+    return <p className="text-sm text-gray-400">Aucun vault chargé.</p>;
+
+  function handleReorder(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const spaces = vaultConfig?.spaces ?? [];
+    const from = spaces.findIndex((s) => s.id === active.id);
+    const to = spaces.findIndex((s) => s.id === over.id);
+    if (from === -1 || to === -1) return;
+    updateSpaces(arrayMove(spaces, from, to));
+  }
 
   async function updateSpaces(spaces: VaultSpace[]) {
     if (!folderPath || !vaultConfig) return;
@@ -49,79 +89,62 @@ export function EspacesTab() {
     updateSpaces(spaces);
   }
 
-  function handleDelete(index: number) {
+  async function handleDelete(index: number) {
+    const space = vaultConfig?.spaces[index];
+    if (!space) return;
+
+    // Nettoyer __space__ dans toutes les notes qui référencent cet espace
+    const affectedNotes = [...notesById.values()].filter((note) =>
+      toArray(note.frontmatter[SystemField.SPACE]).includes(space.name)
+    );
+
+    await Promise.all(
+      affectedNotes.map((note) => {
+        const remaining = toArray(note.frontmatter[SystemField.SPACE]).filter(
+          (s) => s !== space.name
+        );
+        const updatedFrontmatter = {
+          ...note.frontmatter,
+          [SystemField.SPACE]: remaining.length > 0 ? remaining : undefined,
+        };
+        return persistNotePatch(
+          note.id,
+          updatedFrontmatter,
+          note.body,
+          setTree,
+          folderPath ?? undefined
+        );
+      })
+    );
+
     updateSpaces((vaultConfig?.spaces ?? []).filter((_, i) => i !== index));
   }
 
   return (
     <div className="space-y-3">
-      {vaultConfig.spaces.map((space, i) => (
-        <div key={space.id} className="space-y-1">
-          <div className="flex items-center gap-2">
-            <EmojiPicker value={space.icon} onChange={(emoji) => handleIconChange(i, emoji)} />
-            <div className="flex items-center gap-1 shrink-0">
-              <label
-                className="relative cursor-pointer group"
-                title="Couleur de l'espace"
-                aria-label="Couleur de l'espace"
-              >
-                <span
-                  className="block w-[34px] h-[34px] rounded-md border-2 border-white shadow ring-1 ring-gray-200 group-hover:ring-gray-400 transition-all"
-                  style={{
-                    background: space.color
-                      ? `linear-gradient(135deg, ${space.color}, ${space.color}99)`
-                      : "linear-gradient(135deg, #e5e7eb, #d1d5db)",
-                  }}
-                />
-                <input
-                  type="color"
-                  value={space.color ?? "#6366f1"}
-                  onChange={(e) => handleColorChange(i, e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                />
-              </label>
-              {space.color && (
-                <button
-                  type="button"
-                  onClick={() => handleColorChange(i, "")}
-                  title="Pas de couleur"
-                  aria-label="Supprimer la couleur"
-                  className="w-5 h-5 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer text-base leading-none"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-            <input
-              type="text"
-              value={space.name}
-              onChange={(e) => handleNameChange(i, e.target.value)}
-              className="flex-1 text-sm border border-gray-200 rounded-md px-2.5 py-1.5 outline-none focus:border-gray-400"
-              placeholder="Nom de l'espace"
-              aria-label="Nom de l'espace"
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleReorder}
+      >
+        <SortableContext
+          items={vaultConfig.spaces.map((s) => s.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {vaultConfig.spaces.map((space, i) => (
+            <SpaceRow
+              key={space.id}
+              space={space}
+              index={i}
+              onIconChange={handleIconChange}
+              onColorChange={handleColorChange}
+              onNameChange={handleNameChange}
+              onIconOnlyChange={handleIconOnlyChange}
+              onDelete={handleDelete}
             />
-            <button
-              type="button"
-              onClick={() => handleDelete(i)}
-              className="text-gray-400 hover:text-red-500 transition-colors text-lg leading-none cursor-pointer px-1"
-              aria-label="Supprimer l'espace"
-            >
-              ×
-            </button>
-          </div>
-          {space.icon && (
-            <label className="flex items-center gap-2 pl-1 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!!space.iconOnly}
-                onChange={(e) => handleIconOnlyChange(i, e.target.checked)}
-                className="rounded accent-gray-800 cursor-pointer"
-              />
-              <span className="text-xs text-gray-500">Afficher l'icône uniquement</span>
-            </label>
-          )}
-        </div>
-      ))}
+          ))}
+        </SortableContext>
+      </DndContext>
       <button
         type="button"
         onClick={handleAddSpace}

@@ -825,6 +825,53 @@ Historiquement tous les plugins manipulent le DOM impérativement. Le bloc audio
 
 ---
 
+## Correcteur orthographique (`src/shared/plugins/spellcheck/`)
+
+Correcteur local (français, hors-ligne) basé sur le plugin Tauri **Hugo** (`hugoApi.ts`, commande `plugin:hugo-tauri|check_text`). Côté frontend, un plugin ProseMirror (`spellcheckPlugin.ts`) gère le soulignage et l'orchestration.
+
+### Vérification incrémentale par blocs
+
+Deux `DecorationSet` cohabitent dans l'état du plugin :
+- **`decos`** — soulignages visibles (`Decoration.inline` avec classe `hugo-spell` / `hugo-grammar`), porteurs de la suggestion Hugo dans `spec.suggestion`.
+- **`dirty`** — décorations *invisibles* alignées par textblock, marquant les blocs à (re)vérifier. Alignées par bloc → consommables un bloc à la fois.
+
+À chaque édition, `changedRange(tr)` calcule la plage modifiée (en coordonnées du doc final, en traversant les `mapping.maps`), retire les soulignages périmés qui la chevauchent, et marque les blocs concernés `dirty`. Un **worker** (`runWorker`) vérifie ensuite les blocs dirty **par lots** (`BATCH_SIZE = 8`), **viewport d'abord** (`dirtyBlocks` trie les blocs visibles en tête via `viewportRange`), en rendant la main à l'UI entre chaque lot (`setTimeout(…, 0)`). Debounce de `DEBOUNCE_MS = 250` ; un flag `running` empêche la concurrence. La commande Hugo est **async** : un appel synchrone gèlerait l'UI (cf. mémoire projet).
+
+### Mapping offsets octets ↔ positions ProseMirror
+
+Hugo renvoie des offsets en **octets UTF-8**. `decorateBlock` parcourt le textblock une fois en construisant en parallèle :
+- `byteToPos[]` : octet → position ProseMirror (pour placer les décorations),
+- `byteToChar[]` : octet → index dans la chaîne `text` envoyée (pour extraire le mot fautif, cf. mots ignorés).
+
+`utf8Len(codePoint)` donne la taille en octets d'un point de code ; `ch.length` (UTF-16) est la taille côté PM/JS. Une sentinelle en fin de table couvre la position du dernier caractère.
+
+### Scan à l'ouverture (et non « à la frappe »)
+
+Le plugin marque **tout le document `dirty` dans son `init`**, mais le déclenchement du worker se fait depuis `view().update()` — **or ProseMirror n'appelle pas `update()` pour l'état initial**, uniquement sur les transactions suivantes. Sans correctif, le scan ne démarrait donc qu'à la première frappe. Le scan initial est amorcé dans **le corps de `view(editorView)`** (appelé une fois à la création de la vue). Comme `<MilkdownProvider key={activeNote.id}>` remonte l'éditeur à chaque note, l'`init` + cet amorçage rejouent à chaque ouverture.
+
+### Refs module-level partagées
+
+Le plugin ProseMirror est créé une seule fois ; React communique avec lui via des refs module-level dans `spellcheckState.ts` (même pattern que `highlight/defaultColorRef`) :
+- `spellcheckEnabledRef` — lu à chaque update pour activer/nettoyer (synchronisé depuis `spellcheckEnabledAtom`).
+- `spellSuggestionCallbackRef` — callback `handleClick` → popover React.
+- `ignoredWordsRef` — `Set` des mots ignorés (en minuscules).
+
+Les changements de réglage passent par des métas de transaction : `{ dirtyAll: true }` (tout re-vérifier) ou `{ clear: true }` (désactivation).
+
+### Mots ignorés (par vault)
+
+Stockés dans `.lueurs/config.json` (champ `ignoredWords: string[]`, cf. `vaultConfig.ts`) — pas de fichier séparé : la liste reste légère et voyage avec la config via iCloud. Accès via `ignoredWordsAtom` (lecture, dérivé de `vaultConfigAtom`) et `updateIgnoredWordsAtom` (write atom async : persiste + met à jour l'atom).
+
+- **Filtrage** : dans `decorateBlock`, une suggestion d'**orthographe** dont le mot (`text.slice(byteToChar…)`, en minuscules) est dans `ignoredWordsRef` est ignorée. La grammaire n'est pas filtrée (suggestions multi-mots).
+- **Synchronisation** : `MarkdownEditor` alimente `ignoredWordsRef` avant le scan initial (timing OK : le ref est posé dans un `useEffect`, bien avant le debounce de 250 ms) et redéclenche `dirtyAll` à chaque changement de la liste (ajout via popover, retrait via réglages).
+- **Ajout** : action « Ignorer ce mot » du popover (orthographe uniquement). **Gestion** : `IgnoredWordsView` (onglet *Éditeur* des réglages) — vue dédiée, liste triée + recherche, **suppression seule**.
+
+### Popover de suggestions
+
+`SpellSuggestionPopover.tsx` est positionné en coordonnées **écran** (`view.coordsAtPos`) avec `position: fixed`. Comme ces coordonnées sont figées, il se **ferme au scroll** (listener `scroll` en capture, pour attraper n'importe quel conteneur scrollable), au clic extérieur et à Échap — plutôt que de le repositionner en continu.
+
+---
+
 ## Choix de conception
 
 **Stockage YAML plat.** Les propriétés système utilisent des clés avec doubles tirets bas (`__Type__`, `__Template__`, etc.) pour éviter les collisions avec les propriétés utilisateur tout en restant lisibles dans n'importe quel éditeur Markdown.

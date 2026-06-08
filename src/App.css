@@ -74,7 +74,6 @@ html {
    DOM order avant l'aside → peint derrière (z-index: auto, même stacking context). */
 .sidebar-gradient-border {
   position: absolute;
-  border-radius: 1.2rem;
   pointer-events: none;
   background: linear-gradient(135deg, var(--sidebar-accent), white);
   transition: --sidebar-accent 380ms ease;
@@ -82,7 +81,7 @@ html {
 
 /* Infusion : gradient intérieur, animé via la même mécanique */
 .sidebar-infuse-overlay {
-  background: linear-gradient(135deg, var(--sidebar-infuse), transparent 65%);
+  background: linear-gradient(135deg, var(--sidebar-infuse), transparent 80%);
   transition: --sidebar-infuse 380ms ease;
 }
 

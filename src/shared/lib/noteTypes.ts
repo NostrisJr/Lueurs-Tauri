@@ -129,6 +129,17 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
     readOnly: false,
     hidden: false,
   },
+  {
+    key: SystemField.SPACE,
+    label: "Espace",
+    description: "Espaces auxquels cette note appartient.",
+    kind: "noteArray",
+    noteFilter: null,
+    compatibleTypes: [NoteType.NOTE, NoteType.FOLDER],
+    required: false,
+    readOnly: false,
+    hidden: false,
+  },
   // __View__, __KanbanKey__, __KanbanColumns__ sont gérés exclusivement
   // via le sélecteur de vue — non ajoutables manuellement via l'UI.
 ];

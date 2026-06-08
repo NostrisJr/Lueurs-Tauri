@@ -30,8 +30,8 @@ export type MediaType = "image" | "audio" | "video" | "pdf";
 
 export interface MediaFile {
   kind: "media";
-  id: string;       // chemin absolu
-  name: string;     // nom sans extension
+  id: string; // chemin absolu
+  name: string; // nom sans extension
   fileName: string; // "photo.jpg"
   mediaType: MediaType;
 }
@@ -63,11 +63,13 @@ export function useFileTree() {
       if (path) return mut.reload(store, path);
     }, [store]),
     createNote: useCallback(
-      (dirPath: string) => mut.createNote(store, dirPath),
+      (dirPath: string, space?: string | null) =>
+        mut.createNote(store, dirPath, space),
       [store]
     ),
     createFolder: useCallback(
-      (dirPath: string) => mut.createFolder(store, dirPath),
+      (dirPath: string, space?: string | null) =>
+        mut.createFolder(store, dirPath, space),
       [store]
     ),
     updateNote: useCallback(

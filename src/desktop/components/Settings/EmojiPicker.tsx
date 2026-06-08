@@ -1,4 +1,5 @@
-import EmojiPickerComponent from "emoji-picker-react";
+import EmojiPickerComponent from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 import { useEffect, useRef, useState } from "react";
 
 interface EmojiPickerProps {
@@ -24,7 +25,7 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-10 h-[34px] flex items-center justify-center border border-gray-200 rounded-md text-base hover:border-gray-400 transition-colors cursor-pointer"
+        className="w-10 h-9 flex items-center justify-center border border-gray-200 rounded-md text-base hover:border-gray-400 transition-colors cursor-pointer"
         aria-label="Choisir une icône"
         title="Choisir une icône"
       >
@@ -36,15 +37,14 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50">
+        <div className="absolute left-0 top-0 mt-1 z-50">
           <EmojiPickerComponent
-            onEmojiClick={(data) => {
-              onChange(data.emoji);
+            data={data}
+            onEmojiSelect={(emoji: { native: string }) => {
+              onChange(emoji.native);
               setOpen(false);
             }}
-            height={350}
-            width={300}
-            skinTonesDisabled
+            skinTonePosition="none"
           />
           {value && (
             <button

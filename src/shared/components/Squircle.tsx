@@ -2,20 +2,16 @@ import { getSvgPath } from "figma-squircle";
 /**
  * Squircle — conteneur avec coins superellipse (style iOS).
  *
- * Génération du path via figma-squircle (getSvgPath).
- * Supporte radius (tous les coins), topRadius, bottomRadius,
- * ou topLeft / topRight / bottomLeft / bottomRight individuellement.
+ * Le clip-path est appliqué directement sur le DOM element dans le callback
+ * ResizeObserver (avant le paint du navigateur), sans passer par React state.
+ * Cela évite un cycle de rendu supplémentaire et élimine tout lag visuel.
  */
-import { type ComponentProps, useEffect, useRef, useState } from "react";
+import { type ComponentProps, useEffect, useRef } from "react";
 
 interface SquircleProps extends ComponentProps<"div"> {
-  /** Rayon pour tous les coins (défaut 0) */
   radius?: number;
-  /** Rayon pour les deux coins du haut */
   topRadius?: number;
-  /** Rayon pour les deux coins du bas */
   bottomRadius?: number;
-  /** Coins individuels (priorité sur topRadius/bottomRadius/radius) */
   topLeft?: number;
   topRight?: number;
   bottomLeft?: number;
@@ -35,7 +31,6 @@ export function Squircle({
   ...divProps
 }: SquircleProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [dims, setDims] = useState({ w: 0, h: 0 });
 
   const TL = topLeft ?? topRadius ?? radius;
   const TR = topRight ?? topRadius ?? radius;
@@ -45,32 +40,38 @@ export function Squircle({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    function applyClip(w: number, h: number) {
+      if (!el || !w || !h) return;
+      el.style.clipPath = `path('${getSvgPath({
+        width: w,
+        height: h,
+        cornerSmoothing: 0.6,
+        topLeftCornerRadius: TL,
+        topRightCornerRadius: TR,
+        bottomRightCornerRadius: BR,
+        bottomLeftCornerRadius: BL,
+      })}')`;
+    }
+
+    // Appliquer immédiatement pour le cas d'un changement de radius sans resize
+    applyClip(el.offsetWidth, el.offsetHeight);
+
     const obs = new ResizeObserver(([entry]) => {
       const bbs = entry.borderBoxSize?.[0];
-      setDims({
-        w: bbs?.inlineSize ?? entry.contentRect.width,
-        h: bbs?.blockSize ?? entry.contentRect.height,
-      });
+      applyClip(
+        bbs?.inlineSize ?? entry.contentRect.width,
+        bbs?.blockSize ?? entry.contentRect.height
+      );
     });
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [TL, TR, BR, BL]);
 
-  const clipPath =
-    dims.w && dims.h
-      ? `path('${getSvgPath({
-          width: dims.w,
-          height: dims.h,
-          cornerSmoothing: 0.6,
-          topLeftCornerRadius: TL,
-          topRightCornerRadius: TR,
-          bottomRightCornerRadius: BR,
-          bottomLeftCornerRadius: BL,
-        })}')`
-      : undefined;
-
+  // clipPath n'est pas dans style — il est appliqué impérativement par l'effet
+  // pour ne jamais être écrasé par React lors d'un re-render.
   return (
-    <div ref={ref} style={{ ...style, clipPath }} {...divProps}>
+    <div ref={ref} style={style} {...divProps}>
       {children}
     </div>
   );

@@ -52,10 +52,12 @@ function SideBar() {
     // sidebar-gradient-border et sidebar-infuse-overlay lisent ces variables et les animent.
     <div
       className="relative z-30 flex py-2 pl-2 h-full bg-white"
-      style={{
-        "--sidebar-accent": accentColor ?? "white",
-        "--sidebar-infuse": accentColor ? `${accentColor}20` : "transparent",
-      } as React.CSSProperties}
+      style={
+        {
+          "--sidebar-accent": accentColor ?? "white",
+          "--sidebar-infuse": accentColor ? `${accentColor}20` : "transparent",
+        } as React.CSSProperties
+      }
     >
       {/* Bouton toggle unique, porté dans document.body pour échapper au
           stacking context z-10 de la sidebar (sinon recouvert par la TitleBar
@@ -83,7 +85,7 @@ function SideBar() {
           Peint avant l'aside (DOM order) → reste derrière malgré z-index:auto.
           width:0 quand collapsed → aucun strip visible. */}
       <div
-        className="sidebar-gradient-border"
+        className="sidebar-gradient-border rounded-[1.26rem]"
         style={{
           top: 7,
           bottom: 7,

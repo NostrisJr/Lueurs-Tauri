@@ -7,9 +7,14 @@ import { useStore } from "jotai";
 import { useEffect, useRef } from "react";
 import { useFileTree } from "../../shared/hooks/useFileTree";
 import { useNote } from "../../shared/hooks/useNote";
-import { activeNoteAtom, activeMediaAtom, folderPathAtom } from "../../shared/lib/atoms";
-import { createLogger } from "../../shared/lib/logger";
+import {
+  activeMediaAtom,
+  activeNoteAtom,
+  activeSpaceAtom,
+  folderPathAtom,
+} from "../../shared/lib/atoms";
 import { importPaths } from "../../shared/lib/importUtils";
+import { createLogger } from "../../shared/lib/logger";
 
 const log = createLogger("useMenuEvents");
 
@@ -33,9 +38,12 @@ export function useMenuEvents() {
       if (!vaultPath) return;
 
       try {
-        await importPaths(vaultPath, paths);
+        await importPaths(vaultPath, paths, store.get(activeSpaceAtom));
         cbRef.current.reload();
-        log.info("import menu terminé", { count: paths.length, targetPath: vaultPath });
+        log.info("import menu terminé", {
+          count: paths.length,
+          targetPath: vaultPath,
+        });
       } catch (err) {
         log.error("échec import menu", err);
       }
@@ -47,14 +55,17 @@ export function useMenuEvents() {
     listen("menu:reveal-in-finder", async () => {
       const activeNote = store.get(activeNoteAtom);
       const activeMedia = store.get(activeMediaAtom);
-      const activePath = activeNote?.id ?? activeMedia?.id ?? store.get(folderPathAtom);
+      const activePath =
+        activeNote?.id ?? activeMedia?.id ?? store.get(folderPathAtom);
       if (!activePath) return;
 
       const escaped = activePath.replace(/"/g, '\\"');
       try {
         await Command.create("osascript", [
-          "-e", `tell application "Finder" to reveal POSIX file "${escaped}"`,
-          "-e", `tell application "Finder" to activate`,
+          "-e",
+          `tell application "Finder" to reveal POSIX file "${escaped}"`,
+          "-e",
+          `tell application "Finder" to activate`,
         ]).execute();
         log.info("révélé dans le Finder", { activePath });
       } catch (err) {

@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
+import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
 import { NoteEditor } from "../shared/components/NoteEditor/NoteEditor.tsx";
 import { registerDropListener } from "../shared/components/NoteEditor/lib/dropListener.ts";
 import {
@@ -20,13 +21,13 @@ import {
 } from "../shared/lib/atoms";
 import { NoteType } from "../shared/lib/noteTypes";
 import { DesktopDictaphone } from "./components/Dictaphone/DesktopDictaphone.tsx";
-import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
-import { useMenuEvents } from "./hooks/useMenuEvents";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
 import { SettingsModal } from "./components/Settings/SettingsModal";
 import { SideBar } from "./components/SideBar/SideBar.tsx";
 import { TabBar } from "./components/TabBar/TabBar";
+import { Toast } from "./components/Toast.tsx";
 import { WelcomeScreen } from "./components/WelcomeScreen.tsx";
+import { useMenuEvents } from "./hooks/useMenuEvents";
 
 export function DesktopApp() {
   const { pickFolder, initFolder, autoInitFolder } = useFileTree();
@@ -112,6 +113,7 @@ export function DesktopApp() {
   return (
     <div className="h-screen flex text-gray-900 overflow-hidden text-sm">
       <SettingsModal />
+      <Toast />
       <SideBar />
 
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">

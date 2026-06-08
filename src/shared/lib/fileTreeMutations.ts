@@ -31,7 +31,7 @@ import {
   updateNodeInTree,
 } from "./fileTreeHelpers";
 import { createLogger } from "./logger";
-import { NoteType } from "./noteTypes";
+import { NoteType, SystemField } from "./noteTypes";
 import { isAndroid } from "./platform";
 import {
   ensureVaultConfig,
@@ -388,12 +388,16 @@ export async function flushPendingWrite(fileId: string): Promise<void> {
 
 export async function createNote(
   store: JotaiStore,
-  dirPath: string
+  dirPath: string,
+  space?: string | null
 ): Promise<NoteFile> {
   const entries = await vaultIO.readDir(dirPath);
   const number = await findNextAvailableNumber(entries, "Nouvelle note", false);
   const fileName = `Nouvelle note ${number}.md`;
-  const frontmatter: Frontmatter = { __Type__: NoteType.NOTE };
+  const frontmatter: Frontmatter = {
+    __Type__: NoteType.NOTE,
+    ...(space ? { [SystemField.SPACE]: [space] } : {}),
+  };
   const body = "";
   const content = serializeFrontmatter(frontmatter, body);
 
@@ -428,7 +432,8 @@ export async function createNote(
 
 export async function createFolder(
   store: JotaiStore,
-  dirPath: string
+  dirPath: string,
+  space?: string | null
 ): Promise<void> {
   const entries = await vaultIO.readDir(dirPath);
   const number = await findNextAvailableNumber(
@@ -439,11 +444,44 @@ export async function createFolder(
   const name = `Nouveau dossier ${number}`;
   const fullPath = await vaultIO.createDir(dirPath, name);
 
+  // Un dossier est rattaché à un espace via sa note __folder__ interne (même nom).
+  // Sans espace actif, on garde la création paresseuse de la note (openFolderNote).
+  const children: NoteFile[] = [];
+  if (space) {
+    const frontmatter: Frontmatter = {
+      __Type__: NoteType.FOLDER,
+      [SystemField.SPACE]: [space],
+    };
+    const body = "";
+    const raw = serializeFrontmatter(frontmatter, body);
+
+    let notePath: string;
+    if (isAndroid) {
+      notePath = await vaultIO.createFile(fullPath, `${name}.md`);
+      await vaultIO.writeFile(notePath, raw);
+    } else {
+      notePath = `${fullPath}/${name}.md`;
+      await vaultIO.writeFile(notePath, raw);
+    }
+
+    children.push({
+      kind: "file",
+      id: notePath,
+      name,
+      type: NoteType.FOLDER,
+      title: name,
+      body,
+      frontmatter,
+      tags: [],
+      updatedAt: new Date(),
+    });
+  }
+
   const newNode: FolderNode = {
     kind: "folder",
     id: fullPath,
     name,
-    children: [],
+    children,
   };
   const folderPath = store.get(folderPathAtom);
   store.set(treeAtom, (prev) =>

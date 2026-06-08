@@ -1,5 +1,4 @@
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
-import { useState } from "react";
 import { EditableText } from "../../../shared/components/EditableText";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider.tsx";
 import {
@@ -22,6 +21,7 @@ import {
   activeNoteIdAtom,
   dragOverAtom,
   dragSourceAtom,
+  openFoldersAtom,
   openTabIdsAtom,
   selectedIdsAtom,
   selectionAnchorAtom,
@@ -303,7 +303,18 @@ function FolderNodeComponent({
   activeId: string | null;
   depth: number;
 }) {
-  const [open, setOpen] = useState(depth === 0);
+  // État d'ouverture persistant (atome keyé par chemin) — survit aux reload d'import
+  // et aux changements d'espace. Défaut : ouvert au premier niveau (depth 0).
+  const [openFolders, setOpenFolders] = useAtom(openFoldersAtom);
+  const open = openFolders[node.id] ?? depth === 0;
+  const setOpen = (next: boolean | ((v: boolean) => boolean)) =>
+    setOpenFolders((prev) => {
+      const cur = prev[node.id] ?? depth === 0;
+      return {
+        ...prev,
+        [node.id]: typeof next === "function" ? next(cur) : next,
+      };
+    });
 
   const { createNote, createFolder } = useFileTree();
   const { handleRename, handleDeleteFolder, handleOpenFolder } = useNote();

@@ -148,7 +148,8 @@ pub fn run() {
         .plugin(tauri_plugin_native_audio::init())
         .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_haptics::init())
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(hugo_tauri::init());
 
     #[cfg(target_os = "android")]
     {

@@ -45,6 +45,8 @@ export interface VaultConfig {
   version: number;
   vaultId: string;
   spaces: VaultSpace[];
+  // Mots ignorés par le correcteur orthographique (comparaison en minuscules)
+  ignoredWords: string[];
 }
 
 function makeDefaultConfig(): VaultConfig {
@@ -52,6 +54,7 @@ function makeDefaultConfig(): VaultConfig {
     version: CURRENT_VERSION,
     vaultId: crypto.randomUUID(),
     spaces: [],
+    ignoredWords: [],
   };
 }
 
@@ -97,6 +100,8 @@ export async function readVaultConfig(
         s.id ? s : { ...s, id: crypto.randomUUID() }
       );
     }
+    // Migration : champ absent dans les configs antérieures
+    if (!Array.isArray(parsed.ignoredWords)) parsed.ignoredWords = [];
     return parsed;
   } catch {
     return null;

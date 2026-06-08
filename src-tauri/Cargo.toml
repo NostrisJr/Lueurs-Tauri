@@ -35,6 +35,9 @@ tauri-plugin-audio-recorder = { git = "https://github.com/NostrisJr/tauri-plugin
 tauri-plugin-native-audio = "1"
 tauri-plugin-haptics = "2"
 window-vibrancy = "0.7.1"
+# Correcteur orthographique/grammatical local (Hugo). Chemin local pour l'instant ;
+# deviendra une dépendance git/publiée plus tard.
+hugo-tauri = { path = "../../Hugo/crates/hugo-tauri" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"

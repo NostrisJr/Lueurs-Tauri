@@ -19,6 +19,7 @@ import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
 import { FrontmatterValue } from "./FrontmatterValue";
 import { NoteSelector } from "./NoteSelector";
 import { PropertyEditModal } from "./PropertyEditModal";
+import { SpaceSelector } from "./SpaceSelector";
 import {
   editingKeyAtom,
   rowsAtom,
@@ -45,6 +46,10 @@ function hasNoteSelector(key: string) {
     key === SystemField.CHILDREN ||
     key === SystemField.TEMPLATE
   );
+}
+
+function hasSpaceSelector(key: string) {
+  return key === SystemField.SPACE;
 }
 
 export function FrontmatterRow({
@@ -224,11 +229,11 @@ export function FrontmatterRow({
         aria-hidden="true"
       />
 
-      {hasNoteSelector(row.key) ? (
+      {hasNoteSelector(row.key) || hasSpaceSelector(row.key) ? (
         <span ref={selectorAnchorRef}>
           <button
             type="button"
-            title="Ajouter une note"
+            title={hasSpaceSelector(row.key) ? "Ajouter un espace" : "Ajouter une note"}
             onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
             className={`p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
           >
@@ -280,6 +285,15 @@ export function FrontmatterRow({
           placeholder={
             SELECTOR_PLACEHOLDERS[row.key] ?? "Rechercher une note..."
           }
+        />
+      )}
+
+      {isSelectorOpen && hasSpaceSelector(row.key) && (
+        <SpaceSelector
+          currentSpaces={row.value as string[]}
+          onSelect={(spaceName) => addNote(spaceName)}
+          onClose={() => setSelectorOpen(null)}
+          anchorRef={selectorAnchorRef}
         />
       )}
     </div>

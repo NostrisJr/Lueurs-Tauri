@@ -14,6 +14,7 @@
     "audio-recorder:default",
     "native-audio:default",
     "shell:default",
+    "hugo-tauri:allow-check-text",
     {
       "identifier": "shell:allow-execute",
       "allow": [

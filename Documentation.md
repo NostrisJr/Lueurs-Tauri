@@ -271,6 +271,23 @@ Chaque titre (H1 à H6) affiche un chevron à sa gauche au survol. Cliquer sur c
 
 Le repliement est purement visuel : il ne modifie pas le markdown et est réinitialisé à l'ouverture d'une note. Si le curseur se trouve dans une zone sur le point d'être repliée, il est automatiquement déplacé juste avant.
 
+### Correction orthographique et grammaticale
+
+Un correcteur local (hors-ligne, français) souligne les fautes directement dans l'éditeur :
+
+- **Orthographe** — souligné en rouge.
+- **Grammaire** — souligné en bleu.
+
+La vérification démarre **dès l'ouverture d'une note** (la partie visible d'abord, puis le reste), sans qu'il soit nécessaire de taper. Pendant l'édition, seuls les passages modifiés sont revérifiés.
+
+**Corriger une faute.** Cliquer sur un mot souligné ouvre un petit menu listant les corrections proposées. Cliquer sur une suggestion remplace le mot. Le menu se ferme si l'on clique ailleurs, appuie sur Échap, ou fait défiler la page.
+
+**Ignorer un mot.** Pour les fautes d'orthographe, le menu propose aussi **« Ignorer ce mot »**. Le mot est alors ajouté à un dictionnaire propre au vault et n'est plus jamais souligné (dans toutes les notes). Cette liste est partagée par tous les appareils via le fichier de configuration du vault.
+
+**Gérer les mots ignorés.** Dans les réglages, onglet *Éditeur*, le bouton **« Consulter les mots ignorés »** (visible uniquement lorsque le correcteur est activé) ouvre une vue dédiée : liste alphabétique avec champ de recherche, où l'on peut **retirer** des mots (l'ajout se fait via le menu de correction). Retirer un mot le fait à nouveau souligner s'il reste fautif.
+
+**Activation.** Le correcteur s'active/désactive dans les réglages, onglet *Éditeur*.
+
 ---
 
 ## Glisser-déposer
