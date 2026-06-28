@@ -1,5 +1,5 @@
 import type { Editor } from "@milkdown/kit/core";
-import { commandsCtx, editorViewCtx } from "@milkdown/kit/core";
+import { commandsCtx, editorViewCtx, schemaCtx } from "@milkdown/kit/core";
 import { insertHrCommand } from "@milkdown/kit/preset/commonmark";
 import { TextSelection } from "@milkdown/kit/prose/state";
 import { insert } from "@milkdown/kit/utils";
@@ -10,6 +10,7 @@ import {
   Submenu,
 } from "@tauri-apps/api/menu";
 import { open } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
 import { useEffect } from "react";
 import type { RefObject } from "react";
@@ -17,16 +18,48 @@ import { createLogger } from "../../../lib/logger";
 import { vaultIO } from "../../../lib/vaultIO";
 import { toggleHighlightInlineCommand } from "../../../plugins/customKeymap";
 import { HIGHLIGHT_COLORS } from "../../../plugins/highlight/colors";
+import { getSpellSuggestionAtPos } from "../../../plugins/spellcheck/spellcheckPlugin";
+import { setWikilinkEdit } from "../../../plugins/wikilink/wikilinkEditState";
+import {
+  isExternalHref,
+  labelFromTarget,
+  linkRangeAt,
+  wikilinkBridge,
+} from "../../../plugins/wikilink/wikilinkPlugin";
 import { EDITOR_FORMATTING_GROUPS } from "../lib/formattingMenuData";
 
 const log = createLogger("useContextMenu");
+
+const INSECABLE_BEFORE = /^[!?;:»]/;
+
+function wrapLines(text: string, maxWidth = 48): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current.length === 0) {
+      current = word;
+    } else if (
+      current.length + 1 + word.length <= maxWidth ||
+      INSECABLE_BEFORE.test(word) // ne pas couper avant ces signes
+    ) {
+      current += ` ${word}`;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
 
 export function useContextMenu(
   editorRef: RefObject<Editor | null>,
   wrapperRef: RefObject<HTMLDivElement | null>,
   insertImageBlock: (srcPath: string, alt: string) => void,
   insertAudioBlock: (srcPath: string, title: string) => void,
-  vaultPath: string
+  vaultPath: string,
+  onIgnoreWord: (word: string) => void
 ) {
   useEffect(() => {
     // Menu natif Tauri — desktop uniquement
@@ -42,9 +75,29 @@ export function useContextMenu(
       // quand l'action s'exécute. On la capture au clic droit et on la restaure
       // avant chaque commande (sinon les toggles sur sélection font no-op).
       let savedSelection: { from: number; to: number } | null = null;
+      let spellSuggestion: {
+        from: number;
+        to: number;
+        word: string;
+        message: string;
+        replacements: string[];
+        category: "spelling" | "grammar";
+      } | null = null;
+      let linkInfo: {
+        from: number;
+        to: number;
+        href: string;
+        text: string;
+      } | null = null;
       editorRef.current?.action((ctx) => {
-        const { from, to } = ctx.get(editorViewCtx).state.selection;
+        const view = ctx.get(editorViewCtx);
+        const { from, to } = view.state.selection;
         savedSelection = { from, to };
+        const result = view.posAtCoords({ left: e.clientX, top: e.clientY });
+        if (result) {
+          spellSuggestion = getSpellSuggestionAtPos(view, result.pos);
+          linkInfo = linkRangeAt(view.state, result.pos);
+        }
       });
 
       // biome-ignore lint/suspicious/noExplicitAny: CmdKey générique Milkdown
@@ -63,7 +116,125 @@ export function useContextMenu(
           ctx.get(commandsCtx).call(cmdKey, payload);
         });
 
+      const applySpellReplacement = (
+        from: number,
+        to: number,
+        replacement: string
+      ) =>
+        editorRef.current?.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const schema = ctx.get(schemaCtx);
+          view.dispatch(
+            view.state.tr.replaceWith(from, to, schema.text(replacement))
+          );
+          view.focus();
+        });
+
+      type LinkInfo = { from: number; to: number; href: string; text: string };
+
+      const openLink = (info: LinkInfo) => {
+        if (isExternalHref(info.href)) {
+          const url = info.href.startsWith("www.")
+            ? `https://${info.href}`
+            : info.href;
+          openUrl(url).catch((err) => log.error("ouverture URL échouée", err));
+          return;
+        }
+        const id = wikilinkBridge.current?.resolve(info.href);
+        if (id) wikilinkBridge.current?.open(id, false);
+      };
+
+      const editLink = (info: LinkInfo) =>
+        setWikilinkEdit({
+          range: { from: info.from, to: info.to },
+          initialQuery: isExternalHref(info.href)
+            ? info.href
+            : labelFromTarget(info.href),
+          initialAlias: info.text,
+        });
+
+      const removeLink = (info: LinkInfo) =>
+        editorRef.current?.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const linkMark = ctx.get(schemaCtx).marks.link;
+          if (!linkMark) return;
+          view.dispatch(view.state.tr.removeMark(info.from, info.to, linkMark));
+          view.focus();
+        });
+
       try {
+        // Items lien en tête si le clic droit est sur un lien (note ou web).
+        // biome-ignore lint/suspicious/noExplicitAny: contournement narrowing TS
+        const link = linkInfo as any as LinkInfo | null;
+        const wikilinkItems: (MenuItem | PredefinedMenuItem)[] = [];
+        if (link) {
+          const canOpen =
+            isExternalHref(link.href) ||
+            !!wikilinkBridge.current?.resolve(link.href);
+          wikilinkItems.push(
+            await MenuItem.new({
+              text: "Ouvrir le lien",
+              enabled: canOpen,
+              action: () => openLink(link),
+            }),
+            await MenuItem.new({
+              text: "Modifier le lien…",
+              action: () => editLink(link),
+            }),
+            await MenuItem.new({
+              text: "Supprimer le lien",
+              action: () => removeLink(link),
+            }),
+            await PredefinedMenuItem.new({ item: "Separator" })
+          );
+        }
+
+        // Items de correction orthographique en tête si le clic droit est sur une faute.
+        // Cast nécessaire : TS narrow spellSuggestion à null après ?.action() (callback non garanti).
+        // biome-ignore lint/suspicious/noExplicitAny: contournement narrowing TS
+        const spell = spellSuggestion as any as {
+          from: number;
+          to: number;
+          word: string;
+          message: string;
+          replacements: string[];
+          category: "spelling" | "grammar";
+        } | null;
+        const spellItems: (MenuItem | PredefinedMenuItem)[] = [];
+        if (spell) {
+          if (spell.replacements.length > 0) {
+            for (const rep of spell.replacements.slice(0, 5)) {
+              spellItems.push(
+                await MenuItem.new({
+                  text: rep,
+                  action: () =>
+                    applySpellReplacement(spell.from, spell.to, rep),
+                })
+              );
+            }
+          } else {
+            spellItems.push(
+              await MenuItem.new({ text: "Aucune suggestion", enabled: false })
+            );
+          }
+          if (spell.message) {
+            for (const line of wrapLines(spell.message)) {
+              spellItems.push(
+                await MenuItem.new({ text: line, enabled: false })
+              );
+            }
+          }
+          if (spell.category === "spelling") {
+            spellItems.push(
+              await MenuItem.new({
+                text: `Ignorer « ${spell.word} »`,
+                action: () => onIgnoreWord(spell.word),
+              })
+            );
+          }
+          spellItems.push(await PredefinedMenuItem.new({ item: "Separator" }));
+        }
+
         const submenus = await Promise.all(
           EDITOR_FORMATTING_GROUPS.map(async (group) => {
             const menuItems = await Promise.all(
@@ -120,7 +291,11 @@ export function useContextMenu(
                       vaultPath,
                       "images"
                     );
-                    const alt = (path as string).split("/").pop()?.replace(/\.[^.]+$/, "") ?? "image";
+                    const alt =
+                      (path as string)
+                        .split("/")
+                        .pop()
+                        ?.replace(/\.[^.]+$/, "") ?? "image";
                     insertImageBlock(destPath, alt);
                   } catch (err) {
                     log.error("échec copie image dans vault", err);
@@ -147,7 +322,11 @@ export function useContextMenu(
                       vaultPath,
                       "audio"
                     );
-                    const title = (path as string).split("/").pop()?.replace(/\.[^.]+$/, "") ?? "audio";
+                    const title =
+                      (path as string)
+                        .split("/")
+                        .pop()
+                        ?.replace(/\.[^.]+$/, "") ?? "audio";
                     insertAudioBlock(destPath, title);
                   } catch (err) {
                     log.error("échec copie audio dans vault", err);
@@ -177,6 +356,8 @@ export function useContextMenu(
 
         const menu = await Menu.new({
           items: [
+            ...wikilinkItems,
+            ...spellItems,
             await PredefinedMenuItem.new({ item: "Cut" }),
             await PredefinedMenuItem.new({ item: "Copy" }),
             await PredefinedMenuItem.new({ item: "Paste" }),
@@ -198,5 +379,12 @@ export function useContextMenu(
 
     el.addEventListener("contextmenu", handler);
     return () => el.removeEventListener("contextmenu", handler);
-  }, [editorRef, wrapperRef, insertImageBlock, insertAudioBlock, vaultPath]);
+  }, [
+    editorRef,
+    wrapperRef,
+    insertImageBlock,
+    insertAudioBlock,
+    vaultPath,
+    onIgnoreWord,
+  ]);
 }

@@ -1,10 +1,11 @@
 import { MilkdownProvider } from "@milkdown/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { BaseView } from "../../../desktop/components/BaseView/BaseView";
 import { FrontmatterEditor } from "../../../desktop/components/Frontmatter/FrontmatterEditor";
 import { MobileBaseView } from "../../../mobile/components/BaseView/MobileBaseView";
+import { useMobileSelectNote } from "../../../mobile/hooks/useMobileSelectNote";
 import type { Frontmatter } from "../../hooks/useFileTree";
 import { useNote } from "../../hooks/useNote.ts";
 import {
@@ -12,6 +13,7 @@ import {
   activeNoteAtom,
   dictaphoneOpenAtom,
   folderPathAtom,
+  notesByIdAtom,
   pendingAudioInsertAtom,
   pendingDisplayModeAtom,
 } from "../../lib/atoms";
@@ -21,6 +23,8 @@ import { DocumentNavigator } from "./DocumentNavigator.tsx";
 import type { Editor } from "./MarkdownEditor";
 import { MarkdownEditor } from "./MarkdownEditor.tsx";
 import { NoteHeader } from "./NoteHeader.tsx";
+import { WikilinkEditPopup } from "./WikilinkEditPopup.tsx";
+import { WikilinkSuggest } from "./WikilinkSuggest.tsx";
 import { editorInsertAudioBlock } from "./lib/editorCommands.ts";
 
 interface Props {
@@ -33,9 +37,11 @@ export function NoteEditor({
   defaultCollapsedFrontmatter = false,
   editorRef: externalEditorRef,
 }: Props) {
-  const { handleRename, handleChange } = useNote();
+  const { handleRename, handleChange, handleSelectNote } = useNote();
   const activeNote = useAtomValue(activeNoteAtom);
   const folderPath = useAtomValue(folderPathAtom);
+  const notesById = useAtomValue(notesByIdAtom);
+  const mobileSelectNote = useMobileSelectNote();
   const pendingDisplayMode = useAtomValue(pendingDisplayModeAtom);
   const setPendingDisplayMode = useSetAtom(pendingDisplayModeAtom);
   const setDictaphoneOpen = useSetAtom(dictaphoneOpenAtom);
@@ -73,6 +79,17 @@ export function NoteEditor({
     if (!activeNote) return;
     handleChange(newBody, activeNote.frontmatter);
   }
+
+  // Ouverture d'une note depuis un wikilink : onglets (desktop) / navigation (mobile)
+  const handleOpenNote = useCallback(
+    (noteId: string, newTab: boolean) => {
+      const target = notesById.get(noteId);
+      if (!target) return;
+      if (isMobile) mobileSelectNote(target);
+      else handleSelectNote(target, newTab);
+    },
+    [notesById, mobileSelectNote, handleSelectNote]
+  );
 
   function handleFrontmatterChange(updated: Frontmatter) {
     if (!activeNote) return;
@@ -145,7 +162,10 @@ export function NoteEditor({
                   node={activeNote}
                   vaultPath={folderPath}
                   onChange={handleBodyChange}
+                  onOpenNote={handleOpenNote}
                 />
+                <WikilinkSuggest vaultPath={folderPath} />
+                <WikilinkEditPopup vaultPath={folderPath} />
               </MilkdownProvider>
             )}
           </div>

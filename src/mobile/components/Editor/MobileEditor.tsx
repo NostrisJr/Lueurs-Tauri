@@ -41,6 +41,8 @@ import clsx from "clsx";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileFormattingBar } from "./MobileFormattingBar";
+import { MobileLinkMenu } from "./MobileLinkMenu";
+import { MobileSpellMenu } from "./MobileSpellMenu";
 
 export function MobileEditor() {
   const activeNote = useAtomValue(activeNoteAtom);
@@ -264,6 +266,9 @@ export function MobileEditor() {
         keyboardHeight={keyboardHeight}
         isKeyboardOpen={effectiveKbOpen}
       />
+
+      <MobileSpellMenu />
+      <MobileLinkMenu />
     </div>
   );
 }

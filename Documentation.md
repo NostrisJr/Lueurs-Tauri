@@ -231,6 +231,24 @@ Du texte peut être surligné dans une couleur au choix. Sept couleurs sont disp
 
 **Couleur par défaut.** La couleur appliquée par le raccourci `⌘⇧L` est configurable dans les paramètres (section *Éditeur*).
 
+### Liens
+
+L'éditeur gère les liens markdown standard `[texte](cible)`, qu'ils pointent vers une autre note du vault ou vers une URL web.
+
+**Liens entre notes.** La cible est le chemin de la note relatif à la racine du vault, extension comprise (ex. `Souffle/Software/Arduino-cli.md`). Un lien vers une note s'affiche en bleu ; si la cible n'existe pas (note introuvable), il s'affiche en rouge pointillé.
+
+**Ouverture.** Sur desktop, un clic sur un lien de note l'ouvre **à la place** de l'onglet courant, un **Cmd+clic** l'ouvre dans un **nouvel onglet**. Les liens web s'ouvrent dans le navigateur externe. Sur mobile, un **appui long** sur un lien ouvre une feuille d'actions (ouvrir / modifier / supprimer).
+
+**Autocomplétion.** Deux déclencheurs proposent la liste des notes du vault, filtrée à la frappe :
+- `[[` — saisie d'un lien de note ;
+- `[texte](` — quand on ouvre la parenthèse cible d'un lien markdown, puisque c'est la forme réellement enregistrée.
+
+Dans les deux cas, sélectionner une note insère un lien markdown complet. Le texte affiché reprend l'alias déjà saisi, ou à défaut le nom de la note.
+
+**Édition.** Le menu contextuel (clic droit) ou l'appui long sur un lien permet de l'ouvrir, de le modifier (cible et texte affiché) ou de le supprimer. Le même éditeur de lien sert à transformer une sélection de texte en lien (`⌘⇧K`).
+
+**Renommage et déplacement.** Renommer ou déplacer une note (cible ou contenant des liens) met automatiquement à jour les liens concernés dans tout le vault.
+
 ### Modes d'affichage
 
 Les notes disposent de deux modes d'affichage, sélectionnables via les icônes en haut à droite de l'éditeur. Le mode actif est persisté dans le frontmatter de la note (`__DisplayMode__`) et restauré à chaque ouverture.
@@ -363,6 +381,62 @@ Ouvre le Finder et sélectionne la note ou le fichier média actuellement ouvert
 
 Déplace la note actuellement ouverte vers la corbeille du Finder.
 
+### Exporter en PDF…
+
+Ouvre le dialogue d'export PDF pour la note actuellement ouverte. Raccourci clavier : **⇧⌘E**.
+
+---
+
+## Export PDF
+
+Le dialogue d'export permet de convertir la note courante en PDF avec un contrôle fin de la mise en page. Les réglages choisis sont **mémorisés** et restaurés à la prochaine ouverture.
+
+### Options de mise en page
+
+| Option | Valeurs | Effet |
+|---|---|---|
+| **Format** | A4, A5, Letter, Legal | Format de la page |
+| **Police** | Inter, Garamond | Inter (sans empattement) ou EB Garamond (serif) |
+| **Taille** | Petite, Normale, Grande | 10 pt / 11 pt / 12 pt |
+| **Interligne** | Compact, Normale, Aérée | Espacement entre lignes et entre paragraphes |
+| **Marges** | Étroites, Normales, Larges | Marges de page (plus larges sur les côtés en mode Normales) |
+| **Nouvelle page à partir de** | Curseur H1–H6 (ou Aucun) | Les titres du niveau sélectionné et supérieur démarrent sur une nouvelle page. Un H2 immédiatement après son H1 ne crée **pas** de saut — seuls les titres de même niveau consécutifs en créent un. |
+| **Texte justifié** | Oui / Non | Justification des paragraphes |
+| **Barres colorées** | Oui / Non | Barre ambre sur les citations, barre verte sur les blocs de poésie |
+
+### Numéros de page
+
+- **Numéros de page** — affiche le numéro centré en bas de chaque page.
+  - **Commencer après le sommaire** *(visible uniquement si Sommaire est activé)* — les pages de titre et de sommaire ne sont pas numérotées ; la numérotation démarre à 1 à partir de la première page de contenu.
+
+### Indentation
+
+- **Indentation des paragraphes** — indente la première ligne de chaque paragraphe (style typographique classique).
+  - **Indenter aussi le 1er paragraphe** — étend l'indentation au premier paragraphe suivant chaque titre (désactivé par défaut, conformément à la typographie traditionnelle).
+
+### Structure du document
+
+| Option | Effet |
+|---|---|
+| **Page de titre** | Ajoute une page de titre centrée avec le nom de la note |
+| **Bloc auteur** *(sous-option de Page de titre)* | Ajoute sous le titre le nom, l'adresse e-mail et l'adresse définis dans l'onglet *Auteur* des réglages |
+| **Sommaire** | Ajoute un sommaire automatique après la page de titre |
+
+### Listes dans l'export
+
+Les trois types de liste Markdown sont pris en charge :
+
+- **Listes à puces** (`- item`) — rendues avec puces typographiques (•, ◦, –).
+- **Listes numérotées** (`1. item`) — rendues avec numérotation automatique.
+- **Listes de tâches** — les cases cochées (`- [x]`) affichent une coche ✓, les cases non cochées (`- [ ]`) affichent un carré vide ☐.
+
+### Aperçu et export
+
+L'aperçu se génère automatiquement à l'ouverture du dialogue et se met à jour après chaque changement d'option. Le bouton **Recompiler** force une mise à jour immédiate.
+
+- **Exporter PDF** — ouvre le sélecteur de destination natif et écrit le fichier PDF.
+- **Exporter source .typ** — exporte le source Typst intermédiaire (format texte), utile pour personnaliser la mise en page manuellement dans l'éditeur Typst.
+
 ---
 
 ## Menu contextuel (clic droit / appui long)
@@ -405,6 +479,43 @@ Les notes de type `__base__` sont exclues de la propagation : elles portent `__T
 ## Types utilisateur
 
 Les types utilisateur sont des notes de type `__template__` stockées dans `config/`. Ils apparaissent dans l'interface comme des types à part entière, au même titre que `__note__` ou `__base__`. Il est possible de créer de nouveaux types directement depuis Lueurs, ce qui crée la note template correspondante dans `config/`.
+
+---
+
+## Réglages
+
+Les réglages sont accessibles via l'icône d'engrenage dans la barre latérale. Ils sont organisés en cinq onglets.
+
+### Éditeur
+
+- **Mode d'affichage par défaut** — mode appliqué aux nouvelles notes et à celles qui n'ont pas encore de `__DisplayMode__` dans leur frontmatter.
+- **Justification** — active ou désactive la justification du texte en mode livre.
+- **Couleur de surlignage par défaut** — couleur appliquée par le raccourci `⌘⇧L`.
+- **Correcteur orthographique** — active ou désactive la vérification en temps réel. Lorsqu'il est actif, un bouton **Consulter les mots ignorés** permet d'afficher et de retirer les mots ajoutés au dictionnaire du vault.
+
+### Navigateur
+
+Options d'affichage de l'explorateur de fichiers (dossiers de ressources, format de l'indicateur pages/mots, etc.).
+
+### Espaces
+
+Gestion des espaces de travail : création, renommage, réordonnancement, choix de l'emoji et de la couleur associés à chaque espace.
+
+### Vault
+
+Sélection du dossier vault actif et actions de maintenance (reconstruire `__Children__`, etc.).
+
+### Auteur
+
+Informations personnelles utilisées lors de l'export PDF. Ces données sont **locales** (stockées dans le navigateur, non synchronisées avec le vault).
+
+| Champ | Usage |
+|---|---|
+| **Prénom / Nom** | Affichés ensemble sur la page de titre |
+| **Adresse e-mail** | Affichée sous le nom |
+| **Adresse** | Affichée sous l'e-mail (peut être sur plusieurs lignes) |
+
+Pour inclure ces informations dans un export, activer l'option **Bloc auteur** dans le dialogue d'export (visible uniquement si **Page de titre** est activée).
 
 ---
 

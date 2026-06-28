@@ -8,6 +8,13 @@ import {
   DEFAULT_DISTINGUISHED_TYPES,
   type DocumentMapState,
 } from "./documentMapConfig";
+import {
+  type InfosAuteur,
+  OPTIONS_DEFAUT,
+  OPTIONS_MULTI_DOC_DEFAUT,
+  type OptionsExport,
+  type OptionsMultiDocument,
+} from "./proseToTypst";
 
 import type {
   FolderNode,
@@ -32,6 +39,38 @@ export const writingPathsRegistry = new Set<string>();
 export const searchAtom = atom("");
 export const sidebarCollapsedAtom = atom(false);
 export const settingsOpenAtom = atom(false);
+export const exportDialogOpenAtom = atom(false);
+
+// Options d'export persistées — mergées avec OPTIONS_DEFAUT pour gérer l'ajout de nouvelles clés
+export const exportOptionsAtom = atomWithStorage<Partial<OptionsExport>>(
+  "lueurs_export_options",
+  OPTIONS_DEFAUT,
+  undefined,
+  { getOnInit: true }
+);
+
+// Informations auteur (utilisées sur la page de titre et dans les réglages)
+export const infoAuteurAtom = atomWithStorage<InfosAuteur>(
+  "lueurs_info_auteur",
+  { prenom: "", nom: "", email: "", adresse: "" },
+  undefined,
+  { getOnInit: true }
+);
+
+// Mode d'export : "note" = comportement actuel, "dossier" = compilation multi-doc
+// Non persisté — repart à "note" à chaque ouverture du dialog
+export const exportModeAtom = atom<"note" | "dossier">("note");
+
+// Options multi-document persistées
+export const exportOptionsMultiDocAtom = atomWithStorage<
+  Partial<OptionsMultiDocument>
+>("lueurs_export_options_multidoc", OPTIONS_MULTI_DOC_DEFAUT, undefined, {
+  getOnInit: true,
+});
+
+// ID du dossier sélectionné pour l'export multi-doc (null = dossier parent de la note active)
+export const exportFolderIdAtom = atom<string | null>(null);
+
 // Affichage du dictaphone desktop (rendu en overlay au-dessus de l'éditeur)
 export const dictaphoneOpenAtom = atom(false);
 // État du drag & drop dans le file tree
@@ -162,6 +201,8 @@ export interface SpaceNavState {
   activeNoteId: string | null;
   tabHistory: string[];
   noteBackStack: string[];
+  // Pile de navigation drill-in/out du file tree mobile (ignoré côté desktop)
+  folderStack?: (FolderNode | null)[];
 }
 
 // État de navigation sauvegardé par espace (clé "__all__" = état de "Tout")
@@ -255,6 +296,37 @@ export const pendingAudioInsertAtom = atom<{
 // null = racine du vault, FolderNode = sous-dossier actif
 export const folderStackAtom = atom<(FolderNode | null)[]>([null]);
 
+// Bascule d'espace mobile : sauvegarde l'état de navigation courant (pile de
+// dossiers + onglets) sous la clé de l'espace actif, puis restaure celui de la
+// cible. Même logique que le SpaceSwitcher desktop, augmentée du folderStack.
+export const mobileSwitchSpaceAtom = atom(
+  null,
+  (get, set, newSpace: string | null) => {
+    const activeSpace = get(activeSpaceAtom);
+    if (newSpace === activeSpace) return;
+
+    const currentKey = activeSpace ?? KEY_ALL;
+    const newKey = newSpace ?? KEY_ALL;
+
+    const current: SpaceNavState = {
+      openTabIds: get(openTabIdsAtom),
+      activeNoteId: get(activeNoteIdAtom),
+      tabHistory: get(tabHistoryAtom),
+      noteBackStack: get(noteBackStackAtom),
+      folderStack: get(folderStackAtom),
+    };
+    set(spaceNavStateAtom, (prev) => ({ ...prev, [currentKey]: current }));
+
+    const saved = get(spaceNavStateAtom)[newKey];
+    set(openTabIdsAtom, saved?.openTabIds ?? []);
+    set(activeNoteIdAtom, saved?.activeNoteId ?? null);
+    set(tabHistoryAtom, saved?.tabHistory ?? []);
+    set(noteBackStackAtom, saved?.noteBackStack ?? []);
+    set(folderStackAtom, saved?.folderStack ?? [null]);
+    set(activeSpaceAtom, newSpace);
+  }
+);
+
 export interface RenameTarget {
   id: string;
   name: string;
@@ -264,6 +336,27 @@ export const renameTargetAtom = atom<RenameTarget | null>(null);
 
 // Cible du menu contextuel mobile (appui long sur note/dossier)
 export const mobileContextMenuAtom = atom<RenameTarget | null>(null);
+
+export interface MobileSpellPopup {
+  from: number;
+  to: number;
+  word: string;
+  message: string;
+  replacements: string[];
+  category: "spelling" | "grammar";
+}
+
+// Suggestion orthographique active sur mobile (tap sur mot souligné)
+export const mobileSpellPopupAtom = atom<MobileSpellPopup | null>(null);
+
+export interface MobileLinkMenu {
+  range: { from: number; to: number };
+  href: string;
+  text: string;
+}
+
+// Menu d'actions sur un lien (appui long mobile)
+export const mobileLinkMenuAtom = atom<MobileLinkMenu | null>(null);
 
 // Action : navigue vers noteId en empilant la note courante
 export const navigateToNoteAtom = atom(null, (get, set, noteId: string) => {
@@ -500,4 +593,38 @@ export const kanbanCardsAtom = atom((get): KanbanCards => {
   }
 
   return cards;
+});
+
+// ── Export multi-document ──────────────────────────────────────────────────
+
+// Dossier parent de la note active (valeur par défaut pour le sélecteur de dossier)
+export const activeNoteFolderAtom = atom<FolderNode | null>((get) => {
+  const note = get(activeNoteAtom);
+  if (!note) return null;
+  function findParent(nodes: TreeNode[], target: string): FolderNode | null {
+    for (const node of nodes) {
+      if (node.kind === "folder") {
+        if (node.children.some((c) => c.id === target)) return node;
+        const found = findParent(node.children, target);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  return findParent(get(treeAtom), note.id);
+});
+
+// Liste plate de tous les FolderNode de l'arbre (pour le sélecteur de dossier)
+export const allFoldersAtom = atom<FolderNode[]>((get) => {
+  function collect(nodes: TreeNode[]): FolderNode[] {
+    const res: FolderNode[] = [];
+    for (const n of nodes) {
+      if (n.kind === "folder") {
+        res.push(n);
+        res.push(...collect(n.children));
+      }
+    }
+    return res;
+  }
+  return collect(get(treeAtom));
 });

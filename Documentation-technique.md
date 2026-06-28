@@ -758,6 +758,47 @@ Les marques du preset (gras/italique/code/barré) restent **inclusives** (leurs 
 
 ---
 
+## Liens entre notes (`src/shared/plugins/wikilink/`)
+
+### Décision : mark `link` standard, pas de nœud custom
+
+Une première version utilisait un nœud ProseMirror `wikilink` dédié (avec schéma, remark, NodeView, input-rules). Abandonnée : un nœud distinct multiplie les formalismes et faisait craindre des régressions sur les liens de base/enfant du frontmatter. Les liens entre notes sont donc des **liens markdown standard** `[texte](chemin.md)` réutilisant la **mark `link`** du preset commonmark. `href` = chemin relatif au vault, **extension comprise**. Aucune sérialisation custom : le markdown produit est lisible par n'importe quel éditeur (le nom `wikilink/` du dossier est resté par historique).
+
+Le bundle `wikilinkPlugin` agrège trois plugins ProseMirror : `note-link-plugin`, `suggest-plugin`, `link-boundary-plugin`.
+
+### `note-link-plugin` — clic + décorations
+
+- **Clic** (`handleClick`) : lit `event.target.closest("a")`. Lien externe (`http`/`mailto`/`www.` via `isExternalHref`) → `openUrl` (plugin opener). Lien de note → `wikilinkBridge.resolve(href)` puis `wikilinkBridge.open(noteId, newTab)` avec `newTab = metaKey || ctrlKey`. Lien cassé → `return false`.
+- **Décorations** (`Decoration.inline`) : classe `note-link` (bleu) ou `note-link-broken` (rouge pointillé selon que la cible existe). Recalcul sur `tr.docChanged` ou sur le meta `REBUILD_META` — ce dernier permet de revalider le statut cassé/valide quand l'arbre de notes change **sans transaction sur le doc** (`refreshNoteLinkDecorations(view)`, appelé par `MarkdownEditor` à chaque mise à jour de l'arbre).
+- `wikilinkBridge` (ref module-level) découple le plugin PM de jotai/React. `MarkdownEditor` l'alimente : `resolve(href) → noteId` (avec fallback `decodeURIComponent`), `open(noteId, newTab)`.
+
+### `suggest-plugin` — deux déclencheurs d'autocomplétion
+
+Le plugin (`compute`) calcule l'état du popup à partir du texte avant le curseur (`textBetween`, les nœuds atomiques remplacés par un `LEAF` pour garder l'alignement offsets ↔ positions) :
+
+1. **`[alias](query`** — détecté en priorité par `/\[([^[\]]*)\]\(([^)\n]*)$/`. Le curseur est dans la parenthèse cible d'un lien markdown en cours de frappe — la forme réellement encodée. `alias` (groupe 1) est conservé comme texte du lien ; `query` (groupe 2) filtre les notes.
+2. **`[[query`** — wikilink classique : `lastIndexOf("[[")`, requête invalide si elle contient `]`, `[` ou `LEAF`.
+
+L'état (`from`, `to`, `query`, `alias?`, `coords`) est publié via un store externe (`wikilinkSuggestState`, pub/sub) lu par `WikilinkSuggest.tsx` en `useSyncExternalStore`. À la sélection, on remplace `from..to` par un nœud texte portant la mark `link` (`schema.text(alias?.trim() || candidate.name, [linkMark.create({ href: relpath })])`) puis `tr.removeStoredMark(linkMark)`.
+
+> Les plugins ProseMirror sont instanciés **une fois** à l'init de l'éditeur : une modif du `suggest-plugin` ne prend pas effet en HMR, un rechargement complet est nécessaire pour tester.
+
+### `link-boundary-plugin` — mark `link` non-inclusive
+
+La mark `link` du preset est **inclusive** : un caret collé à la fin d'un lien (lien en bout de ligne sans espace) reste « dans » le lien, et la frappe suivante s'ajoute au texte du lien. Le plugin rétablit le comportement non-inclusif via `appendTransaction` : si la sélection est vide, que les marks au curseur contiennent `link` et que le **nœud suivant ne porte pas** la mark `link` (frontière droite, ou fin de bloc), on retire `link` des stored marks. Aucune boucle : au tour suivant les stored marks ne contiennent plus `link`. À l'intérieur du lien (nœud suivant marqué) ou à sa frontière gauche (`$pos.marks()` ne contient pas `link`), le plugin ne fait rien.
+
+### Édition de lien et positionnement du popup (`WikilinkEditPopup.tsx`)
+
+Le menu contextuel (`useContextMenu` via `linkRangeAt`), l'appui long mobile (`MobileLinkMenu`) et `⌘⇧K` (`toggleLinkWithPromptCommand`) ouvrent le même éditeur, alimenté par le store `wikilinkEditState` (`range` requise, `coords?` optionnelle, `initialQuery`, `initialAlias`). Mobile fournit des `coords` fixes ; desktop les recalcule.
+
+Quand la cible est hors viewport, lire `coordsAtPos` donnerait une ancre fausse. `WikilinkEditPopup` scrolle d'abord la position dans la vue avec **les mêmes marges que le scroll auto à la frappe** : `scrollPosIntoViewLikeEditing` (`lib/editorScroll.ts`) réutilise les constantes de `useCaretScroll` (inset header `DESKTOP_HEADER_HEIGHT` / `MOBILE_HEADER_HEIGHT` + `CARET_TOP_PADDING` en haut, `CARET_BOTTOM_PADDING` en bas) en ajustant `scrollTop` du conteneur scrollable instantanément — sinon une cible au-dessus du viewport restait coincée sous le header fixe. Puis `clampPopup` (`lib/popupPosition.ts`) borne horizontalement et bascule au-dessus de l'ancre en cas de débordement bas.
+
+### Propagation au renommage / déplacement (`usePathPropagation`)
+
+Renommer ou déplacer une note réécrit les `href` des liens markdown dans le corps des notes concernées via `rewriteNoteLinkHrefs(body, mapHref)` (`wikilinkRewrite.ts`). La regex `/(!?)\[([^\]]*)\]\((<[^>\n]+>|[^)\s]+)((?:\s+"[^"]*")?)\)/g` ignore les images (`!`), gère les URL encadrées par `<>` (cas des chemins à espaces, produit par mdast) et préserve les titres. La logique du frontmatter (`__Base__`/`__Children__`) est inchangée.
+
+---
+
 ## Plugin audio-block (`src/shared/plugins/audio-block/`)
 
 ### Intégration dans l'éditeur
@@ -869,6 +910,186 @@ Stockés dans `.lueurs/config.json` (champ `ignoredWords: string[]`, cf. `vaultC
 ### Popover de suggestions
 
 `SpellSuggestionPopover.tsx` est positionné en coordonnées **écran** (`view.coordsAtPos`) avec `position: fixed`. Comme ces coordonnées sont figées, il se **ferme au scroll** (listener `scroll` en capture, pour attraper n'importe quel conteneur scrollable), au clic extérieur et à Échap — plutôt que de le repositionner en continu.
+
+---
+
+## Export PDF / Aperçu Typst
+
+### Vue d'ensemble
+
+Typst est embarqué comme crates Rust (`typst`, `typst-layout`, `typst-pdf`, `typst-svg` 0.15.0) — aucun binaire externe, aucune dépendance système. Le trait `typst::World` est implémenté par `LueursWorld` (`src-tauri/src/typst_export.rs`).
+
+Deux pipelines distincts :
+
+| | Aperçu live | Export PDF |
+|---|---|---|
+| Format | SVG page par page | PDF complet |
+| Rendu | `typst_svg::svg()` | `typst_pdf::pdf()` |
+| Architecture | Thread dédié + événements Tauri | `spawn_blocking` |
+| World | Singleton réutilisé (comemo) | Nouveau world par appel |
+| Latence | Quasi-nulle (fire-and-forget) | Acceptable (action explicite) |
+
+### Architecture aperçu : thread dédié
+
+L'aperçu live est traité par un thread dédié `"typst-compiler"` avec une boîte aux lettres `Mutex<Option<DemandeApercu>> + Condvar`. Ce pattern est identique à celui de tinymist (le serveur LSP Typst utilisé par l'extension VSCode).
+
+**Pourquoi un thread dédié et non `spawn_blocking` ?**
+
+Avec `spawn_blocking`, chaque changement d'option dépose une tâche dans le pool Tokio. Si l'utilisateur modifie plusieurs options rapidement, les compilations se mettent en file — chaque version intermédiaire compile et émet ses résultats, avec un délai cumulatif. Le thread dédié résout cela : si une nouvelle requête arrive pendant une compilation, elle **remplace** la demande en attente dans la boîte. Seule la dernière option choisie est compilée. Les intermédiaires sont silencieusement jetés.
+
+```
+Frontend          Boîte aux lettres          Thread typst-compiler
+   │                    │                           │
+   │──── requête 1 ────▶│         (dormait)         │
+   │                    │──────── réveil ───────────▶│ compile…
+   │──── requête 2 ────▶│ (remplace requête 1)       │
+   │──── requête 3 ────▶│ (remplace requête 2)       │
+   │                    │              ◀──── fini ───│ émet résultat 1
+   │                    │──────── réveil ───────────▶│ compile requête 3
+```
+
+**Structs Rust :**
+
+```rust
+struct DemandeApercu { contenu: String, request_id: u64, app: tauri::AppHandle }
+
+#[derive(Serialize, Clone)]
+struct ApercuPage { request_id: u64, page_idx: usize, total: usize, svg: String }
+
+#[derive(Serialize, Clone)]
+struct ApercuErreur { request_id: u64, message: String }
+
+static BOITE: OnceLock<(Mutex<Option<DemandeApercu>>, Condvar)> = OnceLock::new();
+```
+
+### Compilation incrémentale via `Source::replace()` et comemo
+
+Le `LueursWorld` singleton **vit dans le thread** (pas de Mutex de compilation). Entre deux requêtes, son contenu est mis à jour via `self.source.replace(contenu)` — cette méthode modifie la source en place tout en préservant le `FileId`. comemo peut donc corréler compilations successives et réutiliser les mises en page inchangées.
+
+```rust
+fn mettre_a_jour(&mut self, contenu: &str) {
+    self.source.replace(contenu); // préserve FileId → comemo garde le cache
+}
+```
+
+`comemo::evict(30)` est appelé après chaque compilation pour purger les entrées de cache inutilisées au-delà de 30 requêtes, évitant une croissance mémoire illimitée.
+
+### Optimisation des dépendances en mode dev
+
+Les crates Typst sont écrites pour la performance (`typst-layout`, `typst-svg`, comemo font du calcul intensif). Sans optimisation, le build debug est 10 à 50× plus lent que le release, rendant l'aperçu live inutilisable.
+
+```toml
+# Cargo.toml – pattern identique au repo typst officiel
+[profile.dev.package."*"]
+opt-level = 2
+```
+
+Cette option compile **toutes les dépendances** (mais pas le code de l'app elle-même) avec `opt-level = 2` en mode debug. Le code de l'app reste en `opt-level = 0` (recompilation rapide, meilleur débogage).
+
+### Cache SVG
+
+Un second `OnceLock` stocke le dernier résultat de compilation `(hash_source → Vec<String> base64)`. Si le même source Typst est redemandé (ex : l'utilisateur ferme et rouvre le dialogue), les pages sont réémises instantanément sans recompilation.
+
+```rust
+static CACHE_SVG: OnceLock<Mutex<Option<(u64, Vec<String>)>>> = OnceLock::new();
+```
+
+### Polices embarquées
+
+Les polices sont compilées dans le binaire via `include_bytes!()` :
+
+- **`typst-assets` (feature `fonts`)** — DejaVu Sans Mono, Libertinus Serif, New Computer Modern.
+- **`src-tauri/fonts/`** — Inter Variable (×2, upright + italic, ~860 KB chacun) et EB Garamond Variable (×2, ~875 KB chacun).
+
+Total embarqué : ~3,5 MB. Élimine tout scan de polices système.
+
+### Caches statiques (`OnceLock`)
+
+```rust
+static POLICES:   OnceLock<Vec<Font>>                   // parsing des TTF
+static LIVRE:     OnceLock<Arc<LazyHash<FontBook>>>     // index de correspondance polices
+static LIBRAIRIE: OnceLock<Arc<LazyHash<Library>>>      // bibliothèque standard Typst
+```
+
+`Library::builder().build()` initialise tous les types, fonctions et modules Typst intégrés (~100-300 ms au premier appel). `FontBook::from_fonts()` construit l'index de correspondance. Les deux sont partagés via `Arc::clone()` (O(1)).
+
+### Préchauffage au démarrage
+
+```rust
+// lib.rs – setup()
+std::thread::spawn(prechauffer);
+```
+
+`prechauffer()` initialise les trois `OnceLock`, la boîte aux lettres, et **démarre le thread `"typst-compiler"`**. Quand l'utilisateur ouvre le dialogue d'export pour la première fois, le thread tourne déjà et les caches sont chauds.
+
+### Émission SVG page par page
+
+Le thread émet un événement Tauri `"apercu_page"` dès que chaque page est rendue. La page 1 est visible avant que les pages suivantes finissent de compiler. Le SVG est encodé en base64 car les événements Tauri sérialisent en JSON.
+
+```rust
+// Requiert use tauri::Emitter; dans les imports — méthode en trait, pas sur le type direct
+let svg = typst_svg::svg(page, &SvgOptions::default());
+let b64 = base64::engine::general_purpose::STANDARD.encode(svg.as_bytes());
+app.emit("apercu_page", ApercuPage { request_id, page_idx: i, total, svg: b64 });
+```
+
+### API frontend (fire-and-forget + requestIdRef)
+
+`compiler_typst_apercu` dépose la demande dans la boîte et retourne immédiatement (`Ok(())`). Le frontend n'attend pas le résultat de l'`invoke` — les pages arrivent via les event listeners.
+
+```typescript
+// Un compteur monotone, comparé dans les événements pour ignorer les résultats périmés
+const requestIdRef = useRef(0);
+
+function compilerApercu() {
+    const id = ++requestIdRef.current;
+    setRecompilation(true);
+    invoke("compiler_typst_apercu", { contenuTypst: typst, requestId: id })
+        .catch((e) => { if (id === requestIdRef.current) setErreur(String(e)); });
+}
+```
+
+Les listeners `"apercu_page"` et `"apercu_erreur"` sont installés une seule fois au montage du composant. Si `payload.request_id !== requestIdRef.current`, l'événement est ignoré — les résultats d'une compilation annulée ne corrompent pas l'affichage.
+
+L'état `pages: (string | null)[]` représente les pages reçues. Les pages null (pas encore reçues) s'affichent en placeholder A4. Les anciennes pages restent visibles à `opacity-40` pendant la recompilation. Il n'y a **pas de debounce** sur les changements d'options : la commande retournant instantanément, chaque interaction déclenche un envoi sans coût côté JS. C'est le thread Rust qui absorbe les rafales via la boîte aux lettres.
+
+### Conversion ProseMirror → Typst (`proseToTypst.ts`)
+
+`proseMirrorDocVersTypst(doc, titre, vaultPath, opts)` traverse le document ProseMirror et génère un source Typst complet. Deux parties :
+
+1. **En-tête** (`construireEnteteTypst`) — `#set page`, `#set text`, `#set par`, `#show heading`, `#show raw`, définitions de `blockquote`, `poetry`, `didascalie`, `hl`.
+2. **Corps** — `convertirBloc()` traite les nœuds de premier niveau, `convertirInlines()` traite les contenus inline, `appliquerMarks()` enveloppe le texte dans les fonctions Typst correspondantes.
+
+**Listes à puces.** Le marqueur est piloté par la police choisie :
+```typst
+#set list(marker: ([•], [◦], [–]))  // Inter
+#set list(marker: ([–], [·], [·]))  // Garamond
+```
+
+**Hiérarchie des titres** (H1 à H6, taille décroissante, sans ligne séparatrice) :
+```
+H1 : 1.6em bold       H2 : 1.3em bold
+H3 : 1.15em semibold  H4 : 1.05em semibold italic
+H5 : 1em italic       H6 : 0.9em luma(100)
+```
+La ligne horizontale sous H1 (`#line(length: 100%)`) a été retirée — elle créait une rupture visuelle trop forte.
+
+### Sauts de page intelligents
+
+Un `#pagebreak(weak: true)` est inséré avant un titre de niveau L si :
+1. `niveauNouvellePage >= L` (activé dans les options),
+2. il existe un bloc précédent dans le document, et
+3. le bloc précédent n'est **pas** un titre de niveau strictement inférieur à L (titre parent).
+
+Condition 3 : évite le saut entre H1 et son H2 immédiat. `prevNode` est tracké dans la boucle `doc.forEach()` et transmis à `convertirBloc()`.
+
+### Export PDF final
+
+L'export PDF utilise un `spawn_blocking` indépendant (latence acceptable pour une action explicite). Il crée un nouveau `LueursWorld` et ne partage pas le cache comemo avec le thread d'aperçu — les deux ne s'interfèrent pas.
+
+### Limitation connue
+
+**Pas d'images dans le PDF** : `LueursWorld::file()` retourne toujours `FileError::NotFound`. Les médias du vault ne sont pas accessibles depuis le contexte Typst. P2.
 
 ---
 

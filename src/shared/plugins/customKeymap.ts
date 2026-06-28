@@ -1,18 +1,20 @@
 import { commandsCtx, schemaCtx } from "@milkdown/kit/core";
 import {
+  insertHardbreakCommand,
   insertHrCommand,
   toggleInlineCodeCommand,
   turnIntoTextCommand,
 } from "@milkdown/kit/preset/commonmark";
 import { toggleStrikethroughCommand } from "@milkdown/kit/preset/gfm";
-import { defaultHighlightColorRef } from "./highlight/defaultColorRef";
 import {
   lift,
   setBlockType,
+  splitBlock,
   toggleMark,
   wrapIn,
 } from "@milkdown/kit/prose/commands";
 import { keymap } from "@milkdown/kit/prose/keymap";
+import { Fragment } from "@milkdown/kit/prose/model";
 import type { MarkType, Node as ProseNode } from "@milkdown/kit/prose/model";
 import type { Schema } from "@milkdown/kit/prose/model";
 import { liftListItem, wrapInList } from "@milkdown/kit/prose/schema-list";
@@ -21,6 +23,8 @@ import type { Command } from "@milkdown/kit/prose/state";
 import { Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
 import { $command, $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../lib/logger";
+import { defaultHighlightColorRef } from "./highlight/defaultColorRef";
+import { setWikilinkEdit } from "./wikilink/wikilinkEditState";
 
 const log = createLogger("customKeymap");
 
@@ -462,33 +466,182 @@ export const toggleLinkWithPromptCommand = $command(
       return true;
     }
 
-    // Pas de sélection et pas de lien → rien
-    if (empty) return false;
-
-    // Sélection sans lien → demander l'URL et appliquer
-    const href = window.prompt("URL du lien :");
-    if (!href) {
-      log.info("lien : saisie annulée");
-      return false;
+    // Sinon → ouvre le popup d'édition de lien (note ou URL).
+    // Sélection : son texte devient l'alias proposé. Curseur vide : insertion.
+    // Pas de coords : le popup recalcule l'ancre (et scrolle la cible si hors vue).
+    if (dispatch) {
+      const selectedText = empty ? "" : state.doc.textBetween(from, to, " ");
+      setWikilinkEdit({
+        range: { from, to },
+        initialQuery: "",
+        initialAlias: selectedText,
+      });
+      log.info("popup d'édition de lien ouvert", { from, to });
     }
-    if (dispatch)
-      dispatch(
-        state.tr.addMark(from, to, linkMark.create({ href, title: "" }))
-      );
-    log.info("lien ajouté", { from, to, href });
     return true;
   }
 );
+
+// ── Sortie du bloc de poésie ───────────────────────────────────────────────
+// Supprime les paragraphes vides en queue du bloc et insère un paragraphe après.
+function exitPoetryBlock(
+  state: EditorState,
+  dispatch: ((tr: Transaction) => void) | undefined,
+  schema: Schema,
+  poetryDepth: number,
+  firstEmptyIdx: number
+): boolean {
+  if (!dispatch) return true;
+
+  const { $from } = state.selection;
+  const poetryNode = $from.node(poetryDepth);
+  const poetryStart = $from.before(poetryDepth);
+  const poetryEnd = poetryStart + poetryNode.nodeSize;
+  const tr = state.tr;
+
+  if (firstEmptyIdx === 0) {
+    // Tout le bloc est vide → le remplacer par un paragraphe vide
+    tr.replaceWith(poetryStart, poetryEnd, schema.nodes.paragraph.create());
+    tr.setSelection(TextSelection.near(tr.doc.resolve(poetryStart + 1)));
+  } else {
+    // Calculer la position du premier paragraphe vide en queue
+    let deleteFrom = poetryStart + 1;
+    for (let i = 0; i < firstEmptyIdx; i++)
+      deleteFrom += poetryNode.child(i).nodeSize;
+
+    const blockContentEnd = poetryEnd - 1; // avant le token fermant du bloc
+    tr.delete(deleteFrom, blockContentEnd);
+    const newEnd = poetryEnd - (blockContentEnd - deleteFrom);
+    tr.insert(newEnd, schema.nodes.paragraph.create());
+    tr.setSelection(TextSelection.near(tr.doc.resolve(newEnd + 1)));
+  }
+
+  dispatch(tr.scrollIntoView());
+  log.info("sortie bloc poésie par triple Entrée");
+  return true;
+}
 
 // ── Keymap (event.key) ─────────────────────────────────────────────────────
 
 export const customKeymapPlugin = $prose((ctx) =>
   keymap({
-    // Entrée sur item vide → sortie complète de la liste (tous niveaux) vers
-    // la racine. Sinon false → splitListItem du preset (nouvel item).
+    // Bloc de poésie :
+    // - Enter en fin de paragraphe sans hardbreak final + sibling suivant non-vide
+    //   → fusion des deux paragraphes avec un hardbreak (conversion format séparé → strophe).
+    // - Enter en fin de paragraphe avec hardbreak final (double Enter)
+    //   → insertHardbreakCommand détecte la queue et crée un nouveau paragraphe (séparateur de strophe).
+    // - Enter en milieu de paragraphe → hardbreak à la position du curseur.
+    // - Triple Enter sur paragraphe vide en fin de bloc → sortie + nettoyage.
+    // Hors bloc de poésie : item vide → sortie de liste.
     Enter: (state, dispatch) => {
-      if (!isInEmptyListItem(state, state.schema)) return false;
-      return liftOutOfList(state.schema)(state, dispatch);
+      const { schema } = state;
+
+      if (
+        schema.nodes.poetry_block &&
+        isInNodeType(state, schema, "poetry_block")
+      ) {
+        const { $from, empty } = state.selection;
+        const parent = $from.parent;
+
+        if (
+          parent.type === schema.nodes.paragraph &&
+          parent.content.size === 0
+        ) {
+          // Paragraphe vide : cherche si c'est le dernier (ou suivi uniquement de vides)
+          let poetryDepth = -1;
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type === schema.nodes.poetry_block) {
+              poetryDepth = d;
+              break;
+            }
+          }
+          if (poetryDepth >= 0) {
+            const poetryNode = $from.node(poetryDepth);
+            const idx = $from.index(poetryDepth);
+            let trailingOnly = true;
+            for (let k = idx + 1; k < poetryNode.childCount; k++) {
+              const c = poetryNode.child(k);
+              if (
+                !(c.type === schema.nodes.paragraph && c.content.size === 0)
+              ) {
+                trailingOnly = false;
+                break;
+              }
+            }
+            if (trailingOnly)
+              return exitPoetryBlock(state, dispatch, schema, poetryDepth, idx);
+          }
+        }
+
+        // Curseur en fin de paragraphe non-vide, dernier enfant = texte (pas hardbreak) :
+        // fusionner avec le paragraphe suivant non-vide en intercalant un hardbreak.
+        // Ceci convertit le format "un paragraphe par vers" en "strophe avec hardbreaks".
+        if (
+          empty &&
+          parent.type === schema.nodes.paragraph &&
+          parent.content.size > 0 &&
+          $from.parentOffset === parent.content.size &&
+          parent.lastChild?.type.name !== "hardbreak"
+        ) {
+          let poetryDepth = -1;
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type === schema.nodes.poetry_block) {
+              poetryDepth = d;
+              break;
+            }
+          }
+          if (poetryDepth >= 0) {
+            const poetryNode = $from.node(poetryDepth);
+            const idx = $from.index(poetryDepth);
+            if (idx + 1 < poetryNode.childCount) {
+              const nextPara = poetryNode.child(idx + 1);
+              if (
+                nextPara.type === schema.nodes.paragraph &&
+                nextPara.content.size > 0
+              ) {
+                if (dispatch) {
+                  const hardbreak = schema.nodes.hardbreak.create();
+                  const insertPos = $from.end();
+                  const insertContent = Fragment.from(hardbreak).append(
+                    nextPara.content
+                  );
+                  const tr = state.tr;
+                  tr.insert(insertPos, insertContent);
+                  // $from.end() = avant le token fermant ; +1 = après le token fermant = début du sibling
+                  const nextParaStart = $from.end() + 1 + insertContent.size;
+                  tr.delete(nextParaStart, nextParaStart + nextPara.nodeSize);
+                  // Curseur en fin du paragraphe fusionné
+                  tr.setSelection(
+                    TextSelection.near(
+                      tr.doc.resolve(insertPos + insertContent.size)
+                    )
+                  );
+                  dispatch(tr.scrollIntoView());
+                  log.info("fusion vers poésie avec hardbreak", { idx });
+                }
+                return true;
+              }
+            }
+          }
+        }
+
+        ctx.get(commandsCtx).call(insertHardbreakCommand.key);
+        return true;
+      }
+
+      if (!isInEmptyListItem(state, schema)) return false;
+      return liftOutOfList(schema)(state, dispatch);
+    },
+    // Shift+Enter dans un bloc de poésie : nouvelle strophe directe (splitBlock).
+    // Hors bloc : comportement Milkdown par défaut (hardbreak).
+    "Shift-Enter": (state, dispatch) => {
+      const { schema } = state;
+      if (
+        !schema.nodes.poetry_block ||
+        !isInNodeType(state, schema, "poetry_block")
+      )
+        return false;
+      return splitBlock(state, dispatch);
     },
     // Backspace sur item vide → remonte d'un seul niveau (liftListItem), au lieu
     // du joinBackward natif qui empile un 2e paragraphe dans l'item précédent.

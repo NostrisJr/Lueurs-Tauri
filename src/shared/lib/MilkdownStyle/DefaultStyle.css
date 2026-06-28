@@ -20,6 +20,7 @@
   color: #1a1918;
 
   caret-color: transparent;
+  /* caret custom via plugin */
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -236,6 +237,36 @@
 
 .milkdown .ProseMirror a:hover {
   text-decoration-color: #b07d18;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Liens entre notes (liens markdown vers une note, classés via décorations)
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror a.note-link {
+  color: #3b6ea5;
+  cursor: pointer;
+  text-decoration: none;
+  text-decoration-color: transparent;
+  border-bottom: 1px solid rgba(59, 110, 165, 0.35);
+  transition: border-color 0.15s, background-color 0.15s;
+  border-radius: 2px;
+}
+
+.milkdown .ProseMirror a.note-link:hover {
+  border-bottom-color: #3b6ea5;
+  background-color: rgba(59, 110, 165, 0.08);
+}
+
+/* Cible introuvable : lien cassé */
+.milkdown .ProseMirror a.note-link.note-link-broken {
+  color: #b3261e;
+  border-bottom-style: dashed;
+  border-bottom-color: rgba(179, 38, 30, 0.4);
+}
+
+.milkdown .ProseMirror a.note-link.note-link-broken:hover {
+  background-color: rgba(179, 38, 30, 0.06);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -559,7 +590,6 @@
   text-decoration-style: wavy;
   text-decoration-skip-ink: none;
   text-underline-offset: 2px;
-  cursor: pointer;
 }
 
 .milkdown .ProseMirror .hugo-spell {
