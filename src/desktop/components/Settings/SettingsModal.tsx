@@ -4,16 +4,18 @@ import {
   IconFolder,
   IconListBullet,
   IconRectangleStack,
+  IconTextDocument,
   IconTextformat,
   IconXmark,
 } from "../../../shared/components/PlatformIcon";
 import { settingsOpenAtom } from "../../../shared/lib/atoms";
+import { AuteurTab } from "./tabs/AuteurTab";
 import { EditeurTab } from "./tabs/EditeurTab";
 import { EspacesTab } from "./tabs/EspacesTab";
 import { NavigateurTab } from "./tabs/NavigateurTab";
 import { VaultTab } from "./tabs/VaultTab";
 
-type Tab = "editeur" | "navigateur" | "espaces" | "vault";
+type Tab = "editeur" | "navigateur" | "espaces" | "vault" | "auteur";
 
 const TABS: {
   id: Tab;
@@ -24,6 +26,7 @@ const TABS: {
   { id: "navigateur", label: "Navigateur", Icon: IconListBullet },
   { id: "espaces", label: "Espaces", Icon: IconRectangleStack },
   { id: "vault", label: "Vault", Icon: IconFolder },
+  { id: "auteur", label: "Auteur", Icon: IconTextDocument },
 ];
 
 export function SettingsModal() {
@@ -95,6 +98,7 @@ export function SettingsModal() {
           {activeTab === "navigateur" && <NavigateurTab />}
           {activeTab === "espaces" && <EspacesTab />}
           {activeTab === "vault" && <VaultTab />}
+          {activeTab === "auteur" && <AuteurTab />}
         </div>
       </div>
     </div>

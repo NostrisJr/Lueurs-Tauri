@@ -1,8 +1,6 @@
+import { clsx } from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
-import {
-  IconChevronLeft,
-  IconXmark,
-} from "../../../shared/components/PlatformIcon";
+import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
   activeNoteIdAtom,
@@ -13,10 +11,11 @@ import {
   openTabIdsAtom,
   tabNodeByIdAtom,
 } from "../../../shared/lib/atoms";
+import { isIOS } from "../../../shared/lib/platform";
 import { hapticImpact } from "../../lib/haptics";
 import { FileRow } from "../FileTree/FileRow";
-import { clsx } from "clsx";
-import { isIOS } from "../../../shared/lib/platform";
+import { MobileSpaceSwitcher } from "../Floating/MobileSpaceSwitcher";
+import { SwipeableTabRow } from "./SwipeableTabRow";
 
 export function MobileTabsView() {
   const openTabIds = useAtomValue(openTabIdsAtom);
@@ -26,7 +25,7 @@ export function MobileTabsView() {
   const navigate = useSetAtom(mobileNavigateAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const setNoteBackStack = useSetAtom(noteBackStackAtom);
-  const { handleCloseTab } = useNote();
+  const { handleCloseTab, handleCloseAllTabs } = useNote();
 
   function handleSelectTab(id: string) {
     hapticImpact("light");
@@ -37,7 +36,7 @@ export function MobileTabsView() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="relative flex flex-col h-screen bg-gray-100">
       {/* Header */}
       <div
         className={clsx(
@@ -62,8 +61,8 @@ export function MobileTabsView() {
           type="button"
           onClick={() => {
             hapticImpact("medium");
-            for (const id of [...openTabIds]) handleCloseTab(id);
-            goBack();
+            handleCloseAllTabs();
+            resetNav();
           }}
           className="text-sm text-red-500 active:opacity-60 transition-opacity"
         >
@@ -86,28 +85,21 @@ export function MobileTabsView() {
             if (!node) return null;
 
             return (
-              <div key={id} className="relative w-11/12 mx-auto">
-                <FileRow
-                  node={node}
-                  onDrillIn={() => {}}
-                  onClick={() => handleSelectTab(id)}
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    hapticImpact("light");
-                    handleCloseTab(id);
-                  }}
-                  className="absolute top-2 right-3 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center active:bg-gray-300 transition-colors z-10"
-                >
-                  <IconXmark className="size-3 text-gray-500" />
-                </button>
+              <div key={id} className="w-11/12 mx-auto">
+                <SwipeableTabRow onClose={() => handleCloseTab(id)}>
+                  <FileRow
+                    node={node}
+                    onDrillIn={() => {}}
+                    onClick={() => handleSelectTab(id)}
+                  />
+                </SwipeableTabRow>
               </div>
             );
           })
         )}
       </div>
+
+      <MobileSpaceSwitcher />
     </div>
   );
 }

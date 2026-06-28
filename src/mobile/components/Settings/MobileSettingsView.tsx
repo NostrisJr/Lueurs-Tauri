@@ -20,6 +20,7 @@ import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
 import { hapticImpact } from "../../lib/haptics";
 import { vaultDisplayName } from "../../lib/vault";
 import { Squircle } from "../../../shared/components/Squircle";
+import { MobileEspacesSection } from "./MobileEspacesSection";
 
 const descriptions: Record<string, string> = {
   normal: "Sans empattement, aligné à gauche",
@@ -247,6 +248,8 @@ export function MobileSettingsView() {
             </button>
           </Squircle>
         </div>
+
+        <MobileEspacesSection />
 
         {isAndroid && (
           <>

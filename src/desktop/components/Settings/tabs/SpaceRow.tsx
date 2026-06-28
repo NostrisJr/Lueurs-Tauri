@@ -9,7 +9,7 @@ interface SpaceRowProps {
   onIconChange: (index: number, icon: string) => void;
   onColorChange: (index: number, color: string) => void;
   onNameChange: (index: number, name: string) => void;
-  onIconOnlyChange: (index: number, iconOnly: boolean) => void;
+  onNameBlur: (index: number) => void;
   onDelete: (index: number) => void;
 }
 
@@ -19,7 +19,7 @@ export function SpaceRow({
   onIconChange,
   onColorChange,
   onNameChange,
-  onIconOnlyChange,
+  onNameBlur,
   onDelete,
 }: SpaceRowProps) {
   const {
@@ -105,6 +105,7 @@ export function SpaceRow({
           type="text"
           value={space.name}
           onChange={(e) => onNameChange(index, e.target.value)}
+          onBlur={() => onNameBlur(index)}
           className="flex-1 text-sm border border-gray-200 rounded-md px-2.5 py-1.5 outline-none focus:border-gray-400"
           placeholder="Nom de l'espace"
           aria-label="Nom de l'espace"
@@ -118,19 +119,6 @@ export function SpaceRow({
           ×
         </button>
       </div>
-      {space.icon && (
-        <label className="flex items-center gap-2 pl-1 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={!!space.iconOnly}
-            onChange={(e) => onIconOnlyChange(index, e.target.checked)}
-            className="rounded accent-gray-800 cursor-pointer"
-          />
-          <span className="text-xs text-gray-500">
-            Afficher l'icône uniquement
-          </span>
-        </label>
-      )}
     </div>
   );
 }

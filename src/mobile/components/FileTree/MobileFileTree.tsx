@@ -1,13 +1,16 @@
 import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useMemo, useState } from "react";
-import type { FolderNode, TreeNode } from "../../../shared/hooks/useFileTree";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FolderNode, NoteFile, TreeNode } from "../../../shared/hooks/useFileTree";
+import { NoteType } from "../../../shared/lib/noteTypes";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
+  activeSpaceAtom,
   dictaphoneModeAtom,
+  filteredTreeAtom,
   folderPathAtom,
   folderStackAtom,
-  treeAtom,
+  vaultConfigAtom,
 } from "../../../shared/lib/atoms";
 import { isIOS } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
@@ -19,9 +22,11 @@ import {
 import { usePushAnimation } from "../../hooks/usePushAnimation";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
+import { MobileSpaceSwitcher } from "../Floating/MobileSpaceSwitcher";
 import { FileRow } from "./FileRow";
 import { FileTreeBottomBar } from "./FileTreeBottomBar";
 import { FileTreeHeader } from "./FileTreeHeader";
+import { FolderNoteCard } from "./FolderNoteCard";
 
 function findFolderById(nodes: TreeNode[], id: string): FolderNode | null {
   for (const node of nodes) {
@@ -49,10 +54,7 @@ function NodeList({ nodes, onDrillIn }: NodeListProps) {
     <div className="flex flex-col gap-2 w-full">
       {nodes.map((node) => (
         <div key={node.id} className="w-11/12 mx-auto">
-          <FileRow
-            node={node}
-            onDrillIn={onDrillIn}
-          />
+          <FileRow node={node} onDrillIn={onDrillIn} />
         </div>
       ))}
     </div>
@@ -60,13 +62,37 @@ function NodeList({ nodes, onDrillIn }: NodeListProps) {
 }
 
 export function MobileFileTree() {
-  const tree = useAtomValue(treeAtom);
+  const tree = useAtomValue(filteredTreeAtom);
   const folderStack = useAtomValue(folderStackAtom);
   const setFolderStack = useSetAtom(folderStackAtom);
   const { createNote } = useFileTree();
   const selectNote = useMobileSelectNote();
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const folderPath = useAtomValue(folderPathAtom);
+  const activeSpace = useAtomValue(activeSpaceAtom);
+  const vaultConfig = useAtomValue(vaultConfigAtom);
+
+  // ── Animation de changement d'espace (slide horizontal directionnel) ──
+  // Direction selon la position de l'espace dans le sélecteur ("Tout" = 0).
+  const spaceOrder = activeSpace
+    ? (vaultConfig?.spaces.findIndex((s) => s.name === activeSpace) ?? -1) + 1
+    : 0;
+  const prevSpaceRef = useRef(activeSpace);
+  const prevOrderRef = useRef(spaceOrder);
+  const tokenRef = useRef(0);
+  const [spaceAnim, setSpaceAnim] = useState<{
+    token: number;
+    dir: "left" | "right";
+  } | null>(null);
+
+  useEffect(() => {
+    if (prevSpaceRef.current === activeSpace) return;
+    const dir = spaceOrder >= prevOrderRef.current ? "right" : "left";
+    prevSpaceRef.current = activeSpace;
+    prevOrderRef.current = spaceOrder;
+    tokenRef.current += 1;
+    setSpaceAnim({ token: tokenRef.current, dir });
+  }, [activeSpace, spaceOrder]);
 
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
   const parentFolder =
@@ -101,13 +127,25 @@ export function MobileFileTree() {
     ? currentFolder.children
     : tree;
 
+  const folderNote = useMemo<NoteFile | undefined>(
+    () =>
+      currentFolder
+        ? (currentFolder.children.find(
+            (child) => child.kind === "file" && child.type === NoteType.FOLDER
+          ) as NoteFile | undefined)
+        : undefined,
+    [currentFolder]
+  );
+
   const sortedNodes = useMemo(
     () =>
-      [...currentNodes].sort((a, b) => {
-        if (a.kind === b.kind)
-          return a.name.localeCompare(b.name, "fr", { numeric: true });
-        return a.kind === "folder" ? -1 : 1;
-      }),
+      [...currentNodes]
+        .filter((node) => !(node.kind === "file" && node.type === NoteType.FOLDER))
+        .sort((a, b) => {
+          if (a.kind === b.kind)
+            return a.name.localeCompare(b.name, "fr", { numeric: true });
+          return a.kind === "folder" ? -1 : 1;
+        }),
     [currentNodes]
   );
 
@@ -226,9 +264,21 @@ export function MobileFileTree() {
           onTouchMove={touchHandlers.onTouchMove}
           onTouchEnd={touchHandlers.onTouchEnd}
         >
-          <NodeList nodes={sortedNodes} onDrillIn={handleDrillIn} />
+          <div
+            key={spaceAnim?.token ?? "static"}
+            className={clsx(
+              "w-full flex flex-col gap-2",
+              spaceAnim?.dir === "right" && "space-slide-right",
+              spaceAnim?.dir === "left" && "space-slide-left"
+            )}
+          >
+            {folderNote && <FolderNoteCard note={folderNote} />}
+            <NodeList nodes={sortedNodes} onDrillIn={handleDrillIn} />
+          </div>
         </div>
       </div>
+
+      <MobileSpaceSwitcher />
 
       <MobileContextMenu />
 

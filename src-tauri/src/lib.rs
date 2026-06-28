@@ -8,6 +8,9 @@ use tokio::task::JoinSet;
 use tauri::menu::{Menu, MenuBuilder, MenuItem, PredefinedMenuItem, SubmenuBuilder};
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
+mod typst_export;
+use typst_export::{compiler_typst_apercu, exporter_pdf, exporter_typst, prechauffer};
+
 #[cfg(target_os = "android")]
 mod vault_android;
 #[cfg(target_os = "android")]
@@ -158,6 +161,11 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            // Préchauffage Typst en arrière-plan : Library + FontBook + polices
+            // ne sont initialisés qu'une fois, dès le démarrage, pour que la
+            // première ouverture du dialogue d'export soit instantanée.
+            std::thread::spawn(prechauffer);
+
             #[cfg(target_os = "macos")]
             {
                 let window = app.get_webview_window("main").unwrap();
@@ -197,8 +205,13 @@ pub fn run() {
                     .clone()
                     .unwrap_or_else(|| "Lueurs".to_string());
 
+                let settings_item =
+                    MenuItem::with_id(app, "settings", "Réglages\u{2026}", true, Some("Cmd+,"))?;
+
                 let app_submenu = SubmenuBuilder::new(app, app_name)
                     .about(None)
+                    .separator()
+                    .item(&settings_item)
                     .separator()
                     .services()
                     .separator()
@@ -223,16 +236,21 @@ pub fn run() {
                     true,
                     None::<&str>,
                 )?;
-                let delete_item = MenuItem::with_id(
+                let delete_item =
+                    MenuItem::with_id(app, "delete-note", "Supprimer la note", true, None::<&str>)?;
+
+                let export_item = MenuItem::with_id(
                     app,
-                    "delete-note",
-                    "Supprimer la note",
+                    "export-pdf",
+                    "Exporter en PDF\u{2026}",
                     true,
-                    None::<&str>,
+                    Some("Shift+Cmd+W"),
                 )?;
 
                 let file_submenu = SubmenuBuilder::new(app, "Fichier")
                     .item(&import_item)
+                    .separator()
+                    .item(&export_item)
                     .separator()
                     .item(&reveal_item)
                     .item(&delete_item)
@@ -279,6 +297,12 @@ pub fn run() {
                         "delete-note" => {
                             let _ = handle.emit("menu:delete-note", ());
                         }
+                        "export-pdf" => {
+                            let _ = handle.emit("menu:export-pdf", ());
+                        }
+                        "settings" => {
+                            let _ = handle.emit("menu:open-settings", ());
+                        }
                         _ => {}
                     }
                 });
@@ -290,6 +314,9 @@ pub fn run() {
             allow_vault_path,
             copy_resource_to_vault,
             propagate_template_change,
+            compiler_typst_apercu,
+            exporter_pdf,
+            exporter_typst,
             update_note,
             get_titlebar_height,
             get_scale_factor,

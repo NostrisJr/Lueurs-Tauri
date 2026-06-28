@@ -70,7 +70,7 @@ export function SpaceSwitcher() {
       </button>
       {spaces.map((space) => {
         const isActive = activeSpace === space.name;
-        const showIconOnly = !!(space.iconOnly && space.icon);
+        const showIconOnly = !!(vaultConfig?.iconOnly && space.icon);
         return (
           <button
             key={space.name}

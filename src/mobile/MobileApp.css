@@ -5,3 +5,27 @@ html, body {
 * {
   touch-action: pan-x pan-y; /* autorise le scroll mais pas le pinch-zoom */
 }
+
+/* Slide horizontal lors du changement d'espace (file tree). Direction selon la
+   position de l'espace cible dans le sélecteur vertical. */
+@keyframes space-slide-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes space-slide-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.space-slide-right {
+  animation: space-slide-right 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.space-slide-left {
+  animation: space-slide-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* emoji-mart rend un web component <em-emoji-picker>. La largeur et la hauteur
+   sont fixées via les props dans EmojiMartPicker ; le picker détermine sa propre
+   hauteur naturelle et scrolle en interne pour la grille d'emojis. */
+.mobile-emoji-sheet em-emoji-picker {
+  display: block;
+}

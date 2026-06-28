@@ -329,6 +329,12 @@ export function useNote() {
     }
   }
 
+  function handleCloseAllTabs() {
+    setOpenTabIds([]);
+    setTabHistory([]);
+    setActiveNoteId(null);
+  }
+
   return {
     handleChange,
     handleSelectNote,
@@ -340,6 +346,7 @@ export function useNote() {
     handleCreateFolder,
     handleRename,
     handleCloseTab,
+    handleCloseAllTabs,
     pushHistory,
   };
 }

@@ -22,9 +22,16 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   title?: string;
+  /** Fraction de la hauteur du viewport utilisée (sans clavier). Défaut : 0.45 */
+  heightFraction?: number;
 }
 
-export function BottomSheet({ onClose, children, title }: Props) {
+export function BottomSheet({
+  onClose,
+  children,
+  title,
+  heightFraction = 0.45,
+}: Props) {
   const { height: keyboardHeight, isOpen: isKeyboardOpen } = useKeyboard();
   const startYRef = useRef(0);
   const [swipe, setSwipe] = useState(0);
@@ -33,7 +40,7 @@ export function BottomSheet({ onClose, children, title }: Props) {
   const visibleH = window.innerHeight - keyboardHeight;
   const sheetH = isKeyboardOpen
     ? Math.min(Math.round(visibleH * 0.85), visibleH - 40)
-    : Math.round(window.innerHeight * 0.45);
+    : Math.round(window.innerHeight * heightFraction);
 
   const sheet = (
     // biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile
@@ -58,9 +65,10 @@ export function BottomSheet({ onClose, children, title }: Props) {
         onTouchMove={(e: React.TouchEvent) => {
           const dy = e.touches[0].clientY - startYRef.current;
           if (dy > 0) {
-            // Bloque le scroll sous-jacent pendant le drag-to-dismiss
-            e.preventDefault();
             setSwipe(dy);
+            // Seuil 10px avant preventDefault : en dessous, iOS interprète comme
+            // un tap et synthétise un click ; preventDefault trop tôt le tue.
+            if (dy > 10) e.preventDefault();
           }
         }}
         onTouchEnd={() => {
@@ -85,8 +93,8 @@ export function BottomSheet({ onClose, children, title }: Props) {
           style={{
             WebkitOverflowScrolling: "touch",
             paddingBottom: isKeyboardOpen
-              ? "16px"
-              : "calc(env(safe-area-inset-bottom) + 16px)",
+              ? "4px"
+              : "calc(env(safe-area-inset-bottom) + 4px)",
           }}
         >
           {children}

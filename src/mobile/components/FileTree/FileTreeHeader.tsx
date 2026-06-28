@@ -10,10 +10,12 @@ import {
 } from "../../../shared/components/PlatformIcon";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
+  activeSpaceAtom,
   folderPathAtom,
   folderStackAtom,
   mobileContextMenuAtom,
   mobileNavigateAtom,
+  vaultConfigAtom,
 } from "../../../shared/lib/atoms";
 import { isIOS } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
@@ -26,6 +28,8 @@ export function FileTreeHeader() {
   const folderPath = useAtomValue(folderPathAtom);
   const setContextMenu = useSetAtom(mobileContextMenuAtom);
   const navigate = useSetAtom(mobileNavigateAtom);
+  const activeSpace = useAtomValue(activeSpaceAtom);
+  const vaultConfig = useAtomValue(vaultConfigAtom);
   const { createNote, createFolder } = useFileTree();
   const selectNote = useMobileSelectNote();
 
@@ -35,7 +39,14 @@ export function FileTreeHeader() {
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
   const canGoBack = folderStack.length > 1;
   const vaultName = folderPath ? vaultDisplayName(folderPath) : undefined;
-  const folderName = currentFolder?.name ?? vaultName ?? "Notes";
+  // À la racine d'un espace : nom (et emoji) de l'espace au lieu du nom du vault
+  const space = activeSpace
+    ? vaultConfig?.spaces.find((s) => s.name === activeSpace)
+    : undefined;
+  const rootName = space
+    ? `${space.icon ? `${space.icon} ` : ""}${space.name}`
+    : (vaultName ?? "Notes");
+  const folderName = currentFolder?.name ?? rootName;
 
   function handleDrillOut() {
     hapticImpact("light");

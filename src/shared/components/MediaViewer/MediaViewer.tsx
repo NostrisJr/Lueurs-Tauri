@@ -8,6 +8,7 @@ import { useFileTree } from "../../hooks/useFileTree";
 import type { MediaFile } from "../../hooks/useFileTree";
 import { activeNoteIdAtom } from "../../lib/atoms";
 import { vaultIO } from "../../lib/vaultIO";
+import { isIOS, isMobile } from "../../lib/platform";
 import { StandaloneAudioPlayer } from "./StandaloneAudioPlayer";
 
 export function MediaViewer({ media }: { media: MediaFile }) {
@@ -26,6 +27,28 @@ export function MediaViewer({ media }: { media: MediaFile }) {
   }
 
   const assetUrl = convertFileSrc(media.id);
+  const isPdf = media.mediaType === "pdf";
+
+  // Sur mobile avec PDF : layout plein écran flex pour que l'iframe occupe
+  // tout l'espace disponible sous le header sans overflow ni hauteur fixe vh.
+  if (isMobile && isPdf) {
+    return (
+      <div className="flex flex-col h-full w-full bg-white">
+        <div className={isIOS ? "pt-12" : "pt-4"}>
+          <NoteHeader isNote={false} name={media.name} onRename={handleRename} />
+        </div>
+        {/* Conteneur flex-1 avec position relative : l'iframe absolute inset-0
+            est le seul moyen fiable de lui donner une hauteur sur WKWebView. */}
+        <div className="flex-1 relative overflow-hidden">
+          <iframe
+            src={assetUrl}
+            title={media.name}
+            className="absolute inset-0 w-full h-full border-0"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-full w-full">
@@ -66,7 +89,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
           />
         )}
 
-        {media.mediaType === "pdf" && (
+        {isPdf && (
           <iframe
             src={assetUrl}
             title={media.name}

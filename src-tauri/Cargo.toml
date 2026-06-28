@@ -38,6 +38,18 @@ window-vibrancy = "0.7.1"
 # Correcteur orthographique/grammatical local (Hugo). Chemin local pour l'instant ;
 # deviendra une dépendance git/publiée plus tard.
 hugo-tauri = { path = "../../Hugo/crates/hugo-tauri" }
+typst = "0.15.0"
+typst-layout = "0.15.0"
+typst-pdf = "0.15.0"
+typst-svg = "0.15.0"
+typst-assets = { version = "0.15.0", features = ["fonts"] }
+comemo = "0.5.1"
+
+# Optimise les dépendances en mode dev pour que les crates de calcul intensif
+# (typst layout, comemo, font shaping) tournent à vitesse correcte sans full release.
+# Pattern identique à celui du repo typst officiel.
+[profile.dev.package."*"]
+opt-level = 2
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"

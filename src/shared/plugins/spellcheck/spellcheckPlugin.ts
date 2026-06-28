@@ -8,7 +8,6 @@ import { createLogger } from "../../lib/logger";
 import { type HugoSuggestion, categoryOf, checkText } from "./hugoApi";
 import {
   ignoredWordsRef,
-  spellSuggestionCallbackRef,
   spellcheckEnabledRef,
 } from "./spellcheckState";
 
@@ -86,6 +85,16 @@ async function decorateBlock(
       }
       lastPmPos = pmPos;
       text += node.text;
+    } else if (node.type.name === "hardbreak") {
+      // Sépare les vers par un saut de ligne : Hugo traite chaque vers
+      // comme une phrase distincte plutôt que de les concaténer.
+      const pmPos = blockPos + 1 + relPos;
+      byteToPos[byteLen] = pmPos;
+      byteToChar[byteLen] = charLen;
+      byteLen += 1; // '\n' = 1 octet UTF-8
+      charLen += 1;
+      text += "\n";
+      lastPmPos = pmPos + 1;
     }
     return true;
   });
@@ -310,27 +319,6 @@ export const spellcheckPlugin = $prose(() => {
       decorations(state) {
         return spellcheckKey.getState(state)?.decos;
       },
-      // Clic sur une faute : ouvre le popover de remplacements (sans bloquer le caret).
-      handleClick(view, pos) {
-        const st = spellcheckKey.getState(view.state);
-        if (!st) return false;
-        const found = st.decos.find(pos, pos);
-        if (found.length === 0) return false;
-        const deco = found[0];
-        const suggestion = deco.spec?.suggestion as HugoSuggestion | undefined;
-        if (!suggestion) return false;
-        const coords = view.coordsAtPos(deco.from);
-        spellSuggestionCallbackRef.current?.({
-          from: deco.from,
-          to: deco.to,
-          message: suggestion.message,
-          replacements: suggestion.replacements,
-          word: view.state.doc.textBetween(deco.from, deco.to),
-          category: categoryOf(suggestion.ruleId),
-          rect: { left: coords.left, top: coords.top, bottom: coords.bottom },
-        });
-        return false;
-      },
     },
     view(editorView) {
       // ProseMirror n'appelle pas `update()` pour l'état initial : on amorce ici
@@ -365,3 +353,32 @@ export const spellcheckPlugin = $prose(() => {
     },
   });
 });
+
+/** Retourne la suggestion de correction à la position PM donnée, ou null. */
+export function getSpellSuggestionAtPos(
+  view: EditorView,
+  pos: number
+): {
+  from: number;
+  to: number;
+  word: string;
+  message: string;
+  replacements: string[];
+  category: "spelling" | "grammar";
+} | null {
+  const st = spellcheckKey.getState(view.state);
+  if (!st) return null;
+  const found = st.decos.find(pos, pos);
+  if (found.length === 0) return null;
+  const deco = found[0];
+  const suggestion = deco.spec?.suggestion as HugoSuggestion | undefined;
+  if (!suggestion) return null;
+  return {
+    from: deco.from,
+    to: deco.to,
+    word: view.state.doc.textBetween(deco.from, deco.to),
+    message: suggestion.message,
+    replacements: suggestion.replacements,
+    category: categoryOf(suggestion.ruleId),
+  };
+}

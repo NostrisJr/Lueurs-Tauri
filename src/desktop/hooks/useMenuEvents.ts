@@ -11,7 +11,9 @@ import {
   activeMediaAtom,
   activeNoteAtom,
   activeSpaceAtom,
+  exportDialogOpenAtom,
   folderPathAtom,
+  settingsOpenAtom,
 } from "../../shared/lib/atoms";
 import { importPaths } from "../../shared/lib/importUtils";
 import { createLogger } from "../../shared/lib/logger";
@@ -70,6 +72,18 @@ export function useMenuEvents() {
         log.info("révélé dans le Finder", { activePath });
       } catch (err) {
         log.error("échec révélation Finder", err);
+      }
+    }).then((fn) => unlisteners.push(fn));
+
+    // ── Ouvrir les réglages ────────────────────────────────────────────────
+    listen("menu:open-settings", () => {
+      store.set(settingsOpenAtom, true);
+    }).then((fn) => unlisteners.push(fn));
+
+    // ── Exporter en PDF ────────────────────────────────────────────────────
+    listen("menu:export-pdf", () => {
+      if (store.get(activeNoteAtom)) {
+        store.set(exportDialogOpenAtom, true);
       }
     }).then((fn) => unlisteners.push(fn));
 

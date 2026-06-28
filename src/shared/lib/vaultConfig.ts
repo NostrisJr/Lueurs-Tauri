@@ -37,8 +37,6 @@ export interface VaultSpace {
   icon?: string;
   // Couleur accent de la sidebar (hex, ex. "#6366f1")
   color?: string;
-  // Afficher uniquement l'icône dans le sélecteur (nécessite icon)
-  iconOnly?: boolean;
 }
 
 export interface VaultConfig {
@@ -47,6 +45,8 @@ export interface VaultConfig {
   spaces: VaultSpace[];
   // Mots ignorés par le correcteur orthographique (comparaison en minuscules)
   ignoredWords: string[];
+  // Afficher uniquement les icônes dans le sélecteur d'espaces (global, nécessite icon)
+  iconOnly?: boolean;
 }
 
 function makeDefaultConfig(): VaultConfig {
@@ -102,6 +102,13 @@ export async function readVaultConfig(
     }
     // Migration : champ absent dans les configs antérieures
     if (!Array.isArray(parsed.ignoredWords)) parsed.ignoredWords = [];
+    // Migration : iconOnly était per-espace, maintenant global
+    // biome-ignore lint/suspicious/noExplicitAny: migration depuis ancien format
+    if ((parsed.spaces as any[]).some((s: any) => s.iconOnly)) {
+      parsed.iconOnly = true;
+    }
+    // biome-ignore lint/suspicious/noExplicitAny: nettoyage champ obsolète
+    parsed.spaces = (parsed.spaces as any[]).map(({ iconOnly: _, ...rest }) => rest) as VaultSpace[];
     return parsed;
   } catch {
     return null;
