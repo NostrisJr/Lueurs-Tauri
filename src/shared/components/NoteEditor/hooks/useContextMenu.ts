@@ -124,8 +124,12 @@ export function useContextMenu(
         editorRef.current?.action((ctx) => {
           const view = ctx.get(editorViewCtx);
           const schema = ctx.get(schemaCtx);
+          const { doc } = view.state;
+          // Conserver les marques qui couvrent le mot (didascalie, surlignage,
+          // code…), sinon le remplacement non marqué scinderait la mise en forme.
+          const marks = doc.resolve(from).marksAcross(doc.resolve(to));
           view.dispatch(
-            view.state.tr.replaceWith(from, to, schema.text(replacement))
+            view.state.tr.replaceWith(from, to, schema.text(replacement, marks))
           );
           view.focus();
         });

@@ -38,8 +38,16 @@ export function MobileSpellMenu() {
     editor.action((ctx) => {
       const view = ctx.get(editorViewCtx);
       const schema = ctx.get(schemaCtx);
+      const { doc } = view.state;
+      // Conserver les marques couvrant le mot (didascalie, surlignage, code…),
+      // sinon le remplacement non marqué scinderait la mise en forme.
+      const marks = doc.resolve(popup.from).marksAcross(doc.resolve(popup.to));
       view.dispatch(
-        view.state.tr.replaceWith(popup.from, popup.to, schema.text(replacement))
+        view.state.tr.replaceWith(
+          popup.from,
+          popup.to,
+          schema.text(replacement, marks)
+        )
       );
       view.focus();
       log.info("correction appliquée", { word: popup.word, replacement });

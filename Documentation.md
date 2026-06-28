@@ -217,6 +217,13 @@ Une barre de mise en forme apparaît au-dessus de l'éditeur markdown. Elle prop
 
 Les raccourcis clavier standards fonctionnent également directement dans l'éditeur (⌘B, ⌘I).
 
+### Curseur dans les mises en forme inline
+
+Les mises en forme « encadrées » (code inline, didascalie, surlignage) ont un intérieur et un extérieur visuellement distincts. Le curseur se place précisément là où le texte va s'insérer :
+
+- À une bordure, une pression sur **→** (ou **←**) fait passer le curseur entre l'extérieur et l'intérieur de la mise en forme avant de poursuivre la navigation. On peut ainsi insérer du texte juste avant le premier caractère ou juste après le dernier, *dans* la mise en forme.
+- En tapant à l'intérieur, en bout de mise en forme, le texte **reste dans la mise en forme** tant qu'on n'appuie pas sur **→** pour en sortir.
+
 ### Surlignage couleur
 
 Du texte peut être surligné dans une couleur au choix. Sept couleurs sont disponibles : jaune, vert, bleu, rouge, orange, violet, gris.
@@ -298,7 +305,7 @@ Un correcteur local (hors-ligne, français) souligne les fautes directement dans
 
 La vérification démarre **dès l'ouverture d'une note** (la partie visible d'abord, puis le reste), sans qu'il soit nécessaire de taper. Pendant l'édition, seuls les passages modifiés sont revérifiés.
 
-**Corriger une faute.** Cliquer sur un mot souligné ouvre un petit menu listant les corrections proposées. Cliquer sur une suggestion remplace le mot. Le menu se ferme si l'on clique ailleurs, appuie sur Échap, ou fait défiler la page.
+**Corriger une faute.** Cliquer sur un mot souligné ouvre un petit menu listant les corrections proposées. Cliquer sur une suggestion remplace le mot. Le menu se ferme si l'on clique ailleurs, appuie sur Échap, ou fait défiler la page. La correction **conserve la mise en forme** du mot (un mot corrigé à l'intérieur d'une didascalie ou d'un surlignage y reste).
 
 **Ignorer un mot.** Pour les fautes d'orthographe, le menu propose aussi **« Ignorer ce mot »**. Le mot est alors ajouté à un dictionnaire propre au vault et n'est plus jamais souligné (dans toutes les notes). Cette liste est partagée par tous les appareils via le fichier de configuration du vault.
 

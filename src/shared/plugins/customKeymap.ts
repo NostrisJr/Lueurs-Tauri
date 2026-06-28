@@ -15,7 +15,11 @@ import {
 } from "@milkdown/kit/prose/commands";
 import { keymap } from "@milkdown/kit/prose/keymap";
 import { Fragment } from "@milkdown/kit/prose/model";
-import type { MarkType, Node as ProseNode } from "@milkdown/kit/prose/model";
+import type {
+  Mark,
+  MarkType,
+  Node as ProseNode,
+} from "@milkdown/kit/prose/model";
 import type { Schema } from "@milkdown/kit/prose/model";
 import { liftListItem, wrapInList } from "@milkdown/kit/prose/schema-list";
 import type { EditorState, Transaction } from "@milkdown/kit/prose/state";
@@ -669,12 +673,40 @@ export const customKeymapPlugin = $prose((ctx) =>
   })
 );
 
-// ── Échappement des marques inclusives en fin de bloc ──────────────────────
-// Les marques du preset (gras/italique/code/barré) sont inclusives : en fin de
-// bloc, le curseur reste « dans » la marque et on ne peut que continuer à taper
-// stylé. Première flèche droite en fin de bloc avec des marques actives → on
-// vide les stored marks (caret immobile, prochaine frappe non stylée) ; seconde
-// flèche → navigation normale. Sans effet sur nos marques non-inclusives.
+// ── Atteignabilité des slots de saisie aux bords des marques « à boîte » ────
+// inlineCode/didascalie/highlight ont un décalage horizontal visuel (padding,
+// pipes CSS). Selon l'inclusivité, certains slots de saisie aux bords sont
+// cachés : inlineCode (inclusive) piège « dedans » à droite et « dehors » à
+// gauche ; didascalie/highlight (non-inclusives) cachent les deux slots
+// « dedans » (avant le 1er car., après le dernier). On les rend atteignables en
+// basculant les stored marks au franchissement d'un bord — caret immobile, 2e
+// flèche = navigation. ArrowRight regarde le contenu suivant, ArrowLeft le
+// précédent. Cf. caretSide (customCaretPlugin) pour le rendu correspondant.
+const BOX_MARK_NAMES = ["inlineCode", "didascalie_inline", "highlight_inline"];
+
+// Retourne les stored marks ajustées si le curseur est au bord d'une boîte
+// (appartenance différente entre l'effectif et le voisin), sinon null.
+function crossBoxEdge(
+  state: EditorState,
+  neighbor: ProseNode | null | undefined
+): readonly Mark[] | null {
+  let next = state.storedMarks ?? state.selection.$from.marks();
+  let crossed = false;
+  for (const name of BOX_MARK_NAMES) {
+    const type = state.schema.marks[name];
+    if (!type) continue;
+    const effMark = type.isInSet(next);
+    const neighborMark = neighbor ? type.isInSet(neighbor.marks) : undefined;
+    if (!!effMark === !!neighborMark) continue; // pas un bord de cette boîte
+    crossed = true;
+    // On adopte l'appartenance du voisin : entrer (avec ses attrs) ou sortir.
+    next = neighborMark
+      ? neighborMark.addToSet(next)
+      : (effMark as Mark).removeFromSet(next);
+  }
+  return crossed ? next : null;
+}
+
 export const escapeInlineMarksPlugin = $prose(() =>
   keymap({
     ArrowRight: (state, dispatch, view) => {
@@ -682,13 +714,75 @@ export const escapeInlineMarksPlugin = $prose(() =>
       if (!sel.empty) return false;
       const $cursor = (sel as TextSelection).$cursor;
       if (!$cursor) return false;
-      if (view && !view.endOfTextblock("forward")) return false;
+
+      const crossed = crossBoxEdge(state, $cursor.nodeAfter);
+      if (crossed) {
+        if (dispatch) dispatch(state.tr.setStoredMarks([...crossed]));
+        return true;
+      }
+
+      // Fin de bloc : échappement des autres marques inclusives (gras/italique…).
       const marks = state.storedMarks ?? $cursor.marks();
-      if (marks.length === 0) return false;
-      if (dispatch) dispatch(state.tr.setStoredMarks([]));
-      return true;
+      if (view?.endOfTextblock("forward") && marks.length > 0) {
+        if (dispatch) dispatch(state.tr.setStoredMarks([]));
+        return true;
+      }
+      return false;
+    },
+    ArrowLeft: (state, dispatch) => {
+      const sel = state.selection;
+      if (!sel.empty) return false;
+      const $cursor = (sel as TextSelection).$cursor;
+      if (!$cursor) return false;
+
+      const crossed = crossBoxEdge(state, $cursor.nodeBefore);
+      if (crossed) {
+        if (dispatch) dispatch(state.tr.setStoredMarks([...crossed]));
+        return true;
+      }
+      return false;
     },
   })
+);
+
+// ── Marque « à boîte » collante pendant la saisie au bord droit ────────────
+// Les marques non-inclusives (didascalie/highlight) sont abandonnées après
+// chaque caractère tapé en bout de boîte → le caret est éjecté dehors et il faut
+// re-rentrer à chaque frappe. Après une frappe qui porte la marque au bord droit
+// (caractère précédent = boîte, suivant = hors boîte), on remet la marque dans
+// les stored marks pour rester dedans jusqu'à l'échappement explicite par `→`
+// (crossBoxEdge). inlineCode est inclusive → collante nativement, on l'ignore.
+export const stickyInlineBoxPlugin = $prose(
+  () =>
+    new Plugin({
+      appendTransaction(trs, oldState, newState) {
+        if (!trs.some((tr) => tr.docChanged)) return null;
+        const sel = newState.selection;
+        if (!sel.empty) return null;
+        const before = sel.$from.nodeBefore;
+        if (!before) return null;
+        const after = sel.$from.nodeAfter;
+        // La marque doit avoir été active AVANT la frappe : on n'étend (collant)
+        // qu'une boîte où l'on tapait déjà. Sinon on piège l'utilisateur juste
+        // après l'avoir créée (ex. input-rule `||x||` en fin de ligne).
+        const wasActive =
+          oldState.storedMarks ?? oldState.selection.$from.marks();
+        for (const name of BOX_MARK_NAMES) {
+          const type = newState.schema.marks[name];
+          if (!type || type.spec.inclusive !== false) continue;
+          if (!type.isInSet(wasActive)) continue; // pas déjà dedans → on ne colle pas
+          const beforeMark = type.isInSet(before.marks);
+          if (!beforeMark) continue; // le caractère tapé ne porte pas la boîte
+          if (after && type.isInSet(after.marks)) continue; // milieu de boîte
+          if (newState.storedMarks && type.isInSet(newState.storedMarks))
+            return null; // déjà collante
+          return newState.tr.setStoredMarks(
+            beforeMark.addToSet(newState.storedMarks ?? sel.$from.marks())
+          );
+        }
+        return null;
+      },
+    })
 );
 
 // ── Keymap (event.code) ────────────────────────────────────────────────────

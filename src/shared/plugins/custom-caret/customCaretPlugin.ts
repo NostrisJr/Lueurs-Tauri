@@ -1,7 +1,28 @@
+import type { EditorState } from "@milkdown/kit/prose/state";
 import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import { $prose } from "@milkdown/kit/utils";
 
 const customCaretKey = new PluginKey("customCaret");
+
+// Aux frontières d'une mark à boîte horizontale (code inline, didascalie…), les
+// deux côtés de la position ne coïncident pas (padding, pseudo-pipes). Le caret
+// custom doit tomber là où le glyphe va réellement s'insérer : il portera
+// `storedMarks ?? $from.marks()`. S'il partage la marque-frontière avec le
+// contenu de gauche → caret collé à gauche (-1), sinon à droite (+1).
+// Sans effet sur les marks sans boîte (gras/italique : -1 et +1 coïncident).
+function caretSide(state: EditorState): 1 | -1 {
+  const { $from } = state.selection;
+  const eff = state.storedMarks ?? $from.marks();
+  const before = $from.nodeBefore?.marks ?? [];
+  const after = $from.nodeAfter?.marks ?? [];
+  const types = new Set([...before, ...after].map((m) => m.type));
+  for (const type of types) {
+    const inBefore = !!type.isInSet(before);
+    if (inBefore === !!type.isInSet(after)) continue; // pas une frontière
+    return !!type.isInSet(eff) === inBefore ? -1 : 1;
+  }
+  return 1;
+}
 
 export const customCaretPlugin = $prose(
   () =>
@@ -21,8 +42,9 @@ export const customCaretPlugin = $prose(
           }
 
           const { from } = selection;
-          const coords = view.coordsAtPos(from);
-          const domRef = view.domAtPos(from);
+          const side = caretSide(view.state);
+          const coords = view.coordsAtPos(from, side);
+          const domRef = view.domAtPos(from, side);
           const node = domRef.node;
           const el =
             node.nodeType === Node.TEXT_NODE
