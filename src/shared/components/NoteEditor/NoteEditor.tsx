@@ -23,6 +23,7 @@ import { DocumentNavigator } from "./DocumentNavigator.tsx";
 import type { Editor } from "./MarkdownEditor";
 import { MarkdownEditor } from "./MarkdownEditor.tsx";
 import { NoteHeader } from "./NoteHeader.tsx";
+import { InlineFormulaPopup } from "./InlineFormulaPopup.tsx";
 import { WikilinkEditPopup } from "./WikilinkEditPopup.tsx";
 import { WikilinkSuggest } from "./WikilinkSuggest.tsx";
 import { editorInsertAudioBlock } from "./lib/editorCommands.ts";
@@ -166,6 +167,7 @@ export function NoteEditor({
                 />
                 <WikilinkSuggest vaultPath={folderPath} />
                 <WikilinkEditPopup vaultPath={folderPath} />
+                <InlineFormulaPopup />
               </MilkdownProvider>
             )}
           </div>

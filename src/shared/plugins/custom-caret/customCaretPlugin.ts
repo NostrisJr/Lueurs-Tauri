@@ -43,7 +43,26 @@ export const customCaretPlugin = $prose(
 
           const { from } = selection;
           const side = caretSide(view.state);
-          const coords = view.coordsAtPos(from, side);
+
+          // Après un nœud atome inline (ex: formule) en fin de bloc, coordsAtPos
+          // renvoie les coords du bloc suivant (caret qui « saute »). On lit
+          // directement le bord droit du DOM du nœud — déterministe, même ligne.
+          const $from = view.state.doc.resolve(from);
+          const atomBefore = $from.nodeBefore;
+          let coords = view.coordsAtPos(from, side);
+          if (!$from.nodeAfter && atomBefore?.isAtom && atomBefore.isInline) {
+            const dom = view.nodeDOM(from - atomBefore.nodeSize);
+            const rect = (dom as HTMLElement | null)?.getBoundingClientRect?.();
+            if (rect && rect.width > 0) {
+              coords = {
+                left: rect.right,
+                right: rect.right,
+                top: rect.top,
+                bottom: rect.bottom,
+              };
+            }
+          }
+
           const domRef = view.domAtPos(from, side);
           const node = domRef.node;
           const el =

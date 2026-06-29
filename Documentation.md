@@ -256,6 +256,17 @@ Dans les deux cas, sélectionner une note insère un lien markdown complet. Le t
 
 **Renommage et déplacement.** Renommer ou déplacer une note (cible ou contenant des liens) met automatiquement à jour les liens concernés dans tout le vault.
 
+### Formules inline
+
+Le corps d'une note peut contenir des formules calculées, avec la même syntaxe et le même moteur que les formules du frontmatter (`self.prop`, `ref("NomNote").prop`, `round`, `iif`, `agg`, opérateurs). Voir [Formules](#vues-de-base) pour la syntaxe complète. `self` désigne ici les propriétés de la note dans laquelle la formule est écrite.
+
+**Trois niveaux d'affichage :**
+- au repos (curseur ailleurs), la formule s'affiche sous forme de **résultat calculé**, précédé du symbole `ƒ` (le même que dans le frontmatter) ;
+- en édition, la formule s'affiche sous une **forme humanisée** (les notes référencées apparaissent par leur nom : `ref("Budget")`) ;
+- sur disque, la note enregistre la formule complète `$$…$$` avec le **chemin absolu** des notes référencées.
+
+**Saisie.** Taper `$$` insère une formule et ouvre une petite fenêtre d'édition. On y saisit la formule comme dans le frontmatter : `ref(` ouvre le sélecteur de notes, puis `.` ouvre le sélecteur de propriétés. Valider avec **Entrée** (ou cliquer ailleurs) ; une formule laissée vide est supprimée. Cliquer sur une formule existante la rouvre en édition.
+
 ### Modes d'affichage
 
 Les notes disposent de deux modes d'affichage, sélectionnables via les icônes en haut à droite de l'éditeur. Le mode actif est persisté dans le frontmatter de la note (`__DisplayMode__`) et restauré à chaque ouverture.

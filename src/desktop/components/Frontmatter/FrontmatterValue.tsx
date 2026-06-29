@@ -1,5 +1,6 @@
 import { platform } from "@tauri-apps/plugin-os";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FormulaEditField } from "../../../shared/components/FormulaField/FormulaEditField";
 import { ButtonOptionsEditor } from "../../../shared/components/FrontmatterPicker/ButtonOptionsEditor";
 import { EnumValueSelector } from "../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
@@ -10,16 +11,13 @@ import {
 } from "../../../shared/lib/FrontmatterPicker/buttonProperty";
 import {
   computeFormula,
-  dehumanizeFormula,
   humanizeFormula,
   isFormula,
 } from "../../../shared/lib/formulas";
 import { type NoteTypeValue, SystemField } from "../../../shared/lib/noteTypes";
 import { NoteChip } from "./NoteChip";
 import { NoteSelector } from "./NoteSelector";
-import { PropertySelector } from "./PropertySelector";
 import { TypeSelector } from "./TypeSelector";
-import { REF_PROP_TRIGGER_RE, getNoteProperties } from "./lib/frontmatterUtils";
 
 interface Props {
   fieldKey: string;
@@ -57,9 +55,6 @@ export function FrontmatterValue({
   const isMobile = platform() === "ios";
   const [editingFormula, setEditingFormula] = useState(false);
   const [refSelectorOpen, setRefSelectorOpen] = useState(false);
-  const [propSelectorNote, setPropSelectorNote] = useState<NoteFile | null>(
-    null
-  );
   const inputRef = useRef<HTMLInputElement>(null);
   const selectorOpenRef = useRef(false);
   const triggerCursorRef = useRef(0);
@@ -77,37 +72,13 @@ export function FrontmatterValue({
     wasFormulaRef.current = nowFormula;
   });
 
-  const notesByName = useMemo(
-    () => new Map(allNotes?.map((n) => [n.name, n.id]) ?? []),
-    [allNotes]
-  );
-
-  function toRaw(displayed: string): string {
-    return dehumanizeFormula(displayed, notesByName);
-  }
-
   function toDisplay(raw: string): string {
     return noteResolver ? humanizeFormula(raw, noteResolver) : raw;
-  }
-
-  function openRefSelector(cursorPos: number) {
-    triggerCursorRef.current = cursorPos;
-    selectorOpenRef.current = true;
-    setRefSelectorOpen(true);
-    setPropSelectorNote(null);
-  }
-
-  function openPropSelector(note: NoteFile, cursorPos: number) {
-    triggerCursorRef.current = cursorPos;
-    selectorOpenRef.current = true;
-    setPropSelectorNote(note);
-    setRefSelectorOpen(false);
   }
 
   function closeSelectors() {
     selectorOpenRef.current = false;
     setRefSelectorOpen(false);
-    setPropSelectorNote(null);
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
@@ -115,46 +86,6 @@ export function FrontmatterValue({
     // Ferme sans redonner le focus (l'input l'a déjà)
     selectorOpenRef.current = false;
     setRefSelectorOpen(false);
-    setPropSelectorNote(null);
-  }
-
-  /** Vérifie les triggers sur le texte jusqu'au curseur. */
-  function checkTriggers(displayed: string, cursorPos: number) {
-    const toCursor = displayed.slice(0, cursorPos);
-
-    if (toCursor.endsWith("ref(")) {
-      openRefSelector(cursorPos);
-      return;
-    }
-
-    const propMatch = REF_PROP_TRIGGER_RE.exec(toCursor);
-    if (propMatch && allNotes) {
-      const nameOrPath = propMatch[1];
-      const note = allNotes.find(
-        (n) => n.name === nameOrPath || n.id === nameOrPath
-      );
-      if (note) {
-        openPropSelector(note, cursorPos);
-        return;
-      }
-    }
-
-    resetSelectors();
-  }
-
-  /** Insère du texte en remplaçant `charsToRemoveBefore` caractères avant le curseur. */
-  function insertAtCursor(
-    displayed: string,
-    cursorPos: number,
-    inserted: string,
-    charsToRemoveBefore: number
-  ): { newDisplayed: string; newCursor: number } {
-    const before = displayed.slice(0, cursorPos - charsToRemoveBefore);
-    const after = displayed.slice(cursorPos);
-    return {
-      newDisplayed: `${before}${inserted}${after}`,
-      newCursor: before.length + inserted.length,
-    };
   }
 
   if (fieldKey === SystemField.TYPE) {
@@ -219,90 +150,14 @@ export function FrontmatterValue({
     const isError = computed === "#ERREUR";
 
     if (editingFormula && !isValueLocked) {
-      const displayValue = toDisplay(strValue);
-
       return (
-        <div className="flex-1 relative">
-          <input
-            ref={inputRef}
-            // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture de l'édition formule
-            autoFocus
-            value={displayValue}
-            onChange={(e) => {
-              const displayed = e.target.value;
-              const cursorPos = e.target.selectionStart ?? displayed.length;
-              checkTriggers(displayed, cursorPos);
-              onTextChange(toRaw(displayed));
-            }}
-            onBlur={() => {
-              if (!selectorOpenRef.current) setEditingFormula(false);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                if (selectorOpenRef.current) closeSelectors();
-                else setEditingFormula(false);
-              }
-              if (e.key === "Enter" && !selectorOpenRef.current)
-                setEditingFormula(false);
-            }}
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            style={isMobile ? { fontSize: 14 } : undefined}
-            className="w-full mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-300 transition-colors font-mono"
-          />
-
-          {refSelectorOpen && allNotes && (
-            <NoteSelector
-              notes={allNotes}
-              onSelect={(note) => {
-                const cursor = triggerCursorRef.current;
-                const current = inputRef.current?.value ?? displayValue;
-                const { newDisplayed, newCursor } = insertAtCursor(
-                  current,
-                  cursor,
-                  `ref("${note.name}")`,
-                  4 /* "ref(" */
-                );
-                onTextChange(toRaw(newDisplayed));
-                closeSelectors();
-                setTimeout(
-                  () =>
-                    inputRef.current?.setSelectionRange(newCursor, newCursor),
-                  0
-                );
-              }}
-              onClose={closeSelectors}
-              anchorRef={inputRef}
-              placeholder="Référencer une note..."
-            />
-          )}
-
-          {propSelectorNote && (
-            <PropertySelector
-              options={getNoteProperties(propSelectorNote)}
-              onSelect={(key) => {
-                const cursor = triggerCursorRef.current;
-                const current = inputRef.current?.value ?? displayValue;
-                const { newDisplayed, newCursor } = insertAtCursor(
-                  current,
-                  cursor,
-                  key,
-                  0 /* après le "." déjà là */
-                );
-                onTextChange(toRaw(newDisplayed));
-                closeSelectors();
-                setTimeout(
-                  () =>
-                    inputRef.current?.setSelectionRange(newCursor, newCursor),
-                  0
-                );
-              }}
-              onClose={closeSelectors}
-              anchorRef={inputRef}
-            />
-          )}
-        </div>
+        <FormulaEditField
+          rawValue={strValue}
+          onChange={onTextChange}
+          onDone={() => setEditingFormula(false)}
+          allNotes={allNotes ?? []}
+          noteResolver={noteResolver ?? (() => undefined)}
+        />
       );
     }
 

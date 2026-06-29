@@ -270,6 +270,39 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Formules inline ($$expr$$ → ƒ résultat)
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror span.inline-formula {
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: background-color 0.15s;
+}
+
+.milkdown .ProseMirror span.inline-formula:hover,
+.milkdown .ProseMirror span.inline-formula.inline-formula-selected {
+  background-color: rgba(120, 120, 120, 0.12);
+}
+
+.milkdown .ProseMirror span.inline-formula .inline-formula-sigil {
+  color: #b8b8b8;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7em;
+  margin-right: 0.15em;
+  user-select: none;
+}
+
+.milkdown .ProseMirror span.inline-formula.inline-formula-empty .inline-formula-result {
+  color: #b8b8b8;
+}
+
+.milkdown .ProseMirror span.inline-formula.inline-formula-error .inline-formula-result {
+  color: #b3261e;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Code
    ───────────────────────────────────────────────────────────────────────── */
 

@@ -532,6 +532,24 @@ Les bases héritières d'un template sont exclues du batch Rust (elles ne reçoi
 
 **Sérialisation YAML.** Les formules contenant des virgules (ex : `$$agg(montant, sum)$$`) étaient parsées par le sérialiseur YAML comme des tableaux multi-lignes. Fix dans `parseFrontmatter` : si la réassemblage des items donne une chaîne `$$...$$`, elle est stockée comme une chaîne unique. Fix dans `serializeFrontmatter` : les valeurs `$$...$$` sont quotées avec `'...'` pour empêcher l'interprétation YAML.
 
+### Formules inline (corps de note) — `src/shared/plugins/inline-formula/`
+
+Mêmes formules que le frontmatter, dans le corps des notes. **Réutilise intégralement `formulas.ts`** (zéro duplication) : ajouter une fonction au moteur la rend disponible aux deux endroits.
+
+**Champ d'édition partagé (`FormulaEditField`).** La logique de saisie (input humanisé + détection des triggers `ref(`/`ref("…").` + `NoteSelector`/`PropertySelector` + `selectorOpenRef` anti-stale-closure) a été extraite de `FrontmatterValue` vers `src/shared/components/FormulaField/FormulaEditField.tsx`, partagé entre le frontmatter et le popup inline. `FrontmatterValue` n'a plus que l'auto-pair `$$` et la vue compactée ; il délègue l'édition à ce composant.
+
+**Pourquoi un nœud atome inline (pas une marque).** Contrairement à didascalie/highlight (marques), l'**affichage** d'une formule (résultat calculé) **diffère de sa source** (la formule) → une marque ne convient pas. C'est donc un nœud `inline_formula` (`$node`, `inline: true`, `atom: true`, attr `raw` = `$$…$$`). Un nœud **atome** (leaf, sans contenu éditable) délègue ses frontières/caret à ProseMirror — il n'a pas les bugs WebKit des nœuds *à contenu* (cf. § « Styles inline »).
+
+**NodeView (`node-view.ts`).** Rendu **DOM impératif** (pas React : potentiellement nombreux, rendu trivial — cf. règle NodeView) → `ƒ <résultat>` via `computeFormula` avec le contexte de `inlineFormulaBridge`. Clic (`mousedown`, `preventDefault`) → ouvre le popup. `stopEvent → true` (atome, on gère l'interaction). Recalcul au changement d'arbre : chaque NodeView s'enregistre via `registerInlineFormulaView` ; `MarkdownEditor` appelle `refreshInlineFormulas()` quand `notesById`/frontmatter change (le résultat dépend d'autres notes, sans transaction sur le doc).
+
+**Round-trip (`remark-inline-formula.ts`).** Lecture : scan des nœuds texte pour `$$expr$$` → nœud mdast `inline_formula` { value }. Écriture : handler remark-stringify renvoyant `node.value` **verbatim** — crucial pour ne pas échapper les `*`, `_`, `[` d'une expression (un nœud texte mdast les échapperait → casse du round-trip). Une formule vide (`$$$$`, édition en cours) est sérialisée en chaîne vide (jamais persistée comme littéral).
+
+**Contexte d'évaluation (`inlineFormulaBridge`).** Ref module-level (pattern `wikilinkBridge`) alimentée par `MarkdownEditor` : `vars` = frontmatter de la note courante (`self.*`), `noteResolver`/`allNotes` depuis `notesByIdAtom`, `children` résolus depuis `__Children__` pour `agg()`.
+
+**Saisie & popup.** Input rule `/\$\$$/` (`input-rule.ts`) → insère un nœud vide + pose `pendingOpenPos` ; un second plugin (`view.update`) ouvre alors le popup sur le nœud fraîchement inséré (le handler d'input rule n'a pas accès aux coordonnées écran). `InlineFormulaPopup` (singleton, monté dans `NoteEditor` à côté de `WikilinkEditPopup`) réutilise `FormulaEditField` ; à la validation, `setNodeAttribute(pos, "raw", …)` ou suppression si vide. Stockage en chemins absolus, comme le frontmatter (humanisation/déshumanisation par les mêmes fonctions de `formulas.ts`).
+
+**Piège — Entrée valide la formule.** `FormulaEditField` fait `preventDefault()` sur Entrée/Échap : `commit()` rappelle `view.focus()` pendant le keydown ; sans `preventDefault`, le `keypress` suivant partirait sur ProseMirror re-focalisé et insérerait un saut de ligne.
+
 ### Résolution des propriétés template (frontend)
 
 `computeTemplateProps` (`fileTreeHelpers.ts`) calcule les propriétés qu'une note doit recevoir d'après ses templates. Elle distingue propriétés imposées (valeur non vide dans le template) et contraignantes (valeur vide), et ne modifie jamais une valeur déjà renseignée par la note pour une propriété contraignante. Pour une propriété BUTTON, elle attribue le `default` à la création et réécrit toute valeur non permise vers le `default` (filet de sécurité au chargement, en complément de `enforceEnum` côté live).
@@ -568,6 +586,8 @@ Plugin ProseMirror enregistré via `$prose` (même pattern que `wordHighlightPlu
 **Transitions.** `transition: left 90ms cubic-bezier(0.2, 0, 0, 1)` pour les déplacements normaux. La classe `.no-transition` (qui pose `transition: none`) est appliquée pour les sauts > 120 px (clic lointain, Ctrl+Home) et pendant le scroll — sans quoi le caret glisserait en retard derrière le texte.
 
 **Scroll.** `document.addEventListener("scroll", ..., true)` en capture phase repositionne le caret sur tout événement scroll, quel que soit le conteneur.
+
+**Bord droit d'un nœud atome inline en fin de bloc.** Quand le caret est juste après un nœud atome inline (ex : formule inline) **et qu'il n'y a rien après dans le bloc** (`!$from.nodeAfter`), `coordsAtPos(from, side)` renvoie les coordonnées du **bloc suivant** (caret qui « saute » d'une ligne/paragraphe) — ni `side: +1` ni `-1` ne tombent juste. On lit alors directement le **bord droit du rect DOM du nœud** (`view.nodeDOM(from - nodeBefore.nodeSize).getBoundingClientRect().right`). Purement visuel : la sélection et la frappe (à la suite du nœud) sont inchangées.
 
 **Clignotement.** `@keyframes caret-blink` sur `opacity`. L'animation est réinitialisée (`style.animation = "none"` puis restaurée via `requestAnimationFrame`) à chaque déplacement du curseur, pour repartir de visible.
 
