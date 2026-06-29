@@ -1,5 +1,7 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useMobileSelectNote } from "./hooks/useMobileSelectNote";
 import { IconFolder } from "../shared/components/PlatformIcon";
 import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
 import { useFileTree } from "../shared/hooks/useFileTree";
@@ -55,10 +57,39 @@ function ViewRenderer({ view }: { view: MobileView }) {
 }
 
 export function MobileApp() {
-  const { pickFolder, initFolder } = useFileTree();
+  const { pickFolder, initFolder, createNote } = useFileTree();
   const folderPath = useAtomValue(folderPathAtom);
   const dictaphoneMode = useAtomValue(dictaphoneModeAtom);
+  const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
+  const selectNote = useMobileSelectNote();
   useVaultSync();
+
+  const [pendingNewNote, setPendingNewNote] = useState(false);
+
+  // ── Bouton Centre de contrôle ─────────────────────────────────────────────
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setDictaphoneMode est stable
+  useEffect(() => {
+    if (!isIOS) return;
+    const check = async () => {
+      try {
+        const action = await invoke<string | null>("check_pending_action");
+        if (action === "recording") setDictaphoneMode("new-note-autostart");
+        else if (action === "new-note") setPendingNewNote(true);
+      } catch { /* ignore sur les autres plateformes */ }
+    };
+    check();
+    const onVisible = () => { if (document.visibilityState === "visible") check(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  // Exécuté dès que folderPath est disponible (cas cold-start ou retour au premier plan)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: createNote et selectNote sont stables
+  useEffect(() => {
+    if (!pendingNewNote || !folderPath) return;
+    setPendingNewNote(false);
+    createNote(folderPath).then(selectNote);
+  }, [pendingNewNote, folderPath]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: init au montage uniquement
   useEffect(() => {

@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		11E867C59FD0550B127011A3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5D25857CEE97C24BCAFEF981 /* Assets.xcassets */; };
+		169D60E0889078E57B0D6F20 /* LueursCCWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5A8CC4D29BCC23BB3307D346 /* LueursCCWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		31EC5816069C3A943E40FFCC /* LueursCCControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3804B45462E3361200420387 /* LueursCCControl.swift */; };
 		3FC96F572C41EFDB71CA3FBF /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFED8D9C07914E45FB100DCD /* QuartzCore.framework */; };
 		453DA1A8B7D137DAB5508B89 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8563AA36E3B064406E23A477 /* main.mm */; };
 		5B18F556208E84F326BDD0FF /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E9FEE720313BAE34BC9F4F5 /* Metal.framework */; };
@@ -17,15 +19,48 @@
 		84DFB288CB3006FA42E2CA33 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1718538B73CED607F462488A /* CoreGraphics.framework */; };
 		9ADC559BB28E5440675FC214 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CBC9C52A14FC9FE50A2DF2D9 /* MetalKit.framework */; };
 		9D38E8F50AF0112D477D3727 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 7EF1982E42D5A438EA827564 /* assets */; };
+		A3490E86ECE8A53EDF5FF275 /* RecordingIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A5530001DE013CA9B148D8 /* RecordingIntent.swift */; };
+		A3518539940C0416A014143B /* PendingAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6628B296D1D89A24D68B035 /* PendingAction.swift */; };
 		A675BCE9A2EEBA1E6B2B6DFE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A03EBA51776D26F194166964 /* LaunchScreen.storyboard */; };
+		CB912EC77602F4C96DB659F0 /* MicrophoneRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E2AD3E5726DA5011EE975B /* MicrophoneRecorder.swift */; };
 		DF9B13E17A9CAA93895D9BFE /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 61A0A6BD76FB296C65F78288 /* UIKit.framework */; };
 		E135815634780CF90C196BC5 /* ICloudPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E41D6C6143136750A3C39E /* ICloudPath.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D351EDBE7E863EA56DBDDFE5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 871FB7C4F41F1ED2AA558724 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8DAA39EBAE5CD8819A9AA8D5;
+			remoteInfo = LueursCCWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D3DC5FC1531D86E5F8159426 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				169D60E0889078E57B0D6F20 /* LueursCCWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		01A5530001DE013CA9B148D8 /* RecordingIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIntent.swift; sourceTree = "<group>"; };
+		09301982A21F34F6AAA22575 /* macos_window.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = macos_window.rs; sourceTree = "<group>"; };
 		1718538B73CED607F462488A /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		1E83FB2704A61E86F8ED3062 /* LueursCCWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LueursCCWidget.entitlements; sourceTree = "<group>"; };
 		2469553325AE9DEE2B1B68D9 /* lib.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = lib.rs; sourceTree = "<group>"; };
+		3804B45462E3361200420387 /* LueursCCControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LueursCCControl.swift; sourceTree = "<group>"; };
+		3CA8F9BF2063540D8F4D2E97 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		572472EF93F0B9CA150F0020 /* lueurs-tauri_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "lueurs-tauri_iOS.entitlements"; sourceTree = "<group>"; };
+		5A8CC4D29BCC23BB3307D346 /* LueursCCWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LueursCCWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D25857CEE97C24BCAFEF981 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		61A0A6BD76FB296C65F78288 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		657F3EB5443EB8FB48B5782F /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
@@ -35,9 +70,13 @@
 		8563AA36E3B064406E23A477 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		A03EBA51776D26F194166964 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A449FB9C4C783218886D2F83 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B1E2AD3E5726DA5011EE975B /* MicrophoneRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneRecorder.swift; sourceTree = "<group>"; };
+		B6628B296D1D89A24D68B035 /* PendingAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingAction.swift; sourceTree = "<group>"; };
+		CA79FA03F3FA16A99AE71515 /* typst_export.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = typst_export.rs; sourceTree = "<group>"; };
 		CBC9C52A14FC9FE50A2DF2D9 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		CFED8D9C07914E45FB100DCD /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		D6E41D6C6143136750A3C39E /* ICloudPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudPath.swift; sourceTree = "<group>"; };
+		E15227A9BA5F25BF0CD64C07 /* vault_android.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = vault_android.rs; sourceTree = "<group>"; };
 		E6D4E0B69E5E8CA2926EDC4D /* Lueurs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lueurs.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E72B79A5CA73D7D261461241 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
 		F053A03ED254C700E6184C50 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
@@ -67,7 +106,10 @@
 			isa = PBXGroup;
 			children = (
 				2469553325AE9DEE2B1B68D9 /* lib.rs */,
+				09301982A21F34F6AAA22575 /* macos_window.rs */,
 				7412F9C251F67E555A10CD86 /* main.rs */,
+				CA79FA03F3FA16A99AE71515 /* typst_export.rs */,
+				E15227A9BA5F25BF0CD64C07 /* vault_android.rs */,
 			);
 			name = src;
 			path = ../../src;
@@ -96,6 +138,7 @@
 				A03EBA51776D26F194166964 /* LaunchScreen.storyboard */,
 				12D1926872CB0DCC0A6066B1 /* Externals */,
 				F06D35E2A6FCB68A8937F061 /* lueurs-tauri_iOS */,
+				C88DC7FD6CB4BDDF52381300 /* LueursCCWidget */,
 				5079F3F628E6C5D484E5D994 /* Sources */,
 				063C4D7A836BCABCE51DC176 /* src */,
 				B42DD57DC5F018E23DC9C26B /* Frameworks */,
@@ -127,10 +170,21 @@
 			path = "lueurs-tauri";
 			sourceTree = "<group>";
 		};
+		C88DC7FD6CB4BDDF52381300 /* LueursCCWidget */ = {
+			isa = PBXGroup;
+			children = (
+				3CA8F9BF2063540D8F4D2E97 /* Info.plist */,
+				3804B45462E3361200420387 /* LueursCCControl.swift */,
+				1E83FB2704A61E86F8ED3062 /* LueursCCWidget.entitlements */,
+			);
+			path = LueursCCWidget;
+			sourceTree = "<group>";
+		};
 		CA59F6DE3FA4F235DBE1EC94 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				E6D4E0B69E5E8CA2926EDC4D /* Lueurs.app */,
+				5A8CC4D29BCC23BB3307D346 /* LueursCCWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -141,6 +195,9 @@
 				D6E41D6C6143136750A3C39E /* ICloudPath.swift */,
 				A449FB9C4C783218886D2F83 /* Info.plist */,
 				572472EF93F0B9CA150F0020 /* lueurs-tauri_iOS.entitlements */,
+				B1E2AD3E5726DA5011EE975B /* MicrophoneRecorder.swift */,
+				B6628B296D1D89A24D68B035 /* PendingAction.swift */,
+				01A5530001DE013CA9B148D8 /* RecordingIntent.swift */,
 			);
 			path = "lueurs-tauri_iOS";
 			sourceTree = "<group>";
@@ -156,6 +213,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		8DAA39EBAE5CD8819A9AA8D5 /* LueursCCWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 431E985BF9E57B11F4A47647 /* Build configuration list for PBXNativeTarget "LueursCCWidget" */;
+			buildPhases = (
+				EB6877D08935EEC9F70273AE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LueursCCWidget;
+			packageProductDependencies = (
+			);
+			productName = LueursCCWidget;
+			productReference = 5A8CC4D29BCC23BB3307D346 /* LueursCCWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		B141B63099925E8781C9EBFF /* lueurs-tauri_iOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 07344E0B86167ABEF3E31284 /* Build configuration list for PBXNativeTarget "lueurs-tauri_iOS" */;
@@ -164,10 +238,12 @@
 				4572594D92E80B70FD9306AB /* Sources */,
 				BE8052D080A325481FB6E6C2 /* Resources */,
 				6BA4953FB713EECCEA7001E3 /* Frameworks */,
+				D3DC5FC1531D86E5F8159426 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				2981E39EA7EE83BCB7925780 /* PBXTargetDependency */,
 			);
 			name = "lueurs-tauri_iOS";
 			packageProductDependencies = (
@@ -184,6 +260,14 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					8DAA39EBAE5CD8819A9AA8D5 = {
+						DevelopmentTeam = TBX8DPCBL9;
+					};
+					B141B63099925E8781C9EBFF = {
+						DevelopmentTeam = TBX8DPCBL9;
+					};
+				};
 			};
 			buildConfigurationList = 8ED34B82F327DF83284B5FF6 /* Build configuration list for PBXProject "lueurs-tauri" */;
 			developmentRegion = en;
@@ -199,6 +283,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				8DAA39EBAE5CD8819A9AA8D5 /* LueursCCWidget */,
 				B141B63099925E8781C9EBFF /* lueurs-tauri_iOS */,
 			);
 		};
@@ -247,13 +332,72 @@
 			buildActionMask = 2147483647;
 			files = (
 				E135815634780CF90C196BC5 /* ICloudPath.swift in Sources */,
+				CB912EC77602F4C96DB659F0 /* MicrophoneRecorder.swift in Sources */,
+				A3518539940C0416A014143B /* PendingAction.swift in Sources */,
+				A3490E86ECE8A53EDF5FF275 /* RecordingIntent.swift in Sources */,
 				453DA1A8B7D137DAB5508B89 /* main.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EB6877D08935EEC9F70273AE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				31EC5816069C3A943E40FFCC /* LueursCCControl.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		2981E39EA7EE83BCB7925780 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8DAA39EBAE5CD8819A9AA8D5 /* LueursCCWidget */;
+			targetProxy = D351EDBE7E863EA56DBDDFE5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		00E0F7EBD00D91031EB22456 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LueursCCWidget/LueursCCWidget.entitlements;
+				DEVELOPMENT_TEAM = TBX8DPCBL9;
+				INFOPLIST_FILE = LueursCCWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.theophiledonato.lueurs.ccwidget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = release;
+		};
+		0DFE81133FAA0B102A844BFB /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = LueursCCWidget/LueursCCWidget.entitlements;
+				DEVELOPMENT_TEAM = TBX8DPCBL9;
+				INFOPLIST_FILE = LueursCCWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.theophiledonato.lueurs.ccwidget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = debug;
+		};
 		74BD4559BFB39E3625C01750 /* debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -261,8 +405,7 @@
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "TBX8DPCBL9";
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
@@ -271,8 +414,6 @@
 					"\".\"",
 				);
 				INFOPLIST_FILE = "lueurs-tauri_iOS/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Lueurs;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -291,16 +432,10 @@
 					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
 				);
-				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.theophiledonato.lueurs;
 				PRODUCT_NAME = "Lueurs";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
 			};
 			name = debug;
@@ -356,7 +491,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -413,7 +548,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -431,8 +566,7 @@
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "TBX8DPCBL9";
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
@@ -441,8 +575,6 @@
 					"\".\"",
 				);
 				INFOPLIST_FILE = "lueurs-tauri_iOS/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Lueurs;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -461,16 +593,10 @@
 					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
 				);
-				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.theophiledonato.lueurs;
 				PRODUCT_NAME = "Lueurs";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
 			};
 			name = release;
@@ -483,6 +609,15 @@
 			buildConfigurations = (
 				74BD4559BFB39E3625C01750 /* debug */,
 				97B614556ED944358418F38D /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		431E985BF9E57B11F4A47647 /* Build configuration list for PBXNativeTarget "LueursCCWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0DFE81133FAA0B102A844BFB /* debug */,
+				00E0F7EBD00D91031EB22456 /* release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = debug;

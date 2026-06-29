@@ -314,6 +314,7 @@ pub fn run() {
             allow_vault_path,
             copy_resource_to_vault,
             propagate_template_change,
+            check_pending_action,
             compiler_typst_apercu,
             exporter_pdf,
             exporter_typst,
@@ -918,6 +919,36 @@ async fn show_rename_prompt(
         })
         .await
         .unwrap_or(None);
+    }
+    #[cfg(not(target_os = "ios"))]
+    None
+}
+
+/// Lit et efface l'action déposée par le widget Centre de contrôle via l'App Group.
+/// Retourne "recording" si le bouton CC a été tapé, None sinon.
+#[tauri::command]
+async fn check_pending_action() -> Option<String> {
+    #[cfg(target_os = "ios")]
+    {
+        extern "C" {
+            fn pending_action_read_and_clear(
+                buffer: *mut std::os::raw::c_char,
+                max_len: i32,
+            ) -> i32;
+        }
+        return tokio::task::spawn_blocking(|| {
+            let mut buffer = vec![0i8; 256];
+            let len =
+                unsafe { pending_action_read_and_clear(buffer.as_mut_ptr(), 256) };
+            if len <= 0 {
+                return None;
+            }
+            let cstr = unsafe { std::ffi::CStr::from_ptr(buffer.as_ptr()) };
+            Some(cstr.to_string_lossy().into_owned())
+        })
+        .await
+        .ok()
+        .flatten();
     }
     #[cfg(not(target_os = "ios"))]
     None

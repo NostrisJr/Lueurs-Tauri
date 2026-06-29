@@ -59,6 +59,14 @@ targets:
         NSLocalNetworkUsageDescription: "Lueurs a besoin d'accéder au réseau local pour communiquer avec le serveur de développement."
         NSBonjourServices:
           - _http._tcp
+        NSMicrophoneUsageDescription: "Lueurs utilise le microphone pour enregistrer des notes vocales."
+        UIBackgroundModes:
+          - audio
+        NSUbiquitousContainers:
+          iCloud.com.md.lueurs:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Lueurs
+            NSUbiquitousContainerSupportedFolderLevels: Any
     entitlements:
       path: lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements
       properties:
@@ -68,6 +76,8 @@ targets:
           - CloudDocuments
         com.apple.developer.ubiquity-container-identifiers:
           - iCloud.com.md.lueurs
+        com.apple.security.application-groups:
+          - group.com.md.lueurs
     settings:
       base:
         ENABLE_BITCODE: false
@@ -88,6 +98,8 @@ targets:
       - sdk: Security.framework
       - sdk: UIKit.framework
       - sdk: WebKit.framework
+      - target: LueursCCWidget
+        embed: true
     preBuildScripts:
       - script: |
           export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
@@ -97,6 +109,29 @@ targets:
         outputFiles:
           - $(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a
           - $(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a
+
+  LueursCCWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LueursCCWidget
+    info:
+      path: LueursCCWidget/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: LueursCCWidget/LueursCCWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.md.lueurs
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.theophiledonato.lueurs.ccwidget
+        SWIFT_VERSION: 5.0
+        IPHONEOS_DEPLOYMENT_TARGET: 18.0
+        DEVELOPMENT_TEAM: TBX8DPCBL9
+        SKIP_INSTALL: YES
 
 schemes:
   lueurs-tauri_iOS:

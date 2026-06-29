@@ -463,7 +463,6 @@ export function MarkdownEditor({
 
     editorRef.current = editor;
     activeEditorRef.current = editor;
-    log.info("Editor initialisé");
     return editor;
   });
 

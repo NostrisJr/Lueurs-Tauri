@@ -71,9 +71,16 @@ export function MobileDictaphone() {
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
   const dirPath = currentFolder?.id ?? folderPath ?? "";
 
+  // Démarrage automatique depuis le bouton Centre de contrôle
+  useEffect(() => {
+    if (dictaphoneMode !== "new-note-autostart" || status !== "idle") return;
+    handleRecord();
+  }, [dictaphoneMode, status, handleRecord]);
+
   // Titre par défaut avec numéro disponible (mode new-note uniquement)
   useEffect(() => {
-    if (dictaphoneMode !== "new-note" || !dirPath) return;
+    if (dictaphoneMode !== "new-note" && dictaphoneMode !== "new-note-autostart") return;
+    if (!dirPath) return;
     (async () => {
       try {
         // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
@@ -344,7 +351,7 @@ export function MobileDictaphone() {
         {/* Corps */}
         <div className="flex flex-col items-center gap-6 px-6 pb-8 pt-2">
           {/* Champ titre (mode new-note uniquement) */}
-          {dictaphoneMode === "new-note" && (
+          {(dictaphoneMode === "new-note" || dictaphoneMode === "new-note-autostart") && (
             <input
               type="text"
               value={title}

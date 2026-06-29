@@ -7,6 +7,7 @@ fn main() {
         println!("cargo:rustc-link-arg-cdylib=-Wl,-U,_setup_keyboard_behavior");
         println!("cargo:rustc-link-arg-cdylib=-Wl,-U,_show_ios_action_sheet");
         println!("cargo:rustc-link-arg-cdylib=-Wl,-U,_show_ios_rename_prompt");
+        println!("cargo:rustc-link-arg-cdylib=-Wl,-U,_pending_action_read_and_clear");
     }
 
     tauri_build::build()

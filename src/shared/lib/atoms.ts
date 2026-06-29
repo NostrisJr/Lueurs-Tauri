@@ -284,7 +284,7 @@ export const mobileResetNavAtom = atom(null, (_get, set) => {
   set(mobileNavStackAtom, ["filetree"]);
 });
 
-export type DictaphoneMode = "new-note" | "insert";
+export type DictaphoneMode = "new-note" | "new-note-autostart" | "insert";
 export const dictaphoneModeAtom = atom<DictaphoneMode | null>(null);
 
 // Bloc audio en attente d'insertion après retour de la vue dictaphone (mobile insert-mode)

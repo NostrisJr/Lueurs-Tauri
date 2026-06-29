@@ -14,5 +14,9 @@
 	<array>
 		<string>iCloud.com.md.lueurs</string>
 	</array>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.md.lueurs</string>
+	</array>
 </dict>
 </plist>
