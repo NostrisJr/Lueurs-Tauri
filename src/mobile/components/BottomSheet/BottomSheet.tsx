@@ -15,8 +15,8 @@
  */
 import { type ReactNode, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useKeyboard } from "../../hooks/useKeyboard";
 import { Squircle } from "../../../shared/components/Squircle";
+import { useKeyboard } from "../../hooks/useKeyboard";
 
 interface Props {
   onClose: () => void;
@@ -43,8 +43,16 @@ export function BottomSheet({
     : Math.round(window.innerHeight * heightFraction);
 
   const sheet = (
+    // stopPropagation : évite que le tap sur l'overlay remonte dans l'arbre React
+    // vers un BottomSheet parent (ex: NoteSelector au-dessus du BottomSheet formule).
     // biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile
-    <div className="fixed inset-0 z-50 bg-gray-600/30" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 bg-gray-600/30"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+    >
       <Squircle
         topRadius={28}
         className="fixed left-0 right-0 bg-white flex flex-col"

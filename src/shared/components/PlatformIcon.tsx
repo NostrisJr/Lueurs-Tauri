@@ -36,7 +36,6 @@ import {
   sfListBullet,
   sfListNumber,
   sfMagnifyingglass,
-  sfMicrophoneFill,
   sfPauseFill,
   sfPhoto,
   sfPlayFill,
@@ -196,7 +195,7 @@ export const IconListNumber = mk(sfListNumber, "format_list_numbered");
 
 export const IconMagnifyingglass = mk(sfMagnifyingglass, "search");
 
-export const IconMicrophoneFill = mk(sfMicrophoneFill, "mic", true);
+export const IconRecordAudio = mk(sfWaveform, "graphic_eq");
 
 export const IconPauseFill = mk(sfPauseFill, "pause", true);
 

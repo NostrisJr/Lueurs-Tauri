@@ -42,7 +42,7 @@ export function MobileSpaceSwitcher() {
 
   return (
     <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20">
-      <FloatingComponent vertical bgColor="rgba(255, 255, 255, 0.6)">
+      <FloatingComponent vertical>
         <button
           type="button"
           onClick={() => handleSwitch(null)}

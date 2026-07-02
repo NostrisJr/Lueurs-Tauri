@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BottomSheet } from "../../../mobile/components/BottomSheet/BottomSheet";
 import { type DisplayMode, activeNoteAtom } from "../../lib/atoms";
 import { EditableText } from "../EditableText.tsx";
-import { IconMicrophoneFill } from "../PlatformIcon.tsx";
+import { IconRecordAudio } from "../PlatformIcon.tsx";
 import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
 
 interface Props {
@@ -97,7 +97,7 @@ export function NoteHeader({
             title="Enregistrement vocal"
             className="p-0.5 text-gray-500 hover:text-red-500 transition-colors bg-transparent rounded-full size-10 flex items-center justify-center hover:bg-gray-100"
           >
-            <IconMicrophoneFill className="size-4.5" aria-hidden="true" />
+            <IconRecordAudio className="size-4.5" aria-hidden="true" />
           </button>
         )}
         {isNote && !isMobile && onDisplayModeChange && (

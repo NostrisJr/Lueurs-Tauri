@@ -26,6 +26,7 @@ import {
   linkRangeAt,
   wikilinkBridge,
 } from "../../../plugins/wikilink/wikilinkPlugin";
+import { editorInsertFormula } from "../lib/editorCommands";
 import { EDITOR_FORMATTING_GROUPS } from "../lib/formattingMenuData";
 
 const log = createLogger("useContextMenu");
@@ -337,6 +338,10 @@ export function useContextMenu(
                   }
                 }
               },
+            }),
+            MenuItem.new({
+              text: "Formule…\t⌘⇧F",
+              action: () => editorInsertFormula(editorRef),
             }),
             MenuItem.new({
               text: "Séparateur\t⌘⇧H",

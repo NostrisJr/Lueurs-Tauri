@@ -1,3 +1,4 @@
+import { platform } from "@tauri-apps/plugin-os";
 import { useRef, useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import { NoteType, type NoteTypeValue } from "../../../shared/lib/noteTypes";
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function TypeSelector({ value, onChange }: Props) {
+  const isMobile = platform() === "ios";
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -46,7 +48,8 @@ export function TypeSelector({ value, onChange }: Props) {
                 onChange(type);
                 setOpen(false);
               }}
-              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors
+              className={`w-full text-left transition-colors active:bg-gray-50
+                ${isMobile ? "px-4 py-3.5 text-base hover:bg-gray-50" : "px-3 py-1.5 text-xs hover:bg-gray-50"}
                 ${type === value ? "font-bold text-gray-700" : "text-gray-600"}`}
             >
               {TYPE_LABELS[type]}

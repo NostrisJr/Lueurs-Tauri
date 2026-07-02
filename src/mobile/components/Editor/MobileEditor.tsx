@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
+import { EditorErrorBoundary } from "../../../shared/components/EditorErrorBoundary";
 import { NoteEditor } from "../../../shared/components/NoteEditor/NoteEditor";
 import type { Editor } from "../../../shared/components/NoteEditor/MarkdownEditor";
 import {
@@ -11,7 +12,7 @@ import {
   IconArrowUturnBackward,
   IconArrowUturnForward,
   IconChevronLeft,
-  IconMicrophoneFill,
+  IconRecordAudio,
   IconRectangleStack,
 } from "../../../shared/components/PlatformIcon";
 import {
@@ -199,7 +200,7 @@ export function MobileEditor() {
           className="w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
           title="Ajouter un enregistrement"
         >
-          <IconMicrophoneFill className="size-5" />
+          <IconRecordAudio className="size-5" />
         </button>
         <button
           type="button"
@@ -255,10 +256,9 @@ export function MobileEditor() {
         onScroll={handleScroll}
         style={{ paddingBottom }}
       >
-        <NoteEditor
-          editorRef={editorRef}
-          defaultCollapsedFrontmatter
-        />
+        <EditorErrorBoundary>
+          <NoteEditor editorRef={editorRef} defaultCollapsedFrontmatter />
+        </EditorErrorBoundary>
       </div>
 
       <MobileFormattingBar

@@ -2,6 +2,7 @@
  * PropertyEditModal — modal pour renommer une clé de propriété.
  * Sur une note __template__ : le renommage est propagé aux héritiers.
  */
+import { platform } from "@tauri-apps/plugin-os";
 import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 
@@ -22,6 +23,7 @@ export function PropertyEditModal({
   onClose,
   onRename,
 }: PropertyEditModalProps) {
+  const isMobile = platform() === "ios";
   const [keyDraft, setKeyDraft] = useState(propKey);
 
   const trimmed = keyDraft.trim();
@@ -41,7 +43,7 @@ export function PropertyEditModal({
       onClose={onClose}
       className="w-48 p-3"
     >
-      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">
+      <p className={`text-gray-400 uppercase tracking-wide mb-2 ${isMobile ? "text-sm px-1" : "text-[10px]"}`}>
         Renommer la propriété
       </p>
       <input
@@ -54,24 +56,25 @@ export function PropertyEditModal({
           if (e.key === "Escape") onClose();
         }}
         style={{ fontSize: 16 }}
-        className={`w-full border rounded px-2 py-1 mb-2 outline-none transition-colors
+        className={`w-full border rounded mb-2 outline-none transition-colors
+          ${isMobile ? "px-3 py-2" : "px-2 py-1"}
           ${isDuplicate ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`}
       />
       {isDuplicate && (
-        <p className="text-[10px] text-red-400 mb-2">
+        <p className={`text-red-400 mb-2 ${isMobile ? "text-sm px-1" : "text-[10px]"}`}>
           Ce nom est déjà utilisé.
         </p>
       )}
       {isTemplate && !isDuplicate && !isUnchanged && trimmed && (
-        <p className="text-[10px] text-amber-500 mb-2">
+        <p className={`text-amber-500 mb-2 ${isMobile ? "text-sm px-1" : "text-[10px]"}`}>
           Sera propagé à toutes les notes héritières.
         </p>
       )}
-      <div className="flex gap-2 justify-end">
+      <div className={`flex gap-2 justify-end ${isMobile ? "mt-2" : ""}`}>
         <button
           type="button"
           onClick={onClose}
-          className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+          className={`text-gray-400 hover:text-gray-600 cursor-pointer ${isMobile ? "text-base px-3 py-2" : "text-xs"}`}
         >
           Annuler
         </button>
@@ -79,7 +82,8 @@ export function PropertyEditModal({
           type="button"
           onClick={handleSave}
           disabled={!canSave}
-          className={`text-xs px-2 py-1 rounded transition-colors
+          className={`rounded transition-colors
+            ${isMobile ? "text-base px-4 py-2" : "text-xs px-2 py-1"}
             ${
               canSave
                 ? "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer"

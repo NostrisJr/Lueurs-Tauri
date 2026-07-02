@@ -150,7 +150,22 @@ export const folderPathAtom = atomWithStorage<string | null>(
   { getOnInit: true }
 );
 
-export const activeNoteIdAtom = atom<string | null>(null);
+export const ACTIVE_NOTE_ID_STORAGE_KEY = "lueurs_active_note_id";
+
+// Interne — ne pas exporter ni lire directement.
+const _activeNoteIdAtom = atom<string | null>(null);
+
+// Write-through : toute modification persiste en localStorage pour le cold-start.
+export const activeNoteIdAtom = atom(
+  (get) => get(_activeNoteIdAtom),
+  (_get, set, id: string | null) => {
+    set(_activeNoteIdAtom, id);
+    try {
+      if (id) localStorage.setItem(ACTIVE_NOTE_ID_STORAGE_KEY, id);
+      else localStorage.removeItem(ACTIVE_NOTE_ID_STORAGE_KEY);
+    } catch {}
+  }
+);
 
 // Liste des notes ouvertes en onglets
 export const openTabIdsAtom = atom<string[]>([]);

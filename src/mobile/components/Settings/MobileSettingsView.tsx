@@ -2,6 +2,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { useSetAtom } from "jotai";
 import { useState } from "react";
 import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
+import { Squircle } from "../../../shared/components/Squircle";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
   defaultDisplayModeAtom,
@@ -19,7 +20,7 @@ import { vaultIO } from "../../../shared/lib/vaultIO";
 import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
 import { hapticImpact } from "../../lib/haptics";
 import { vaultDisplayName } from "../../lib/vault";
-import { Squircle } from "../../../shared/components/Squircle";
+import { MobileSplashScreen } from "../Splash/MobileSplashScreen";
 import { MobileEspacesSection } from "./MobileEspacesSection";
 
 const descriptions: Record<string, string> = {
@@ -28,9 +29,15 @@ const descriptions: Record<string, string> = {
 };
 
 export function MobileSettingsView() {
-  const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(defaultDisplayModeAtom);
-  const [defaultHighlightColor, setDefaultHighlightColor] = useAtom(defaultHighlightColorAtom);
-  const [textJustification, setTextJustification] = useAtom(textJustificationAtom);
+  const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(
+    defaultDisplayModeAtom
+  );
+  const [defaultHighlightColor, setDefaultHighlightColor] = useAtom(
+    defaultHighlightColorAtom
+  );
+  const [textJustification, setTextJustification] = useAtom(
+    textJustificationAtom
+  );
   const [showResources, setShowResources] = useAtom(showResourcesAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
   const folderPath = useAtomValue(folderPathAtom);
@@ -39,6 +46,7 @@ export function MobileSettingsView() {
 
   type CleanStatus = null | "running" | { count: number } | "error";
   const [cleanStatus, setCleanStatus] = useState<CleanStatus>(null);
+  const [showSplash, setShowSplash] = useState(false);
 
   async function handleCleanResources() {
     if (!folderPath) return;
@@ -53,14 +61,18 @@ export function MobileSettingsView() {
       let count = 0;
       for (const sub of ["images", "audio"] as const) {
         try {
-          const entries = await vaultIO.readDir(`${folderPath}/resources/${sub}`);
+          const entries = await vaultIO.readDir(
+            `${folderPath}/resources/${sub}`
+          );
           for (const e of entries) {
             if (!e.isDir && !referenced.has(e.name)) {
               await vaultIO.delete(e.uri);
               count++;
             }
           }
-        } catch { /* dossier absent */ }
+        } catch {
+          /* dossier absent */
+        }
       }
       setCleanStatus({ count });
     } catch {
@@ -210,7 +222,10 @@ export function MobileSettingsView() {
           Ressources
         </p>
         <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
-          <Squircle radius={18} className="overflow-hidden bg-white border border-gray-100">
+          <Squircle
+            radius={18}
+            className="overflow-hidden bg-white border border-gray-100"
+          >
             <button
               type="button"
               onClick={() => {
@@ -221,20 +236,31 @@ export function MobileSettingsView() {
               className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors border-b border-gray-100"
             >
               <div className="flex-1 min-w-0">
-                <p className="text-base text-gray-900">Afficher les ressources</p>
+                <p className="text-base text-gray-900">
+                  Afficher les ressources
+                </p>
               </div>
-              <div className={`w-11 h-6 rounded-full transition-colors shrink-0 ${showResources ? "bg-amber-500" : "bg-gray-200"}`}>
-                <div className={`w-5 h-5 rounded-full bg-white shadow m-0.5 transition-transform ${showResources ? "translate-x-5" : "translate-x-0"}`} />
+              <div
+                className={`w-11 h-6 rounded-full transition-colors shrink-0 ${showResources ? "bg-amber-500" : "bg-gray-200"}`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white shadow m-0.5 transition-transform ${showResources ? "translate-x-5" : "translate-x-0"}`}
+                />
               </div>
             </button>
             <button
               type="button"
-              onClick={() => { hapticImpact("light"); handleCleanResources(); }}
+              onClick={() => {
+                hapticImpact("light");
+                handleCleanResources();
+              }}
               disabled={cleanStatus === "running" || !folderPath}
               className="w-full flex items-center justify-between px-4 py-4 text-left active:bg-gray-50 transition-colors disabled:opacity-50"
             >
               <p className="text-base text-gray-900">
-                {cleanStatus === "running" ? "Nettoyage…" : "Nettoyer les ressources"}
+                {cleanStatus === "running"
+                  ? "Nettoyage…"
+                  : "Nettoyer les ressources"}
               </p>
               {cleanStatus !== null && cleanStatus !== "running" && (
                 <span className="text-sm text-gray-400">
@@ -250,6 +276,33 @@ export function MobileSettingsView() {
         </div>
 
         <MobileEspacesSection />
+
+        {import.meta.env.DEV && (
+          <>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+              Développement
+            </p>
+            <div
+              style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
+            >
+              <Squircle
+                radius={18}
+                className="overflow-hidden bg-white border border-gray-100"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticImpact("light");
+                    setShowSplash(true);
+                  }}
+                  className="w-full px-4 py-4 text-left text-base text-gray-900 active:bg-gray-50 transition-colors"
+                >
+                  Aperçu du splash screen
+                </button>
+              </Squircle>
+            </div>
+          </>
+        )}
 
         {isAndroid && (
           <>
@@ -284,6 +337,17 @@ export function MobileSettingsView() {
           </>
         )}
       </div>
+
+      {showSplash && (
+        <>
+          <MobileSplashScreen visible={true} />
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: zone de fermeture dev */}
+          <div
+            className="fixed inset-0 z-[51]"
+            onClick={() => setShowSplash(false)}
+          />
+        </>
+      )}
     </div>
   );
 }

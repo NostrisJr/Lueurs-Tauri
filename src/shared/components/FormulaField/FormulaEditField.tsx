@@ -20,7 +20,7 @@ interface Props {
   noteResolver: (path: string) => NoteFile | undefined;
   autoFocus?: boolean;
   inputClassName?: string;
-  /** Position du caret à l'ouverture (ex: entre les `$$` d'une formule vide). */
+  /** Position du caret à l'ouverture (ex: 0 pour une formule vide). */
   initialCursor?: number;
 }
 
@@ -41,7 +41,16 @@ export function FormulaEditField({
   initialCursor,
 }: Props) {
   const isMobile = platform() === "ios";
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize : ajuste la hauteur au contenu, plafonné à ~4 lignes.
+  const MAX_HEIGHT = isMobile ? 100 : 88;
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
+  });
 
   // Place le caret à l'ouverture (formule vide : entre les `$$`). Une seule fois.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ouverture uniquement
@@ -64,10 +73,11 @@ export function FormulaEditField({
     [allNotes]
   );
 
-  const displayValue = humanizeFormula(rawValue, noteResolver);
+  const inner = rawValue.replace(/^\$\$/, "").replace(/\$\$$/, "");
+  const displayValue = humanizeFormula(inner, noteResolver);
 
   function toRaw(displayed: string): string {
-    return dehumanizeFormula(displayed, notesByName);
+    return `$$${dehumanizeFormula(displayed, notesByName)}$$`;
   }
 
   function openRefSelector(cursorPos: number) {
@@ -139,11 +149,12 @@ export function FormulaEditField({
 
   return (
     <div className="flex-1 relative">
-      <input
+      <textarea
         ref={inputRef}
         // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture de l'édition formule
         autoFocus={autoFocus}
         value={displayValue}
+        rows={1}
         onChange={(e) => {
           const displayed = e.target.value;
           const cursorPos = e.target.selectionStart ?? displayed.length;
@@ -169,7 +180,7 @@ export function FormulaEditField({
         autoCorrect="off"
         autoCapitalize="none"
         spellCheck={false}
-        style={isMobile ? { fontSize: 14 } : undefined}
+        style={{ resize: "none", ...(isMobile ? { fontSize: 16 } : {}) }}
         className={
           inputClassName ??
           "w-full mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-300 transition-colors font-mono"

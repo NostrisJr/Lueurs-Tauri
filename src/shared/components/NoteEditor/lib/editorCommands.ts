@@ -24,6 +24,7 @@ import {
   togglePoetryCommand,
   toggleTaskListCommand,
 } from "../../../plugins/customKeymap";
+import { setInlineFormulaEdit } from "../../../plugins/inline-formula/inlineFormulaState";
 import type { CmdKey } from "@milkdown/kit/core";
 
 export type EditorRef = { current: Editor | null };
@@ -169,6 +170,25 @@ export function editorHighlight(editorRef: EditorRef, color?: string) {
   } else {
     callCmd(editorRef, toggleHighlightInlineCommand.key);
   }
+}
+
+export function editorInsertFormula(editorRef: EditorRef) {
+  editorRef.current?.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    const schema = ctx.get(schemaCtx);
+    const type = schema.nodes.inline_formula;
+    if (!type) return;
+    const { state } = view;
+    if (state.selection.$from.parent.type.spec.code) return;
+    const pos = state.selection.$from.pos;
+    view.dispatch(state.tr.insert(pos, type.create()));
+    const coords = view.coordsAtPos(pos);
+    setInlineFormulaEdit({
+      pos,
+      raw: "$$$$",
+      coords: { left: coords.left, top: coords.top, bottom: coords.bottom },
+    });
+  });
 }
 
 export function editorScrollToPos(editorRef: EditorRef, pos: number) {

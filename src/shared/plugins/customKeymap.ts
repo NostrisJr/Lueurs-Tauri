@@ -28,6 +28,7 @@ import { Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
 import { $command, $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../lib/logger";
 import { defaultHighlightColorRef } from "./highlight/defaultColorRef";
+import { setInlineFormulaEdit } from "./inline-formula/inlineFormulaState";
 import { setWikilinkEdit } from "./wikilink/wikilinkEditState";
 
 const log = createLogger("customKeymap");
@@ -845,6 +846,24 @@ export const codeBasedShortcutsPlugin = $prose(
           if (!event.altKey && event.shiftKey && event.code === "KeyL") {
             event.preventDefault();
             commands.call(toggleHighlightInlineCommand.key);
+            return true;
+          }
+
+          // Mod+Shift : formule inline (KeyF)
+          if (!event.altKey && event.shiftKey && event.code === "KeyF") {
+            event.preventDefault();
+            const state = _view.state;
+            const type = ctx.get(schemaCtx).nodes.inline_formula;
+            if (type && !state.selection.$from.parent.type.spec.code) {
+              const pos = state.selection.$from.pos;
+              _view.dispatch(state.tr.insert(pos, type.create()));
+              const coords = _view.coordsAtPos(pos);
+              setInlineFormulaEdit({
+                pos,
+                raw: "$$$$",
+                coords: { left: coords.left, top: coords.top, bottom: coords.bottom },
+              });
+            }
             return true;
           }
 

@@ -65,7 +65,7 @@ export function SearchView() {
 
         {/* barre de recherche : collée en bas de la zone visible */}
         <div className="w-full flex px-4 pt-3 pb-3 gap-3">
-          <FloatingComponent className="flex-1">
+          <FloatingComponent wrapperClassName="flex-1">
             <input
               // biome-ignore lint/a11y/noAutofocus: On vient de cliquer sur une fausse barre de recherche, c'est le comportement logique
               autoFocus

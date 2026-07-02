@@ -15,7 +15,9 @@ import {
   mobileNavStackAtom,
   mobilePrevViewAtom,
   mobileViewAtom,
+  treeAtom,
 } from "../shared/lib/atoms";
+import { MobileSplashScreen } from "./components/Splash/MobileSplashScreen";
 import { isAndroid, isIOS } from "../shared/lib/platform";
 import { MobileDictaphone } from "./components/Dictaphone/MobileDictaphone";
 import { MobileEditor } from "./components/Editor/MobileEditor";
@@ -33,7 +35,8 @@ import "./MobileApp.css";
 
 function EditorOrMediaViewer() {
   const activeMedia = useAtomValue(activeMediaAtom);
-  if (activeMedia) return <MediaViewer key={activeMedia.id} media={activeMedia} />;
+  if (activeMedia)
+    return <MediaViewer key={activeMedia.id} media={activeMedia} />;
   return <MobileEditor />;
 }
 
@@ -59,7 +62,11 @@ function ViewRenderer({ view }: { view: MobileView }) {
 export function MobileApp() {
   const { pickFolder, initFolder, createNote } = useFileTree();
   const folderPath = useAtomValue(folderPathAtom);
+  const tree = useAtomValue(treeAtom);
   const dictaphoneMode = useAtomValue(dictaphoneModeAtom);
+  // Splash visible tant que le vault est connu mais l'arbre pas encore chargé.
+  // Disparaît dès que le cache ou le reload fournit du contenu.
+  const showSplash = !!folderPath && tree.length === 0;
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const selectNote = useMobileSelectNote();
   useVaultSync();
@@ -75,10 +82,14 @@ export function MobileApp() {
         const action = await invoke<string | null>("check_pending_action");
         if (action === "recording") setDictaphoneMode("new-note-autostart");
         else if (action === "new-note") setPendingNewNote(true);
-      } catch { /* ignore sur les autres plateformes */ }
+      } catch {
+        /* ignore sur les autres plateformes */
+      }
     };
     check();
-    const onVisible = () => { if (document.visibilityState === "visible") check(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") check();
+    };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
@@ -181,7 +192,7 @@ export function MobileApp() {
 
   if (!folderPath && isAndroid) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-100 gap-6 px-8">
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-200 gap-6 px-8">
         <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow">
           <IconFolder className="size-8 text-amber-500" />
         </div>
@@ -220,6 +231,7 @@ export function MobileApp() {
         <ViewRenderer view={currentView} />
       </div>
       {dictaphoneMode !== null && <MobileDictaphone />}
+      <MobileSplashScreen visible={showSplash} />
     </div>
   );
 }

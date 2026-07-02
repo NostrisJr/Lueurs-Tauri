@@ -5,8 +5,9 @@ import { watchImmediate } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
 import type { useStore } from "jotai";
 
-import type { FolderNode, NoteFile } from "../hooks/useFileTree";
+import type { FolderNode, MediaFile, NoteFile } from "../hooks/useFileTree";
 import {
+  ACTIVE_NOTE_ID_STORAGE_KEY,
   activeNoteIdAtom,
   errorAtom,
   folderPathAtom,
@@ -42,6 +43,7 @@ import {
   allowVaultScope,
   applyAllTemplates,
   loadTree,
+  noteFromRaw,
   relativizePathFields,
   resolveDestName,
   vaultIO,
@@ -63,6 +65,81 @@ const debounceTimers = new Map<
 >();
 let reloadTimer: ReturnType<typeof setTimeout> | null = null;
 let unwatcher: (() => void) | null = null;
+
+// ── Cache arbre (cold-start) ───────────────────────────────────────────────
+// Sérialise l'arbre sans les body pour affichage immédiat au démarrage.
+
+const TREE_CACHE_KEY = "lueurs_tree_cache";
+
+type CachedFile = Omit<NoteFile, "body" | "updatedAt"> & { updatedAt: string };
+type CachedFolderNode = { kind: "folder"; id: string; name: string; children: CachedNode[] };
+type CachedNode = CachedFile | CachedFolderNode | MediaFile;
+interface TreeCacheData { vaultPath: string; nodes: CachedNode[] }
+
+function stripBodies(nodes: import("../hooks/useFileTree").TreeNode[]): CachedNode[] {
+  return nodes.map((n) => {
+    if (n.kind === "folder")
+      return { kind: "folder", id: n.id, name: n.name, children: stripBodies(n.children) };
+    if (n.kind === "file") {
+      const { body: _body, updatedAt, ...rest } = n;
+      return { ...rest, updatedAt: updatedAt.toISOString() };
+    }
+    return n;
+  });
+}
+
+function restoreBodies(nodes: CachedNode[]): import("../hooks/useFileTree").TreeNode[] {
+  return nodes.map((n) => {
+    if (n.kind === "folder")
+      return { kind: "folder", id: n.id, name: n.name, children: restoreBodies(n.children) };
+    if (n.kind === "file")
+      return { ...n, body: "", updatedAt: new Date(n.updatedAt) };
+    return n;
+  });
+}
+
+function saveTreeCache(vaultPath: string, nodes: import("../hooks/useFileTree").TreeNode[]): void {
+  try {
+    const cache: TreeCacheData = { vaultPath, nodes: stripBodies(nodes) };
+    localStorage.setItem(TREE_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
+function loadTreeCache(vaultPath: string): import("../hooks/useFileTree").TreeNode[] | null {
+  try {
+    const raw = localStorage.getItem(TREE_CACHE_KEY);
+    if (!raw) return null;
+    const cache: TreeCacheData = JSON.parse(raw);
+    if (cache.vaultPath !== vaultPath) return null;
+    return restoreBodies(cache.nodes);
+  } catch {
+    return null;
+  }
+}
+
+// Charge le body de la note active en priorité pour éviter un éditeur vide au cold-start.
+async function prefetchActiveNote(
+  store: JotaiStore,
+  noteId: string,
+  vaultPath: string
+): Promise<void> {
+  try {
+    const rawContent = await vaultIO.readFile(noteId);
+    const fileName = noteId.split("/").pop() ?? "";
+    const note = noteFromRaw(noteId, fileName, rawContent, vaultPath);
+    store.set(treeAtom, (prev) =>
+      updateNodeInTree(prev, noteId, {
+        body: note.body,
+        title: note.title,
+        frontmatter: note.frontmatter,
+        updatedAt: note.updatedAt,
+      })
+    );
+    log.info("note active pré-chargée", { noteId });
+  } catch (e) {
+    log.warn("pré-chargement note active échoué", { noteId, error: String(e) });
+  }
+}
 
 // ── Helpers URI ────────────────────────────────────────────────────────────
 // Extraient le nom de fichier et le dossier parent depuis un chemin POSIX
@@ -94,6 +171,7 @@ export async function reload(store: JotaiStore, path: string): Promise<void> {
     const nodes = await loadTree(path, path, showResources);
     const finalNodes = await applyAllTemplates(nodes, path);
     store.set(treeAtom, finalNodes);
+    saveTreeCache(path, finalNodes);
   } catch (e) {
     store.set(
       errorAtom,
@@ -188,8 +266,21 @@ export async function initFolder(store: JotaiStore): Promise<void> {
     const config = await ensureVaultConfig(folderPath);
     if (config) store.set(vaultConfigAtom, config);
   }
-  await reload(store, folderPath);
-  await startWatcher(store, folderPath);
+
+  // Affichage immédiat depuis le cache, puis reload complet en arrière-plan.
+  const cachedNodes = loadTreeCache(folderPath);
+  if (cachedNodes) {
+    store.set(treeAtom, cachedNodes);
+    const savedNoteId = localStorage.getItem(ACTIVE_NOTE_ID_STORAGE_KEY);
+    if (savedNoteId) {
+      // Lire d'abord le body de la note active pour éviter un éditeur vide.
+      await prefetchActiveNote(store, savedNoteId, folderPath);
+      store.set(activeNoteIdAtom, savedNoteId);
+    }
+  }
+
+  // Reload complet (données fraîches) et watcher en parallèle.
+  await Promise.all([reload(store, folderPath), startWatcher(store, folderPath)]);
 }
 
 export async function autoInitFolder(store: JotaiStore): Promise<void> {
@@ -206,8 +297,7 @@ export async function autoInitFolder(store: JotaiStore): Promise<void> {
   store.set(folderPathAtom, resolved);
   const config = await readVaultConfig(resolved);
   if (config) store.set(vaultConfigAtom, config);
-  await reload(store, resolved);
-  await startWatcher(store, resolved);
+  await Promise.all([reload(store, resolved), startWatcher(store, resolved)]);
 }
 
 export async function switchVault(
@@ -226,8 +316,7 @@ export async function switchVault(
   store.set(folderPathAtom, resolved);
   const config = await readVaultConfig(resolved);
   if (config) store.set(vaultConfigAtom, config);
-  await reload(store, resolved);
-  await startWatcher(store, resolved);
+  await Promise.all([reload(store, resolved), startWatcher(store, resolved)]);
 }
 
 export async function pickFolder(store: JotaiStore): Promise<void> {
@@ -237,6 +326,15 @@ export async function pickFolder(store: JotaiStore): Promise<void> {
   if (currentPlatform === "ios") {
     const icloudPath = await invoke<string | null>("get_icloud_path");
     selected = icloudPath ?? (await documentDir());
+    // Bail early si le vault n'a pas changé : évite de réinitialiser l'état de navigation
+    // (activeNoteIdAtom, tabs…) à chaque démarrage alors que pickFolder est appelé
+    // automatiquement pour confirmer le chemin iCloud, pas pour changer de vault.
+    const resolved = await resolveVaultRoot(selected);
+    if (resolved === store.get(folderPathAtom)) {
+      await allowVaultScope(resolved);
+      log.info("vault iOS inchangé, scope confirmé", { resolved });
+      return;
+    }
     log.info("vault iOS", { selected, icloud: !!icloudPath });
   } else if (currentPlatform === "android") {
     const result = await vaultIO.pickRoot();

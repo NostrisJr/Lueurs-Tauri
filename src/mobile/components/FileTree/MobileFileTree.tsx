@@ -1,7 +1,11 @@
 import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FolderNode, NoteFile, TreeNode } from "../../../shared/hooks/useFileTree";
+import type {
+  FolderNode,
+  NoteFile,
+  TreeNode,
+} from "../../../shared/hooks/useFileTree";
 import { NoteType } from "../../../shared/lib/noteTypes";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
@@ -140,7 +144,9 @@ export function MobileFileTree() {
   const sortedNodes = useMemo(
     () =>
       [...currentNodes]
-        .filter((node) => !(node.kind === "file" && node.type === NoteType.FOLDER))
+        .filter(
+          (node) => !(node.kind === "file" && node.type === NoteType.FOLDER)
+        )
         .sort((a, b) => {
           if (a.kind === b.kind)
             return a.name.localeCompare(b.name, "fr", { numeric: true });

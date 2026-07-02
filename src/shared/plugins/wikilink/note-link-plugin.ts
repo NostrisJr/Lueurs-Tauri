@@ -24,7 +24,8 @@ const log = createLogger("note-link");
 const REBUILD_META = "note-link-rebuild";
 
 /** Force le recalcul des décorations note-link (statut cassé/valide). */
-export function refreshNoteLinkDecorations(view: EditorView) {
+export function refreshNoteLinkDecorations(view: EditorView | undefined) {
+  if (!view) return;
   view.dispatch(view.state.tr.setMeta(REBUILD_META, true));
 }
 

@@ -6,6 +6,8 @@
  * édition de la formule HUMANISÉE + sélecteurs note/propriété, comme le frontmatter.
  * À la validation, écrit la formule brute (chemins absolus) dans l'attribut du
  * nœud ; si la formule est vide, supprime le nœud.
+ *
+ * Mobile : BottomSheet clavier-aware. Desktop : popup positionné près du nœud.
  */
 
 import { editorViewCtx } from "@milkdown/kit/core";
@@ -18,9 +20,10 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
+import { BottomSheet } from "../../../mobile/components/BottomSheet/BottomSheet";
 import { createLogger } from "../../lib/logger";
+import { isMobile } from "../../lib/platform";
 import {
-  formulaInner,
   getInlineFormulaEdit,
   inlineFormulaBridge,
   setInlineFormulaEdit,
@@ -58,7 +61,7 @@ export function InlineFormulaPopup() {
   }, [request]);
 
   useLayoutEffect(() => {
-    if (!request) {
+    if (!request || isMobile) {
       setPos(null);
       return;
     }
@@ -75,7 +78,7 @@ export function InlineFormulaPopup() {
       return;
     }
     const value = rawRef.current;
-    const isEmpty = formulaInner(value).trim() === "";
+    const isEmpty = value.replace(/^\$\$/, "").replace(/\$\$$/, "").trim() === "";
     editor.action((ctx) => {
       const view = ctx.get(editorViewCtx);
       const node = view.state.doc.nodeAt(req.pos);
@@ -95,10 +98,32 @@ export function InlineFormulaPopup() {
     close();
   }, [close]);
 
-  if (!request || !pos) return null;
+  if (!request) return null;
 
   const ctx = inlineFormulaBridge.current;
-  const initialCursor = formulaInner(request.raw).trim() === "" ? 2 : undefined;
+  if (isMobile) {
+    return (
+      <BottomSheet onClose={commit} title="Formule" heightFraction={0.3}>
+        <div className="px-4 pt-1 pb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-300 font-mono text-base shrink-0 leading-none">
+              ƒ
+            </span>
+            <FormulaEditField
+              rawValue={raw}
+              onChange={updateRaw}
+              onDone={commit}
+              allNotes={ctx?.allNotes ?? []}
+              noteResolver={ctx?.noteResolver ?? (() => undefined)}
+              inputClassName="w-full bg-transparent outline-none text-gray-700 font-mono text-base py-1 border-b border-gray-200 focus:border-amber-400 transition-colors"
+            />
+          </div>
+        </div>
+      </BottomSheet>
+    );
+  }
+
+  if (!pos) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50" onMouseDown={commit}>
@@ -117,7 +142,6 @@ export function InlineFormulaPopup() {
             onDone={commit}
             allNotes={ctx?.allNotes ?? []}
             noteResolver={ctx?.noteResolver ?? (() => undefined)}
-            initialCursor={initialCursor}
             inputClassName="w-full bg-transparent outline-none border-b border-gray-300 text-gray-700 focus:border-amber-400 transition-colors font-mono text-sm"
           />
         </div>

@@ -12,6 +12,7 @@ import {
   editorHighlight,
   editorIndent,
   editorInlineCode,
+  editorInsertFormula,
   editorItalic,
   editorOrderedList,
   editorParagraph,
@@ -104,6 +105,12 @@ export function MobileFormattingBar({
         title: "Didascalie inline",
         action: () => editorDidascalieInline(editorRef),
         className: "italic opacity-75",
+      },
+      {
+        label: "ƒ",
+        title: "Formule",
+        action: () => editorInsertFormula(editorRef),
+        className: "font-mono",
       },
       {
         Icon: IconTextformat,
@@ -199,10 +206,7 @@ export function MobileFormattingBar({
       className={`fixed left-3 right-3 z-50 flex items-center gap-2 transition-all duration-300 ease-in-out ${visible ? "translate-y-0 opacity-100" : "translate-y-16 opacity-0"}`}
       style={{ bottom: keyboardHeight + 8 }}
     >
-      <FloatingComponent
-        className="flex-1 overflow-hidden px-0 py-0"
-        bgColor="rgba(255, 255, 255, 0.7)"
-      >
+      <FloatingComponent wrapperClassName="flex-1 min-w-0" className="overflow-hidden px-0 py-0">
         <div
           className="flex items-center overflow-x-auto h-13 px-2 gap-1"
           style={{ scrollbarWidth: "none" }}
@@ -246,8 +250,9 @@ export function MobileFormattingBar({
         </div>
       </FloatingComponent>
       <FloatingComponent
-        className="shrink-0 w-13 h-13 rounded-full! p-0! gap-0!"
-        bgColor="rgba(255, 255, 255, 0.7)"
+        wrapperClassName="shrink-0"
+        className="w-13 h-13 rounded-full! p-0! gap-0!"
+        bgColor="rgba(249, 250, 251, 0.75)"
       >
         <button
           type="button"

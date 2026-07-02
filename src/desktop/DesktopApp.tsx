@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef } from "react";
 import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
 import { NoteEditor } from "../shared/components/NoteEditor/NoteEditor.tsx";
 import { registerDropListener } from "../shared/components/NoteEditor/lib/dropListener.ts";
@@ -21,15 +21,28 @@ import {
   settingsOpenAtom,
 } from "../shared/lib/atoms";
 import { NoteType } from "../shared/lib/noteTypes";
-import { DesktopDictaphone } from "./components/Dictaphone/DesktopDictaphone.tsx";
-import { ExportDialog } from "./components/Export/ExportDialog.tsx";
 import { SavingIndicator } from "./components/SavingIndicator.tsx";
-import { SettingsModal } from "./components/Settings/SettingsModal";
 import { SideBar } from "./components/SideBar/SideBar.tsx";
 import { TabBar } from "./components/TabBar/TabBar";
 import { Toast } from "./components/Toast.tsx";
 import { WelcomeScreen } from "./components/WelcomeScreen.tsx";
 import { useMenuEvents } from "./hooks/useMenuEvents";
+
+const DesktopDictaphone = lazy(() =>
+  import("./components/Dictaphone/DesktopDictaphone.tsx").then((m) => ({
+    default: m.DesktopDictaphone,
+  }))
+);
+const ExportDialog = lazy(() =>
+  import("./components/Export/ExportDialog.tsx").then((m) => ({
+    default: m.ExportDialog,
+  }))
+);
+const SettingsModal = lazy(() =>
+  import("./components/Settings/SettingsModal").then((m) => ({
+    default: m.SettingsModal,
+  }))
+);
 
 export function DesktopApp() {
   const { pickFolder, initFolder, autoInitFolder } = useFileTree();
@@ -122,8 +135,10 @@ export function DesktopApp() {
 
   return (
     <div className="h-screen flex text-gray-900 overflow-hidden text-sm">
-      <SettingsModal />
-      <ExportDialog />
+      <Suspense fallback={null}>
+        <SettingsModal />
+        <ExportDialog />
+      </Suspense>
       <Toast />
       <SideBar />
 
@@ -134,13 +149,15 @@ export function DesktopApp() {
           {activeNote &&
             activeNote.type !== NoteType.BASE &&
             dictaphoneOpen && (
-              <DesktopDictaphone
-                onInsert={(path, title) => {
-                  setPendingAudioInsert({ path, title });
-                  setDictaphoneOpen(false);
-                }}
-                onClose={() => setDictaphoneOpen(false)}
-              />
+              <Suspense fallback={null}>
+                <DesktopDictaphone
+                  onInsert={(path, title) => {
+                    setPendingAudioInsert({ path, title });
+                    setDictaphoneOpen(false);
+                  }}
+                  onClose={() => setDictaphoneOpen(false)}
+                />
+              </Suspense>
             )}
 
           <div

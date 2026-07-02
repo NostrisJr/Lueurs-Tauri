@@ -157,9 +157,12 @@ export function MarkdownEditor({
       resolve,
       open: (noteId, newTab) => onOpenNote?.(noteId, newTab),
     };
-    // L'arbre a changé → recalcule le statut cassé/valide des liens affichés
+    // L'arbre a changé → recalcule le statut cassé/valide des liens affichés.
+    // try/catch : ctx.get(editorViewCtx) lève si Milkdown n'est pas encore initialisé.
     editorRef.current?.action((ctx) => {
-      refreshNoteLinkDecorations(ctx.get(editorViewCtx));
+      try {
+        refreshNoteLinkDecorations(ctx.get(editorViewCtx));
+      } catch { /* editorViewCtx pas encore injecté */ }
     });
     return () => {
       wikilinkBridge.current = null;
@@ -202,13 +205,15 @@ export function MarkdownEditor({
       return;
     }
     editorRef.current?.action((ctx) => {
-      const view = ctx.get(editorViewCtx);
-      view.dispatch(
-        view.state.tr.setMeta(
-          spellcheckKey,
-          spellcheckEnabled ? { dirtyAll: true } : { clear: true }
-        )
-      );
+      try {
+        const view = ctx.get(editorViewCtx);
+        view.dispatch(
+          view.state.tr.setMeta(
+            spellcheckKey,
+            spellcheckEnabled ? { dirtyAll: true } : { clear: true }
+          )
+        );
+      } catch { /* editorViewCtx pas encore injecté */ }
     });
   }, [spellcheckEnabled, editorRef]);
 
@@ -226,8 +231,10 @@ export function MarkdownEditor({
       return;
     }
     editorRef.current?.action((ctx) => {
-      const view = ctx.get(editorViewCtx);
-      view.dispatch(view.state.tr.setMeta(spellcheckKey, { dirtyAll: true }));
+      try {
+        const view = ctx.get(editorViewCtx);
+        view.dispatch(view.state.tr.setMeta(spellcheckKey, { dirtyAll: true }));
+      } catch { /* editorViewCtx pas encore injecté */ }
     });
   }, [ignoredKey, editorRef]);
 

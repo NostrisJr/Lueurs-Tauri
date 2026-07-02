@@ -1,3 +1,4 @@
+import { platform } from "@tauri-apps/plugin-os";
 import { useRef, useState } from "react";
 import {
   type ButtonDef,
@@ -25,6 +26,7 @@ export function EnumValueSelector({
   disabled,
   onChange,
 }: Props) {
+  const isMobile = platform() === "ios";
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const state = enumValueState(value, constraint);
@@ -70,15 +72,16 @@ export function EnumValueSelector({
                 onChange(opt.value);
                 setOpen(false);
               }}
-              className="w-full text-left px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-2"
+              className={`w-full text-left hover:bg-gray-50 active:bg-gray-50 transition-colors flex items-center gap-2
+                ${isMobile ? "px-4 py-3.5" : "px-3 py-1.5"}`}
             >
               <span
-                className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${pillClasses(opt.color)}`}
+                className={`inline-flex px-2 py-0.5 rounded-md font-medium ${isMobile ? "text-sm" : "text-xs"} ${pillClasses(opt.color)}`}
               >
                 {opt.value}
               </span>
               {opt.value === value && (
-                <span className="text-[10px] text-gray-400">✓</span>
+                <span className={`text-gray-400 ${isMobile ? "text-sm" : "text-[10px]"}`}>✓</span>
               )}
             </button>
           ))}

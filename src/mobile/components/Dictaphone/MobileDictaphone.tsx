@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { WaveformDisplay } from "../../../shared/components/Dictaphone/WaveformDisplay";
 import {
   IconChevronDown,
-  IconMicrophoneFill,
+  IconRecordAudio,
   IconPauseFill,
   IconPlayFill,
   IconStopFill,
@@ -71,6 +71,24 @@ export function MobileDictaphone() {
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
   const dirPath = currentFolder?.id ?? folderPath ?? "";
 
+  const handleRecord = useCallback(async () => {
+    try {
+      await recorder.startRecording();
+      setStatus("recording");
+    } catch (err) {
+      // Détails complets pour Safari Web Inspector
+      const detail =
+        err instanceof Error
+          ? `${err.name}: ${err.message}`
+          : typeof err === "string"
+            ? err
+            : JSON.stringify(err);
+      log.error("impossible d'accéder au microphone", { err, detail });
+      setErrorMsg(`Impossible d'accéder au microphone. (${detail})`);
+      setStatus("error");
+    }
+  }, [recorder]);
+
   // Démarrage automatique depuis le bouton Centre de contrôle
   useEffect(() => {
     if (dictaphoneMode !== "new-note-autostart" || status !== "idle") return;
@@ -79,7 +97,11 @@ export function MobileDictaphone() {
 
   // Titre par défaut avec numéro disponible (mode new-note uniquement)
   useEffect(() => {
-    if (dictaphoneMode !== "new-note" && dictaphoneMode !== "new-note-autostart") return;
+    if (
+      dictaphoneMode !== "new-note" &&
+      dictaphoneMode !== "new-note-autostart"
+    )
+      return;
     if (!dirPath) return;
     (async () => {
       try {
@@ -102,24 +124,6 @@ export function MobileDictaphone() {
     setIsMinimized(false);
     setStatus("idle");
   }, [setDictaphoneMode]);
-
-  const handleRecord = useCallback(async () => {
-    try {
-      await recorder.startRecording();
-      setStatus("recording");
-    } catch (err) {
-      // Détails complets pour Safari Web Inspector
-      const detail =
-        err instanceof Error
-          ? `${err.name}: ${err.message}`
-          : typeof err === "string"
-            ? err
-            : JSON.stringify(err);
-      log.error("impossible d'accéder au microphone", { err, detail });
-      setErrorMsg(`Impossible d'accéder au microphone. (${detail})`);
-      setStatus("error");
-    }
-  }, [recorder]);
 
   const handleStop = useCallback(async () => {
     setIsMinimized(false);
@@ -351,7 +355,8 @@ export function MobileDictaphone() {
         {/* Corps */}
         <div className="flex flex-col items-center gap-6 px-6 pb-8 pt-2">
           {/* Champ titre (mode new-note uniquement) */}
-          {(dictaphoneMode === "new-note" || dictaphoneMode === "new-note-autostart") && (
+          {(dictaphoneMode === "new-note" ||
+            dictaphoneMode === "new-note-autostart") && (
             <input
               type="text"
               value={title}
@@ -398,7 +403,7 @@ export function MobileDictaphone() {
               onClick={handleRecord}
               className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg active:scale-95 transition-transform"
             >
-              <IconMicrophoneFill className="size-9 text-white" />
+              <IconRecordAudio className="size-9 text-white" />
             </button>
           )}
 
