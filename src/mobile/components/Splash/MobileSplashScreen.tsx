@@ -1,28 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const FADE_MS = 300;
-const MIN_MS = 800; // durée minimale d'affichage (fade-in inclus)
+const MIN_MS = 800;
 
-type Phase = "fade-in" | "visible" | "fade-out" | "done";
+type Phase = "visible" | "fade-out" | "done";
 
 interface Props {
   visible: boolean;
 }
 
 export function MobileSplashScreen({ visible }: Props) {
-  const [phase, setPhase] = useState<Phase>("fade-in");
+  const [phase, setPhase] = useState<Phase>("visible");
   const minElapsed = useRef(false);
   const hideRequested = useRef(false);
 
   const triggerHide = useCallback(() => {
     setPhase("fade-out");
     setTimeout(() => setPhase("done"), FADE_MS);
-  }, []);
-
-  // Lance le fade-in après le premier paint
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setPhase("visible"));
-    return () => cancelAnimationFrame(raf);
   }, []);
 
   // Durée minimale : ne cache pas avant MIN_MS même si le contenu est prêt
@@ -48,8 +42,8 @@ export function MobileSplashScreen({ visible }: Props) {
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white"
       style={{
-        opacity: phase === "visible" ? 1 : 0,
-        transition: `opacity ${FADE_MS}ms ease`,
+        opacity: phase === "fade-out" ? 0 : 1,
+        transition: phase === "fade-out" ? `opacity ${FADE_MS}ms ease` : "none",
         pointerEvents: phase === "fade-out" ? "none" : "auto",
       }}
     >

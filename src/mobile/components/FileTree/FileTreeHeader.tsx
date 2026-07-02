@@ -45,9 +45,17 @@ export function FileTreeHeader() {
   const space = activeSpace
     ? vaultConfig?.spaces.find((s) => s.name === activeSpace)
     : undefined;
+  const hasToutMode = vaultConfig && vaultConfig.spaces.length > 0;
+  const toutIcon = vaultConfig?.toutIcon;
+  // vaultConfig=null → encore en chargement : ne pas afficher le nom du vault pour
+  // éviter le flash "Documents" → "Tout" pendant l'hydratation asynchrone.
   const rootName = space
     ? `${space.icon ? `${space.icon} ` : ""}${space.name}`
-    : (vaultName ?? "Notes");
+    : hasToutMode
+      ? `${toutIcon ? `${toutIcon} ` : ""}Tout`
+      : vaultConfig !== null
+        ? (vaultName ?? "Notes")
+        : "";
   const folderName = currentFolder?.name ?? rootName;
 
   function handleDrillOut() {
@@ -110,7 +118,7 @@ export function FileTreeHeader() {
 
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: tap = rename sur mobile */}
       <h1
-        className="text-2xl text-gray-900 font-semibold tracking-tight cursor-pointer active:opacity-60 transition-opacity"
+        className=" w-3/4 text-2xl justify-center text-center text-gray-900 font-semibold tracking-tight cursor-pointer active:opacity-60 transition-opacity whitespace-nowrap text-ellipsis overflow-clip"
         onClick={() => {
           if (currentFolder) {
             hapticImpact("light");

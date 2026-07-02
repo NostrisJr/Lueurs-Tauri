@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMobileSelectNote } from "./hooks/useMobileSelectNote";
@@ -18,7 +19,6 @@ import {
   mobileViewAtom,
   treeAtom,
 } from "../shared/lib/atoms";
-import { MobileSplashScreen } from "./components/Splash/MobileSplashScreen";
 import { isAndroid, isIOS } from "../shared/lib/platform";
 import { MobileDictaphone } from "./components/Dictaphone/MobileDictaphone";
 import { MobileEditor } from "./components/Editor/MobileEditor";
@@ -66,9 +66,6 @@ export function MobileApp() {
   const inboxPath = useAtomValue(inboxAbsPathAtom);
   const tree = useAtomValue(treeAtom);
   const dictaphoneMode = useAtomValue(dictaphoneModeAtom);
-  // Splash visible tant que le vault est connu mais l'arbre pas encore chargé.
-  // Disparaît dès que le cache ou le reload fournit du contenu.
-  const showSplash = !!folderPath && tree.length === 0;
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const selectNote = useMobileSelectNote();
   useVaultSync();
@@ -103,6 +100,13 @@ export function MobileApp() {
     setPendingNewNote(false);
     createNote(inboxPath ?? folderPath).then(selectNote);
   }, [pendingNewNote, folderPath]);
+
+  // Retire l'overlay UIKit natif quand le vault est prêt (arbre chargé ou pas de vault configuré).
+  useEffect(() => {
+    if (!isIOS) return;
+    const appPret = !folderPath || tree.length > 0;
+    if (appPret) invoke("dismiss_native_splash").catch(() => {});
+  }, [folderPath, tree.length]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: init au montage uniquement
   useEffect(() => {
@@ -217,6 +221,16 @@ export function MobileApp() {
     );
   }
 
+  // L'éditeur est toujours monté pour éviter la réinitialisation de Milkdown lors des
+  // animations de navigation (le contexte editorState n'est pas prêt sur un nouveau montage).
+  const editorIsCurrentView = currentView === "editor";
+  const editorIsBgView = showBg && bgView === "editor";
+  const editorAnimStyle: React.CSSProperties = editorIsCurrentView
+    ? currentStyle
+    : editorIsBgView
+      ? bgStyle
+      : { transform: "translateX(100%)", transition: "none" };
+
   return (
     <div
       className="fixed inset-0 overflow-hidden bg-gray-100"
@@ -224,16 +238,35 @@ export function MobileApp() {
       onTouchMove={touchHandlers.onTouchMove}
       onTouchEnd={touchHandlers.onTouchEnd}
     >
-      {showBg && bgView && (
-        <div className="absolute inset-0 pointer-events-none" style={bgStyle}>
+      {/* Couche de fond — vues non-éditeur seulement */}
+      {showBg && bgView && bgView !== "editor" && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ ...bgStyle, zIndex: 1 }}
+        >
           <ViewRenderer view={bgView} />
         </div>
       )}
-      <div className="absolute inset-0" style={currentStyle}>
-        <ViewRenderer view={currentView} />
+
+      {/* Éditeur — toujours monté, repositionné par le style d'animation */}
+      <div
+        className={clsx(
+          "absolute inset-0",
+          !editorIsCurrentView && "pointer-events-none"
+        )}
+        style={{ ...editorAnimStyle, zIndex: editorIsCurrentView ? 2 : 1 }}
+      >
+        <EditorOrMediaViewer />
       </div>
+
+      {/* Couche de premier plan — vues non-éditeur seulement */}
+      {currentView !== "editor" && (
+        <div className="absolute inset-0" style={{ ...currentStyle, zIndex: 2 }}>
+          <ViewRenderer view={currentView} />
+        </div>
+      )}
+
       {dictaphoneMode !== null && <MobileDictaphone />}
-      <MobileSplashScreen visible={showSplash} />
     </div>
   );
 }

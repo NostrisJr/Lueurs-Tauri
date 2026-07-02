@@ -314,6 +314,7 @@ pub fn run() {
             allow_vault_path,
             copy_resource_to_vault,
             propagate_template_change,
+            dismiss_native_splash,
             check_pending_action,
             compiler_typst_apercu,
             exporter_pdf,
@@ -922,6 +923,19 @@ async fn show_rename_prompt(
     }
     #[cfg(not(target_os = "ios"))]
     None
+}
+
+/// Retire l'overlay natif UIKit posé au démarrage (couvre le WebView vide).
+/// Appelée par React après son premier paint.
+#[tauri::command]
+fn dismiss_native_splash() {
+    #[cfg(target_os = "ios")]
+    {
+        extern "C" {
+            fn dismiss_native_splash_screen();
+        }
+        unsafe { dismiss_native_splash_screen() };
+    }
 }
 
 /// Lit et efface l'action déposée par le widget Centre de contrôle via l'App Group.
