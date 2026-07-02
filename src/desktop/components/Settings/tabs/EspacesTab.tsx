@@ -11,19 +11,23 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useSpacesEditor } from "../../../../shared/hooks/useSpacesEditor";
-import { SpaceRow } from "./SpaceRow";
+import { ALL_SPACE_ID, type VaultSpace } from "../../../../shared/lib/vaultConfig";
+import { SpaceRow, ToutSpaceRow } from "./SpaceRow";
 
 export function EspacesTab() {
   const {
     spaces,
+    orderedEntries,
     canEdit,
     iconOnly,
+    toutIcon,
     addSpace,
     setName,
     dedupeName,
     setIcon,
     setColor,
     setIconOnly,
+    setToutIcon,
     reorder,
     deleteSpace,
   } = useSpacesEditor();
@@ -48,21 +52,34 @@ export function EspacesTab() {
         onDragEnd={handleReorder}
       >
         <SortableContext
-          items={spaces.map((s) => s.id)}
+          items={orderedEntries.map((e) => e.id)}
           strategy={verticalListSortingStrategy}
         >
-          {spaces.map((space, i) => (
-            <SpaceRow
-              key={space.id}
-              space={space}
-              index={i}
-              onIconChange={setIcon}
-              onColorChange={setColor}
-              onNameChange={setName}
-              onNameBlur={dedupeName}
-              onDelete={deleteSpace}
-            />
-          ))}
+          {orderedEntries.map((entry) => {
+            if (entry.id === ALL_SPACE_ID) {
+              return (
+                <ToutSpaceRow
+                  key="__all__"
+                  icon={toutIcon}
+                  onIconChange={setToutIcon}
+                />
+              );
+            }
+            const space = entry as VaultSpace;
+            const idx = spaces.indexOf(space);
+            return (
+              <SpaceRow
+                key={space.id}
+                space={space}
+                index={idx}
+                onIconChange={setIcon}
+                onColorChange={setColor}
+                onNameChange={setName}
+                onNameBlur={dedupeName}
+                onDelete={deleteSpace}
+              />
+            );
+          })}
         </SortableContext>
       </DndContext>
       <button

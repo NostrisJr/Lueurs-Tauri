@@ -5,9 +5,12 @@ import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
 import { Squircle } from "../../../shared/components/Squircle";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
+  allFoldersAtom,
   defaultDisplayModeAtom,
   defaultHighlightColorAtom,
+  dictaphoneRelPathAtom,
   folderPathAtom,
+  inboxRelPathAtom,
   mobileGoBackAtom,
   showResourcesAtom,
   textJustificationAtom,
@@ -39,6 +42,9 @@ export function MobileSettingsView() {
     textJustificationAtom
   );
   const [showResources, setShowResources] = useAtom(showResourcesAtom);
+  const [inboxRelPath, setInboxRelPath] = useAtom(inboxRelPathAtom);
+  const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(dictaphoneRelPathAtom);
+  const allFolders = useAtomValue(allFoldersAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const tree = useAtomValue(treeAtom);
@@ -272,6 +278,70 @@ export function MobileSettingsView() {
                 </span>
               )}
             </button>
+          </Squircle>
+        </div>
+
+        {/* Dossiers par défaut */}
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+          Dossiers par défaut
+        </p>
+        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+          <Squircle
+            radius={18}
+            className="overflow-hidden bg-white border border-gray-100"
+          >
+            <div className="px-4 py-3.5 border-b border-gray-100">
+              <p className="text-base text-gray-900 mb-1.5">Inbox</p>
+              <select
+                value={inboxRelPath ?? ""}
+                onChange={(e) => {
+                  hapticImpact("light");
+                  setInboxRelPath(e.target.value || null);
+                }}
+                className="w-full text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200"
+              >
+                <option value="">Racine du vault</option>
+                {allFolders.map((folder) => {
+                  const rel = folderPath
+                    ? folder.id.slice(folderPath.length + 1)
+                    : folder.id;
+                  return (
+                    <option key={folder.id} value={rel}>
+                      {rel}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs text-gray-400 mt-1.5">
+                Destination des nouvelles notes (bouton + et raccourcis).
+              </p>
+            </div>
+            <div className="px-4 py-3.5">
+              <p className="text-base text-gray-900 mb-1.5">Dictaphone</p>
+              <select
+                value={dictaphoneRelPath ?? ""}
+                onChange={(e) => {
+                  hapticImpact("light");
+                  setDictaphoneRelPath(e.target.value || null);
+                }}
+                className="w-full text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200"
+              >
+                <option value="">Racine du vault</option>
+                {allFolders.map((folder) => {
+                  const rel = folderPath
+                    ? folder.id.slice(folderPath.length + 1)
+                    : folder.id;
+                  return (
+                    <option key={folder.id} value={rel}>
+                      {rel}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs text-gray-400 mt-1.5">
+                Destination des enregistrements dictaphone.
+              </p>
+            </div>
           </Squircle>
         </div>
 

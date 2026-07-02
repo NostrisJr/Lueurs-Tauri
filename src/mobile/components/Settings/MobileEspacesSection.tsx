@@ -14,9 +14,72 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Squircle } from "../../../shared/components/Squircle";
 import { useSpacesEditor } from "../../../shared/hooks/useSpacesEditor";
-import type { VaultSpace } from "../../../shared/lib/vaultConfig";
+import { ALL_SPACE_ID, type VaultSpace } from "../../../shared/lib/vaultConfig";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileEmojiField } from "./MobileEmojiField";
+
+const DRAG_HANDLE = (
+  <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+    <circle cx="2.5" cy="3" r="1.3" />
+    <circle cx="7.5" cy="3" r="1.3" />
+    <circle cx="2.5" cy="8" r="1.3" />
+    <circle cx="7.5" cy="8" r="1.3" />
+    <circle cx="2.5" cy="13" r="1.3" />
+    <circle cx="7.5" cy="13" r="1.3" />
+  </svg>
+);
+
+// Ligne "Tout" — non supprimable, non renommable, icône modifiable
+function ToutRow({
+  icon,
+  onIconChange,
+  isLast,
+}: {
+  icon?: string;
+  onIconChange: (icon: string) => void;
+  isLast: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: ALL_SPACE_ID });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 px-3 py-3 bg-white ${isLast ? "" : "border-b border-gray-100"}`}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="shrink-0 text-gray-300 touch-none px-0.5"
+        aria-label="Réordonner l'espace"
+      >
+        {DRAG_HANDLE}
+      </button>
+      <MobileEmojiField value={icon} onChange={onIconChange} />
+      {/* Espacement équivalent au champ couleur */}
+      <div className="w-9 shrink-0" />
+      <span className="flex-1 text-base text-gray-400 px-2.5 py-2 select-none">
+        Tout
+      </span>
+      {/* Espacement équivalent au × */}
+      <div className="w-8 shrink-0" />
+    </div>
+  );
+}
 
 interface RowProps {
   space: VaultSpace;
@@ -62,7 +125,6 @@ function SpaceRow({
         isLast ? "" : "border-b border-gray-100"
       }`}
     >
-      {/* Poignée de réordonnancement — seul le handle déclenche le drag */}
       <button
         type="button"
         {...attributes}
@@ -70,29 +132,14 @@ function SpaceRow({
         className="shrink-0 text-gray-300 touch-none px-0.5"
         aria-label="Réordonner l'espace"
       >
-        <svg
-          width="10"
-          height="16"
-          viewBox="0 0 10 16"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <circle cx="2.5" cy="3" r="1.3" />
-          <circle cx="7.5" cy="3" r="1.3" />
-          <circle cx="2.5" cy="8" r="1.3" />
-          <circle cx="7.5" cy="8" r="1.3" />
-          <circle cx="2.5" cy="13" r="1.3" />
-          <circle cx="7.5" cy="13" r="1.3" />
-        </svg>
+        {DRAG_HANDLE}
       </button>
 
-      {/* Emoji — picker emoji-mart en BottomSheet */}
       <MobileEmojiField
         value={space.icon}
         onChange={(icon) => onIconChange(index, icon)}
       />
 
-      {/* Couleur */}
       <label
         className="relative shrink-0 cursor-pointer"
         aria-label="Couleur de l'espace"
@@ -141,14 +188,17 @@ function SpaceRow({
 export function MobileEspacesSection() {
   const {
     spaces,
+    orderedEntries,
     canEdit,
     iconOnly,
+    toutIcon,
     addSpace,
     setName,
     dedupeName,
     setIcon,
     setColor,
     setIconOnly,
+    setToutIcon,
     reorder,
     deleteSpace,
   } = useSpacesEditor();
@@ -156,7 +206,6 @@ export function MobileEspacesSection() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // Section masquée tant qu'aucun vault n'est chargé (Android : config null)
   if (!canEdit) return null;
 
   function handleReorder(event: DragEndEvent) {
@@ -175,34 +224,45 @@ export function MobileEspacesSection() {
           radius={18}
           className="overflow-hidden bg-white border border-gray-100"
         >
-          {spaces.length === 0 ? (
-            <p className="px-4 py-4 text-sm text-gray-400">Aucun espace.</p>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleReorder}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleReorder}
+          >
+            <SortableContext
+              items={orderedEntries.map((e) => e.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <SortableContext
-                items={spaces.map((s) => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {spaces.map((space, i) => (
+              {orderedEntries.map((entry, i) => {
+                const isLast = i === orderedEntries.length - 1;
+                if (entry.id === ALL_SPACE_ID) {
+                  return (
+                    <ToutRow
+                      key="__all__"
+                      icon={toutIcon}
+                      onIconChange={setToutIcon}
+                      isLast={isLast}
+                    />
+                  );
+                }
+                const space = entry as VaultSpace;
+                const idx = spaces.indexOf(space);
+                return (
                   <SpaceRow
                     key={space.id}
                     space={space}
-                    index={i}
+                    index={idx}
                     onNameChange={setName}
                     onNameBlur={dedupeName}
                     onIconChange={setIcon}
                     onColorChange={setColor}
                     onDelete={deleteSpace}
-                    isLast={i === spaces.length - 1}
+                    isLast={isLast}
                   />
-                ))}
-              </SortableContext>
-            </DndContext>
-          )}
+                );
+              })}
+            </SortableContext>
+          </DndContext>
           <button
             type="button"
             onClick={() => {

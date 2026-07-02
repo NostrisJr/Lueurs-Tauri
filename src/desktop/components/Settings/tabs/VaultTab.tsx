@@ -3,7 +3,10 @@ import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { useFileTree } from "../../../../shared/hooks/useFileTree";
 import {
+  allFoldersAtom,
+  dictaphoneRelPathAtom,
   folderPathAtom,
+  inboxRelPathAtom,
   settingsOpenAtom,
   showResourcesAtom,
   treeAtom,
@@ -16,6 +19,9 @@ type CleanStatus = null | "running" | { count: number } | "error";
 export function VaultTab() {
   const folderPath = useAtomValue(folderPathAtom);
   const [showResources, setShowResources] = useAtom(showResourcesAtom);
+  const [inboxRelPath, setInboxRelPath] = useAtom(inboxRelPathAtom);
+  const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(dictaphoneRelPathAtom);
+  const allFolders = useAtomValue(allFoldersAtom);
   const tree = useAtomValue(treeAtom);
   const [, setOpen] = useAtom(settingsOpenAtom);
   const { pickFolder, switchVault, reload } = useFileTree();
@@ -153,6 +159,64 @@ export function VaultTab() {
           </div>
         )}
       </div>
+
+      <FolderPickerRow
+        label="Dossier inbox"
+        description="Notes créées via le bouton + ou le raccourci clavier."
+        folderPath={folderPath}
+        allFolders={allFolders}
+        value={inboxRelPath}
+        onChange={setInboxRelPath}
+      />
+
+      <FolderPickerRow
+        label="Dossier dictaphone"
+        description="Notes créées depuis le Centre de contrôle ou le dictaphone."
+        folderPath={folderPath}
+        allFolders={allFolders}
+        value={dictaphoneRelPath}
+        onChange={setDictaphoneRelPath}
+      />
+    </div>
+  );
+}
+
+function FolderPickerRow({
+  label,
+  description,
+  folderPath,
+  allFolders,
+  value,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  folderPath: string | null;
+  allFolders: import("../../../../shared/hooks/useFileTree").FolderNode[];
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-gray-500">{label}</p>
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="w-full text-sm text-gray-700 bg-gray-50 rounded-md px-3 py-2 ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+      >
+        <option value="">Racine du vault</option>
+        {allFolders.map((folder) => {
+          const rel = folderPath
+            ? folder.id.slice(folderPath.length + 1)
+            : folder.id;
+          return (
+            <option key={folder.id} value={rel}>
+              {rel}
+            </option>
+          );
+        })}
+      </select>
+      <p className="text-xs text-gray-400">{description}</p>
     </div>
   );
 }

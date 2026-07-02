@@ -11,6 +11,7 @@ import {
   activeMediaAtom,
   dictaphoneModeAtom,
   folderPathAtom,
+  inboxAbsPathAtom,
   mobileGoBackAtom,
   mobileNavStackAtom,
   mobilePrevViewAtom,
@@ -62,6 +63,7 @@ function ViewRenderer({ view }: { view: MobileView }) {
 export function MobileApp() {
   const { pickFolder, initFolder, createNote } = useFileTree();
   const folderPath = useAtomValue(folderPathAtom);
+  const inboxPath = useAtomValue(inboxAbsPathAtom);
   const tree = useAtomValue(treeAtom);
   const dictaphoneMode = useAtomValue(dictaphoneModeAtom);
   // Splash visible tant que le vault est connu mais l'arbre pas encore chargé.
@@ -99,7 +101,7 @@ export function MobileApp() {
   useEffect(() => {
     if (!pendingNewNote || !folderPath) return;
     setPendingNewNote(false);
-    createNote(folderPath).then(selectNote);
+    createNote(inboxPath ?? folderPath).then(selectNote);
   }, [pendingNewNote, folderPath]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: init au montage uniquement

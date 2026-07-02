@@ -29,6 +29,8 @@ const CONFIG_DIR = ".lueurs";
 const CONFIG_FILE = "config.json";
 const CURRENT_VERSION = 1;
 
+export const ALL_SPACE_ID = "__all__";
+
 export interface VaultSpace {
   // Identifiant stable pour React (non utilisé comme clé métier — le nom est la clé métier)
   id: string;
@@ -39,6 +41,14 @@ export interface VaultSpace {
   color?: string;
 }
 
+// Entrée virtuelle représentant "Tout" dans la liste ordonnée
+export interface AllSpaceEntry {
+  id: typeof ALL_SPACE_ID;
+  icon?: string;
+}
+
+export type OrderedSpaceEntry = VaultSpace | AllSpaceEntry;
+
 export interface VaultConfig {
   version: number;
   vaultId: string;
@@ -47,6 +57,43 @@ export interface VaultConfig {
   ignoredWords: string[];
   // Afficher uniquement les icônes dans le sélecteur d'espaces (global, nécessite icon)
   iconOnly?: boolean;
+  // Ordre d'affichage : IDs des espaces + "__all__" pour "Tout"
+  spaceOrder?: string[];
+  // Icône de l'espace "Tout"
+  toutIcon?: string;
+}
+
+/**
+ * Construit la liste ordonnée des espaces (incluant "Tout") depuis la config.
+ * Défaut quand spaceOrder est absent : "Tout" en premier, puis les espaces dans leur ordre de création.
+ */
+export function buildOrderedSpaces(
+  spaces: VaultSpace[],
+  config: Pick<VaultConfig, "spaceOrder" | "toutIcon">
+): OrderedSpaceEntry[] {
+  const byId = new Map(spaces.map((s) => [s.id, s]));
+  const order = config.spaceOrder;
+
+  if (!order || order.length === 0) {
+    return [{ id: ALL_SPACE_ID, icon: config.toutIcon }, ...spaces];
+  }
+
+  const result: OrderedSpaceEntry[] = [];
+  for (const id of order) {
+    if (id === ALL_SPACE_ID) {
+      result.push({ id: ALL_SPACE_ID, icon: config.toutIcon });
+    } else {
+      const space = byId.get(id);
+      if (space) result.push(space);
+    }
+  }
+
+  // Espaces absents de spaceOrder (ajoutés après la dernière sauvegarde)
+  for (const space of spaces) {
+    if (!order.includes(space.id)) result.push(space);
+  }
+
+  return result;
 }
 
 function makeDefaultConfig(): VaultConfig {

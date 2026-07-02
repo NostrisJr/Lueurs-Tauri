@@ -16,6 +16,7 @@ import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
   activeNoteIdAtom,
+  dictaphoneAbsPathAtom,
   dictaphoneModeAtom,
   folderPathAtom,
   folderStackAtom,
@@ -50,6 +51,7 @@ export function MobileDictaphone() {
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const setPendingAudioInsert = useSetAtom(pendingAudioInsertAtom);
   const folderPath = useAtomValue(folderPathAtom);
+  const dictaphonePath = useAtomValue(dictaphoneAbsPathAtom);
   const folderStack = useAtomValue(folderStackAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
@@ -69,7 +71,7 @@ export function MobileDictaphone() {
   const [swipeDelta, setSwipeDelta] = useState(0);
 
   const currentFolder = folderStack[folderStack.length - 1] ?? null;
-  const dirPath = currentFolder?.id ?? folderPath ?? "";
+  const dirPath = currentFolder?.id ?? dictaphonePath ?? folderPath ?? "";
 
   const handleRecord = useCallback(async () => {
     try {

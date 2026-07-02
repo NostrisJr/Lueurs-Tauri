@@ -13,6 +13,7 @@ import {
   activeSpaceAtom,
   folderPathAtom,
   folderStackAtom,
+  inboxAbsPathAtom,
   mobileContextMenuAtom,
   mobileNavigateAtom,
   vaultConfigAtom,
@@ -26,6 +27,7 @@ export function FileTreeHeader() {
   const folderStack = useAtomValue(folderStackAtom);
   const setFolderStack = useSetAtom(folderStackAtom);
   const folderPath = useAtomValue(folderPathAtom);
+  const inboxPath = useAtomValue(inboxAbsPathAtom);
   const setContextMenu = useSetAtom(mobileContextMenuAtom);
   const navigate = useSetAtom(mobileNavigateAtom);
   const activeSpace = useAtomValue(activeSpaceAtom);
@@ -56,7 +58,7 @@ export function FileTreeHeader() {
   async function handleCreateNote() {
     setShowMenu(false);
     hapticImpact("light");
-    const path = currentFolder?.id ?? folderPath ?? "";
+    const path = currentFolder?.id ?? inboxPath ?? folderPath ?? "";
     const note = await createNote(path);
     selectNote(note);
   }

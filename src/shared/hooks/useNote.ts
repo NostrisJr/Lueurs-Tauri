@@ -8,6 +8,7 @@ import {
   activeNoteIdAtom,
   activeSpaceAtom,
   folderPathAtom,
+  inboxAbsPathAtom,
   notesByIdAtom,
   openTabIdsAtom,
   savingAtom,
@@ -39,6 +40,7 @@ export function useNote() {
   const setSearch = useSetAtom(searchAtom);
   const notesById = useAtomValue(notesByIdAtom);
   const folderPath = useAtomValue(folderPathAtom);
+  const inboxPath = useAtomValue(inboxAbsPathAtom);
   const activeSpace = useAtomValue(activeSpaceAtom);
 
   const tabHistory = useAtomValue(tabHistoryAtom);
@@ -255,7 +257,7 @@ export function useNote() {
 
   async function handleCreateNote() {
     if (!folderPath) return;
-    const newNote = await createNote(folderPath, activeSpace);
+    const newNote = await createNote(inboxPath ?? folderPath, activeSpace);
     setOpenTabIds([...openTabIds, newNote.id]);
     setActiveNoteId(newNote.id);
     pushHistory(newNote.id);

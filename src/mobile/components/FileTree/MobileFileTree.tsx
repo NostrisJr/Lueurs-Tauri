@@ -14,8 +14,14 @@ import {
   filteredTreeAtom,
   folderPathAtom,
   folderStackAtom,
+  inboxAbsPathAtom,
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
+import {
+  ALL_SPACE_ID,
+  type VaultSpace,
+  buildOrderedSpaces,
+} from "../../../shared/lib/vaultConfig";
 import { isIOS } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
 import {
@@ -73,14 +79,23 @@ export function MobileFileTree() {
   const selectNote = useMobileSelectNote();
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const folderPath = useAtomValue(folderPathAtom);
+  const inboxPath = useAtomValue(inboxAbsPathAtom);
   const activeSpace = useAtomValue(activeSpaceAtom);
   const vaultConfig = useAtomValue(vaultConfigAtom);
 
   // ── Animation de changement d'espace (slide horizontal directionnel) ──
-  // Direction selon la position de l'espace dans le sélecteur ("Tout" = 0).
-  const spaceOrder = activeSpace
-    ? (vaultConfig?.spaces.findIndex((s) => s.name === activeSpace) ?? -1) + 1
-    : 0;
+  // Direction selon la position de l'espace dans la liste ordonnée.
+  const orderedSpaces = vaultConfig
+    ? buildOrderedSpaces(vaultConfig.spaces, vaultConfig)
+    : [];
+  const spaceOrder = (() => {
+    const idx = activeSpace !== null
+      ? orderedSpaces.findIndex(
+          (e) => e.id !== ALL_SPACE_ID && (e as VaultSpace).name === activeSpace
+        )
+      : orderedSpaces.findIndex((e) => e.id === ALL_SPACE_ID);
+    return Math.max(0, idx);
+  })();
   const prevSpaceRef = useRef(activeSpace);
   const prevOrderRef = useRef(spaceOrder);
   const tokenRef = useRef(0);
@@ -118,7 +133,7 @@ export function MobileFileTree() {
 
   async function handleCreateNote() {
     hapticImpact("light");
-    const path = currentFolder?.id ?? folderPath ?? "";
+    const path = currentFolder?.id ?? inboxPath ?? folderPath ?? "";
     const note = await createNote(path);
     selectNote(note);
   }

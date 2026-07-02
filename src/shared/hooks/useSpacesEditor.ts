@@ -8,7 +8,13 @@ import {
 } from "../lib/atoms";
 import { toArray } from "../lib/fileTreeHelpers";
 import { SystemField } from "../lib/noteTypes";
-import { type VaultSpace, writeVaultConfig } from "../lib/vaultConfig";
+import {
+  ALL_SPACE_ID,
+  type OrderedSpaceEntry,
+  type VaultSpace,
+  buildOrderedSpaces,
+  writeVaultConfig,
+} from "../lib/vaultConfig";
 import { persistNotePatch } from "../lib/vaultIO";
 
 /**
@@ -24,9 +30,36 @@ export function useSpacesEditor() {
   const spaces = vaultConfig?.spaces ?? [];
   const canEdit = !!folderPath && !!vaultConfig;
 
+  const orderedEntries: OrderedSpaceEntry[] = vaultConfig
+    ? buildOrderedSpaces(spaces, vaultConfig)
+    : [];
+
+  // Ordre courant complet (IDs incluant ALL_SPACE_ID)
+  function currentOrder(): string[] {
+    const persisted = vaultConfig?.spaceOrder;
+    if (persisted && persisted.length > 0) return persisted;
+    return [ALL_SPACE_ID, ...spaces.map((s) => s.id)];
+  }
+
   async function updateSpaces(next: VaultSpace[]) {
     if (!folderPath || !vaultConfig) return;
-    const updated = { ...vaultConfig, spaces: next };
+    // Nettoie spaceOrder des IDs d'espaces supprimés
+    const nextIds = new Set(next.map((s) => s.id));
+    const cleanOrder = currentOrder().filter(
+      (id) => id === ALL_SPACE_ID || nextIds.has(id)
+    );
+    // Ajoute les nouveaux espaces absents de l'ordre
+    for (const s of next) {
+      if (!cleanOrder.includes(s.id)) cleanOrder.push(s.id);
+    }
+    const updated = { ...vaultConfig, spaces: next, spaceOrder: cleanOrder };
+    await writeVaultConfig(folderPath, updated);
+    setVaultConfig(updated);
+  }
+
+  async function updateOrderOnly(newOrder: string[]) {
+    if (!folderPath || !vaultConfig) return;
+    const updated = { ...vaultConfig, spaceOrder: newOrder };
     await writeVaultConfig(folderPath, updated);
     setVaultConfig(updated);
   }
@@ -86,11 +119,20 @@ export function useSpacesEditor() {
     setVaultConfig(updated);
   }
 
+  async function setToutIcon(icon: string) {
+    if (!folderPath || !vaultConfig) return;
+    const updated = { ...vaultConfig, toutIcon: icon || undefined };
+    await writeVaultConfig(folderPath, updated);
+    setVaultConfig(updated);
+  }
+
+  // Réordonne la liste complète (espaces + "Tout")
   function reorder(activeId: string, overId: string) {
-    const from = spaces.findIndex((s) => s.id === activeId);
-    const to = spaces.findIndex((s) => s.id === overId);
+    const order = currentOrder();
+    const from = order.indexOf(activeId);
+    const to = order.indexOf(overId);
     if (from === -1 || to === -1) return;
-    updateSpaces(arrayMove(spaces, from, to));
+    updateOrderOnly(arrayMove(order, from, to));
   }
 
   async function deleteSpace(index: number) {
@@ -124,14 +166,17 @@ export function useSpacesEditor() {
 
   return {
     spaces,
+    orderedEntries,
     canEdit,
     iconOnly: vaultConfig?.iconOnly ?? false,
+    toutIcon: vaultConfig?.toutIcon,
     addSpace,
     setName,
     dedupeName,
     setIcon,
     setColor,
     setIconOnly,
+    setToutIcon,
     reorder,
     deleteSpace,
   };

@@ -150,6 +150,38 @@ export const folderPathAtom = atomWithStorage<string | null>(
   { getOnInit: true }
 );
 
+// Chemin relatif au vault du dossier inbox (null = racine)
+export const inboxRelPathAtom = atomWithStorage<string | null>(
+  "lueurs_inbox_rel_path",
+  null,
+  undefined,
+  { getOnInit: true }
+);
+
+// Chemin relatif au vault du dossier d'enregistrements dictaphone (null = racine)
+export const dictaphoneRelPathAtom = atomWithStorage<string | null>(
+  "lueurs_dictaphone_rel_path",
+  null,
+  undefined,
+  { getOnInit: true }
+);
+
+// Chemin absolu de l'inbox — repli sur folderPath si non configuré
+export const inboxAbsPathAtom = atom((get) => {
+  const folderPath = get(folderPathAtom);
+  const relPath = get(inboxRelPathAtom);
+  if (!folderPath || !relPath) return folderPath;
+  return `${folderPath}/${relPath}`;
+});
+
+// Chemin absolu du dossier dictaphone — repli sur folderPath si non configuré
+export const dictaphoneAbsPathAtom = atom((get) => {
+  const folderPath = get(folderPathAtom);
+  const relPath = get(dictaphoneRelPathAtom);
+  if (!folderPath || !relPath) return folderPath;
+  return `${folderPath}/${relPath}`;
+});
+
 export const ACTIVE_NOTE_ID_STORAGE_KEY = "lueurs_active_note_id";
 
 // Interne — ne pas exporter ni lire directement.
@@ -200,9 +232,11 @@ export const updateIgnoredWordsAtom = atom(
   }
 );
 
+export const ACTIVE_SPACE_STORAGE_KEY = "lueurs_active_space";
+
 // Nom de l'espace actif (null = "Tout" — aucun filtre)
 export const activeSpaceAtom = atomWithStorage<string | null>(
-  "lueurs_active_space",
+  ACTIVE_SPACE_STORAGE_KEY,
   null,
   undefined,
   { getOnInit: true }
