@@ -819,7 +819,7 @@ async fn icloud_path_impl() -> Option<String> {
 async fn icloud_path_impl() -> Option<String> {
     let home = std::env::var("HOME").ok()?;
     let path = format!(
-        "{}/Library/Mobile Documents/iCloud~com~theophiledonato~lueurs/Documents",
+        "{}/Library/Mobile Documents/iCloud~com~md~lueurs/Documents",
         home
     );
     std::fs::create_dir_all(&path).ok();

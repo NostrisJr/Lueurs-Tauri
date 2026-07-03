@@ -31,7 +31,11 @@ import {
 import { createLogger } from "./logger";
 import { type KanbanColumn, NoteType, SystemField } from "./noteTypes";
 import type { PageFormat } from "./pageMetrics";
-import { type VaultConfig, writeVaultConfig } from "./vaultConfig";
+import {
+  type VaultConfig,
+  saveVaultConfigCache,
+  writeVaultConfig,
+} from "./vaultConfig";
 
 const log = createLogger("atoms");
 
@@ -229,6 +233,7 @@ export const updateIgnoredWordsAtom = atom(
     const updated = { ...config, ignoredWords };
     await writeVaultConfig(folderPath, updated);
     set(vaultConfigAtom, updated);
+    saveVaultConfigCache(folderPath, updated);
   }
 );
 

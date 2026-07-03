@@ -13,6 +13,7 @@ import {
   type OrderedSpaceEntry,
   type VaultSpace,
   buildOrderedSpaces,
+  saveVaultConfigCache,
   writeVaultConfig,
 } from "../lib/vaultConfig";
 import { persistNotePatch } from "../lib/vaultIO";
@@ -55,6 +56,7 @@ export function useSpacesEditor() {
     const updated = { ...vaultConfig, spaces: next, spaceOrder: cleanOrder };
     await writeVaultConfig(folderPath, updated);
     setVaultConfig(updated);
+    saveVaultConfigCache(folderPath, updated);
   }
 
   async function updateOrderOnly(newOrder: string[]) {
@@ -62,6 +64,7 @@ export function useSpacesEditor() {
     const updated = { ...vaultConfig, spaceOrder: newOrder };
     await writeVaultConfig(folderPath, updated);
     setVaultConfig(updated);
+    saveVaultConfigCache(folderPath, updated);
   }
 
   // Garantit l'unicité du nom (clé métier des espaces) en suffixant un numéro.
@@ -117,6 +120,7 @@ export function useSpacesEditor() {
     const updated = { ...vaultConfig, iconOnly: iconOnly || undefined };
     await writeVaultConfig(folderPath, updated);
     setVaultConfig(updated);
+    saveVaultConfigCache(folderPath, updated);
   }
 
   async function setToutIcon(icon: string) {
@@ -124,6 +128,7 @@ export function useSpacesEditor() {
     const updated = { ...vaultConfig, toutIcon: icon || undefined };
     await writeVaultConfig(folderPath, updated);
     setVaultConfig(updated);
+    saveVaultConfigCache(folderPath, updated);
   }
 
   // Réordonne la liste complète (espaces + "Tout")

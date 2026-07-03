@@ -18,7 +18,7 @@ struct RecordingControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "com.theophiledonato.lueurs.recordingcontrol") {
             ControlWidgetButton(action: StartRecordingIntent()) {
-                Label("Enregistrer", systemImage: "mic.fill")
+                Label("Enregistrer", systemImage: "waveform")
             }
             .tint(.red)
         }

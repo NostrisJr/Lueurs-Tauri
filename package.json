@@ -39,7 +39,6 @@
     "emoji-picker-react": "^4.19.1",
     "figma-squircle": "^1.1.0",
     "jotai": "^2.20.0",
-    "material-symbols": "^0.44.8",
     "prosemirror-history": "^1.5.0",
     "prosemirror-schema-list": "^1.5.1",
     "react": "^19.2.6",
@@ -55,12 +54,16 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@iconify-json/material-symbols": "^1.2.82",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
     "@tauri-apps/cli": "^2.11.1",
     "@types/mdast": "^4.0.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "~5.8.3",
+    "unplugin-icons": "^23.0.1",
     "vite": "^7.3.3"
   },
   "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"

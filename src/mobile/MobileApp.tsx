@@ -110,9 +110,11 @@ export function MobileApp() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: init au montage uniquement
   useEffect(() => {
-    // Sur iOS, pickFolder() auto-détecte iCloud sans interaction utilisateur.
+    // Sur iOS, pickFolder() auto-détecte iCloud sans interaction utilisateur — mais
+    // seulement si aucun vault n'est encore persisté (sinon initFolder() ci-dessous
+    // suffit : évite un appel FFI natif + une remontée FS à chaque lancement).
     // Sur Android, on n'ouvre pas le picker automatiquement : l'écran d'accueil s'en charge.
-    if (isIOS) pickFolder();
+    if (isIOS && !folderPath) pickFolder();
   }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: réagit au changement de vault

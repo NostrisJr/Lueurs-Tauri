@@ -37,7 +37,9 @@ import { isAndroid } from "./platform";
 import {
   ensureVaultConfig,
   findVaultRoot,
+  loadVaultConfigCache,
   readVaultConfig,
+  saveVaultConfigCache,
 } from "./vaultConfig";
 import {
   allowVaultScope,
@@ -261,19 +263,30 @@ export async function initFolder(store: JotaiStore): Promise<void> {
   const folderPath = store.get(folderPathAtom);
   if (!folderPath) return;
   log.info("restauration vault au démarrage", { folderPath });
+  // Affichage immédiat depuis le cache (config + arbre, lectures localStorage
+  // pures) pendant que le scope FS et la lecture disque de .lueurs/config.json
+  // (asynchrones) se font en arrière-plan.
+  if (!isAndroid) {
+    const cachedConfig = loadVaultConfigCache(folderPath);
+    if (cachedConfig) store.set(vaultConfigAtom, cachedConfig);
+  }
+  const cachedNodes = loadTreeCache(folderPath);
+  if (cachedNodes) store.set(treeAtom, cachedNodes);
+
   await allowVaultScope(folderPath);
   if (!isAndroid) {
     const config = await ensureVaultConfig(folderPath);
-    if (config) store.set(vaultConfigAtom, config);
+    if (config) {
+      store.set(vaultConfigAtom, config);
+      saveVaultConfigCache(folderPath, config);
+    }
   }
 
-  // Affichage immédiat depuis le cache, puis reload complet en arrière-plan.
-  const cachedNodes = loadTreeCache(folderPath);
   if (cachedNodes) {
-    store.set(treeAtom, cachedNodes);
     const savedNoteId = localStorage.getItem(ACTIVE_NOTE_ID_STORAGE_KEY);
     if (savedNoteId) {
-      // Lire d'abord le body de la note active pour éviter un éditeur vide.
+      // Lire d'abord le body de la note active pour éviter un éditeur vide
+      // (nécessite le scope FS, donc après allowVaultScope ci-dessus).
       await prefetchActiveNote(store, savedNoteId, folderPath);
       store.set(activeNoteIdAtom, savedNoteId);
     }
@@ -296,7 +309,10 @@ export async function autoInitFolder(store: JotaiStore): Promise<void> {
   store.set(errorAtom, null);
   store.set(folderPathAtom, resolved);
   const config = await readVaultConfig(resolved);
-  if (config) store.set(vaultConfigAtom, config);
+  if (config) {
+    store.set(vaultConfigAtom, config);
+    saveVaultConfigCache(resolved, config);
+  }
   await Promise.all([reload(store, resolved), startWatcher(store, resolved)]);
 }
 
@@ -315,7 +331,10 @@ export async function switchVault(
   store.set(errorAtom, null);
   store.set(folderPathAtom, resolved);
   const config = await readVaultConfig(resolved);
-  if (config) store.set(vaultConfigAtom, config);
+  if (config) {
+    store.set(vaultConfigAtom, config);
+    saveVaultConfigCache(resolved, config);
+  }
   await Promise.all([reload(store, resolved), startWatcher(store, resolved)]);
 }
 

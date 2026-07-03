@@ -162,6 +162,40 @@ export async function readVaultConfig(
   }
 }
 
+// ── Cache localStorage (cold-start) ────────────────────────────────────────
+// Évite le flash "sans emoji d'espace" au lancement : ensureVaultConfig() est
+// asynchrone (IPC Tauri + lecture disque), alors qu'activeSpaceAtom est déjà
+// hydraté en synchrone. Même pattern que le cache d'arbre (fileTreeMutations.ts).
+
+const CONFIG_CACHE_KEY = "lueurs_vault_config_cache";
+
+interface VaultConfigCacheData {
+  vaultPath: string;
+  config: VaultConfig;
+}
+
+export function saveVaultConfigCache(
+  vaultPath: string,
+  config: VaultConfig
+): void {
+  try {
+    const cache: VaultConfigCacheData = { vaultPath, config };
+    localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
+export function loadVaultConfigCache(vaultPath: string): VaultConfig | null {
+  try {
+    const raw = localStorage.getItem(CONFIG_CACHE_KEY);
+    if (!raw) return null;
+    const cache: VaultConfigCacheData = JSON.parse(raw);
+    if (cache.vaultPath !== vaultPath) return null;
+    return cache.config;
+  } catch {
+    return null;
+  }
+}
+
 export async function writeVaultConfig(
   vaultRoot: string,
   config: VaultConfig

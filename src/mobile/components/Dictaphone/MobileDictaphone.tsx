@@ -92,10 +92,15 @@ export function MobileDictaphone() {
   }, [recorder]);
 
   // Démarrage automatique depuis le bouton Centre de contrôle
+  // Ref (et non `status`) car `recorder` est recréé à chaque render (useAudioRecorder
+  // renvoie un objet littéral), donc `handleRecord` change d'identité en boucle pendant
+  // l'await de startRecording — un guard sur `status` ne suffit pas à éviter le double appel.
+  const autoStartedRef = useRef(false);
   useEffect(() => {
-    if (dictaphoneMode !== "new-note-autostart" || status !== "idle") return;
+    if (dictaphoneMode !== "new-note-autostart" || autoStartedRef.current) return;
+    autoStartedRef.current = true;
     handleRecord();
-  }, [dictaphoneMode, status, handleRecord]);
+  }, [dictaphoneMode, handleRecord]);
 
   // Titre par défaut avec numéro disponible (mode new-note uniquement)
   useEffect(() => {

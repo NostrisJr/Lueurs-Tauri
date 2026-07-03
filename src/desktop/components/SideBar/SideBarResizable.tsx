@@ -142,6 +142,9 @@ export function SideBarResizable() {
   }, [allNotes, search]);
 
   const isSearching = search.trim().length > 0;
+  // Si l'arbre en cache est déjà là, ne pas le masquer derrière le spinner
+  // pendant le reload complet en arrière-plan (sinon flash arbre → chargement → arbre).
+  const hasData = tree.length > 0;
 
   return (
     <div className="relative flex flex-col h-full pt-7 overflow-clip">
@@ -244,7 +247,7 @@ export function SideBarResizable() {
             "linear-gradient(to bottom, transparent 0px, black 20px, black calc(100% - 20px), transparent 100%)",
         }}
       >
-        {loading && (
+        {loading && !hasData && (
           <p className="px-4 py-4 text-xs text-center text-gray-400">
             Chargement...
           </p>
@@ -253,7 +256,7 @@ export function SideBarResizable() {
           <p className="px-4 py-4 text-xs text-center text-red-400">{error}</p>
         )}
 
-        {!loading && !error && isSearching && (
+        {(!loading || hasData) && !error && isSearching && (
           <div className="px-2 py-2 space-y-0.5">
             {searchResults.length === 0 ? (
               <p className="px-2 py-4 text-xs text-center text-gray-400">
@@ -281,7 +284,7 @@ export function SideBarResizable() {
         )}
 
         {/* Arborescence avec animation de transition entre espaces */}
-        {!loading && !error && !isSearching && (
+        {(!loading || hasData) && !error && !isSearching && (
           <div style={slideStyle}>
             <FileTree nodes={displayTree} activeId={activeNote?.id ?? null} />
           </div>
