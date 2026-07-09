@@ -7,7 +7,7 @@ import {
   IconRectangleStack,
 } from "../../../shared/components/PlatformIcon";
 import { mobileNavigateAtom } from "../../../shared/lib/atoms";
-import { isAndroid } from "../../../shared/lib/platform";
+import { iconAccentClass, isAndroid } from "../../../shared/lib/platform";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "../Floating/FloatingComponent";
 
@@ -31,7 +31,7 @@ export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
           hapticImpact("light");
           navigate("tabs");
         }}
-        className="text-amber-400 active:bg-black/5 transition-colors aspect-square justify-center items-center flex"
+        className={`${iconAccentClass} active:bg-black/5 transition-colors aspect-square justify-center items-center flex`}
       >
         <IconRectangleStack className="size-6.5" />
       </FloatingComponent>
@@ -52,7 +52,7 @@ export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
           hapticImpact("light");
           onCreateRecording();
         }}
-        className="text-amber-400 active:bg-black/5 transition-colors aspect-square justify-center items-center flex"
+        className={`${iconAccentClass} active:bg-black/5 transition-colors aspect-square justify-center items-center flex`}
       >
         <IconRecordAudio className="size-6" />
       </FloatingComponent>
@@ -62,7 +62,7 @@ export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
           hapticImpact("light");
           onCreateNote();
         }}
-        className="text-amber-400 active:bg-black/5 transition-colors aspect-square justify-center items-center flex"
+        className={`${iconAccentClass} active:bg-black/5 transition-colors aspect-square justify-center items-center flex`}
       >
         <IconDocumentBadgePlus className="size-6.75 -mr-0.75 -mt-0.5" />
       </FloatingComponent>

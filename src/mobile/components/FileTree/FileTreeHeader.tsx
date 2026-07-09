@@ -18,7 +18,7 @@ import {
   mobileNavigateAtom,
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
-import { isIOS } from "../../../shared/lib/platform";
+import { iconAccentClass, isIOS } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
 import { hapticImpact } from "../../lib/haptics";
 import { vaultDisplayName } from "../../lib/vault";
@@ -108,7 +108,7 @@ export function FileTreeHeader() {
         <button
           type="button"
           onClick={handleDrillOut}
-          className="w-8 h-8 flex items-center justify-center rounded-full text-amber-500 active:bg-black/5 transition-colors"
+          className={`w-8 h-8 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
         >
           <IconChevronLeft className="size-4" />
         </button>
@@ -140,7 +140,7 @@ export function FileTreeHeader() {
             hapticImpact("light");
             setShowMenu((v) => !v);
           }}
-          className="w-8 h-8 flex items-center justify-center rounded-full text-amber-500 active:bg-black/5 transition-colors"
+          className={`w-8 h-8 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
           aria-label="Menu"
         >
           <IconEllipsis className="size-5" />

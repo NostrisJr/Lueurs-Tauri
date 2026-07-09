@@ -36,7 +36,7 @@ import {
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { NoteType } from "../../../shared/lib/noteTypes";
-import { isAndroid, isIOS } from "../../../shared/lib/platform";
+import { iconAccentClass, isAndroid, isIOS } from "../../../shared/lib/platform";
 
 import clsx from "clsx";
 import { useKeyboard } from "../../hooks/useKeyboard";
@@ -145,7 +145,7 @@ export function MobileEditor() {
           setNoteBackStack([]);
           resetNav();
         }}
-        className="flex-1 justify-start flex items-center gap-1 px-2 py-1.5 rounded-lg text-amber-400 active:bg-gray-100 transition-colors"
+        className={`flex-1 justify-start flex items-center gap-1 px-2 py-1.5 rounded-lg ${iconAccentClass} active:bg-gray-100 transition-colors`}
       >
         <IconChevronLeft className="size-4" />
         <span className="text-base">Notes</span>
@@ -155,7 +155,7 @@ export function MobileEditor() {
         <button
           type="button"
           onClick={() => editorUndo(editorRef)}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
+          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
           title="Annuler (⌘Z)"
         >
           <IconArrowUturnBackward className="size-4.5" />
@@ -163,7 +163,7 @@ export function MobileEditor() {
         <button
           type="button"
           onClick={() => editorRedo(editorRef)}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
+          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
           title="Rétablir (⌘⇧Z)"
         >
           <IconArrowUturnForward className="size-4.5" />
@@ -184,7 +184,7 @@ export function MobileEditor() {
                   const next: DisplayMode = nextEntry.value;
                   setPendingDisplayMode(next);
                 }}
-                className="w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
+                className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
                 title={currentEntry.label}
               >
                 <currentEntry.Icon className="size-5" />
@@ -197,7 +197,7 @@ export function MobileEditor() {
             hapticImpact("light");
             setDictaphoneMode("insert");
           }}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
+          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
           title="Ajouter un enregistrement"
         >
           <IconRecordAudio className="size-5" />
@@ -208,7 +208,7 @@ export function MobileEditor() {
             hapticImpact("light");
             navigate("tabs");
           }}
-          className="relative w-9 h-9 flex items-center justify-center rounded-full text-amber-400 active:bg-gray-100 transition-colors"
+          className={`relative w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
         >
           <IconRectangleStack className="size-5" />
           {openTabIds.length > 1 && (

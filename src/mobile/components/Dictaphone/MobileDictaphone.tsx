@@ -26,6 +26,7 @@ import {
 } from "../../../shared/lib/atoms";
 import { findNextAvailableNumber } from "../../../shared/lib/fileTreeHelpers";
 import { createLogger } from "../../../shared/lib/logger";
+import { iconAccentClass } from "../../../shared/lib/platform";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "../Floating/FloatingComponent";
@@ -431,7 +432,7 @@ export function MobileDictaphone() {
                   onClick={handleResume}
                   className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center shadow active:scale-95 transition-transform"
                 >
-                  <IconPlayFill className="size-6 text-amber-500" />
+                  <IconPlayFill className={`size-6 ${iconAccentClass}`} />
                 </button>
               )}
 

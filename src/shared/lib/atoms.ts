@@ -133,6 +133,14 @@ export const spellcheckEnabledAtom = atomWithStorage<boolean>(
   { getOnInit: true }
 );
 
+// Switcher d'espaces mobile toujours visible (true) vs pastille repliable (false)
+export const spaceSwitcherAlwaysVisibleAtom = atomWithStorage<boolean>(
+  "lueurs_space_switcher_always_visible",
+  true,
+  undefined,
+  { getOnInit: true }
+);
+
 // Format de référence de l'indicateur pages/mots (équivalent A4/A5)
 export const pageFormatAtom = atomWithStorage<PageFormat>(
   "lueurs_page_format",

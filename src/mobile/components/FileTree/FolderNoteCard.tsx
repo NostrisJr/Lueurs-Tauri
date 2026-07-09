@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Squircle } from "../../../shared/components/Squircle";
 import { IconTextRectanglePage } from "../../../shared/components/PlatformIcon";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import { iconAccentClass } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
 
 function getFolderNotePreview(body: string): string[] {
@@ -37,7 +38,7 @@ export function FolderNoteCard({ note }: { note: NoteFile }) {
       >
         <div className="px-4 py-3 flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
-            <IconTextRectanglePage className="size-3.5 text-amber-500 shrink-0" />
+            <IconTextRectanglePage className={`size-3.5 ${iconAccentClass} shrink-0`} />
             <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">
               Note de dossier
             </p>

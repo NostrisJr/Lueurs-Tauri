@@ -1,11 +1,12 @@
 import clsx from "clsx";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconBooksVertical } from "../../../shared/components/PlatformIcon";
 import {
   ACTIVE_SPACE_STORAGE_KEY,
   activeSpaceAtom,
   mobileSwitchSpaceAtom,
+  spaceSwitcherAlwaysVisibleAtom,
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
 import { hexToRgba } from "../../../shared/lib/color";
@@ -23,10 +24,23 @@ function spaceLabel(space: VaultSpace): string {
   return space.name.slice(0, 2);
 }
 
+// Dimensions des boutons ronds de FloatingComponent (vertical) — cf. size-9 + gap-2 + py-2.5
+const BUTTON_SIZE = 36;
+const BUTTON_GAP = 8;
+const PADDING_Y = 10;
+
+function switcherHeight(count: number): number {
+  return count * BUTTON_SIZE + Math.max(0, count - 1) * BUTTON_GAP + PADDING_Y * 2;
+}
+
 export function MobileSpaceSwitcher() {
   const vaultConfig = useAtomValue(vaultConfigAtom);
   const [activeSpace, setActiveSpace] = useAtom(activeSpaceAtom);
   const switchSpace = useSetAtom(mobileSwitchSpaceAtom);
+  const alwaysVisible = useAtomValue(spaceSwitcherAlwaysVisibleAtom);
+  // Mode pastille (alwaysVisible = false) : repliée par défaut, s'étend au tap
+  const [expanded, setExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const spaces = vaultConfig?.spaces ?? [];
   const orderedSpaces = vaultConfig ? buildOrderedSpaces(spaces, vaultConfig) : [];
@@ -52,69 +66,131 @@ export function MobileSpaceSwitcher() {
     }
   }, [vaultConfig, orderedSpaces, setActiveSpace]);
 
+  // Mode pastille : replie au tap en dehors du composant
+  useEffect(() => {
+    if (alwaysVisible || !expanded) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setExpanded(false);
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [alwaysVisible, expanded]);
+
+  // Si le réglage repasse à "toujours visible", on n'a plus besoin d'être replié
+  useEffect(() => {
+    if (alwaysVisible) setExpanded(false);
+  }, [alwaysVisible]);
+
   if (orderedSpaces.length === 0) return null;
 
-  function handleSwitch(newSpace: string | null) {
-    if (newSpace === activeSpace) return;
-    hapticImpact("light");
-    switchSpace(newSpace);
+  const isCollapsedPastille = !alwaysVisible && !expanded;
+  const visibleSpaces = isCollapsedPastille
+    ? orderedSpaces.filter((entry) =>
+        entry.id === ALL_SPACE_ID
+          ? activeSpace === null
+          : (entry as VaultSpace).name === activeSpace
+      )
+    : orderedSpaces;
+  // Repli sur le premier espace si l'espace actif ne correspond à aucune entrée (état transitoire)
+  const displayedSpaces =
+    visibleSpaces.length > 0 ? visibleSpaces : [orderedSpaces[0]];
+
+  function handleEntryTap(newSpace: string | null) {
+    if (isCollapsedPastille) {
+      hapticImpact("light");
+      setExpanded(true);
+      return;
+    }
+    handleSwitch(newSpace);
   }
 
-  return (
-    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20">
-      <FloatingComponent vertical>
-        {orderedSpaces.map((entry) => {
-          if (entry.id === ALL_SPACE_ID) {
-            const isActive = activeSpace === null;
-            return (
-              <button
-                key="__all__"
-                type="button"
-                onClick={() => handleSwitch(null)}
-                className={clsx(
-                  "flex items-center justify-center size-9 rounded-full transition-colors",
-                  isActive
-                    ? "bg-gray-800 text-white"
-                    : "text-gray-500 active:bg-black/5"
-                )}
-                aria-label="Tout"
-              >
-                {entry.icon ? (
-                  <span className="text-sm">{entry.icon}</span>
-                ) : (
-                  <IconBooksVertical className="size-4.5" />
-                )}
-              </button>
-            );
-          }
+  function handleSwitch(newSpace: string | null) {
+    if (newSpace !== activeSpace) {
+      hapticImpact("light");
+      switchSpace(newSpace);
+    }
+    if (!alwaysVisible) setExpanded(false);
+  }
 
-          const space = entry as VaultSpace;
-          const isActive = activeSpace === space.name;
+  const switcher = (
+    <FloatingComponent vertical>
+      {displayedSpaces.map((entry) => {
+        if (entry.id === ALL_SPACE_ID) {
+          const isActive = activeSpace === null;
           return (
             <button
-              key={space.id}
+              key="__all__"
               type="button"
-              onClick={() => handleSwitch(space.name)}
+              onClick={() => handleEntryTap(null)}
               className={clsx(
-                "flex items-center justify-center size-9 rounded-full text-sm transition-colors",
+                "flex items-center justify-center size-9 rounded-full transition-colors",
                 isActive
-                  ? space.color
-                    ? "text-white"
-                    : "bg-gray-800 text-white"
-                  : "text-gray-600 active:bg-black/5"
+                  ? "bg-gray-800 text-white"
+                  : "text-gray-500 active:bg-black/5"
               )}
-              style={
-                isActive && space.color
-                  ? { backgroundColor: hexToRgba(space.color, 0.7) }
-                  : undefined
-              }
-              aria-label={space.name}
+              aria-label="Tout"
             >
-              {spaceLabel(space)}
+              {entry.icon ? (
+                <span className="text-sm">{entry.icon}</span>
+              ) : (
+                <IconBooksVertical className="size-4.5" />
+              )}
             </button>
           );
-        })}
-      </FloatingComponent>
+        }
+
+        const space = entry as VaultSpace;
+        const isActive = activeSpace === space.name;
+        return (
+          <button
+            key={space.id}
+            type="button"
+            onClick={() => handleEntryTap(space.name)}
+            className={clsx(
+              "flex items-center justify-center size-9 rounded-full text-sm transition-colors",
+              isActive
+                ? space.color
+                  ? "text-white"
+                  : "bg-gray-800 text-white"
+                : "text-gray-600 active:bg-black/5"
+            )}
+            style={
+              isActive && space.color
+                ? { backgroundColor: hexToRgba(space.color, 0.7) }
+                : undefined
+            }
+            aria-label={space.name}
+          >
+            {spaceLabel(space)}
+          </button>
+        );
+      })}
+    </FloatingComponent>
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      className="absolute right-3 top-1/2 -translate-y-1/2 z-20"
+    >
+      {alwaysVisible ? (
+        switcher
+      ) : (
+        <div
+          style={{
+            maxHeight: expanded
+              ? switcherHeight(orderedSpaces.length)
+              : switcherHeight(1),
+            overflow: "hidden",
+            borderRadius: 9999,
+            transition: "max-height 0.25s ease-out",
+          }}
+        >
+          {switcher}
+        </div>
+      )}
     </div>
   );
 }

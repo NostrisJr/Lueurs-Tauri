@@ -18,7 +18,7 @@ import {
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
-import { isAndroid } from "../../../shared/lib/platform";
+import { iconAccentClass, isAndroid } from "../../../shared/lib/platform";
 import { vaultIO } from "../../../shared/lib/vaultIO";
 import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
 import { hapticImpact } from "../../lib/haptics";
@@ -43,7 +43,9 @@ export function MobileSettingsView() {
   );
   const [showResources, setShowResources] = useAtom(showResourcesAtom);
   const [inboxRelPath, setInboxRelPath] = useAtom(inboxRelPathAtom);
-  const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(dictaphoneRelPathAtom);
+  const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(
+    dictaphoneRelPathAtom
+  );
   const allFolders = useAtomValue(allFoldersAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
   const folderPath = useAtomValue(folderPathAtom);
@@ -89,19 +91,19 @@ export function MobileSettingsView() {
   return (
     <div className="flex flex-col h-full w-full fixed bg-gray-100">
       {/* Header */}
-      <div className="flex items-center w-full justify-between px-2 py-2 border-b bg-white border-gray-100 fixed top-0 pt-12 z-30">
+      <div className="flex items-center w-full justify-center px-2 py-2 border-b bg-white border-gray-100 fixed top-0 pt-14 z-30">
         <button
           type="button"
           onClick={() => {
             hapticImpact("light");
             goBack();
           }}
-          className="flex-1 justify-start flex items-center gap-1 px-2 py-1.5 rounded-lg text-amber-500 active:bg-gray-100 transition-colors"
+          className={`flex-1 justify-start fixed left-1 items-center gap-1 px-2 py-1.5 rounded-lg ${iconAccentClass} active:bg-gray-100 transition-colors z-10`}
         >
           <IconChevronLeft className="size-4" />
           <span className="text-base">Notes</span>
         </button>
-        <h1 className="flex-1 text-center text-base font-semibold text-gray-900 pr-16">
+        <h1 className="justify-center text-2xl font-semibold text-gray-900">
           Réglages
         </h1>
       </div>

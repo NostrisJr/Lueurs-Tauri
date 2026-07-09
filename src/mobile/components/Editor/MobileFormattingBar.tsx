@@ -206,9 +206,12 @@ export function MobileFormattingBar({
       className={`fixed left-3 right-3 z-50 flex items-center gap-2 transition-all duration-300 ease-in-out ${visible ? "translate-y-0 opacity-100" : "translate-y-16 opacity-0"}`}
       style={{ bottom: keyboardHeight + 8 }}
     >
-      <FloatingComponent wrapperClassName="flex-1 min-w-0" className="overflow-hidden px-0 py-0">
+      <FloatingComponent
+        wrapperClassName="flex-1 min-w-0"
+        className="overflow-hidden px-0 py-0"
+      >
         <div
-          className="flex items-center overflow-x-auto h-13 px-2 gap-1"
+          className="flex items-center overflow-x-auto h-13 px-2 gap-1 bg-white/50"
           style={{ scrollbarWidth: "none" }}
         >
           {items.map((item, i) =>

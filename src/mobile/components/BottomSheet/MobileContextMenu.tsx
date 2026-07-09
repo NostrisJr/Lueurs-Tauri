@@ -1,6 +1,6 @@
 import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useStore } from "jotai";
 import { useState } from "react";
 import type { TreeNode } from "../../../shared/hooks/useFileTree";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
@@ -8,26 +8,59 @@ import { useNote } from "../../../shared/hooks/useNote";
 import {
   folderPathAtom,
   mobileContextMenuAtom,
+  notesByIdAtom,
+  treeAtom,
+  vaultConfigAtom,
 } from "../../../shared/lib/atoms";
+import { toArray } from "../../../shared/lib/fileTreeHelpers";
 import { importPaths } from "../../../shared/lib/importUtils";
 import { createLogger } from "../../../shared/lib/logger";
+import { SystemField } from "../../../shared/lib/noteTypes";
+import { iconAccentClass } from "../../../shared/lib/platform";
+import { findFolderNote, toggleNoteSpace } from "../../../shared/lib/spaceAssignment";
 import { hapticImpact } from "../../lib/haptics";
 import { BottomSheet } from "./BottomSheet";
 
 const log = createLogger("MobileContextMenu");
 
-type Step = "menu" | "rename";
+type Step = "menu" | "rename" | "spaces";
 
 export function MobileContextMenu() {
   const [target, setTarget] = useAtom(mobileContextMenuAtom);
   const folderPath = useAtomValue(folderPathAtom);
+  const vaultConfig = useAtomValue(vaultConfigAtom);
+  const store = useStore();
   const { handleRename, handleDeleteNote, handleDeleteFolder } = useNote();
   const { reload } = useFileTree();
 
   const [step, setStep] = useState<Step>("menu");
   const [renameValue, setRenameValue] = useState("");
 
+  const notesById = useAtomValue(notesByIdAtom);
+  const tree = useAtomValue(treeAtom);
+
   if (!target) return null;
+
+  const spaces = vaultConfig?.spaces ?? [];
+
+  // Note cible pour l'assignation d'espace : note directe ou note-dossier
+  const targetNote = target.isFolder
+    ? findFolderNote(tree, target.id)
+    : (notesById.get(target.id) ?? null);
+  const currentSpaces = targetNote
+    ? toArray(targetNote.frontmatter[SystemField.SPACE])
+    : [];
+
+  async function handleToggleSpace(spaceName: string) {
+    if (!target) return;
+    // Relit depuis le store pour éviter une closure périmée en cas de tap rapide
+    const freshNote = target.isFolder
+      ? findFolderNote(store.get(treeAtom), target.id)
+      : (store.get(notesByIdAtom).get(target.id) ?? null);
+    if (!freshNote) return;
+    hapticImpact("light");
+    await toggleNoteSpace(store, freshNote, spaceName);
+  }
 
   function close() {
     setTarget(null);
@@ -54,6 +87,14 @@ export function MobileContextMenu() {
         setStep("rename");
       },
     },
+    ...(spaces.length > 0
+      ? [
+          {
+            label: "Espaces",
+            onPress: () => setStep("spaces"),
+          },
+        ]
+      : []),
     {
       label: "Importer des fichiers…",
       onPress: async () => {
@@ -154,6 +195,33 @@ export function MobileContextMenu() {
           >
             Renommer
           </button>
+        </div>
+      </BottomSheet>
+    );
+  }
+
+  if (step === "spaces") {
+    return (
+      <BottomSheet onClose={close} title="Espaces">
+        <div className="flex flex-col divide-y divide-gray-100">
+          {spaces.map((space) => {
+            const checked = currentSpaces.includes(space.name);
+            return (
+              <button
+                key={space.id}
+                type="button"
+                onClick={() => handleToggleSpace(space.name)}
+                className="w-full flex items-center gap-3 px-4 py-4 text-left text-base text-gray-900 active:bg-gray-50 transition-colors"
+              >
+                <span className="flex-1 min-w-0 truncate">
+                  {space.icon ? `${space.icon}  ${space.name}` : space.name}
+                </span>
+                {checked && (
+                  <span className={`${iconAccentClass} text-lg leading-none`}>✓</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </BottomSheet>
     );

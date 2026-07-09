@@ -11,7 +11,7 @@ import {
   openTabIdsAtom,
   tabNodeByIdAtom,
 } from "../../../shared/lib/atoms";
-import { isIOS } from "../../../shared/lib/platform";
+import { iconAccentClass, isIOS } from "../../../shared/lib/platform";
 import { hapticImpact } from "../../lib/haptics";
 import { FileRow } from "../FileTree/FileRow";
 import { MobileSpaceSwitcher } from "../Floating/MobileSpaceSwitcher";
@@ -50,7 +50,7 @@ export function MobileTabsView() {
             hapticImpact("light");
             goBack();
           }}
-          className="flex items-center justify-center w-8 h-8 rounded-full text-amber-500 active:bg-black/5 transition-colors"
+          className={`flex items-center justify-center w-8 h-8 rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
         >
           <IconChevronLeft className="size-4" />
         </button>

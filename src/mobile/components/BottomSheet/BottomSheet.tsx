@@ -13,10 +13,13 @@
  * Monté dans un Portal (document.body) pour échapper aux overflow:hidden parents.
  * Swipe vers le bas pour fermer.
  */
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Squircle } from "../../../shared/components/Squircle";
 import { useKeyboard } from "../../hooks/useKeyboard";
+
+// Durée de l'animation de sortie (doit matcher la transition transform ci-dessous)
+const EXIT_DURATION_MS = 300;
 
 interface Props {
   onClose: () => void;
@@ -36,11 +39,39 @@ export function BottomSheet({
   const startYRef = useRef(0);
   const [swipe, setSwipe] = useState(0);
 
+  // Monté fermé (hors écran) puis ouvert une frame plus tard, pour que la transition
+  // CSS ait deux états distincts à interpoler (sinon le sheet apparaît déjà en place).
+  const [entered, setEntered] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const closeTimeoutRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== undefined) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Fermeture "gestuelle" (overlay/swipe) : joue l'animation de sortie avant
+  // de démonter réellement via onClose.
+  function requestClose() {
+    if (closing) return;
+    setClosing(true);
+    closeTimeoutRef.current = window.setTimeout(onClose, EXIT_DURATION_MS);
+  }
+
   // Hauteur disponible au-dessus du clavier (ou de l'écran entier)
   const visibleH = window.innerHeight - keyboardHeight;
   const sheetH = isKeyboardOpen
     ? Math.min(Math.round(visibleH * 0.85), visibleH - 40)
     : Math.round(window.innerHeight * heightFraction);
+  const translateY = closing || !entered ? "100%" : `${swipe}px`;
 
   const sheet = (
     // stopPropagation : évite que le tap sur l'overlay remonte dans l'arbre React
@@ -50,7 +81,7 @@ export function BottomSheet({
       className="fixed inset-0 z-50 bg-gray-600/30"
       onClick={(e) => {
         e.stopPropagation();
-        onClose();
+        requestClose();
       }}
     >
       <Squircle
@@ -59,10 +90,10 @@ export function BottomSheet({
         style={{
           bottom: keyboardHeight,
           height: sheetH,
-          transform: `translateY(${swipe}px)`,
+          transform: `translateY(${translateY})`,
           transition:
             swipe === 0
-              ? "bottom 0.3s ease-out, height 0.3s ease-out, transform 0.15s ease-out"
+              ? "bottom 0.3s ease-out, height 0.3s ease-out, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)"
               : undefined,
           filter: "drop-shadow(0px -4px 20px rgba(0,0,0,0.12))",
         }}
@@ -81,8 +112,8 @@ export function BottomSheet({
         }}
         onTouchEnd={() => {
           if (swipe > 60) {
-            onClose();
             setSwipe(0);
+            requestClose();
           } else {
             setSwipe(0);
           }

@@ -8,3 +8,5 @@ export const isMobile = isIOS || isAndroid;
 export const isDesktop = !isMobile;
 // Plateformes où les icônes SF Symbols d'Apple sont utilisables (licence Apple).
 export const isApplePlatform = isIOS || isMacOS;
+// Couleur d'accent des icônes mobiles : amber-500 sur iOS, amber-400 sur Android.
+export const iconAccentClass = isIOS ? "text-amber-500" : "text-amber-400";

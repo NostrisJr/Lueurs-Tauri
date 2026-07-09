@@ -19,7 +19,7 @@ import {
   mobileViewAtom,
   treeAtom,
 } from "../shared/lib/atoms";
-import { isAndroid, isIOS } from "../shared/lib/platform";
+import { iconAccentClass, isAndroid, isIOS } from "../shared/lib/platform";
 import { MobileDictaphone } from "./components/Dictaphone/MobileDictaphone";
 import { MobileEditor } from "./components/Editor/MobileEditor";
 import { MobileFileTree } from "./components/FileTree";
@@ -202,7 +202,7 @@ export function MobileApp() {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-200 gap-6 px-8">
         <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow">
-          <IconFolder className="size-8 text-amber-500" />
+          <IconFolder className={`size-8 ${iconAccentClass}`} />
         </div>
         <div className="text-center">
           <p className="font-semibold text-gray-900 text-lg">

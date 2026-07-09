@@ -18,83 +18,22 @@ import {
 import { Command } from "@tauri-apps/plugin-shell";
 import { useStore } from "jotai";
 import { useCallback, useRef } from "react";
-import type { FolderNode, NoteFile } from "../../shared/hooks/useFileTree";
-import type { TreeNode } from "../../shared/hooks/useFileTree";
+import type { NoteFile } from "../../shared/hooks/useFileTree";
 import { useNote } from "../../shared/hooks/useNote";
-import {
-  notesByIdAtom,
-  treeAtom,
-  vaultConfigAtom,
-  writingPathsRegistry,
-} from "../../shared/lib/atoms";
-import {
-  serializeFrontmatter,
-  toArray,
-  updateNodeInTree,
-} from "../../shared/lib/fileTreeHelpers";
+import { notesByIdAtom, treeAtom, vaultConfigAtom } from "../../shared/lib/atoms";
+import { toArray } from "../../shared/lib/fileTreeHelpers";
 import { importPaths } from "../../shared/lib/importUtils";
 import { createLogger } from "../../shared/lib/logger";
 import { SystemField } from "../../shared/lib/noteTypes";
-import { vaultIO } from "../../shared/lib/vaultIO";
+import {
+  findFolderById,
+  findFolderNote,
+  toggleNoteSpace,
+} from "../../shared/lib/spaceAssignment";
 
 const log = createLogger("useNodeContextMenu");
 
 export type NodeKind = "file" | "folder" | "media";
-
-function findFolderById(nodes: TreeNode[], id: string): FolderNode | null {
-  for (const node of nodes) {
-    if (node.kind === "folder") {
-      if (node.id === id) return node;
-      const found = findFolderById(node.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-function findFolderNote(tree: TreeNode[], folderId: string): NoteFile | null {
-  const folder = findFolderById(tree, folderId);
-  if (!folder) return null;
-  return (
-    folder.children.find(
-      (c): c is NoteFile => c.kind === "file" && c.name === folder.name
-    ) ?? null
-  );
-}
-
-async function toggleNoteSpace(
-  store: ReturnType<typeof useStore>,
-  note: NoteFile,
-  spaceName: string
-): Promise<void> {
-  const current = toArray(note.frontmatter[SystemField.SPACE]);
-  const updated = current.includes(spaceName)
-    ? current.filter((s) => s !== spaceName)
-    : [...current, spaceName];
-
-  const newFrontmatter = { ...note.frontmatter };
-  if (updated.length > 0) {
-    newFrontmatter[SystemField.SPACE] = updated;
-  } else {
-    delete newFrontmatter[SystemField.SPACE];
-  }
-
-  const raw = serializeFrontmatter(newFrontmatter, note.body);
-  writingPathsRegistry.add(note.id);
-  try {
-    await vaultIO.writeFile(note.id, raw);
-    store.set(treeAtom, (prev) =>
-      updateNodeInTree(prev, note.id, { frontmatter: newFrontmatter })
-    );
-    log.info("espace togglé sur note", {
-      noteId: note.id,
-      spaceName,
-      action: current.includes(spaceName) ? "retiré" : "ajouté",
-    });
-  } finally {
-    writingPathsRegistry.delete(note.id);
-  }
-}
 
 export function useNodeContextMenu() {
   const store = useStore();

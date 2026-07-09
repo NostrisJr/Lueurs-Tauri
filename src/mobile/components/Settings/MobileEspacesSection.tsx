@@ -12,8 +12,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAtom } from "jotai";
 import { Squircle } from "../../../shared/components/Squircle";
 import { useSpacesEditor } from "../../../shared/hooks/useSpacesEditor";
+import { spaceSwitcherAlwaysVisibleAtom } from "../../../shared/lib/atoms";
 import { ALL_SPACE_ID, type VaultSpace } from "../../../shared/lib/vaultConfig";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileEmojiField } from "./MobileEmojiField";
@@ -190,18 +192,19 @@ export function MobileEspacesSection() {
     spaces,
     orderedEntries,
     canEdit,
-    iconOnly,
     toutIcon,
     addSpace,
     setName,
     dedupeName,
     setIcon,
     setColor,
-    setIconOnly,
     setToutIcon,
     reorder,
     deleteSpace,
   } = useSpacesEditor();
+  const [switcherAlwaysVisible, setSwitcherAlwaysVisible] = useAtom(
+    spaceSwitcherAlwaysVisibleAtom
+  );
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -278,11 +281,16 @@ export function MobileEspacesSection() {
       <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }} className="mt-3">
         <Squircle radius={18} className="overflow-hidden bg-white border border-gray-100">
           <label className="flex items-center justify-between px-4 py-3 cursor-pointer">
-            <span className="text-base text-gray-700">Icônes uniquement</span>
+            <span className="text-base text-gray-700">
+              Sélecteur d'espaces toujours visible
+            </span>
             <input
               type="checkbox"
-              checked={iconOnly}
-              onChange={(e) => setIconOnly(e.target.checked)}
+              checked={switcherAlwaysVisible}
+              onChange={(e) => {
+                hapticImpact("light");
+                setSwitcherAlwaysVisible(e.target.checked);
+              }}
               className="w-5 h-5 rounded accent-gray-800 cursor-pointer"
             />
           </label>
