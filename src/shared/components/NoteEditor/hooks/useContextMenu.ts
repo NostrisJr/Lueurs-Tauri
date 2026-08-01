@@ -12,13 +12,20 @@ import {
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
+import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import type { RefObject } from "react";
+import { spellcheckEngineAtom } from "../../../lib/atoms";
 import { createLogger } from "../../../lib/logger";
 import { vaultIO } from "../../../lib/vaultIO";
 import { toggleHighlightInlineCommand } from "../../../plugins/customKeymap";
 import { HIGHLIGHT_COLORS } from "../../../plugins/highlight/colors";
+import {
+  nativeLearnWord,
+  nativeSpellSuggestions,
+} from "../../../plugins/spellcheck/appleApi";
 import { getSpellSuggestionAtPos } from "../../../plugins/spellcheck/spellcheckPlugin";
+import { wordRangeAt } from "../../../plugins/spellcheck/wordRange";
 import { setWikilinkEdit } from "../../../plugins/wikilink/wikilinkEditState";
 import {
   isExternalHref,
@@ -62,6 +69,8 @@ export function useContextMenu(
   vaultPath: string,
   onIgnoreWord: (word: string) => void
 ) {
+  const spellcheckEngine = useAtomValue(spellcheckEngineAtom);
+
   useEffect(() => {
     // Menu natif Tauri — desktop uniquement
     if (platform() === "ios") return;
@@ -90,6 +99,9 @@ export function useContextMenu(
         href: string;
         text: string;
       } | null = null;
+      // Moteur Apple : NSSpellChecker ne pose pas de décorations, on délimite
+      // donc le mot sous le curseur pour l'interroger à la demande.
+      let clickedWord: { from: number; to: number; word: string } | null = null;
       editorRef.current?.action((ctx) => {
         const view = ctx.get(editorViewCtx);
         const { from, to } = view.state.selection;
@@ -98,6 +110,9 @@ export function useContextMenu(
         if (result) {
           spellSuggestion = getSpellSuggestionAtPos(view, result.pos);
           linkInfo = linkRangeAt(view.state, result.pos);
+          if (spellcheckEngine === "apple") {
+            clickedWord = wordRangeAt(view.state, result.pos);
+          }
         }
       });
 
@@ -238,6 +253,46 @@ export function useContextMenu(
             );
           }
           spellItems.push(await PredefinedMenuItem.new({ item: "Separator" }));
+        }
+
+        // Moteur Apple : suggestions NSSpellChecker. Elles vivent normalement
+        // dans le menu contextuel WebKit, que ce menu Tauri remplace — on les
+        // récupère donc côté Rust pour les réinjecter ici.
+        // biome-ignore lint/suspicious/noExplicitAny: contournement narrowing TS
+        const appleWord = clickedWord as any as {
+          from: number;
+          to: number;
+          word: string;
+        } | null;
+        if (appleWord) {
+          const guesses = await nativeSpellSuggestions(appleWord.word);
+          if (guesses) {
+            if (guesses.length > 0) {
+              for (const rep of guesses.slice(0, 5)) {
+                spellItems.push(
+                  await MenuItem.new({
+                    text: rep,
+                    action: () =>
+                      applySpellReplacement(appleWord.from, appleWord.to, rep),
+                  })
+                );
+              }
+            } else {
+              spellItems.push(
+                await MenuItem.new({
+                  text: "Aucune suggestion",
+                  enabled: false,
+                })
+              );
+            }
+            spellItems.push(
+              await MenuItem.new({
+                text: `Ajouter « ${appleWord.word} » au dictionnaire`,
+                action: () => nativeLearnWord(appleWord.word),
+              }),
+              await PredefinedMenuItem.new({ item: "Separator" })
+            );
+          }
         }
 
         const submenus = await Promise.all(
@@ -395,5 +450,6 @@ export function useContextMenu(
     insertAudioBlock,
     vaultPath,
     onIgnoreWord,
+    spellcheckEngine,
   ]);
 }

@@ -8,9 +8,11 @@ import { isSystemField } from "../../../shared/lib/fileTreeHelpers";
 import {
   NoteType,
   type NoteTypeValue,
+  SystemField,
   getAddableFields,
   getFieldDef,
   isFunctionalBaseField,
+  isNoteReadOnly,
 } from "../../../shared/lib/noteTypes";
 import { useTemplateSync } from "../../hooks/useTemplateSync";
 import { AddPropertyDropdown } from "./AddPropertyDropdown";
@@ -48,6 +50,7 @@ export function FrontmatterEditor({
 
   const noteType = (activeNote?.type as NoteTypeValue | null) ?? null;
   const isTemplate = activeNote?.type === NoteType.TEMPLATE;
+  const readOnly = isNoteReadOnly(activeNote?.frontmatter);
 
   async function commit(updatedRows: Row[]) {
     if (isTemplate && activeNote) {
@@ -138,13 +141,16 @@ export function FrontmatterEditor({
                 onRenameTemplateKey={
                   isTemplate ? handleRenameTemplateKey : undefined
                 }
+                locked={readOnly && row.key !== SystemField.READ_ONLY}
               />
             ))}
-          <AddPropertyDropdown
-            addableFields={addableFields}
-            onAddSystem={addSystemRow}
-            onAddUser={addUserRow}
-          />
+          {!readOnly && (
+            <AddPropertyDropdown
+              addableFields={addableFields}
+              onAddSystem={addSystemRow}
+              onAddUser={addUserRow}
+            />
+          )}
         </div>
       )}
     </div>

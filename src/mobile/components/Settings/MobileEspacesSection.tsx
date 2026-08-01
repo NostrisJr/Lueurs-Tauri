@@ -1,27 +1,23 @@
-import {
-  DndContext,
-  type DragEndEvent,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useAtom } from "jotai";
 import { Squircle } from "../../../shared/components/Squircle";
 import { useSpacesEditor } from "../../../shared/hooks/useSpacesEditor";
 import { spaceSwitcherAlwaysVisibleAtom } from "../../../shared/lib/atoms";
 import { ALL_SPACE_ID, type VaultSpace } from "../../../shared/lib/vaultConfig";
+import {
+  type ReorderState,
+  useMobileReorder,
+} from "../../hooks/useMobileReorder";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileEmojiField } from "./MobileEmojiField";
 
 const DRAG_HANDLE = (
-  <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+  <svg
+    width="10"
+    height="16"
+    viewBox="0 0 10 16"
+    fill="currentColor"
+    aria-hidden="true"
+  >
     <circle cx="2.5" cy="3" r="1.3" />
     <circle cx="7.5" cy="3" r="1.3" />
     <circle cx="2.5" cy="8" r="1.3" />
@@ -31,46 +27,48 @@ const DRAG_HANDLE = (
   </svg>
 );
 
+function DragHandle({
+  id,
+  reorder,
+}: {
+  id: string;
+  reorder: ReorderState;
+}) {
+  return (
+    // Zone de préhension élargie par du padding compensé en marge négative : la
+    // poignée reste visuellement fine mais reste attrapable au doigt.
+    <button
+      type="button"
+      {...reorder.handleProps(id)}
+      aria-label="Réordonner l'espace"
+      className="shrink-0 text-gray-300 px-2 -mx-1 py-2 -my-2"
+    >
+      {DRAG_HANDLE}
+    </button>
+  );
+}
+
 // Ligne "Tout" — non supprimable, non renommable, icône modifiable
 function ToutRow({
   icon,
   onIconChange,
   isLast,
+  reorder,
 }: {
   icon?: string;
   onIconChange: (icon: string) => void;
   isLast: boolean;
+  reorder: ReorderState;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: ALL_SPACE_ID });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-2 px-3 py-3 bg-white ${isLast ? "" : "border-b border-gray-100"}`}
+      ref={(el) => reorder.registerRow(ALL_SPACE_ID, el)}
+      style={reorder.rowStyle(ALL_SPACE_ID)}
+      className={`flex items-center gap-2 px-3 py-3 bg-white ${
+        isLast ? "" : "border-b border-gray-100"
+      }`}
     >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="shrink-0 text-gray-300 touch-none px-0.5"
-        aria-label="Réordonner l'espace"
-      >
-        {DRAG_HANDLE}
-      </button>
+      <DragHandle id={ALL_SPACE_ID} reorder={reorder} />
       <MobileEmojiField value={icon} onChange={onIconChange} />
       {/* Espacement équivalent au champ couleur */}
       <div className="w-9 shrink-0" />
@@ -87,55 +85,36 @@ interface RowProps {
   space: VaultSpace;
   index: number;
   onNameChange: (index: number, name: string) => void;
+  onNameFocus: (index: number) => void;
   onNameBlur: (index: number) => void;
   onIconChange: (index: number, icon: string) => void;
   onColorChange: (index: number, color: string) => void;
   onDelete: (index: number) => void;
   isLast: boolean;
+  reorder: ReorderState;
 }
 
 function SpaceRow({
   space,
   index,
   onNameChange,
+  onNameFocus,
   onNameBlur,
   onIconChange,
   onColorChange,
   onDelete,
   isLast,
+  reorder,
 }: RowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: space.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
+      ref={(el) => reorder.registerRow(space.id, el)}
+      style={reorder.rowStyle(space.id)}
       className={`flex items-center gap-2 px-3 py-3 bg-white ${
         isLast ? "" : "border-b border-gray-100"
       }`}
     >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="shrink-0 text-gray-300 touch-none px-0.5"
-        aria-label="Réordonner l'espace"
-      >
-        {DRAG_HANDLE}
-      </button>
+      <DragHandle id={space.id} reorder={reorder} />
 
       <MobileEmojiField
         value={space.icon}
@@ -166,7 +145,11 @@ function SpaceRow({
         type="text"
         value={space.name}
         onChange={(e) => onNameChange(index, e.target.value)}
+        onFocus={() => onNameFocus(index)}
         onBlur={() => onNameBlur(index)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
         className="flex-1 min-w-0 text-base border border-gray-200 rounded-lg px-2.5 py-2 outline-none focus:border-gray-400"
         placeholder="Nom de l'espace"
         aria-label="Nom de l'espace"
@@ -194,28 +177,24 @@ export function MobileEspacesSection() {
     canEdit,
     toutIcon,
     addSpace,
+    beginRename,
     setName,
     dedupeName,
     setIcon,
     setColor,
     setToutIcon,
-    reorder,
+    reorder: commitReorder,
     deleteSpace,
   } = useSpacesEditor();
   const [switcherAlwaysVisible, setSwitcherAlwaysVisible] = useAtom(
     spaceSwitcherAlwaysVisibleAtom
   );
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
+  const reorder = useMobileReorder({
+    ids: orderedEntries.map((e) => e.id),
+    onReorder: commitReorder,
+  });
 
   if (!canEdit) return null;
-
-  function handleReorder(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    reorder(String(active.id), String(over.id));
-  }
 
   return (
     <>
@@ -227,45 +206,42 @@ export function MobileEspacesSection() {
           radius={18}
           className="overflow-hidden bg-white border border-gray-100"
         >
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleReorder}
-          >
-            <SortableContext
-              items={orderedEntries.map((e) => e.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {orderedEntries.map((entry, i) => {
-                const isLast = i === orderedEntries.length - 1;
-                if (entry.id === ALL_SPACE_ID) {
-                  return (
-                    <ToutRow
-                      key="__all__"
-                      icon={toutIcon}
-                      onIconChange={setToutIcon}
-                      isLast={isLast}
-                    />
-                  );
-                }
-                const space = entry as VaultSpace;
-                const idx = spaces.indexOf(space);
+          {/* `relative` : repère de mesure des lignes (useMobileReorder) et
+              couche positionnée, pour que la ligne soulevée passe au-dessus du
+              bouton "Ajouter un espace" qui la suit dans le flux. */}
+          <div ref={reorder.listRef} className="relative">
+            {orderedEntries.map((entry, i) => {
+              const isLast = i === orderedEntries.length - 1;
+              if (entry.id === ALL_SPACE_ID) {
                 return (
-                  <SpaceRow
-                    key={space.id}
-                    space={space}
-                    index={idx}
-                    onNameChange={setName}
-                    onNameBlur={dedupeName}
-                    onIconChange={setIcon}
-                    onColorChange={setColor}
-                    onDelete={deleteSpace}
+                  <ToutRow
+                    key="__all__"
+                    icon={toutIcon}
+                    onIconChange={setToutIcon}
                     isLast={isLast}
+                    reorder={reorder}
                   />
                 );
-              })}
-            </SortableContext>
-          </DndContext>
+              }
+              const space = entry as VaultSpace;
+              const idx = spaces.indexOf(space);
+              return (
+                <SpaceRow
+                  key={space.id}
+                  space={space}
+                  index={idx}
+                  onNameChange={setName}
+                  onNameFocus={beginRename}
+                  onNameBlur={dedupeName}
+                  onIconChange={setIcon}
+                  onColorChange={setColor}
+                  onDelete={deleteSpace}
+                  isLast={isLast}
+                  reorder={reorder}
+                />
+              );
+            })}
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -278,8 +254,14 @@ export function MobileEspacesSection() {
           </button>
         </Squircle>
       </div>
-      <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }} className="mt-3">
-        <Squircle radius={18} className="overflow-hidden bg-white border border-gray-100">
+      <div
+        style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
+        className="mt-3"
+      >
+        <Squircle
+          radius={18}
+          className="overflow-hidden bg-white border border-gray-100"
+        >
           <label className="flex items-center justify-between px-4 py-3 cursor-pointer">
             <span className="text-base text-gray-700">
               Sélecteur d'espaces toujours visible

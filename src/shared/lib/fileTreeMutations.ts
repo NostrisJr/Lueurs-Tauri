@@ -612,9 +612,10 @@ export async function deleteNote(
   store: JotaiStore,
   fileId: string
 ): Promise<void> {
+  const vaultPath = store.get(folderPathAtom);
   writingPathsRegistry.add(fileId);
   store.set(treeAtom, (prev) => deleteNodeInTree(prev, fileId));
-  await vaultIO.delete(fileId);
+  await vaultIO.delete(fileId, vaultPath ?? undefined, "file");
   writingPathsRegistry.delete(fileId);
 }
 
@@ -628,9 +629,10 @@ export async function deleteFolder(
     if (entries.filter((e) => !e.name.startsWith(".")).length > 0)
       throw new Error("Le dossier n'est pas vide.");
   }
+  const vaultPath = store.get(folderPathAtom);
   writingPathsRegistry.add(folderId);
   store.set(treeAtom, (prev) => deleteNodeInTree(prev, folderId));
-  await vaultIO.delete(folderId);
+  await vaultIO.delete(folderId, vaultPath ?? undefined, "folder");
   writingPathsRegistry.delete(folderId);
 }
 

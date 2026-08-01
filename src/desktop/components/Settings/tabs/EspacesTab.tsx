@@ -22,6 +22,7 @@ export function EspacesTab() {
     iconOnly,
     toutIcon,
     addSpace,
+    beginRename,
     setName,
     dedupeName,
     setIcon,
@@ -75,6 +76,7 @@ export function EspacesTab() {
                 onIconChange={setIcon}
                 onColorChange={setColor}
                 onNameChange={setName}
+                onNameFocus={beginRename}
                 onNameBlur={dedupeName}
                 onDelete={deleteSpace}
               />

@@ -38,7 +38,7 @@ export function MobileEmojiField({ value, onChange }: Props) {
           heightFraction={0.6}
         >
           {/* Le picker gère son propre scroll interne à height=350. */}
-          <div className="flex flex-col h-full border-green-500 border">
+          <div className="flex flex-col h-full">
             <EmojiMartPicker
               onSelect={(emoji) => {
                 hapticImpact("light");
@@ -46,7 +46,7 @@ export function MobileEmojiField({ value, onChange }: Props) {
                 setOpen(false);
               }}
             />
-            <div className="w-full left-0 justify-center bg-white px-4 pt-3 border border-red-400">
+            <div className="w-full left-0 justify-center bg-white px-4 pt-3">
               {value && (
                 <button
                   type="button"

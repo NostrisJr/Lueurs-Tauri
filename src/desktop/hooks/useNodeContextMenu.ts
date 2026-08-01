@@ -18,22 +18,27 @@ import {
 import { Command } from "@tauri-apps/plugin-shell";
 import { useStore } from "jotai";
 import { useCallback, useRef } from "react";
-import type { NoteFile } from "../../shared/hooks/useFileTree";
 import { useNote } from "../../shared/hooks/useNote";
-import { notesByIdAtom, treeAtom, vaultConfigAtom } from "../../shared/lib/atoms";
+import {
+  notesByIdAtom,
+  treeAtom,
+  vaultConfigAtom,
+} from "../../shared/lib/atoms";
 import { toArray } from "../../shared/lib/fileTreeHelpers";
 import { importPaths } from "../../shared/lib/importUtils";
 import { createLogger } from "../../shared/lib/logger";
-import { SystemField } from "../../shared/lib/noteTypes";
+import { SystemField, isNoteReadOnly } from "../../shared/lib/noteTypes";
 import {
+  type NodeKind,
   findFolderById,
-  findFolderNote,
+  resolveTargetNote,
+  toggleNoteReadOnly,
   toggleNoteSpace,
 } from "../../shared/lib/spaceAssignment";
 
 const log = createLogger("useNodeContextMenu");
 
-export type NodeKind = "file" | "folder" | "media";
+export type { NodeKind };
 
 export function useNodeContextMenu() {
   const store = useStore();
@@ -104,55 +109,67 @@ export function useNodeContextMenu() {
         },
       });
 
-      // ── Sous-menu espaces (notes et dossiers uniquement) ───────────────────
+      // ── Espaces + lecture seule (notes et dossiers uniquement) ─────────────
       const spacesItems: (typeof sep)[] = [];
 
-      if (nodeKind !== "media") {
+      // Ajoute un item précédé de son séparateur (les deux IPC natifs n'ayant
+      // pas de dépendance entre eux, ils sont créés en parallèle).
+      async function pushSection(itemPromise: Promise<unknown>) {
+        const [sepItem, resolvedItem] = await Promise.all([
+          PredefinedMenuItem.new({ item: "Separator" }),
+          itemPromise,
+        ]);
+        spacesItems.push(sepItem, resolvedItem as typeof sep);
+      }
+
+      const targetNote = resolveTargetNote(
+        store.get(treeAtom),
+        store.get(notesByIdAtom),
+        nodeId,
+        nodeKind
+      );
+
+      if (targetNote) {
+        const freshTargetNote = () =>
+          resolveTargetNote(
+            store.get(treeAtom),
+            store.get(notesByIdAtom),
+            nodeId,
+            nodeKind
+          ) ?? targetNote;
+
         const spaces = store.get(vaultConfigAtom)?.spaces ?? [];
-
         if (spaces.length > 0) {
-          // Résout la note cible : note directe ou note-dossier
-          const targetNote: NoteFile | null =
-            nodeKind === "file"
-              ? (store.get(notesByIdAtom).get(nodeId) ?? null)
-              : findFolderNote(store.get(treeAtom), nodeId);
+          const currentSpaces = toArray(
+            targetNote.frontmatter[SystemField.SPACE]
+          );
 
-          if (targetNote) {
-            const currentSpaces = toArray(
-              targetNote.frontmatter[SystemField.SPACE]
-            );
+          const spaceCheckItems = await Promise.all(
+            spaces.map((space) =>
+              CheckMenuItem.new({
+                text: space.icon ? `${space.icon}  ${space.name}` : space.name,
+                checked: currentSpaces.includes(space.name),
+                action: async () => {
+                  await toggleNoteSpace(store, freshTargetNote(), space.name);
+                },
+              })
+            )
+          );
 
-            const spaceCheckItems = await Promise.all(
-              spaces.map((space) =>
-                CheckMenuItem.new({
-                  text: space.icon
-                    ? `${space.icon}  ${space.name}`
-                    : space.name,
-                  checked: currentSpaces.includes(space.name),
-                  action: async () => {
-                    // Relit la note depuis le store pour avoir la version la plus récente
-                    const freshNote =
-                      nodeKind === "file"
-                        ? (store.get(notesByIdAtom).get(nodeId) ?? targetNote)
-                        : (findFolderNote(store.get(treeAtom), nodeId) ??
-                          targetNote);
-                    await toggleNoteSpace(store, freshNote, space.name);
-                  },
-                })
-              )
-            );
-
-            const spacesSubmenu = await Submenu.new({
-              text: "Espaces",
-              items: spaceCheckItems,
-            });
-
-            const sepSpaces = await PredefinedMenuItem.new({
-              item: "Separator",
-            });
-            spacesItems.push(sepSpaces, spacesSubmenu as unknown as typeof sep);
-          }
+          await pushSection(
+            Submenu.new({ text: "Espaces", items: spaceCheckItems })
+          );
         }
+
+        await pushSection(
+          CheckMenuItem.new({
+            text: "Lecture seule",
+            checked: isNoteReadOnly(targetNote.frontmatter),
+            action: async () => {
+              await toggleNoteReadOnly(store, freshTargetNote());
+            },
+          })
+        );
       }
 
       const menu = await Menu.new({

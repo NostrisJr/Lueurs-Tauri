@@ -6,6 +6,25 @@ html, body {
   touch-action: pan-x pan-y; /* autorise le scroll mais pas le pinch-zoom */
 }
 
+/* Désactive la sélection de texte (et le menu "Copier/Coller" tactile) sur
+   toute l'UI mobile — sinon un tap un peu long sur un bouton/label sélectionne
+   du texte au lieu de déclencher l'action. Exception pour les vrais champs de
+   texte et le corps de l'éditeur. */
+* {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+.milkdown .ProseMirror,
+.milkdown .ProseMirror * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 /* Slide horizontal lors du changement d'espace (file tree). Direction selon la
    position de l'espace cible dans le sélecteur vertical. */
 @keyframes space-slide-right {

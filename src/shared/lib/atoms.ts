@@ -125,10 +125,18 @@ export const showResourcesAtom = atomWithStorage<boolean>(
   { getOnInit: true }
 );
 
-// Correcteur orthographique et grammatical (Hugo) activé (par défaut activé)
-export const spellcheckEnabledAtom = atomWithStorage<boolean>(
-  "lueurs_spellcheck_enabled",
-  true,
+// Moteur de correction orthographique/grammaticale : choix exclusif entre le
+// correcteur maison (Hugo), le correcteur natif du système (Apple), ou aucun.
+export type SpellcheckEngine = "hugo" | "apple" | "none";
+export const SPELLCHECK_ENGINES: { value: SpellcheckEngine; label: string }[] =
+  [
+    { value: "hugo", label: "Hugo" },
+    { value: "apple", label: "Apple" },
+    { value: "none", label: "Aucun" },
+  ];
+export const spellcheckEngineAtom = atomWithStorage<SpellcheckEngine>(
+  "lueurs_spellcheck_engine",
+  "hugo",
   undefined,
   { getOnInit: true }
 );
@@ -312,7 +320,13 @@ export const filteredTreeAtom = atom((get) => {
 
 // ── Navigation mobile ─────────────────────────────────────────────────────
 
-export type MobileView = "filetree" | "editor" | "tabs" | "search" | "settings";
+export type MobileView =
+  | "filetree"
+  | "editor"
+  | "tabs"
+  | "search"
+  | "settings"
+  | "trash";
 
 // Pile de navigation — source de vérité unique pour l'historique des vues
 export const mobileNavStackAtom = atom<MobileView[]>(["filetree"]);
@@ -345,6 +359,10 @@ export const mobileGoBackAtom = atom(null, (_get, set) => {
 export const mobileResetNavAtom = atom(null, (_get, set) => {
   set(mobileNavStackAtom, ["filetree"]);
 });
+
+// Section des réglages à cibler (scrollIntoView) au montage de MobileSettingsView.
+// Positionné juste avant navigate("settings"), consommé puis remis à null par la vue.
+export const mobileSettingsScrollTargetAtom = atom<string | null>(null);
 
 export type DictaphoneMode = "new-note" | "new-note-autostart" | "insert";
 export const dictaphoneModeAtom = atom<DictaphoneMode | null>(null);
@@ -396,8 +414,13 @@ export interface RenameTarget {
 }
 export const renameTargetAtom = atom<RenameTarget | null>(null);
 
-// Cible du menu contextuel mobile (appui long sur note/dossier)
-export const mobileContextMenuAtom = atom<RenameTarget | null>(null);
+// Bottom sheet mobile ouverte depuis le menu contextuel (appui long). Le menu
+// lui-même est rendu par RowContextMenu ; seules les actions à deux temps
+// (saisie du nom, choix des espaces) passent encore par une sheet.
+export interface MobileSheetTarget extends RenameTarget {
+  step: "rename" | "spaces";
+}
+export const mobileContextMenuAtom = atom<MobileSheetTarget | null>(null);
 
 export interface MobileSpellPopup {
   from: number;

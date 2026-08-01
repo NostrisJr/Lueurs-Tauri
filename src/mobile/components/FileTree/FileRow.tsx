@@ -1,18 +1,21 @@
 import clsx from "clsx";
-import { useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 import {
   IconChevronRight,
   IconFolder,
+  IconLock,
 } from "../../../shared/components/PlatformIcon";
-import type { FolderNode, MediaFile, NoteFile } from "../../../shared/hooks/useFileTree";
-import { mobileContextMenuAtom } from "../../../shared/lib/atoms";
-import { isIOS } from "../../../shared/lib/platform";
-import { useLongPress } from "../../hooks/useLongPress";
-import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
 import { Squircle } from "../../../shared/components/Squircle";
-import { getPreviewLines } from "./helpers";
+import type {
+  FolderNode,
+  MediaFile,
+  NoteFile,
+} from "../../../shared/hooks/useFileTree";
+import { isNoteReadOnly } from "../../../shared/lib/noteTypes";
+import { isIOS } from "../../../shared/lib/platform";
+import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
+import { MEDIA_LABEL, getPreviewLines, rowContainerClass } from "./helpers";
 
 interface Props {
   node: FolderNode | NoteFile | MediaFile;
@@ -36,6 +39,9 @@ function NoteContent({ note }: { note: NoteFile }) {
         <p className="text-base font-semibold text-gray-900 truncate">
           {note.name}
         </p>
+        {isNoteReadOnly(note.frontmatter) && (
+          <IconLock className="text-gray-400 shrink-0 size-3.5" />
+        )}
       </div>
       {previewLines.length > 0 ? (
         <div className="mt-0.5 space-y-0.5">
@@ -81,7 +87,6 @@ function FolderContent({ folder }: { folder: FolderNode }) {
 }
 
 function MediaContent({ media }: { media: MediaFile }) {
-  const label: Record<string, string> = { image: "Image", audio: "Audio", video: "Vidéo", pdf: "PDF" };
   return (
     <div className="flex items-center gap-2.5 min-w-0">
       <NodeIconProvider
@@ -89,19 +94,28 @@ function MediaContent({ media }: { media: MediaFile }) {
         className={clsx("text-gray-400 shrink-0", isIOS ? "size-4" : "size-5")}
       />
       <div className="min-w-0">
-        <p className="text-base font-semibold text-gray-900 truncate">{media.name}</p>
-        <p className="text-sm text-gray-400">{label[media.mediaType] ?? media.mediaType} · {media.fileName.split(".").pop()?.toUpperCase()}</p>
+        <p className="text-base font-semibold text-gray-900 truncate">
+          {media.name}
+        </p>
+        <p className="text-sm text-gray-400">
+          {MEDIA_LABEL[media.mediaType] ?? media.mediaType} ·{" "}
+          {media.fileName.split(".").pop()?.toUpperCase()}
+        </p>
       </div>
     </div>
   );
 }
 
+// L'appui long (menu contextuel) et le swipe sont gérés par MobileRowGestures,
+// qui enveloppe cette rangée : ici, seul le tap simple.
 export function FileRow({ node, onDrillIn, onClick }: Props) {
   const selectNote = useMobileSelectNote();
-  const setContextMenu = useSetAtom(mobileContextMenuAtom);
 
   function handleClick() {
-    if (onClick) { onClick(); return; }
+    if (onClick) {
+      onClick();
+      return;
+    }
     if (node.kind === "folder") {
       onDrillIn(node);
     } else {
@@ -109,26 +123,13 @@ export function FileRow({ node, onDrillIn, onClick }: Props) {
     }
   }
 
-  function handleLongPress() {
-    if (node.kind === "media") return;
-    setContextMenu({ id: node.id, name: node.name, isFolder: node.kind === "folder" });
-  }
-
-  const longPress = useLongPress(handleLongPress, handleClick);
-
   return (
     <Squircle
       radius={20}
       className="w-full bg-white active:scale-[0.98] transition-transform"
-      {...longPress}
+      onClick={handleClick}
     >
-      <div
-        className={`px-4 py-2 flex ${
-          node.kind === "folder"
-            ? "items-center gap-3 h-12"
-            : "flex-col justify-center min-h-16 h-fit"
-        }`}
-      >
+      <div className={rowContainerClass(node.kind)}>
         {node.kind === "folder" ? (
           <FolderContent folder={node} />
         ) : node.kind === "media" ? (

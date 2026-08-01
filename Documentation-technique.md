@@ -428,6 +428,26 @@ Tauri transmet cette option à WKWebView à la création de la webview. Elle est
 
 **Ce qui n'a pas fonctionné** : patcher `inputAssistantItem` via une catégorie ObjC dans `main.mm` (swizzle de `initWithFrame:configuration:`) — l'approche est correcte en théorie mais n'avait aucun effet visible, probablement parce que Wry recrée ou reconfigure la WKWebView après l'init.
 
+### Focus d'un champ dans une vue hors écran → scroll parasite de la racine
+
+**Symptôme** : à l'ouverture de la recherche, l'animation de push « passait par » la note ouverte, puis l'écran restait à cheval sur deux vues. Sans note ouverte le symptôme changeait de forme (`MobileEditor` renvoie `null` : rien à peindre), ce qui brouillait le diagnostic.
+
+**Cause** : WKWebView scrolle l'ancêtre scrollable le plus proche pour révéler un champ qui prend le focus. `SearchView` avait un `autoFocus` : au montage, la vue est encore à `translateX(100%)` (phase `initial` de l'animation de push), donc hors écran à droite. WebKit scrollait la racine de `MobileApp` de ~230 px pour « l'amener à l'écran », et ne revenait jamais.
+
+Deux pièges à retenir :
+
+- **`overflow: hidden` n'empêche pas ça** — le conteneur reste scrollable par le navigateur, seule la scrollbar disparaît.
+- **Le décalage frappe les couches, pas les vues** : les wrappers de couche sont en `absolute` (donc scrollés avec la racine), tandis que les vues qu'ils contiennent sont en `position: fixed`. Une vue `fixed` ne suit son wrapper que tant que celui-ci porte un `transform` ; dès qu'il disparaît en fin d'animation, elle se recale sur le viewport pendant que son wrapper reste décalé. C'est ce désaccord `wrapper` / `vue` qui produit l'écran à cheval.
+
+**Fix, à deux niveaux** :
+
+1. `SearchView.tsx` — focus manuel via `focus({ preventScroll: true })` au lieu d'`autoFocus`, ce qui supprime le scroll à la source.
+2. `MobileApp.tsx` — écouteur `scroll` en capture (l'évènement ne remonte pas) qui remet `scrollLeft`/`scrollTop` de la racine à 0. La racine fait exactement la taille du viewport : ce scroll n'est jamais légitime. Ce filet couvre tous les autres champs auto-focusés susceptibles d'apparaître dans une vue en cours d'animation (menu contextuel, cellules de table, cartes Kanban).
+
+**Fausse piste** : avoir cru à un problème de bloc conteneur et converti les racines de vue de `fixed` vers `absolute inset-0` + maintenu un `transform` en permanence sur les couches. Ça a **aggravé** le symptôme : avec un transform permanent, la vue `fixed` suit le décalage de son wrapper au lieu de se recaler sur le viewport en fin d'animation — le décalage devient permanent au lieu d'être transitoire.
+
+**Méthode de diagnostic** (réutilisable) : un HUD temporaire affichant à chaque frame, pour chaque couche, le rectangle du *wrapper* et celui de la *vue* contenue. Le décalage constant de −232 px sur les trois couches — et le `wrapper ≠ vue` sur la dernière frame — a désigné le scroll de la racine sans ambiguïté, là où la lecture du code seule menait à trois hypothèses fausses.
+
 ---
 
 ## Android — Clavier IME et auto-scroll du caret

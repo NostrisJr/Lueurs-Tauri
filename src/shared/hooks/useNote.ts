@@ -209,50 +209,62 @@ export function useNote() {
     log.info("suppression média terminée", { fileId });
   }
 
-  async function handleDeleteFolder(node: TreeNode) {
-    const countFiles = (n: TreeNode): number => {
-      if (n.kind === "file") return 1;
-      if (n.kind === "folder")
-        return n.children.reduce(
-          (sum: number, child: TreeNode) => sum + countFiles(child),
-          0
-        );
-      return 0;
-    };
+  function countFilesInFolder(node: TreeNode): number {
+    if (node.kind === "file") return 1;
+    if (node.kind === "folder")
+      return node.children.reduce(
+        (sum: number, child: TreeNode) => sum + countFilesInFolder(child),
+        0
+      );
+    return 0;
+  }
 
-    const fileCount = node.kind === "folder" ? countFiles(node) : 0;
+  // Étape de confirmation seule, sans mutation — permet au swipe mobile de
+  // résoudre le dialogue AVANT de jouer l'animation de suppression (sinon la
+  // rangée disparaissait visuellement puis "revenait" si l'utilisateur annulait).
+  async function confirmDeleteFolder(node: TreeNode): Promise<boolean> {
+    const fileCount = node.kind === "folder" ? countFilesInFolder(node) : 0;
+    if (fileCount === 0) return true;
+    return await ask("Voulez-vous supprimer ce dossier et tout son contenu ?", {
+      title: "Suppression de dossier",
+      kind: "warning",
+    });
+  }
+
+  // Suppression effective, en supposant la confirmation déjà obtenue (cf.
+  // confirmDeleteFolder) — appelée après l'animation de fermeture côté swipe.
+  async function commitDeleteFolder(node: TreeNode) {
+    const fileCount = node.kind === "folder" ? countFilesInFolder(node) : 0;
 
     if (fileCount === 0) {
       await deleteFolder(node.id, false);
-    } else {
-      const answer = await ask(
-        "Voulez-vous supprimer ce dossier et tout son contenu ?",
-        {
-          title: "Suppression de dossier",
-          kind: "warning",
-        }
-      );
-      if (answer) {
-        const notesInFolder = [...notesById.values()].filter((n) =>
-          n.id.startsWith(`${node.id}/`)
-        );
-        const newTabIds = openTabIds.filter(
-          (id) => !id.startsWith(`${node.id}/`)
-        );
-        setOpenTabIds(newTabIds);
-
-        for (const n of notesInFolder) {
-          await cleanupNoteFromBases(n.id);
-        }
-
-        if (activeNote?.id.startsWith(node.id)) {
-          const newActive = newTabIds.length > 0 ? newTabIds[0] : null;
-          setActiveNoteId(newActive);
-        }
-
-        await deleteFolder(node.id, true);
-      }
+      return;
     }
+
+    const notesInFolder = [...notesById.values()].filter((n) =>
+      n.id.startsWith(`${node.id}/`)
+    );
+    const newTabIds = openTabIds.filter((id) => !id.startsWith(`${node.id}/`));
+    setOpenTabIds(newTabIds);
+
+    for (const n of notesInFolder) {
+      await cleanupNoteFromBases(n.id);
+    }
+
+    if (activeNote?.id.startsWith(node.id)) {
+      const newActive = newTabIds.length > 0 ? newTabIds[0] : null;
+      setActiveNoteId(newActive);
+    }
+
+    await deleteFolder(node.id, true);
+  }
+
+  // Tout-en-un (confirmation + suppression) — pour les endroits sans animation
+  // à orchestrer autour (ex: bouton "Supprimer" du menu contextuel).
+  async function handleDeleteFolder(node: TreeNode) {
+    const confirmed = await confirmDeleteFolder(node);
+    if (!confirmed) return;
+    await commitDeleteFolder(node);
   }
 
   async function handleCreateNote() {
@@ -316,7 +328,10 @@ export function useNote() {
     return newPath;
   }
 
-  function handleCloseTab(tabId: string) {
+  // Retourne true si la fermeture laisse plus aucune note active (dernier onglet
+  // fermé) — permet à l'appelant mobile de revenir à la hiérarchie plutôt que
+  // d'afficher un éditeur vide.
+  function handleCloseTab(tabId: string): boolean {
     const newTabIds = openTabIds.filter((id) => id !== tabId);
     setOpenTabIds(newTabIds);
 
@@ -328,7 +343,9 @@ export function useNote() {
       const newActive =
         [...newHistory].reverse().find((id) => newTabIds.includes(id)) ?? null;
       setActiveNoteId(newActive);
+      return newActive === null;
     }
+    return false;
   }
 
   function handleCloseAllTabs() {
@@ -344,6 +361,8 @@ export function useNote() {
     handleDeleteNote,
     handleDeleteMedia,
     handleDeleteFolder,
+    confirmDeleteFolder,
+    commitDeleteFolder,
     handleCreateNote,
     handleCreateFolder,
     handleRename,

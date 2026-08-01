@@ -27,6 +27,7 @@ export const SystemField = {
   DEFAULT_FOLDER: "__DefaultFolder__",
   DISPLAY_MODE: "__DisplayMode__",
   SPACE: "__space__",
+  READ_ONLY: "__ReadOnly__",
 } as const;
 
 export type SystemFieldKey = (typeof SystemField)[keyof typeof SystemField];
@@ -140,6 +141,24 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
     readOnly: false,
     hidden: false,
   },
+  {
+    key: SystemField.READ_ONLY,
+    label: "Lecture seule",
+    description:
+      "Empêche l'édition du contenu, des autres propriétés et le renommage de la note.",
+    // Rendu spécial par clé dans FrontmatterValue (case à cocher), comme __Type__.
+    kind: "string",
+    noteFilter: null,
+    compatibleTypes: [
+      NoteType.NOTE,
+      NoteType.FOLDER,
+      NoteType.TEMPLATE,
+      NoteType.BASE,
+    ],
+    required: false,
+    readOnly: false,
+    hidden: false,
+  },
   // __View__, __KanbanKey__, __KanbanColumns__ sont gérés exclusivement
   // via le sélecteur de vue — non ajoutables manuellement via l'UI.
 ];
@@ -160,6 +179,13 @@ export function getAddableFields(
 
 export function getFieldDef(key: string): SystemFieldDef | null {
   return SYSTEM_FIELDS.find((f) => f.key === key) ?? null;
+}
+
+// Note verrouillée en lecture seule (__ReadOnly__: true dans le frontmatter)
+export function isNoteReadOnly(
+  frontmatter: Record<string, unknown> | undefined
+): boolean {
+  return frontmatter?.[SystemField.READ_ONLY] === "true";
 }
 
 // Retourne true si la clé est un champ système fonctionnel (non éditable manuellement)

@@ -19,6 +19,11 @@ use vault_android::*;
 #[cfg(target_os = "macos")]
 mod macos_window;
 
+#[cfg(target_os = "macos")]
+mod macos_spellcheck;
+#[cfg(target_os = "macos")]
+use macos_spellcheck::{native_learn_word, native_spell_suggestions, set_native_text_checking};
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -327,6 +332,12 @@ pub fn run() {
             show_action_sheet,
             show_rename_prompt,
             open_import_picker,
+            #[cfg(target_os = "macos")]
+            set_native_text_checking,
+            #[cfg(target_os = "macos")]
+            native_spell_suggestions,
+            #[cfg(target_os = "macos")]
+            native_learn_word,
             #[cfg(target_os = "android")]
             vault_pick_dir,
             #[cfg(target_os = "android")]

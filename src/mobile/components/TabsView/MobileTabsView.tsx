@@ -1,6 +1,10 @@
 import { clsx } from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
-import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
+import {
+  IconChevronLeft,
+  IconRectangleStack,
+  IconXmark,
+} from "../../../shared/components/PlatformIcon";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
   activeNoteIdAtom,
@@ -15,7 +19,7 @@ import { iconAccentClass, isIOS } from "../../../shared/lib/platform";
 import { hapticImpact } from "../../lib/haptics";
 import { FileRow } from "../FileTree/FileRow";
 import { MobileSpaceSwitcher } from "../Floating/MobileSpaceSwitcher";
-import { SwipeableTabRow } from "./SwipeableTabRow";
+import { MobileRowGestures, NodePreviewCard } from "../Row";
 
 export function MobileTabsView() {
   const openTabIds = useAtomValue(openTabIdsAtom);
@@ -25,6 +29,7 @@ export function MobileTabsView() {
   const navigate = useSetAtom(mobileNavigateAtom);
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const setNoteBackStack = useSetAtom(noteBackStackAtom);
+  const setOpenTabIds = useSetAtom(openTabIdsAtom);
   const { handleCloseTab, handleCloseAllTabs } = useNote();
 
   function handleSelectTab(id: string) {
@@ -33,6 +38,12 @@ export function MobileTabsView() {
     setActiveNoteId(id);
     resetNav();
     navigate("editor");
+  }
+
+  function handleCloseOthers(id: string) {
+    hapticImpact("medium");
+    setOpenTabIds([id]);
+    setActiveNoteId(id);
   }
 
   return (
@@ -86,13 +97,43 @@ export function MobileTabsView() {
 
             return (
               <div key={id} className="w-11/12 mx-auto">
-                <SwipeableTabRow onClose={() => handleCloseTab(id)}>
+                <MobileRowGestures
+                  onDelete={() => {
+                    if (handleCloseTab(id)) resetNav();
+                  }}
+                  icon={IconXmark}
+                  onActivate={() => handleSelectTab(id)}
+                  menu={{
+                    preview: <NodePreviewCard node={node} />,
+                    items: [
+                      {
+                        id: "close",
+                        label: "Fermer l'onglet",
+                        icon: IconXmark,
+                        destructive: true,
+                        onPress: () => {
+                          if (handleCloseTab(id)) resetNav();
+                        },
+                      },
+                      ...(openTabIds.length > 1
+                        ? [
+                            {
+                              id: "close-others",
+                              label: "Fermer les autres onglets",
+                              icon: IconRectangleStack,
+                              onPress: () => handleCloseOthers(id),
+                            },
+                          ]
+                        : []),
+                    ],
+                  }}
+                >
                   <FileRow
                     node={node}
                     onDrillIn={() => {}}
                     onClick={() => handleSelectTab(id)}
                   />
-                </SwipeableTabRow>
+                </MobileRowGestures>
               </div>
             );
           })

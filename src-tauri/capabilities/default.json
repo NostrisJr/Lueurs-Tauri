@@ -16,6 +16,8 @@
     "native-audio:default",
     "shell:default",
     "hugo-tauri:allow-check-text",
+    "haptics:allow-impact-feedback",
+    "haptics:allow-selection-feedback",
     {
       "identifier": "shell:allow-execute",
       "allow": [

@@ -1,11 +1,12 @@
 import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
 import {
+  SPELLCHECK_ENGINES,
   defaultDisplayModeAtom,
   defaultHighlightColorAtom,
   ignoredWordsAtom,
   pageFormatAtom,
-  spellcheckEnabledAtom,
+  spellcheckEngineAtom,
   textJustificationAtom,
 } from "../../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../../shared/lib/displayModes";
@@ -15,6 +16,43 @@ import {
 } from "../../../../shared/lib/pageMetrics";
 import { HIGHLIGHT_COLORS } from "../../../../shared/plugins/highlight/colors";
 import { IgnoredWordsView } from "./IgnoredWordsView";
+
+interface SegmentedOption<T extends string> {
+  value: T;
+  label: string;
+  Icon?: React.FC<{ className?: string }>;
+}
+
+// Sélecteur à choix exclusif (pills), réutilisé pour mode de lecture / correcteur / format de page.
+function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: SegmentedOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+      {options.map(({ value: v, label, Icon }) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all cursor-default ${
+            value === v
+              ? "bg-white shadow-sm text-gray-800 font-medium"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          {Icon && <Icon className="size-3.5" aria-hidden="true" />}
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function EditeurTab() {
   const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(
@@ -26,9 +64,7 @@ export function EditeurTab() {
   const [textJustification, setTextJustification] = useAtom(
     textJustificationAtom
   );
-  const [spellcheckEnabled, setSpellcheckEnabled] = useAtom(
-    spellcheckEnabledAtom
-  );
+  const [spellcheckEngine, setSpellcheckEngine] = useAtom(spellcheckEngineAtom);
   const [pageFormat, setPageFormat] = useAtom(pageFormatAtom);
   const ignoredWords = useAtomValue(ignoredWordsAtom);
   const [showIgnored, setShowIgnored] = useState(false);
@@ -41,23 +77,11 @@ export function EditeurTab() {
     <div className="space-y-5">
       <div className="space-y-2">
         <p className="text-xs text-gray-500">Mode de lecture par défaut</p>
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-          {DISPLAY_MODES.map(({ value, Icon, label }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setDefaultDisplayMode(value)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all cursor-default ${
-                defaultDisplayMode === value
-                  ? "bg-white shadow-sm text-gray-800 font-medium"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <Icon className="size-3.5" aria-hidden="true" />
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={DISPLAY_MODES}
+          value={defaultDisplayMode}
+          onChange={setDefaultDisplayMode}
+        />
         <p className="text-xs text-gray-400">
           Appliqué aux nouvelles notes et aux notes sans mode défini.
         </p>
@@ -75,19 +99,18 @@ export function EditeurTab() {
         </span>
       </label>
 
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={spellcheckEnabled}
-          onChange={() => setSpellcheckEnabled((v) => !v)}
-          className="rounded accent-gray-800 cursor-pointer"
-        />
-        <span className="text-sm text-gray-700">
+      <div className="space-y-2">
+        <p className="text-xs text-gray-500">
           Correcteur orthographique et grammatical
-        </span>
-      </label>
+        </p>
+        <SegmentedControl
+          options={SPELLCHECK_ENGINES}
+          value={spellcheckEngine}
+          onChange={setSpellcheckEngine}
+        />
+      </div>
 
-      {spellcheckEnabled && (
+      {spellcheckEngine === "hugo" && (
         <button
           type="button"
           onClick={() => setShowIgnored(true)}
@@ -131,22 +154,14 @@ export function EditeurTab() {
         <p className="text-xs text-gray-500">
           Format de référence de l'indicateur de pages
         </p>
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-          {(Object.keys(PAGE_FORMATS) as PageFormat[]).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setPageFormat(value)}
-              className={`px-3 py-1.5 rounded-md text-sm transition-all cursor-default ${
-                pageFormat === value
-                  ? "bg-white shadow-sm text-gray-800 font-medium"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {PAGE_FORMATS[value].label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={(Object.keys(PAGE_FORMATS) as PageFormat[]).map((value) => ({
+            value,
+            label: PAGE_FORMATS[value].label,
+          }))}
+          value={pageFormat}
+          onChange={setPageFormat}
+        />
       </div>
     </div>
   );

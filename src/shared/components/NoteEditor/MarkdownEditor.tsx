@@ -2,6 +2,7 @@ import {
   Editor,
   defaultValueCtx,
   editorViewCtx,
+  editorViewOptionsCtx,
   rootCtx,
   schemaCtx,
 } from "@milkdown/kit/core";
@@ -12,6 +13,7 @@ import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { trailing } from "@milkdown/kit/plugin/trailing";
 import { commonmark, headingKeymap } from "@milkdown/kit/preset/commonmark";
 import { gfm } from "@milkdown/kit/preset/gfm";
+import { TextSelection } from "@milkdown/kit/prose/state";
 import { Milkdown, useEditor } from "@milkdown/react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { readFile } from "@tauri-apps/plugin-fs";
@@ -25,13 +27,14 @@ import {
   ignoredWordsAtom,
   notesByIdAtom,
   scrollToPosAtom,
-  spellcheckEnabledAtom,
+  spellcheckEngineAtom,
   textJustificationAtom,
   updateIgnoredWordsAtom,
 } from "../../lib/atoms";
 import type { DocumentMapState } from "../../lib/documentMapConfig";
 import { createLogger } from "../../lib/logger";
-import { isAndroid, isDesktop } from "../../lib/platform";
+import { isNoteReadOnly } from "../../lib/noteTypes";
+import { isAndroid, isDesktop, isIOS } from "../../lib/platform";
 import { createAudioBlockPlugin } from "../../plugins/audio-block/audioBlockPlugin";
 import { customCaretPlugin } from "../../plugins/custom-caret/customCaretPlugin";
 import {
@@ -67,6 +70,7 @@ import {
   refreshInlineFormulas,
 } from "../../plugins/inline-formula/inlineFormulaPlugin";
 import { poetryBlockPlugin } from "../../plugins/poetry-block/poetryBlockPlugin";
+import { setNativeTextChecking } from "../../plugins/spellcheck/appleApi";
 import { warmUpSpellcheck } from "../../plugins/spellcheck/hugoApi";
 import {
   spellcheckKey,
@@ -99,6 +103,20 @@ export type { Editor };
 
 const log = createLogger("MarkdownEditor");
 
+// Attributs du DOM éditable pour le correcteur natif (Apple) : utilisés à la
+// fois pour la valeur initiale (construction de l'éditeur) et pour la mise à
+// jour impérative en cours d'édition (cf. effet plus bas).
+function nativeSpellcheckAttrs(useNative: boolean) {
+  return {
+    spellcheck: useNative ? "true" : "false",
+    autocorrect: useNative ? "on" : "off",
+    autocapitalize: useNative ? "sentences" : "off",
+    // Prédictions inline et Writing Tools (iOS 18 / macOS 15) : pilotées par cet
+    // attribut, pas par `autocorrect`.
+    writingsuggestions: useNative ? "true" : "false",
+  };
+}
+
 interface Props {
   node: NoteFile;
   vaultPath: string;
@@ -128,14 +146,37 @@ export function MarkdownEditor({
   const posToScroll = useAtomValue(scrollToPosAtom);
   const setScrollToPos = useSetAtom(scrollToPosAtom);
   const defaultHighlightColor = useAtomValue(defaultHighlightColorAtom);
-  const spellcheckEnabled = useAtomValue(spellcheckEnabledAtom);
+  const spellcheckEngine = useAtomValue(spellcheckEngineAtom);
   const ignoredWords = useAtomValue(ignoredWordsAtom);
   const updateIgnoredWords = useSetAtom(updateIgnoredWordsAtom);
+
+  // Note verrouillée : lu par la fonction `editable` de l'éditeur (fermeture
+  // stable, contrairement au frontmatter capturé à la construction).
+  const readOnly = isNoteReadOnly(node.frontmatter);
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
 
   // Synchronise la ref module-level avec l'atom React pour les commandes ProseMirror
   useEffect(() => {
     defaultHighlightColorRef.current = defaultHighlightColor;
   }, [defaultHighlightColor]);
+
+  // Force ProseMirror à recalculer `editable` (et l'attribut contenteditable
+  // du DOM) immédiatement au verrouillage/déverrouillage, sans attendre la
+  // prochaine transaction naturelle (frappe, sélection...). `readOnly` n'est
+  // lu qu'à travers readOnlyRef (fermeture stable de `editable`) : il ne sert
+  // ici qu'à déclencher l'effet.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: readOnly déclenche l'effet, lu via readOnlyRef
+  useEffect(() => {
+    editorRef.current?.action((ctx) => {
+      try {
+        const view = ctx.get(editorViewCtx);
+        view.dispatch(view.state.tr);
+      } catch {
+        /* editorViewCtx pas encore injecté */
+      }
+    });
+  }, [readOnly, editorRef]);
 
   // Pont de résolution/navigation des liens entre notes (lu hors React par le
   // plugin note-link). href = chemin relatif vault avec extension → id (absolu).
@@ -162,7 +203,9 @@ export function MarkdownEditor({
     editorRef.current?.action((ctx) => {
       try {
         refreshNoteLinkDecorations(ctx.get(editorViewCtx));
-      } catch { /* editorViewCtx pas encore injecté */ }
+      } catch {
+        /* editorViewCtx pas encore injecté */
+      }
     });
     return () => {
       wikilinkBridge.current = null;
@@ -194,12 +237,15 @@ export function MarkdownEditor({
     };
   }, [node.frontmatter, notesById]);
 
-  // Correcteur : synchronise l'état activé. Le scan initial est piloté par
-  // l'init du plugin ; ici on ne réagit qu'aux changements de réglage en cours
-  // d'édition (réactivation → tout re-vérifier ; désactivation → nettoyer).
+  // Correcteur Hugo : synchronise l'état activé (actif uniquement pour ce
+  // moteur). Le scan initial est piloté par l'init du plugin ; ici on ne
+  // réagit qu'aux changements de réglage en cours d'édition (réactivation →
+  // tout re-vérifier ; désactivation → nettoyer).
+  const hugoEnabled = spellcheckEngine === "hugo";
   const spellcheckMounted = useRef(false);
   useEffect(() => {
-    spellcheckEnabledRef.current = spellcheckEnabled;
+    spellcheckEnabledRef.current = hugoEnabled;
+    if (hugoEnabled) warmUpSpellcheck();
     if (!spellcheckMounted.current) {
       spellcheckMounted.current = true;
       return;
@@ -210,12 +256,56 @@ export function MarkdownEditor({
         view.dispatch(
           view.state.tr.setMeta(
             spellcheckKey,
-            spellcheckEnabled ? { dirtyAll: true } : { clear: true }
+            hugoEnabled ? { dirtyAll: true } : { clear: true }
           )
         );
-      } catch { /* editorViewCtx pas encore injecté */ }
+      } catch {
+        /* editorViewCtx pas encore injecté */
+      }
     });
-  }, [spellcheckEnabled, editorRef]);
+  }, [hugoEnabled, editorRef]);
+
+  // Correcteur natif (Apple) : le DOM éditable est créé une seule fois, donc
+  // on met à jour ses attributs impérativement pour refléter un changement de
+  // moteur en cours d'édition sans avoir à remonter l'éditeur.
+  const nativeMounted = useRef(false);
+  useEffect(() => {
+    const useNative = spellcheckEngine === "apple";
+    const attrs = nativeSpellcheckAttrs(useNative);
+    const firstRun = !nativeMounted.current;
+    nativeMounted.current = true;
+
+    editorRef.current?.action((ctx) => {
+      try {
+        const view = ctx.get(editorViewCtx);
+        for (const [attr, value] of Object.entries(attrs)) {
+          view.dom.setAttribute(attr, value);
+        }
+        // iOS fige les traits du clavier (correction, capitalisation) au moment
+        // du focus : sans blur/refocus, un changement de réglage ne prendrait
+        // qu'au prochain focus manuel. Ciblé sur ce seul cas — un refocus
+        // générique casse le swipe-back.
+        if (isIOS && !firstRun && view.hasFocus()) {
+          const { from, to } = view.state.selection;
+          view.dom.blur();
+          requestAnimationFrame(() => {
+            view.focus();
+            view.dispatch(
+              view.state.tr.setSelection(
+                TextSelection.create(view.state.doc, from, to)
+              )
+            );
+          });
+        }
+      } catch {
+        /* editorViewCtx pas encore injecté */
+      }
+    });
+
+    // macOS : les attributs HTML ne pilotent pas la correction à la frappe,
+    // WebKit lit son état de text-checking dans les NSUserDefaults du process.
+    setNativeTextChecking(useNative);
+  }, [spellcheckEngine, editorRef]);
 
   // Synchronise les mots ignorés vers la ref module-level lue par le plugin.
   // Première exécution : alimente la ref avant le scan initial (sans re-scan).
@@ -234,7 +324,9 @@ export function MarkdownEditor({
       try {
         const view = ctx.get(editorViewCtx);
         view.dispatch(view.state.tr.setMeta(spellcheckKey, { dirtyAll: true }));
-      } catch { /* editorViewCtx pas encore injecté */ }
+      } catch {
+        /* editorViewCtx pas encore injecté */
+      }
     });
   }, [ignoredKey, editorRef]);
 
@@ -249,10 +341,6 @@ export function MarkdownEditor({
     },
     [updateIgnoredWords]
   );
-
-  useEffect(() => {
-    warmUpSpellcheck();
-  }, []);
 
   // Refs pour éviter les fermetures périmées dans les listeners Milkdown (capturés une seule fois)
   const onChangeRef = useRef(onChange);
@@ -369,6 +457,15 @@ export function MarkdownEditor({
       .config((ctx) => {
         ctx.set(rootCtx, root);
         ctx.set(defaultValueCtx, node.body);
+      })
+      .config((ctx) => {
+        // Valeur initiale des attributs selon le moteur choisi (mise à jour
+        // ensuite impérativement si le réglage change, cf. effet plus bas :
+        // le DOM éditable n'est créé qu'une seule fois ici).
+        ctx.set(editorViewOptionsCtx, {
+          attributes: nativeSpellcheckAttrs(spellcheckEngine === "apple"),
+          editable: () => !readOnlyRef.current,
+        });
       })
       .config((ctx) => {
         ctx.get(listenerCtx).markdownUpdated((_, markdown, prevMarkdown) => {

@@ -33,6 +33,8 @@ interface Props {
   isTemplate: boolean;
   commit: (rows: Row[]) => void;
   onRenameTemplateKey?: (oldKey: string, newKey: string) => void;
+  /** Note verrouillée en lecture seule : bloque tout sauf la case __ReadOnly__ elle-même. */
+  locked?: boolean;
 }
 
 const SELECTOR_PLACEHOLDERS: Partial<Record<string, string>> = {
@@ -58,13 +60,15 @@ export function FrontmatterRow({
   isTemplate,
   commit,
   onRenameTemplateKey,
+  locked = false,
 }: Props) {
   const isMobile = platform() === "ios";
   const rowRef = useRef<HTMLDivElement>(null);
   const selectorAnchorRef = useRef<HTMLButtonElement>(null);
 
   const rows = useAtomValue(rowsAtom);
-  const { lockedKeys, lockedValues, enumConstraints } = useTemplateConstraints();
+  const { lockedKeys, lockedValues, enumConstraints } =
+    useTemplateConstraints();
   const isKeyLocked = lockedKeys.has(row.key);
   const isValueLocked = lockedValues.has(row.key);
   const enumConstraint = enumConstraints.get(row.key);
@@ -158,10 +162,10 @@ export function FrontmatterRow({
   }
 
   // Tout est supprimable sauf __Type__ et les props issues d'un template
-  const canDelete = !(row.key === SystemField.TYPE) && !isKeyLocked;
+  const canDelete = !locked && !(row.key === SystemField.TYPE) && !isKeyLocked;
   // Sur le template lui-même, les props sont toujours renommables.
   // Sur les enfants, isKeyLocked bloque le renommage.
-  const canRename = !row.isSystem && (isTemplate || !isKeyLocked);
+  const canRename = !locked && !row.isSystem && (isTemplate || !isKeyLocked);
 
   const noteResolver = (path: string) => notesById.get(path);
 
@@ -229,11 +233,15 @@ export function FrontmatterRow({
         aria-hidden="true"
       />
 
-      {hasNoteSelector(row.key) || hasSpaceSelector(row.key) ? (
+      {!locked && (hasNoteSelector(row.key) || hasSpaceSelector(row.key)) ? (
         <span ref={selectorAnchorRef}>
           <button
             type="button"
-            title={hasSpaceSelector(row.key) ? "Ajouter un espace" : "Ajouter une note"}
+            title={
+              hasSpaceSelector(row.key)
+                ? "Ajouter un espace"
+                : "Ajouter une note"
+            }
             onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
             className={`p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
           >
@@ -249,7 +257,7 @@ export function FrontmatterRow({
         value={row.value}
         isNoteArray={row.isNoteArray}
         isSystem={row.isSystem}
-        isValueLocked={isValueLocked}
+        isValueLocked={isValueLocked || locked}
         enumConstraint={enumConstraint}
         formulaVars={formulaVars}
         formulaChildren={formulaChildren}

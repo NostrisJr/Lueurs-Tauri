@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { isMobile } from "../lib/platform";
 
 interface EditableTextProps {
   value: string;
   onSave: (newValue: string) => Promise<void>;
   className?: string;
   clickToEdit?: boolean;
+  disabled?: boolean;
 }
 
 export function EditableText({
@@ -12,6 +15,7 @@ export function EditableText({
   onSave,
   className = "",
   clickToEdit = false,
+  disabled = false,
 }: EditableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -21,7 +25,10 @@ export function EditableText({
   const stateRef = useRef({ isEditing, editValue, value, onSave });
   stateRef.current = { isEditing, editValue, value, onSave };
 
+  // Desktop uniquement — sur mobile le focus est donné dans le geste utilisateur
+  // (voir startEditing), sinon WKWebView refuse d'ouvrir le clavier.
   useEffect(() => {
+    if (isMobile) return;
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
@@ -69,6 +76,11 @@ export function EditableText({
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
       e.preventDefault();
+      // Mobile : blur d'abord pour refermer le clavier, le save suit via onBlur
+      if (isMobile) {
+        inputRef.current?.blur();
+        return;
+      }
       handleSave();
     } else if (e.key === "Escape") {
       setEditValue(value);
@@ -78,7 +90,21 @@ export function EditableText({
 
   function startEditing() {
     setEditValue(value);
-    setIsEditing(true);
+
+    if (!isMobile) {
+      setIsEditing(true);
+      return;
+    }
+
+    // iOS n'ouvre le clavier que si focus() a lieu dans le même tick que le geste
+    // utilisateur : on force le rendu de l'input avant de le focus.
+    flushSync(() => setIsEditing(true));
+    const input = inputRef.current;
+    if (!input) return;
+    input.focus();
+    // Caret en fin plutôt que select() — une frappe accidentelle effacerait tout
+    const end = input.value.length;
+    input.setSelectionRange(end, end);
   }
 
   if (isEditing) {
@@ -90,18 +116,35 @@ export function EditableText({
         onChange={(e) => setEditValue(e.target.value)}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
-        className={`outline-none w-full truncate ${className} items-baseline px-1`}
+        enterKeyHint="done"
+        className={`outline-none caret-amber-400 w-full truncate ${className} items-baseline px-1`}
       />
+    );
+  }
+
+  // Mobile : un <button> et pas un <span>. iOS n'émet pas toujours de click sur
+  // un élément non interactif, et surtout les gardes `closest("button, input…")`
+  // des conteneurs parents (MobileEditor) laisseraient passer le tap au travers.
+  if (isMobile) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={startEditing}
+        className={`truncate min-w-0 text-left bg-transparent ${className} px-1`}
+      >
+        {value}
+      </button>
     );
   }
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
     <span
-      onClick={clickToEdit ? startEditing : undefined}
-      onDoubleClick={!clickToEdit ? startEditing : undefined}
-      className={`cursor-pointer truncate ${className} items-baseline px-1`}
-      title="Cliquer pour renommer"
+      onClick={!disabled && clickToEdit ? startEditing : undefined}
+      onDoubleClick={!disabled && !clickToEdit ? startEditing : undefined}
+      className={`truncate ${className} items-baseline px-1 ${disabled ? "" : "cursor-pointer"}`}
+      title={disabled ? undefined : "Cliquer pour renommer"}
     >
       {value}
     </span>

@@ -26,6 +26,7 @@ import { MobileFileTree } from "./components/FileTree";
 import { SearchView } from "./components/Search/SearchView";
 import { MobileSettingsView } from "./components/Settings/MobileSettingsView";
 import { MobileTabsView } from "./components/TabsView/MobileTabsView";
+import { MobileTrashView } from "./components/Trash/MobileTrashView";
 import {
   DURATION,
   EASING,
@@ -51,6 +52,8 @@ function ViewRenderer({ view }: { view: MobileView }) {
       return <SearchView />;
     case "settings":
       return <MobileSettingsView />;
+    case "trash":
+      return <MobileTrashView />;
     default:
       return (
         <div className="h-full w-full flex items-center justify-center fixed">
@@ -71,6 +74,7 @@ export function MobileApp() {
   useVaultSync();
 
   const [pendingNewNote, setPendingNewNote] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // ── Bouton Centre de contrôle ─────────────────────────────────────────────
   // biome-ignore lint/correctness/useExhaustiveDependencies: setDictaphoneMode est stable
@@ -100,6 +104,25 @@ export function MobileApp() {
     setPendingNewNote(false);
     createNote(inboxPath ?? folderPath).then(selectNote);
   }, [pendingNewNote, folderPath]);
+
+  // WKWebView scrolle l'ancêtre scrollable le plus proche pour révéler un champ qui
+  // prend le focus — y compris quand ce champ est dans une vue encore hors écran
+  // (translateX(100%)) pendant une animation de navigation. `overflow-hidden` n'y
+  // change rien : le conteneur reste scrollable par le navigateur. La racine se
+  // retrouvait ainsi scrollée de ~230 px, décalant définitivement les trois couches
+  // (l'éditeur garé redevenant visible au passage). Ce scroll n'est jamais légitime
+  // ici : la racine fait exactement la taille du viewport.
+  useEffect(() => {
+    const onScroll = (e: Event) => {
+      const root = rootRef.current;
+      if (!root || e.target !== root) return;
+      root.scrollLeft = 0;
+      root.scrollTop = 0;
+    };
+    // En capture : l'évènement `scroll` ne remonte pas.
+    document.addEventListener("scroll", onScroll, true);
+    return () => document.removeEventListener("scroll", onScroll, true);
+  }, []);
 
   // Retire l'overlay UIKit natif quand le vault est prêt (arbre chargé ou pas de vault configuré).
   useEffect(() => {
@@ -235,6 +258,7 @@ export function MobileApp() {
 
   return (
     <div
+      ref={rootRef}
       className="fixed inset-0 overflow-hidden bg-gray-100"
       onTouchStart={touchHandlers.onTouchStart}
       onTouchMove={touchHandlers.onTouchMove}

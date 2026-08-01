@@ -1,7 +1,11 @@
 import { useAtom, useAtomValue } from "jotai";
 import { useSetAtom } from "jotai";
-import { useState } from "react";
-import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
+import { useEffect, useState } from "react";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconTrash,
+} from "../../../shared/components/PlatformIcon";
 import { Squircle } from "../../../shared/components/Squircle";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
@@ -12,15 +16,20 @@ import {
   folderPathAtom,
   inboxRelPathAtom,
   mobileGoBackAtom,
+  mobileNavigateAtom,
+  mobileSettingsScrollTargetAtom,
   showResourcesAtom,
+  SPELLCHECK_ENGINES,
+  spellcheckEngineAtom,
   textJustificationAtom,
   treeAtom,
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
-import { iconAccentClass, isAndroid } from "../../../shared/lib/platform";
+import { iconAccentClass, isAndroid, isIOS } from "../../../shared/lib/platform";
 import { vaultIO } from "../../../shared/lib/vaultIO";
 import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
+import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { vaultDisplayName } from "../../lib/vault";
 import { MobileSplashScreen } from "../Splash/MobileSplashScreen";
@@ -41,6 +50,7 @@ export function MobileSettingsView() {
   const [textJustification, setTextJustification] = useAtom(
     textJustificationAtom
   );
+  const [spellcheckEngine, setSpellcheckEngine] = useAtom(spellcheckEngineAtom);
   const [showResources, setShowResources] = useAtom(showResourcesAtom);
   const [inboxRelPath, setInboxRelPath] = useAtom(inboxRelPathAtom);
   const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(
@@ -48,13 +58,29 @@ export function MobileSettingsView() {
   );
   const allFolders = useAtomValue(allFoldersAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
+  const navigate = useSetAtom(mobileNavigateAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const tree = useAtomValue(treeAtom);
   const { pickFolder, reload } = useFileTree();
+  const { height: keyboardHeight, isOpen: isKeyboardOpen } = useKeyboard();
+  const [scrollTarget, setScrollTarget] = useAtom(
+    mobileSettingsScrollTargetAtom
+  );
 
   type CleanStatus = null | "running" | { count: number } | "error";
   const [cleanStatus, setCleanStatus] = useState<CleanStatus>(null);
   const [showSplash, setShowSplash] = useState(false);
+
+  // Cible de scroll consommée une seule fois au montage (accès rapide depuis un
+  // appui long sur le titre du file tree ou le sélecteur d'espaces).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ne doit s'exécuter qu'au montage
+  useEffect(() => {
+    if (scrollTarget !== "espaces") return;
+    document
+      .getElementById("settings-espaces-section")
+      ?.scrollIntoView({ behavior: "auto", block: "start" });
+    setScrollTarget(null);
+  }, []);
 
   async function handleCleanResources() {
     if (!folderPath) return;
@@ -74,7 +100,7 @@ export function MobileSettingsView() {
           );
           for (const e of entries) {
             if (!e.isDir && !referenced.has(e.name)) {
-              await vaultIO.delete(e.uri);
+              await vaultIO.delete(e.uri, folderPath ?? undefined, "file");
               count++;
             }
           }
@@ -109,7 +135,17 @@ export function MobileSettingsView() {
       </div>
 
       {/* Contenu */}
-      <div className="flex-1 overflow-auto pt-28 px-4 pb-8">
+      <div
+        // Repéré par useMobileReorder (réordo des espaces) comme conteneur à
+        // faire défiler quand le doigt atteint un bord pendant un déplacement.
+        data-mobile-scroll-container=""
+        className="flex-1 pt-28 px-4 overflow-auto"
+        style={{
+          // Padding dynamique : sans ça, un champ édité en bas de liste (ex: nom
+          // d'espace) reste caché sous le clavier sans pouvoir scroller assez haut.
+          paddingBottom: isKeyboardOpen ? keyboardHeight + 24 : 32,
+        }}
+      >
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3 px-1">
           Mode de lecture par défaut
         </p>
@@ -183,6 +219,40 @@ export function MobileSettingsView() {
                 />
               </div>
             </button>
+          </Squircle>
+        </div>
+
+        {/* Correcteur orthographique et grammatical */}
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+          Correcteur orthographique et grammatical
+        </p>
+        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+          <Squircle
+            radius={18}
+            className="overflow-hidden bg-white border border-gray-100"
+          >
+            {SPELLCHECK_ENGINES.map(({ value, label }, i) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  hapticImpact("light");
+                  setSpellcheckEngine(value);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors ${
+                  i < SPELLCHECK_ENGINES.length - 1
+                    ? "border-b border-gray-100"
+                    : ""
+                }`}
+              >
+                <p className="flex-1 min-w-0 text-base text-gray-900">
+                  {label}
+                </p>
+                {spellcheckEngine === value && (
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                )}
+              </button>
+            ))}
           </Squircle>
         </div>
 
@@ -347,7 +417,46 @@ export function MobileSettingsView() {
           </Squircle>
         </div>
 
-        <MobileEspacesSection />
+        <div id="settings-espaces-section">
+          <MobileEspacesSection />
+        </div>
+
+        {isIOS && (
+          <>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+              Corbeille
+            </p>
+            <div
+              style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
+            >
+              <Squircle
+                radius={18}
+                className="overflow-hidden bg-white border border-gray-100"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticImpact("light");
+                    navigate("trash");
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors"
+                >
+                  <IconTrash
+                    className="size-5 text-gray-400 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <p className="flex-1 min-w-0 text-base text-gray-900">
+                    Corbeille
+                  </p>
+                  <IconChevronRight
+                    className="size-4 text-gray-300 shrink-0"
+                    aria-hidden="true"
+                  />
+                </button>
+              </Squircle>
+            </div>
+          </>
+        )}
 
         {import.meta.env.DEV && (
           <>

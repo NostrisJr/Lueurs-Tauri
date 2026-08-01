@@ -26,7 +26,7 @@ import {
 import { isFormula } from "./formulas";
 import { createLogger } from "./logger";
 import { NoteType, SystemField } from "./noteTypes";
-import { isAndroid } from "./platform";
+import { isAndroid, isMacOS } from "./platform";
 
 const log = createLogger("vaultIO");
 
@@ -122,12 +122,25 @@ export const vaultIO = {
   },
 
   // Sur Android : suppression définitive. Sur macOS : corbeille Finder (via osascript côté JS).
-  async delete(uri: string): Promise<void> {
+  // Sur iOS : pas d'osascript ni de corbeille système accessible → corbeille applicative
+  // dans <vault>/.trash, consultable/restaurable depuis Réglages > Corbeille (trashIO.ts).
+  async delete(
+    uri: string,
+    vaultPath?: string,
+    kind: "file" | "folder" = "file"
+  ): Promise<void> {
     if (isAndroid) {
       return invoke<void>("vault_delete", { uri });
     }
-    const { moveToTrash } = await import("./fileTreeHelpers");
-    return moveToTrash(uri);
+    if (isMacOS) {
+      const { moveToTrash } = await import("./fileTreeHelpers");
+      return moveToTrash(uri);
+    }
+    if (!vaultPath) {
+      throw new Error("vaultPath requis pour la corbeille applicative iOS");
+    }
+    const { moveToAppTrash } = await import("./trashIO");
+    await moveToAppTrash(vaultPath, uri, kind);
   },
 
   // Ouvre le picker SAF sur Android. Sur les autres plateformes, retourne null

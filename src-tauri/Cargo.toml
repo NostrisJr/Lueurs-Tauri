@@ -1,6 +1,6 @@
 [package]
 name = "lueurs-tauri"
-version = "1.0.0"
+version = "1.0.1"
 description = "Note taking app with local storage and advanced functionnalities"
 authors = ["Theophile Donato"]
 edition = "2021"

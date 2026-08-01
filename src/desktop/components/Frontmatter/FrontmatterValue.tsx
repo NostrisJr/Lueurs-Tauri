@@ -97,6 +97,29 @@ export function FrontmatterValue({
     );
   }
 
+  if (fieldKey === SystemField.READ_ONLY) {
+    const checked = (value as string) === "true";
+    return (
+      <label className="flex items-center gap-2 flex-1 mt-0.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={() => {
+            // "" (plutôt que "false") : même convention que les autres champs
+            // vidés dans ce panneau, cohérent avec toggleNoteReadOnly qui
+            // retire la clé plutôt que d'y écrire une valeur explicite.
+            onTextChange(checked ? "" : "true");
+            onTextBlur();
+          }}
+          className="rounded accent-gray-800 cursor-pointer"
+        />
+        <span className="text-gray-500 text-xs">
+          {checked ? "Verrouillée" : "Déverrouillée"}
+        </span>
+      </label>
+    );
+  }
+
   // ── Contrainte BUTTON (valeur choisie via dropdown) ───────────────────────
   if (enumConstraint) {
     return (
@@ -125,6 +148,7 @@ export function FrontmatterValue({
             key={path}
             name={noteName(path)}
             noteId={path}
+            readOnly={isValueLocked}
             onRemove={() => onRemoveNote(path)}
           />
         ))}

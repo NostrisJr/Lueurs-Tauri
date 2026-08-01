@@ -67,6 +67,7 @@ interface SpaceRowProps {
   onIconChange: (index: number, icon: string) => void;
   onColorChange: (index: number, color: string) => void;
   onNameChange: (index: number, name: string) => void;
+  onNameFocus: (index: number) => void;
   onNameBlur: (index: number) => void;
   onDelete: (index: number) => void;
 }
@@ -77,6 +78,7 @@ export function SpaceRow({
   onIconChange,
   onColorChange,
   onNameChange,
+  onNameFocus,
   onNameBlur,
   onDelete,
 }: SpaceRowProps) {
@@ -163,6 +165,7 @@ export function SpaceRow({
           type="text"
           value={space.name}
           onChange={(e) => onNameChange(index, e.target.value)}
+          onFocus={() => onNameFocus(index)}
           onBlur={() => onNameBlur(index)}
           className="flex-1 text-sm border border-gray-200 rounded-md px-2.5 py-1.5 outline-none focus:border-gray-400"
           placeholder="Nom de l'espace"

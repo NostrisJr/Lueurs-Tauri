@@ -5,6 +5,8 @@ import { IconBooksVertical } from "../../../shared/components/PlatformIcon";
 import {
   ACTIVE_SPACE_STORAGE_KEY,
   activeSpaceAtom,
+  mobileNavigateAtom,
+  mobileSettingsScrollTargetAtom,
   mobileSwitchSpaceAtom,
   spaceSwitcherAlwaysVisibleAtom,
   vaultConfigAtom,
@@ -15,6 +17,7 @@ import {
   type VaultSpace,
   buildOrderedSpaces,
 } from "../../../shared/lib/vaultConfig";
+import { useLongPressBind } from "../../hooks/useLongPress";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "./FloatingComponent";
 
@@ -30,7 +33,9 @@ const BUTTON_GAP = 8;
 const PADDING_Y = 10;
 
 function switcherHeight(count: number): number {
-  return count * BUTTON_SIZE + Math.max(0, count - 1) * BUTTON_GAP + PADDING_Y * 2;
+  return (
+    count * BUTTON_SIZE + Math.max(0, count - 1) * BUTTON_GAP + PADDING_Y * 2
+  );
 }
 
 export function MobileSpaceSwitcher() {
@@ -38,12 +43,26 @@ export function MobileSpaceSwitcher() {
   const [activeSpace, setActiveSpace] = useAtom(activeSpaceAtom);
   const switchSpace = useSetAtom(mobileSwitchSpaceAtom);
   const alwaysVisible = useAtomValue(spaceSwitcherAlwaysVisibleAtom);
+  const navigate = useSetAtom(mobileNavigateAtom);
+  const setSettingsScrollTarget = useSetAtom(mobileSettingsScrollTargetAtom);
   // Mode pastille (alwaysVisible = false) : repliée par défaut, s'étend au tap
   const [expanded, setExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Appui long sur un bouton du switcher (quel qu'il soit) = accès rapide aux
+  // réglages, scrollés jusqu'à l'encart Espaces (même comportement que le titre
+  // du file tree). bind() partage un seul timer/suppression entre boutons : un
+  // seul doigt à la fois sur un switcher, pas besoin d'un hook par bouton.
+  const bindLongPress = useLongPressBind(() => {
+    hapticImpact("medium");
+    setSettingsScrollTarget("espaces");
+    navigate("settings");
+  });
+
   const spaces = vaultConfig?.spaces ?? [];
-  const orderedSpaces = vaultConfig ? buildOrderedSpaces(spaces, vaultConfig) : [];
+  const orderedSpaces = vaultConfig
+    ? buildOrderedSpaces(spaces, vaultConfig)
+    : [];
 
   // Purge la valeur obsolète uniquement quand la config vault est réellement chargée
   useEffect(() => {
@@ -56,7 +75,8 @@ export function MobileSpaceSwitcher() {
   // Premier lancement (clé absente de localStorage) : sélectionner le premier espace
   const initDoneRef = useRef(false);
   useEffect(() => {
-    if (initDoneRef.current || !vaultConfig || orderedSpaces.length === 0) return;
+    if (initDoneRef.current || !vaultConfig || orderedSpaces.length === 0)
+      return;
     initDoneRef.current = true;
     const stored = localStorage.getItem(ACTIVE_SPACE_STORAGE_KEY);
     if (stored !== null) return; // déjà persisté
@@ -70,7 +90,10 @@ export function MobileSpaceSwitcher() {
   useEffect(() => {
     if (alwaysVisible || !expanded) return;
     function handlePointerDown(e: PointerEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setExpanded(false);
       }
     }
@@ -123,7 +146,7 @@ export function MobileSpaceSwitcher() {
             <button
               key="__all__"
               type="button"
-              onClick={() => handleEntryTap(null)}
+              {...bindLongPress(() => handleEntryTap(null))}
               className={clsx(
                 "flex items-center justify-center size-9 rounded-full transition-colors",
                 isActive
@@ -147,7 +170,7 @@ export function MobileSpaceSwitcher() {
           <button
             key={space.id}
             type="button"
-            onClick={() => handleEntryTap(space.name)}
+            {...bindLongPress(() => handleEntryTap(space.name))}
             className={clsx(
               "flex items-center justify-center size-9 rounded-full text-sm transition-colors",
               isActive

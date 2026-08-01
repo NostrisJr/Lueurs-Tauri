@@ -1,6 +1,9 @@
 import { arrayMove } from "@dnd-kit/sortable";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useRef } from "react";
 import {
+  activeSpaceAtom,
   folderPathAtom,
   notesByIdAtom,
   treeAtom,
@@ -27,6 +30,10 @@ export function useSpacesEditor() {
   const [vaultConfig, setVaultConfig] = useAtom(vaultConfigAtom);
   const notesById = useAtomValue(notesByIdAtom);
   const setTree = useSetAtom(treeAtom);
+  const [activeSpace, setActiveSpace] = useAtom(activeSpaceAtom);
+  // Nom de l'espace au moment où l'édition a commencé (avant frappe), pour pouvoir
+  // retagger les notes __space__ à la fin du renommage. Clé = space.id.
+  const renameOriginalRef = useRef<Record<string, string>>({});
 
   const spaces = vaultConfig?.spaces ?? [];
   const canEdit = !!folderPath && !!vaultConfig;
@@ -86,6 +93,16 @@ export function useSpacesEditor() {
     ]);
   }
 
+  // À appeler au focus du champ nom : mémorise le nom d'origine (celui avec lequel
+  // les notes sont taguées) pour pouvoir les retagger une fois le renommage terminé.
+  function beginRename(index: number) {
+    const space = spaces[index];
+    if (!space) return;
+    if (!(space.id in renameOriginalRef.current)) {
+      renameOriginalRef.current[space.id] = space.name;
+    }
+  }
+
   // Renommage live (sans dédup, pour ne pas gêner la frappe)
   function setName(index: number, name: string) {
     const next = [...spaces];
@@ -93,14 +110,54 @@ export function useSpacesEditor() {
     updateSpaces(next);
   }
 
-  // Déduplication au moment où l'utilisateur quitte le champ (onBlur)
-  function dedupeName(index: number) {
-    const current = spaces[index]?.name ?? "";
+  // Applique `transform` au tableau __space__ de chaque note référençant
+  // spaceName, et persiste. Partagé entre le renommage (retag) et la
+  // suppression (retrait) d'un espace.
+  async function updateAffectedNotesSpace(
+    spaceName: string,
+    transform: (current: string[]) => string[] | undefined
+  ) {
+    const affected = [...notesById.values()].filter((note) =>
+      toArray(note.frontmatter[SystemField.SPACE]).includes(spaceName)
+    );
+    if (affected.length === 0) return;
+    await Promise.all(
+      affected.map((note) => {
+        const next = transform(toArray(note.frontmatter[SystemField.SPACE]));
+        return persistNotePatch(
+          note.id,
+          { ...note.frontmatter, [SystemField.SPACE]: next },
+          note.body,
+          setTree,
+          folderPath ?? undefined
+        );
+      })
+    );
+  }
+
+  // Retague __space__ dans toutes les notes qui référençaient l'ancien nom.
+  async function migrateNotesSpaceName(oldName: string, newName: string) {
+    if (oldName === newName) return;
+    await updateAffectedNotesSpace(oldName, (current) => [
+      // Set pour dédupliquer si newName était déjà présent par ailleurs
+      ...new Set(current.map((s) => (s === oldName ? newName : s))),
+    ]);
+  }
+
+  // Déduplication + retag des notes au moment où l'utilisateur quitte le champ (onBlur)
+  async function dedupeName(index: number) {
+    const space = spaces[index];
+    if (!space) return;
+    const current = space.name;
     const fixed = uniqueName(current, index);
-    if (fixed === current) return;
-    const next = [...spaces];
-    next[index] = { ...next[index], name: fixed };
-    updateSpaces(next);
+    if (fixed !== current) {
+      const next = [...spaces];
+      next[index] = { ...next[index], name: fixed };
+      await updateSpaces(next);
+    }
+    const originalName = renameOriginalRef.current[space.id];
+    delete renameOriginalRef.current[space.id];
+    if (originalName) await migrateNotesSpaceName(originalName, fixed);
   }
 
   function setIcon(index: number, icon: string) {
@@ -144,29 +201,25 @@ export function useSpacesEditor() {
     const space = spaces[index];
     if (!space) return;
 
-    // Nettoyer __space__ dans toutes les notes qui référencent cet espace
-    const affected = [...notesById.values()].filter((note) =>
-      toArray(note.frontmatter[SystemField.SPACE]).includes(space.name)
+    const confirmed = await ask(
+      `Voulez-vous supprimer l'espace "${space.name}" ? Les notes qui lui sont associées ne seront pas supprimées.`,
+      { title: "Suppression d'espace", kind: "warning" }
     );
-    await Promise.all(
-      affected.map((note) => {
-        const remaining = toArray(note.frontmatter[SystemField.SPACE]).filter(
-          (s) => s !== space.name
-        );
-        return persistNotePatch(
-          note.id,
-          {
-            ...note.frontmatter,
-            [SystemField.SPACE]: remaining.length > 0 ? remaining : undefined,
-          },
-          note.body,
-          setTree,
-          folderPath ?? undefined
-        );
-      })
-    );
+    if (!confirmed) return;
 
-    updateSpaces(spaces.filter((_, i) => i !== index));
+    // Nettoyer __space__ dans toutes les notes qui référencent cet espace
+    await updateAffectedNotesSpace(space.name, (current) => {
+      const remaining = current.filter((s) => s !== space.name);
+      return remaining.length > 0 ? remaining : undefined;
+    });
+
+    const remainingSpaces = spaces.filter((_, i) => i !== index);
+    await updateSpaces(remainingSpaces);
+
+    // Si l'espace supprimé était l'espace courant, basculer sur un autre espace existant
+    if (activeSpace === space.name) {
+      setActiveSpace(remainingSpaces[0]?.name ?? null);
+    }
   }
 
   return {
@@ -176,6 +229,7 @@ export function useSpacesEditor() {
     iconOnly: vaultConfig?.iconOnly ?? false,
     toutIcon: vaultConfig?.toutIcon,
     addSpace,
+    beginRename,
     setName,
     dedupeName,
     setIcon,

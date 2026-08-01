@@ -1,43 +1,45 @@
-import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
-import { openPath } from "@tauri-apps/plugin-opener";
 import { useAtom, useAtomValue, useStore } from "jotai";
-import { useState } from "react";
-import type { TreeNode } from "../../../shared/hooks/useFileTree";
-import { useFileTree } from "../../../shared/hooks/useFileTree";
+import { useEffect, useState } from "react";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
-  folderPathAtom,
   mobileContextMenuAtom,
   notesByIdAtom,
   treeAtom,
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
 import { toArray } from "../../../shared/lib/fileTreeHelpers";
-import { importPaths } from "../../../shared/lib/importUtils";
 import { createLogger } from "../../../shared/lib/logger";
 import { SystemField } from "../../../shared/lib/noteTypes";
 import { iconAccentClass } from "../../../shared/lib/platform";
-import { findFolderNote, toggleNoteSpace } from "../../../shared/lib/spaceAssignment";
+import {
+  findFolderNote,
+  toggleNoteSpace,
+} from "../../../shared/lib/spaceAssignment";
 import { hapticImpact } from "../../lib/haptics";
 import { BottomSheet } from "./BottomSheet";
 
 const log = createLogger("MobileContextMenu");
 
-type Step = "menu" | "rename" | "spaces";
-
+/**
+ * Étapes à saisie du menu contextuel mobile (renommage, affectation d'espaces).
+ * Les actions immédiates sont dans le menu lui-même (cf. RowContextMenu) ;
+ * seules celles qui demandent une interaction supplémentaire arrivent ici.
+ */
 export function MobileContextMenu() {
   const [target, setTarget] = useAtom(mobileContextMenuAtom);
-  const folderPath = useAtomValue(folderPathAtom);
   const vaultConfig = useAtomValue(vaultConfigAtom);
   const store = useStore();
-  const { handleRename, handleDeleteNote, handleDeleteFolder } = useNote();
-  const { reload } = useFileTree();
+  const { handleRename } = useNote();
 
-  const [step, setStep] = useState<Step>("menu");
   const [renameValue, setRenameValue] = useState("");
 
   const notesById = useAtomValue(notesByIdAtom);
   const tree = useAtomValue(treeAtom);
+
+  // Amorce le champ à l'ouverture (et pas au rendu, qui se répète à chaque frappe).
+  useEffect(() => {
+    if (target?.step === "rename") setRenameValue(target.name);
+  }, [target]);
 
   if (!target) return null;
 
@@ -64,99 +66,8 @@ export function MobileContextMenu() {
 
   function close() {
     setTarget(null);
-    setStep("menu");
     setRenameValue("");
   }
-
-  // Dossier cible pour l'import : le dossier lui-même, ou le parent de la note
-  const importTargetPath = target.isFolder
-    ? target.id
-    : target.id.split("/").slice(0, -1).join("/");
-
-  interface Action {
-    label: string;
-    destructive?: boolean;
-    onPress: () => void | Promise<void>;
-  }
-
-  const actions: Action[] = [
-    {
-      label: "Renommer",
-      onPress: () => {
-        setRenameValue(target.name);
-        setStep("rename");
-      },
-    },
-    ...(spaces.length > 0
-      ? [
-          {
-            label: "Espaces",
-            onPress: () => setStep("spaces"),
-          },
-        ]
-      : []),
-    {
-      label: "Importer des fichiers…",
-      onPress: async () => {
-        close();
-        try {
-          const selected = await openFilePicker({ multiple: true });
-          if (!selected) return;
-          const paths = Array.isArray(selected) ? selected : [selected];
-          await importPaths(importTargetPath, paths);
-          reload();
-          log.info("import mobile terminé", { count: paths.length, importTargetPath });
-        } catch (err) {
-          log.error("import mobile échoué", err);
-        }
-      },
-    },
-    {
-      label: "Afficher dans les Fichiers",
-      onPress: async () => {
-        if (folderPath) {
-          const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
-          const abs = `${prefix}${target.id}`;
-          const parent = abs.substring(0, abs.lastIndexOf("/"));
-          await openPath(parent).catch((err) =>
-            log.error("impossible d'ouvrir dans les Fichiers", err)
-          );
-        }
-        close();
-      },
-    },
-    {
-      label: "Partager",
-      onPress: async () => {
-        if (folderPath && navigator.share) {
-          const prefix = folderPath.endsWith("/") ? folderPath : `${folderPath}/`;
-          const abs = `${prefix}${target.id}`;
-          await navigator.share({ title: target.name, text: abs }).catch(() => {});
-        }
-        close();
-      },
-    },
-    {
-      label: "Supprimer",
-      destructive: true,
-      onPress: async () => {
-        hapticImpact("medium");
-        log.info("delete", { id: target.id, isFolder: target.isFolder });
-        if (target.isFolder) {
-          const node: TreeNode = {
-            kind: "folder",
-            id: target.id,
-            name: target.name,
-            children: [],
-          };
-          await handleDeleteFolder(node);
-        } else {
-          await handleDeleteNote(target.id);
-        }
-        close();
-      },
-    },
-  ];
 
   async function handleRenameConfirm() {
     if (!target || !renameValue.trim() || renameValue === target.name) {
@@ -168,80 +79,69 @@ export function MobileContextMenu() {
     close();
   }
 
-  if (step === "rename") {
+  if (target.step === "rename") {
     return (
       <BottomSheet
         onClose={close}
         title={target.isFolder ? "Renommer le dossier" : "Renommer la note"}
       >
-        <div className="px-2 pt-2 flex flex-col gap-4">
+        <form
+          // Un <form> plutôt qu'un onKeyDown sur "Enter" : sur clavier virtuel mobile,
+          // la touche "Entrée"/"Valider" déclenche une soumission de formulaire, pas
+          // forcément un keydown "Enter" fiable.
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleRenameConfirm();
+          }}
+          className="px-2 pt-2 flex flex-col gap-4"
+        >
           <input
             // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture du rename
             autoFocus
             type="text"
+            enterKeyHint="done"
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleRenameConfirm();
               if (e.key === "Escape") close();
             }}
             className="w-full px-4 py-3 rounded-xl border border-gray-200 text-base text-gray-900 bg-gray-50 focus:outline-none focus:border-amber-400"
             placeholder={target.name}
           />
           <button
-            type="button"
-            onClick={handleRenameConfirm}
+            type="submit"
             className="w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-base active:bg-amber-600 transition-colors"
           >
             Renommer
           </button>
-        </div>
-      </BottomSheet>
-    );
-  }
-
-  if (step === "spaces") {
-    return (
-      <BottomSheet onClose={close} title="Espaces">
-        <div className="flex flex-col divide-y divide-gray-100">
-          {spaces.map((space) => {
-            const checked = currentSpaces.includes(space.name);
-            return (
-              <button
-                key={space.id}
-                type="button"
-                onClick={() => handleToggleSpace(space.name)}
-                className="w-full flex items-center gap-3 px-4 py-4 text-left text-base text-gray-900 active:bg-gray-50 transition-colors"
-              >
-                <span className="flex-1 min-w-0 truncate">
-                  {space.icon ? `${space.icon}  ${space.name}` : space.name}
-                </span>
-                {checked && (
-                  <span className={`${iconAccentClass} text-lg leading-none`}>✓</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        </form>
       </BottomSheet>
     );
   }
 
   return (
-    <BottomSheet onClose={close} title={target.name}>
+    <BottomSheet onClose={close} title="Espaces">
       <div className="flex flex-col divide-y divide-gray-100">
-        {actions.map((action) => (
-          <button
-            key={action.label}
-            type="button"
-            onClick={action.onPress}
-            className={`w-full px-4 py-4 text-left text-base active:bg-gray-50 transition-colors ${
-              action.destructive ? "text-red-500" : "text-gray-900"
-            }`}
-          >
-            {action.label}
-          </button>
-        ))}
+        {spaces.map((space) => {
+          const checked = currentSpaces.includes(space.name);
+          return (
+            <button
+              key={space.id}
+              type="button"
+              onClick={() => handleToggleSpace(space.name)}
+              className="w-full flex items-center gap-3 px-4 py-4 text-left text-base text-gray-900 active:bg-gray-50 transition-colors"
+            >
+              <span className="flex-1 min-w-0 truncate">
+                {space.icon ? `${space.icon}  ${space.name}` : space.name}
+              </span>
+              {checked && (
+                <span className={`${iconAccentClass} text-lg leading-none`}>
+                  ✓
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </BottomSheet>
   );

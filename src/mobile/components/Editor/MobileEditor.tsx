@@ -1,9 +1,11 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
+import type { MouseEvent } from "react";
 import { EditorErrorBoundary } from "../../../shared/components/EditorErrorBoundary";
-import { NoteEditor } from "../../../shared/components/NoteEditor/NoteEditor";
 import type { Editor } from "../../../shared/components/NoteEditor/MarkdownEditor";
+import { NoteEditor } from "../../../shared/components/NoteEditor/NoteEditor";
 import {
+  editorFocusAtStart,
   editorInsertAudioBlock,
   editorRedo,
   editorUndo,
@@ -35,8 +37,12 @@ import {
   pendingDisplayModeAtom,
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
-import { NoteType } from "../../../shared/lib/noteTypes";
-import { iconAccentClass, isAndroid, isIOS } from "../../../shared/lib/platform";
+import { NoteType, isNoteReadOnly } from "../../../shared/lib/noteTypes";
+import {
+  iconAccentClass,
+  isAndroid,
+  isIOS,
+} from "../../../shared/lib/platform";
 
 import clsx from "clsx";
 import { useKeyboard } from "../../hooks/useKeyboard";
@@ -65,6 +71,7 @@ export function MobileEditor() {
   // dans l'effet unifié de scroll.
   const lastScrolledNoteIdRef = useRef<string | null>(null);
   const isBase = activeNote?.type === NoteType.BASE;
+  const isReadOnly = isNoteReadOnly(activeNote?.frontmatter);
   const {
     height: keyboardHeight,
     isOpen: isKeyboardOpen,
@@ -91,6 +98,21 @@ export function MobileEditor() {
       );
     }
   }, [activeNote]);
+
+  // Note vide : le contenu rendu (header + frontmatter + une ligne vide) n'occupe
+  // qu'une petite zone en haut de la page. On étend la zone cliquable à tout le
+  // conteneur scrollable pour entrer en édition, sauf si le clic vise déjà un
+  // contrôle interactif (titre, emoji, l'éditeur lui-même…).
+  const handleContentClick = useCallback(
+    (ev: MouseEvent<HTMLDivElement>) => {
+      if (!activeNote || isBase || isReadOnly) return;
+      if (activeNote.body.trim().length > 0) return;
+      const target = ev.target as HTMLElement;
+      if (target.closest("input, textarea, button, [contenteditable]")) return;
+      editorFocusAtStart(editorRef);
+    },
+    [activeNote, isBase, isReadOnly]
+  );
 
   // Effet unifié : un seul calcul de scrollTop par cycle, qu'il vienne du
   // changement de note (restore) ou d'une ouverture clavier (caret-in-view).
@@ -154,16 +176,18 @@ export function MobileEditor() {
       <div className="flex-1 flex justify-end items-center gap-1">
         <button
           type="button"
+          disabled={isReadOnly}
           onClick={() => editorUndo(editorRef)}
-          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
+          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors disabled:opacity-30`}
           title="Annuler (⌘Z)"
         >
           <IconArrowUturnBackward className="size-4.5" />
         </button>
         <button
           type="button"
+          disabled={isReadOnly}
           onClick={() => editorRedo(editorRef)}
-          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
+          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors disabled:opacity-30`}
           title="Rétablir (⌘⇧Z)"
         >
           <IconArrowUturnForward className="size-4.5" />
@@ -191,17 +215,19 @@ export function MobileEditor() {
               </button>
             );
           })()}
-        <button
-          type="button"
-          onClick={() => {
-            hapticImpact("light");
-            setDictaphoneMode("insert");
-          }}
-          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
-          title="Ajouter un enregistrement"
-        >
-          <IconRecordAudio className="size-5" />
-        </button>
+        {!isReadOnly && (
+          <button
+            type="button"
+            onClick={() => {
+              hapticImpact("light");
+              setDictaphoneMode("insert");
+            }}
+            className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
+            title="Ajouter un enregistrement"
+          >
+            <IconRecordAudio className="size-5" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -254,6 +280,7 @@ export function MobileEditor() {
         )}
         data-scrollable
         onScroll={handleScroll}
+        onClick={handleContentClick}
         style={{ paddingBottom }}
       >
         <EditorErrorBoundary>

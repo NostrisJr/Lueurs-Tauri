@@ -1,11 +1,11 @@
 import { useCallback, useRef } from "react";
 
 /**
- * Long-press de 600ms sur un élément tactile.
- * Prend en charge onClick directement pour supprimer le ghost click
- * que iOS synthétise après un long press.
+ * Cœur du long-press de 600ms, partagé entre useLongPress (un bouton) et
+ * useLongPressBind (plusieurs boutons partageant un seul timer/suppression —
+ * un seul doigt à la fois sur l'écran, donc aucun conflit possible).
  */
-export function useLongPress(onLongPress: () => void, onClick: () => void) {
+function useLongPressCore(onLongPress: () => void) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Empêche le click synthétisé par iOS après un long press
   const suppressNextClickRef = useRef(false);
@@ -33,19 +33,39 @@ export function useLongPress(onLongPress: () => void, onClick: () => void) {
     }
   }, []);
 
-  const handleClick = useCallback(() => {
-    if (suppressNextClickRef.current) {
-      suppressNextClickRef.current = false;
-      return;
-    }
-    onClick();
-  }, [onClick]);
+  return useCallback(
+    (onClick: () => void) => ({
+      onTouchStart: handleTouchStart,
+      onTouchEnd: cancel,
+      onTouchMove: cancel,
+      onTouchCancel: cancel,
+      onClick: () => {
+        if (suppressNextClickRef.current) {
+          suppressNextClickRef.current = false;
+          return;
+        }
+        onClick();
+      },
+    }),
+    [handleTouchStart, cancel]
+  );
+}
 
-  return {
-    onTouchStart: handleTouchStart,
-    onTouchEnd: cancel,
-    onTouchMove: cancel,
-    onTouchCancel: cancel,
-    onClick: handleClick,
-  };
+/**
+ * Long-press de 600ms sur un élément tactile.
+ * Prend en charge onClick directement pour supprimer le ghost click
+ * que iOS synthétise après un long press.
+ */
+export function useLongPress(onLongPress: () => void, onClick: () => void) {
+  return useLongPressCore(onLongPress)(onClick);
+}
+
+/**
+ * Variante « bind » : plusieurs éléments partagent un seul long-press (même
+ * action) mais ont chacun leur propre onClick. Utile quand la Rules of Hooks
+ * interdit d'appeler useLongPress dans une boucle/.map() (ex: switcher
+ * d'espaces — un bouton par espace, une seule action de long-press commune).
+ */
+export function useLongPressBind(onLongPress: () => void) {
+  return useLongPressCore(onLongPress);
 }

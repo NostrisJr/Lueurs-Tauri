@@ -6,6 +6,7 @@ import {
   IconChevronRight,
   IconFolder,
   IconFolderBadgePlus,
+  IconLock,
   IconPlus,
   IconTrash,
 } from "../../../shared/components/PlatformIcon";
@@ -27,6 +28,7 @@ import {
   selectionAnchorAtom,
   treeAtom,
 } from "../../../shared/lib/atoms";
+import { isNoteReadOnly } from "../../../shared/lib/noteTypes";
 import { vaultIO } from "../../../shared/lib/vaultIO";
 import { useFileDragCtx } from "./FileDragCtx";
 
@@ -148,6 +150,7 @@ function FileNodeComponent({
   const [anchor, setAnchor] = useAtom(selectionAnchorAtom);
   const isSelected = selectedIds.has(node.id);
   const store = useStore();
+  const readOnly = isNoteReadOnly(node.frontmatter);
 
   function handleClick(e: React.MouseEvent) {
     if (e.shiftKey) {
@@ -184,10 +187,17 @@ function FileNodeComponent({
           />
           <EditableText
             value={node.name}
+            disabled={readOnly}
             onSave={async (newName) => {
               await handleRename(node.id, newName, false);
             }}
           />
+          {readOnly && (
+            <IconLock
+              className="size-3 text-gray-300 shrink-0"
+              aria-hidden="true"
+            />
+          )}
         </div>
         <button
           type="button"

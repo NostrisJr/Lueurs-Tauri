@@ -37,7 +37,15 @@ export function BottomSheet({
 }: Props) {
   const { height: keyboardHeight, isOpen: isKeyboardOpen } = useKeyboard();
   const startYRef = useRef(0);
+  const swipeAllowedRef = useRef(true);
   const [swipe, setSwipe] = useState(0);
+
+  // N'active le scroll (et le momentum iOS) que si le contenu dépasse
+  // réellement la hauteur disponible, sinon iOS autorise un léger rubber-band
+  // même sans overflow.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [canScroll, setCanScroll] = useState(false);
 
   // Monté fermé (hors écran) puis ouvert une frame plus tard, pour que la transition
   // CSS ait deux états distincts à interpoler (sinon le sheet apparaît déjà en place).
@@ -56,6 +64,19 @@ export function BottomSheet({
         window.clearTimeout(closeTimeoutRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const container = contentRef.current;
+    const inner = innerRef.current;
+    if (!container || !inner) return;
+    const check = () =>
+      setCanScroll(inner.scrollHeight > container.clientHeight + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(container);
+    ro.observe(inner);
+    return () => ro.disconnect();
   }, []);
 
   // Fermeture "gestuelle" (overlay/swipe) : joue l'animation de sortie avant
@@ -100,8 +121,13 @@ export function BottomSheet({
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
         onTouchStart={(e: React.TouchEvent) => {
           startYRef.current = e.touches[0].clientY;
+          // Le swipe-to-close ne doit s'engager que si le contenu est déjà
+          // scrollé en haut, sinon il vole le geste de scroll interne (ex:
+          // remonter dans la liste d'emojis) et referme la sheet par erreur.
+          swipeAllowedRef.current = (contentRef.current?.scrollTop ?? 0) <= 0;
         }}
         onTouchMove={(e: React.TouchEvent) => {
+          if (!swipeAllowedRef.current) return;
           const dy = e.touches[0].clientY - startYRef.current;
           if (dy > 0) {
             setSwipe(dy);
@@ -127,16 +153,18 @@ export function BottomSheet({
           </p>
         )}
         <div
-          className="overflow-y-auto flex-1"
+          ref={contentRef}
+          className="flex-1"
           data-scrollable
           style={{
-            WebkitOverflowScrolling: "touch",
+            overflowY: canScroll ? "auto" : "hidden",
+            WebkitOverflowScrolling: canScroll ? "touch" : undefined,
             paddingBottom: isKeyboardOpen
               ? "4px"
               : "calc(env(safe-area-inset-bottom) + 4px)",
           }}
         >
-          {children}
+          <div ref={innerRef}>{children}</div>
         </div>
       </Squircle>
     </div>

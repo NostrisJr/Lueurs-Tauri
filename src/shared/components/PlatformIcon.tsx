@@ -9,6 +9,7 @@ import {
   sfArrowRight,
   sfArrowUturnBackward,
   sfArrowUturnForward,
+  sfArrowUturnLeft,
   sfBold,
   sfBooksVertical,
   sfChartBarYaxis,
@@ -35,8 +36,11 @@ import {
   sfKeyboardChevronCompactDown,
   sfListBullet,
   sfListNumber,
+  sfLock,
+  sfLockOpen,
   sfMagnifyingglass,
   sfPauseFill,
+  sfPencil,
   sfPhoto,
   sfPlayFill,
   sfPlus,
@@ -44,8 +48,11 @@ import {
   sfQuoteOpening,
   sfRectangleStack,
   sfSidebarLeft,
+  sfSquareAndArrowDown,
+  sfSquareAndArrowUp,
   sfStopFill,
   sfStrikethrough,
+  sfTag,
   sfTextDocument,
   sfTextRectanglePage,
   sfTextformat,
@@ -76,6 +83,8 @@ import MsTrash from "~icons/material-symbols/delete-outline-rounded";
 import MsDescription from "~icons/material-symbols/description-outline-rounded";
 import MsDockToRight from "~icons/material-symbols/dock-to-right-outline";
 import MsTextDocument from "~icons/material-symbols/docs-outline-rounded";
+import MsDownload from "~icons/material-symbols/download-rounded";
+import MsEdit from "~icons/material-symbols/edit-outline-rounded";
 import MsFolderOpen from "~icons/material-symbols/folder-open-outline-rounded";
 import MsFormatBold from "~icons/material-symbols/format-bold-rounded";
 import MsFormatIndentDecrease from "~icons/material-symbols/format-indent-decrease-rounded";
@@ -88,9 +97,13 @@ import MsFormatQuote from "~icons/material-symbols/format-quote-outline-rounded"
 import MsFormatStrikethrough from "~icons/material-symbols/format-strikethrough-rounded";
 import MsGraphicEq from "~icons/material-symbols/graphic-eq-rounded";
 import MsImage from "~icons/material-symbols/image-outline-rounded";
+import MsShare from "~icons/material-symbols/ios-share-rounded";
 import MsKeyboardArrowDown from "~icons/material-symbols/keyboard-arrow-down-rounded";
 import MsKeyboardHide from "~icons/material-symbols/keyboard-hide-outline-rounded";
+import MsLabel from "~icons/material-symbols/label-outline-rounded";
 import MsLayers from "~icons/material-symbols/layers-outline-rounded";
+import MsLockOpenOutline from "~icons/material-symbols/lock-open-outline";
+import MsLockOutline from "~icons/material-symbols/lock-outline";
 import MsMatchCase from "~icons/material-symbols/match-case-rounded";
 import MsMoreHoriz from "~icons/material-symbols/more-horiz";
 import MsMovie from "~icons/material-symbols/movie-outline-rounded";
@@ -101,6 +114,7 @@ import MsPictureAsPdf from "~icons/material-symbols/picture-as-pdf-outline-round
 import MsPlayArrow from "~icons/material-symbols/play-arrow-rounded";
 import MsRedo from "~icons/material-symbols/redo-rounded";
 import MsRefresh from "~icons/material-symbols/refresh-rounded";
+import MsRestoreFromTrash from "~icons/material-symbols/restore-from-trash-outline-rounded";
 import MsSearch from "~icons/material-symbols/search-rounded";
 import MsSettings from "~icons/material-symbols/settings-outline-rounded";
 import MsStop from "~icons/material-symbols/stop-rounded";
@@ -148,6 +162,9 @@ export const IconArrowUturnBackward = mk(sfArrowUturnBackward, MsUndo);
 
 // redo
 export const IconArrowUturnForward = mk(sfArrowUturnForward, MsRedo);
+
+// restaurer depuis la corbeille (menu contextuel mobile)
+export const IconArrowUturnLeft = mk(sfArrowUturnLeft, MsRestoreFromTrash);
 
 // gras (toolbar markdown)
 export const IconBold = mk(sfBold, MsFormatBold);
@@ -213,12 +230,17 @@ export const IconKeyboardChevronCompactDown = mk(
 export const IconListBullet = mk(sfListBullet, MsFormatListBulleted);
 
 export const IconListNumber = mk(sfListNumber, MsFormatListNumbered);
+export const IconLock = mk(sfLock, MsLockOutline);
+export const IconLockOpen = mk(sfLockOpen, MsLockOpenOutline);
 
 export const IconMagnifyingglass = mk(sfMagnifyingglass, MsSearch);
 
 export const IconRecordAudio = mk(sfWaveform, MsGraphicEq);
 
 export const IconPauseFill = mk(sfPauseFill, MsPause);
+
+// renommer (menu contextuel mobile)
+export const IconPencil = mk(sfPencil, MsEdit);
 
 export const IconPlayFill = mk(sfPlayFill, MsPlayArrow);
 
@@ -231,9 +253,18 @@ export const IconRectangleStack = mk(sfRectangleStack, MsLayers);
 // sidebar
 export const IconSidebarLeft = mk(sfSidebarLeft, MsDockToRight);
 
+// importer des fichiers (menu contextuel mobile)
+export const IconSquareAndArrowDown = mk(sfSquareAndArrowDown, MsDownload);
+
+// partager (menu contextuel mobile)
+export const IconSquareAndArrowUp = mk(sfSquareAndArrowUp, MsShare);
+
 export const IconStopFill = mk(sfStopFill, MsStop);
 
 export const IconStrikethrough = mk(sfStrikethrough, MsFormatStrikethrough);
+
+// espaces (menu contextuel mobile)
+export const IconTag = mk(sfTag, MsLabel);
 
 export const IconTextDocument = mk(sfTextDocument, MsTextDocument);
 

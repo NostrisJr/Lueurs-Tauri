@@ -12,6 +12,7 @@ import {
   turnIntoTextCommand,
 } from "@milkdown/kit/preset/commonmark";
 import { toggleMark } from "@milkdown/kit/prose/commands";
+import { TextSelection } from "@milkdown/kit/prose/state";
 import { liftListItem, sinkListItem } from "prosemirror-schema-list";
 import { redo, undo } from "prosemirror-history";
 import {
@@ -69,7 +70,7 @@ export function editorItalic(editorRef: EditorRef) {
   editorRef.current?.action((ctx) => {
     const view = ctx.get(editorViewCtx);
     const schema = ctx.get(schemaCtx);
-    const mark = schema.marks.em;
+    const mark = schema.marks.emphasis;
     if (!mark) return;
     toggleMark(mark)(view.state, view.dispatch);
     view.focus();
@@ -188,6 +189,18 @@ export function editorInsertFormula(editorRef: EditorRef) {
       raw: "$$$$",
       coords: { left: coords.left, top: coords.top, bottom: coords.bottom },
     });
+  });
+}
+
+// Focalise l'éditeur avec le caret au tout début du document (note vide :
+// clic n'importe où dans la zone d'édition, pas seulement sur la ligne rendue).
+export function editorFocusAtStart(editorRef: EditorRef) {
+  editorRef.current?.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    const { state } = view;
+    const selection = TextSelection.near(state.doc.resolve(0));
+    view.dispatch(state.tr.setSelection(selection));
+    view.focus();
   });
 }
 

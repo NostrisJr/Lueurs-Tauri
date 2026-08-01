@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hapticImpact, hapticSelection } from "../lib/haptics";
+import { useVisibilityRecovery } from "./useVisibilityRecovery";
 
 interface SwipeGestureOptions {
   enabled?: boolean;
@@ -47,6 +48,9 @@ export function useMobileSwipeGesture(
 
   const complete = useCallback(() => {
     hapticImpact("medium");
+    // Sans ça, le champ actif (éditeur) garde le focus derrière la vue qui
+    // glisse hors écran, et le clavier reste ouvert par-dessus.
+    (document.activeElement as HTMLElement | null)?.blur();
     setIsAnimating(true);
     setSwipeProgress(1);
     isTracking.current = false;
@@ -85,6 +89,28 @@ export function useMobileSwipeGesture(
       if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
     },
     []
+  );
+
+  // Filet de sécurité : en WKWebView, les timers JS peuvent geler si l'app passe en
+  // arrière-plan pendant l'animation de complete()/cancel(), laissant swipeProgress/
+  // isAnimating bloqués à mi-course. Au retour au premier plan, on termine
+  // immédiatement l'action en cours plutôt que d'attendre un timer qui ne viendra
+  // peut-être jamais.
+  useVisibilityRecovery(
+    useCallback(() => {
+      if (completeTimerRef.current) {
+        clearTimeout(completeTimerRef.current);
+        completeTimerRef.current = null;
+        onComplete();
+        setSwipeProgress(0);
+        setIsAnimating(false);
+      } else if (cancelTimerRef.current) {
+        clearTimeout(cancelTimerRef.current);
+        cancelTimerRef.current = null;
+        setSwipeProgress(0);
+        setIsAnimating(false);
+      }
+    }, [onComplete])
   );
 
   const onTouchStart = useCallback(

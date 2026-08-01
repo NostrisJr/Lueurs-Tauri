@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
 import {
@@ -18,6 +18,15 @@ export function SearchView() {
   const goBack = useSetAtom(mobileGoBackAtom);
   const allNotes = useMemo(() => flattenTree(tree), [tree]);
   const { height: keyboardHeight } = useKeyboard();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus manuel plutôt qu'`autoFocus` : au montage la vue est encore à
+  // translateX(100%) (animation de push), et WKWebView scrolle alors la racine de
+  // l'app pour « révéler » le champ hors écran, décalant toutes les couches de
+  // navigation. `preventScroll` supprime ce scroll parasite à la source.
+  useEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+  }, []);
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
@@ -67,8 +76,7 @@ export function SearchView() {
         <div className="w-full flex px-4 pt-3 pb-3 gap-3">
           <FloatingComponent wrapperClassName="flex-1">
             <input
-              // biome-ignore lint/a11y/noAutofocus: On vient de cliquer sur une fausse barre de recherche, c'est le comportement logique
-              autoFocus
+              ref={inputRef}
               contentEditable
               value={query}
               onChange={(e) => setQuery(e.target.value)}

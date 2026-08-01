@@ -1,12 +1,12 @@
 import clsx from "clsx";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   IconDocumentBadgePlus,
   IconMagnifyingglass,
   IconRecordAudio,
   IconRectangleStack,
 } from "../../../shared/components/PlatformIcon";
-import { mobileNavigateAtom } from "../../../shared/lib/atoms";
+import { mobileNavigateAtom, openTabIdsAtom } from "../../../shared/lib/atoms";
 import { iconAccentClass, isAndroid } from "../../../shared/lib/platform";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "../Floating/FloatingComponent";
@@ -18,6 +18,7 @@ interface Props {
 
 export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
   const navigate = useSetAtom(mobileNavigateAtom);
+  const openTabIds = useAtomValue(openTabIdsAtom);
 
   return (
     <div
@@ -34,6 +35,11 @@ export function FileTreeBottomBar({ onCreateNote, onCreateRecording }: Props) {
         className={`${iconAccentClass} active:bg-black/5 transition-colors aspect-square justify-center items-center flex`}
       >
         <IconRectangleStack className="size-6.5" />
+        {openTabIds.length > 1 && (
+          <span className="absolute top-1.75 right-1.75 bg-amber-400 text-white  text-xs rounded-full size-4 flex items-center justify-center leading-none">
+            {openTabIds.length}
+          </span>
+        )}
       </FloatingComponent>
 
       <FloatingComponent

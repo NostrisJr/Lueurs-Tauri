@@ -49,7 +49,10 @@ export function MobileSpellMenu() {
           schema.text(replacement, marks)
         )
       );
-      view.focus();
+      // Pas de view.focus() ici : ça rouvrirait le clavier natif et
+      // redéclencherait le scroll-vers-caret dans MobileEditor, provoquant un
+      // rescroll intempestif vers l'ancienne position d'édition alors que le
+      // clavier était fermé (correction faite depuis la bottom sheet).
       log.info("correction appliquée", { word: popup.word, replacement });
     });
     close();
