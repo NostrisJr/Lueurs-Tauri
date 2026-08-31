@@ -57,19 +57,10 @@ function isInTaskList(state: EditorState, schema: Schema): boolean {
   return false;
 }
 
-// Curseur dans une liste (bullet ou ordered), quelle que soit la profondeur.
-function isInList(state: EditorState, schema: Schema): boolean {
-  const { $from } = state.selection;
-  for (let d = $from.depth; d > 0; d--) {
-    const t = $from.node(d).type;
-    if (t === schema.nodes.bullet_list || t === schema.nodes.ordered_list)
-      return true;
-  }
-  return false;
-}
-
 // Curseur (vide) dans le paragraphe vide d'un list_item.
-function isInEmptyListItem(state: EditorState, schema: Schema): boolean {
+// Exportée : réutilisée par mobileListDeletePlugin pour rejouer la même
+// logique quand le clavier virtuel contourne le keymap (cf. ce fichier).
+export function isInEmptyListItem(state: EditorState, schema: Schema): boolean {
   const { $from, empty } = state.selection;
   if (!empty) return false;
   const parent = $from.parent;
@@ -78,35 +69,35 @@ function isInEmptyListItem(state: EditorState, schema: Schema): boolean {
   return $from.node(-1)?.type === schema.nodes.list_item;
 }
 
-// Sort complètement de toutes les listes imbriquées → paragraphe à la racine.
-// liftListItem en boucle sur les états intermédiaires, steps accumulés puis
-// rejoués sur l'état initial (même technique de composition qu'applyThenApply).
-function liftOutOfList(schema: Schema): Command {
+// Cascade sur un item de liste vide : une seule étape par appel, partagée par
+// Enter et Backspace.
+//   1) todo → item de liste simple (retire `checked`, même profondeur)
+//   2) liste simple imbriquée → dédentée d'un niveau (liftListItem)
+//   3) liste simple de premier niveau → sort de la liste (paragraphe simple)
+// On ne retombe JAMAIS sur le comportement natif (joinBackward via
+// LiftFirstListItem) une fois qu'on a matché ce cas : ce fallback fusionne
+// avec l'item précédent et peut corrompre son état `checked` (coche du
+// dessus effacée par erreur).
+export function stepOutOfEmptyListItem(schema: Schema): Command {
   return (state, dispatch) => {
-    if (!isInList(state, schema)) return false;
-    const liftCmd = liftListItem(schema.nodes.list_item);
+    if (!isInEmptyListItem(state, schema)) return false;
 
-    // biome-ignore lint/suspicious/noExplicitAny: Step[] accumulés
-    const collected: any[] = [];
-    let intermediate = state;
-    // Garde-fou contre une boucle infinie sur structure inattendue
-    for (let i = 0; i < 20 && isInList(intermediate, schema); i++) {
-      // biome-ignore lint/suspicious/noExplicitAny: Transaction assignée dans le callback
-      let tr: any = null;
-      liftCmd(intermediate, (t) => {
-        tr = t;
-      });
-      if (!tr) break;
-      for (const step of (tr as Transaction).steps) collected.push(step);
-      intermediate = intermediate.apply(tr as Transaction);
+    const { $from } = state.selection;
+    const item = $from.node(-1);
+
+    if (item.attrs.checked !== null) {
+      if (dispatch) {
+        const pos = $from.before(-1);
+        dispatch(
+          state.tr
+            .setNodeMarkup(pos, undefined, { ...item.attrs, checked: null })
+            .scrollIntoView()
+        );
+      }
+      return true;
     }
 
-    if (collected.length === 0) return false;
-    if (dispatch) {
-      const combined = state.tr;
-      for (const step of collected) combined.step(step);
-      dispatch(combined.scrollIntoView());
-    }
+    liftListItem(schema.nodes.list_item)(state, dispatch);
     return true;
   };
 }
@@ -635,7 +626,7 @@ export const customKeymapPlugin = $prose((ctx) =>
       }
 
       if (!isInEmptyListItem(state, schema)) return false;
-      return liftOutOfList(schema)(state, dispatch);
+      return stepOutOfEmptyListItem(schema)(state, dispatch);
     },
     // Shift+Enter dans un bloc de poésie : nouvelle strophe directe (splitBlock).
     // Hors bloc : comportement Milkdown par défaut (hardbreak).
@@ -648,11 +639,12 @@ export const customKeymapPlugin = $prose((ctx) =>
         return false;
       return splitBlock(state, dispatch);
     },
-    // Backspace sur item vide → remonte d'un seul niveau (liftListItem), au lieu
-    // du joinBackward natif qui empile un 2e paragraphe dans l'item précédent.
+    // Backspace sur item vide → cascade (cf. stepOutOfEmptyListItem), au lieu
+    // du joinBackward natif qui empile un 2e paragraphe dans l'item précédent
+    // ou peut corrompre l'item voisin.
     Backspace: (state, dispatch) => {
-      if (!isInEmptyListItem(state, state.schema)) return false;
-      return liftListItem(state.schema.nodes.list_item)(state, dispatch);
+      const { schema } = state;
+      return stepOutOfEmptyListItem(schema)(state, dispatch);
     },
     // Marks (Mod-b, Mod-i déjà natifs dans le preset)
     "Mod-e": () => ctx.get(commandsCtx).call(toggleInlineCodeCommand.key),
