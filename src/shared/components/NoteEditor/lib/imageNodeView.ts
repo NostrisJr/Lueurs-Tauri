@@ -1,9 +1,10 @@
 /**
  * imageNodeView.ts — NodeView ProseMirror pour les images.
  *
- * Desktop : convertit les chemins absolus en asset:// via convertFileSrc.
- * Android (SAF) : lit les octets via Rust et génère un blob URL révoqué au destroy.
- * Le chemin absolu est conservé dans le markdown ; seul le rendu DOM change.
+ * Le markdown stocke toujours un chemin relatif à la racine du vault (cf. CLAUDE.md
+ * « Convention des chemins »). Desktop/iOS : résolu en absolu puis converti en
+ * asset:// via convertFileSrc. Android (SAF) : lit les octets via Rust et génère
+ * un blob URL révoqué au destroy. Seul le rendu DOM change, jamais le markdown.
  */
 import { $prose } from "@milkdown/kit/utils";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
@@ -14,6 +15,13 @@ import { createLogger } from "../../../lib/logger";
 const log = createLogger("imageNodeView");
 
 const isAbsolutePath = (s: string) => s.startsWith("/") || /^[A-Z]:\\/i.test(s);
+
+/** Résout `src` (relatif au vault ou déjà absolu) en chemin absolu disque. */
+function toAbsolutePath(src: string, vaultPath: string): string {
+  if (isAbsolutePath(src)) return src;
+  const prefix = vaultPath.endsWith("/") ? vaultPath : `${vaultPath}/`;
+  return `${prefix}${src}`;
+}
 
 /** Résout `rel` (relatif au vault) vers un URI SAF, puis lit les octets via Rust. */
 export async function readVaultBytesAndroid(
@@ -59,7 +67,7 @@ export function makeImageNodeViewBuilder(vaultPath: string) {
           );
         return;
       }
-      img.src = isAbsolutePath(src) ? convertFileSrc(src) : src;
+      img.src = convertFileSrc(toAbsolutePath(src, vaultPath));
     };
 
     applySrc(node.attrs.src ?? "");
