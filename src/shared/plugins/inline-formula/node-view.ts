@@ -8,7 +8,7 @@
 
 import type { Node as ProsemirrorNode } from "@milkdown/kit/prose/model";
 import type { EditorView, NodeView } from "@milkdown/kit/prose/view";
-import { computeFormula } from "../../lib/formulas";
+import { computeFormula, isFormulaError } from "../../lib/formulas";
 import {
   formulaInner,
   inlineFormulaBridge,
@@ -50,7 +50,7 @@ export function createInlineFormulaNodeView() {
       const computed = ctx
         ? computeFormula(raw, ctx.vars, ctx.children, ctx.noteResolver)
         : inner;
-      const isError = computed === "#ERREUR";
+      const isError = isFormulaError(computed);
       dom.classList.toggle("inline-formula-error", isError);
       result.textContent = computed || "—";
     }

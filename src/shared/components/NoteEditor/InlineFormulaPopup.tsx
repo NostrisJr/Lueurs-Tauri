@@ -4,8 +4,8 @@
  * Popup d'édition d'une formule inline du corps de note (singleton, monté une
  * fois dans MarkdownEditor — cf. WikilinkEditPopup). Réutilise FormulaEditField :
  * édition de la formule HUMANISÉE + sélecteurs note/propriété, comme le frontmatter.
- * À la validation, écrit la formule brute (chemins absolus) dans l'attribut du
- * nœud ; si la formule est vide, supprime le nœud.
+ * À la validation, écrit la formule brute dans l'attribut du nœud (chemins ref()
+ * relatifs au vault, cf. refPaths.ts) ; si la formule est vide, supprime le nœud.
  *
  * Mobile : BottomSheet clavier-aware. Desktop : popup positionné près du nœud.
  */
@@ -15,12 +15,15 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
+import { toPropertyOptions } from "../../../desktop/components/Frontmatter/lib/frontmatterUtils";
 import { BottomSheet } from "../../../mobile/components/BottomSheet/BottomSheet";
+import type { NoteFile } from "../../hooks/useFileTree";
 import { createLogger } from "../../lib/logger";
 import { isMobile } from "../../lib/platform";
 import {
@@ -29,6 +32,7 @@ import {
   setInlineFormulaEdit,
   subscribeInlineFormulaEdit,
 } from "../../plugins/inline-formula/inlineFormulaState";
+import { toVaultRelative } from "../../plugins/inline-formula/refPaths";
 import { FormulaEditField } from "../FormulaField/FormulaEditField";
 import { activeEditorRef } from "./lib/activeEditorRef";
 import { clampPopup } from "./lib/popupPosition";
@@ -78,7 +82,8 @@ export function InlineFormulaPopup() {
       return;
     }
     const value = rawRef.current;
-    const isEmpty = value.replace(/^\$\$/, "").replace(/\$\$$/, "").trim() === "";
+    const isEmpty =
+      value.replace(/^\$\$/, "").replace(/\$\$$/, "").trim() === "";
     editor.action((ctx) => {
       const view = ctx.get(editorViewCtx);
       const node = view.state.doc.nodeAt(req.pos);
@@ -98,9 +103,22 @@ export function InlineFormulaPopup() {
     close();
   }, [close]);
 
-  if (!request) return null;
-
+  // Contexte d'évaluation (hors React) : figé le temps d'une ouverture du popup.
   const ctx = inlineFormulaBridge.current;
+  const vaultPath = ctx?.vaultPath;
+  // Chemins ref() relatifs au vault dans le corps (cf. refPaths.ts).
+  const refPathOf = useCallback(
+    (note: NoteFile) =>
+      vaultPath ? toVaultRelative(note.id, vaultPath) : note.id,
+    [vaultPath]
+  );
+  // Auto-complétion `self.` : propriétés de la note courante.
+  const selfProperties = useMemo(
+    () => toPropertyOptions(Object.keys(ctx?.vars ?? {})),
+    [ctx?.vars]
+  );
+
+  if (!request) return null;
   if (isMobile) {
     return (
       <BottomSheet onClose={commit} title="Formule" heightFraction={0.3}>
@@ -115,6 +133,8 @@ export function InlineFormulaPopup() {
               onDone={commit}
               allNotes={ctx?.allNotes ?? []}
               noteResolver={ctx?.noteResolver ?? (() => undefined)}
+              selfProperties={selfProperties}
+              refPathOf={refPathOf}
               inputClassName="w-full bg-transparent outline-none text-gray-700 font-mono text-base py-1 border-b border-gray-200 focus:border-amber-400 transition-colors"
             />
           </div>
@@ -142,6 +162,8 @@ export function InlineFormulaPopup() {
             onDone={commit}
             allNotes={ctx?.allNotes ?? []}
             noteResolver={ctx?.noteResolver ?? (() => undefined)}
+            selfProperties={selfProperties}
+            refPathOf={refPathOf}
             inputClassName="w-full bg-transparent outline-none border-b border-gray-300 text-gray-700 focus:border-amber-400 transition-colors font-mono text-sm"
           />
         </div>

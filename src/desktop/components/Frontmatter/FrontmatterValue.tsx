@@ -13,11 +13,13 @@ import {
   computeFormula,
   humanizeFormula,
   isFormula,
+  isFormulaError,
 } from "../../../shared/lib/formulas";
 import { type NoteTypeValue, SystemField } from "../../../shared/lib/noteTypes";
 import { NoteChip } from "./NoteChip";
 import { NoteSelector } from "./NoteSelector";
 import { TypeSelector } from "./TypeSelector";
+import { toPropertyOptions } from "./lib/frontmatterUtils";
 
 interface Props {
   fieldKey: string;
@@ -54,6 +56,11 @@ export function FrontmatterValue({
 }: Props) {
   const isMobile = platform() === "ios";
   const [editingFormula, setEditingFormula] = useState(false);
+  // Brouillon local le temps de l'édition — même modèle que le popup inline.
+  // Sans lui, chaque caractère tapé déclenche commit() : réécriture de toutes
+  // les lignes, re-render de chacune et un computeFormula par formule (avec
+  // agg() sur tous les enfants d'une base). Latence de saisie très visible.
+  const [formulaDraft, setFormulaDraft] = useState<string | null>(null);
   const [refSelectorOpen, setRefSelectorOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectorOpenRef = useRef(false);
@@ -71,6 +78,20 @@ export function FrontmatterValue({
     }
     wasFormulaRef.current = nowFormula;
   });
+
+  // Filet du brouillon : les sorties d'édition normales (Entrée, Échap, clic
+  // ailleurs) passent par onDone, mais un démontage direct — changement de note
+  // au clavier, rechargement par le watcher — perdrait la saisie en cours.
+  const draftRef = useRef<string | null>(null);
+  draftRef.current = formulaDraft;
+  const onTextChangeRef = useRef(onTextChange);
+  onTextChangeRef.current = onTextChange;
+  useEffect(
+    () => () => {
+      if (draftRef.current !== null) onTextChangeRef.current(draftRef.current);
+    },
+    []
+  );
 
   function toDisplay(raw: string): string {
     return noteResolver ? humanizeFormula(raw, noteResolver) : raw;
@@ -165,25 +186,36 @@ export function FrontmatterValue({
 
   // ── Propriété calculée ────────────────────────────────────────────────────
   if (isFormula(strValue)) {
+    if (editingFormula && !isValueLocked) {
+      return (
+        <FormulaEditField
+          rawValue={formulaDraft ?? strValue}
+          onChange={setFormulaDraft}
+          onDone={() => {
+            if (formulaDraft !== null && formulaDraft !== strValue) {
+              onTextChange(formulaDraft);
+            }
+            setFormulaDraft(null);
+            setEditingFormula(false);
+          }}
+          allNotes={allNotes ?? []}
+          noteResolver={noteResolver ?? (() => undefined)}
+          selfProperties={toPropertyOptions(
+            Object.keys(formulaVars ?? {}),
+            fieldKey
+          )}
+        />
+      );
+    }
+
+    // Après la branche d'édition : inutile d'évaluer la formule à chaque frappe.
     const computed = computeFormula(
       strValue,
       formulaVars ?? {},
       formulaChildren,
       noteResolver
     );
-    const isError = computed === "#ERREUR";
-
-    if (editingFormula && !isValueLocked) {
-      return (
-        <FormulaEditField
-          rawValue={strValue}
-          onChange={onTextChange}
-          onDone={() => setEditingFormula(false)}
-          allNotes={allNotes ?? []}
-          noteResolver={noteResolver ?? (() => undefined)}
-        />
-      );
-    }
+    const isError = isFormulaError(computed);
 
     // Vue compactée d'un BUTTON : valeurs surlignées + dot pour rechoisir la couleur
     const buttonDef = isButtonFormula(strValue) ? parseButton(strValue) : null;

@@ -2,7 +2,8 @@
  * remark-inline-formula.ts
  *
  * Round-trip Markdown ↔ nœud `inline_formula` :
- *  - lecture  : scanne les nœuds texte pour `$$expr$$` → nœud mdast `inline_formula`.
+ *  - lecture  : repère `$$expr$$` dans la source et remplace les nœuds couverts
+ *    (`source-spans.ts`) ; à défaut, scan par nœud texte.
  *  - écriture : handler remark-stringify renvoyant `node.value` verbatim (l'expression
  *    peut contenir `*`, `_`, `[`… qui ne doivent PAS être échappés).
  *
@@ -12,6 +13,7 @@
 import { $remark } from "@milkdown/kit/utils";
 import type { Root } from "mdast";
 import { createLogger } from "../../lib/logger";
+import { rebuildWithFormulas } from "./source-spans";
 
 const log = createLogger("remark-inline-formula");
 
@@ -24,10 +26,8 @@ type AnyNode = any;
 // `$$` … `$$` non-greedy, sur une seule ligne, au moins un caractère.
 const FORMULA_RE = /\$\$([^\n]+?)\$\$/g;
 
-function processChildren(parent: AnyNode): void {
-  if (!parent.children) return;
-  if (SKIP_PARENTS.has(parent.type)) return;
-
+/** Scan par nœud texte — ne voit qu'une formule non fragmentée par remark. */
+function scanTextNodes(parent: AnyNode): number {
   const newChildren: AnyNode[] = [];
   let totalReplaced = 0;
 
@@ -62,12 +62,34 @@ function processChildren(parent: AnyNode): void {
         newChildren.push(...parts);
       }
     } else {
-      if (child.children) processChildren(child);
       newChildren.push(child);
     }
   }
 
   parent.children = newChildren;
+  return totalReplaced;
+}
+
+function processChildren(parent: AnyNode, source: string): void {
+  if (!parent.children) return;
+  if (SKIP_PARENTS.has(parent.type)) return;
+
+  // Reconstruction depuis la source d'abord : c'est la seule qui retrouve une
+  // formule que remark a éclatée sur plusieurs nœuds (cf. source-spans.ts).
+  // `null` (aucune formule, ou découpage non sûr) → scan par nœud texte.
+  const rebuilt = source ? rebuildWithFormulas(parent.children, source) : null;
+  let totalReplaced: number;
+  if (rebuilt) {
+    parent.children = rebuilt.children;
+    totalReplaced = rebuilt.count;
+  } else {
+    totalReplaced = scanTextNodes(parent);
+  }
+
+  for (const child of parent.children) {
+    if (child.children) processChildren(child, source);
+  }
+
   if (totalReplaced > 0) {
     log.info("formules inline parsées", {
       dans: parent.type,
@@ -88,8 +110,10 @@ function remarkInlineFormula(this: AnyNode) {
     },
   });
 
-  return (tree: Root) => {
-    processChildren(tree as AnyNode);
+  // 2e argument : la VFile. Milkdown appelle `remark.runSync(tree, markdown)`,
+  // donc la source brute est disponible ici (indispensable à source-spans.ts).
+  return (tree: Root, file: AnyNode) => {
+    processChildren(tree as AnyNode, String(file ?? ""));
   };
 }
 

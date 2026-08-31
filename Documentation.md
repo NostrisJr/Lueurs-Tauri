@@ -169,7 +169,14 @@ Les colonnes affichées sont l'union dédupliquée de toutes les propriétés no
 
 Exemples : `$$round(self.recettes - self.charges, 2)$$`, `$$agg(montant, sum)$$`, `$$ref("Budget").revenu * 0.2$$`.
 
-**Saisie des formules.** Taper `$$` dans un champ texte insère automatiquement la paire fermante (`$$`) et bascule en mode édition de formule. En mode édition, taper `ref(` ouvre un sélecteur de notes — sélectionner une note insère `ref("NomNote")` et positionne le curseur après. Taper ensuite `.` ouvre un sélecteur de propriétés pour compléter la référence. Le chemin absolu de la note est stocké dans le frontmatter ; l'interface n'affiche que le nom de la note.
+**Saisie des formules.** Taper `$$` dans un champ texte insère automatiquement la paire fermante (`$$`) et bascule en mode édition de formule, curseur à l'intérieur. En mode édition :
+
+- `ref(` ouvre un sélecteur de notes — sélectionner une note insère `ref("NomNote")` et positionne le curseur après. Taper ensuite `.` ouvre un sélecteur de propriétés pour compléter la référence.
+- `self.` ouvre un sélecteur listant les propriétés de la note courante (la propriété en cours d'édition est exclue : une propriété ne se référence pas elle-même).
+
+L'interface n'affiche jamais le chemin d'une note, seulement son nom.
+
+**Sortie du mode édition.** **Entrée**, **Échap** et un clic en dehors du champ valident tous la formule. Échap n'annule pas la saisie : si un sélecteur (note ou propriété) est ouvert, il le referme ; sinon il valide, comme Entrée.
 
 ### Vue Kanban
 
@@ -263,9 +270,13 @@ Le corps d'une note peut contenir des formules calculées, avec la même syntaxe
 **Trois niveaux d'affichage :**
 - au repos (curseur ailleurs), la formule s'affiche sous forme de **résultat calculé**, précédé du symbole `ƒ` (le même que dans le frontmatter) ;
 - en édition, la formule s'affiche sous une **forme humanisée** (les notes référencées apparaissent par leur nom : `ref("Budget")`) ;
-- sur disque, la note enregistre la formule complète `$$…$$` avec le **chemin absolu** des notes référencées.
+- sur disque, la note enregistre la formule complète `$$…$$`, les notes référencées étant désignées par leur **chemin relatif à la racine du vault** — comme les images, les fichiers audio et les liens entre notes. Les notes reste ainsi lisibles à l'identique d'un appareil à l'autre.
 
-**Saisie.** Taper `$$` insère une formule et ouvre une petite fenêtre d'édition. On y saisit la formule comme dans le frontmatter : `ref(` ouvre le sélecteur de notes, puis `.` ouvre le sélecteur de propriétés. Valider avec **Entrée** (ou cliquer ailleurs) ; une formule laissée vide est supprimée. Cliquer sur une formule existante la rouvre en édition.
+**Saisie.** Taper `$$` insère une formule et ouvre une petite fenêtre d'édition. On y saisit la formule comme dans le frontmatter : `ref(` ouvre le sélecteur de notes, `.` le sélecteur de propriétés, et `self.` la liste des propriétés de la note courante. Valider avec **Entrée**, **Échap** ou en cliquant ailleurs — comme dans le frontmatter, Échap valide et n'annule pas. Une formule laissée vide est supprimée ; cliquer sur une formule existante la rouvre en édition.
+
+Le nom des notes référencées peut contenir n'importe quel caractère, y compris ceux qui ont un sens en Markdown (`*`, `_`, `[`, `~`) : la formule est relue depuis le texte source de la note, pas depuis sa mise en forme.
+
+**Note sur le barré.** Le barré s'écrit avec un double tilde (`~~texte~~`). Un tilde simple (`~texte~`) est du texte ordinaire — utile pour écrire « ~10 personnes » sans que la suite du texte parte en barré. Taper `~texte~` dans l'éditeur produit bien un barré : il est simplement enregistré sous sa forme `~~texte~~`.
 
 ### Modes d'affichage
 

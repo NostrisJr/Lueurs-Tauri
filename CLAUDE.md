@@ -60,6 +60,24 @@ System properties use double-underscore prefixes and are stored in YAML frontmat
 | `__KanbanColumns__` | Kanban column definitions `[{ id, label }]` |
 | `__TableColumns__` | Table column widths |
 
+### Convention des chemins dans le corps des notes
+
+Toute référence à un fichier écrite dans le corps markdown d'une note — image, bloc
+audio, wikilink, `ref()` de formule — est **toujours stockée relative à la racine du
+vault** (ex: `resources/images/photo.png`, jamais `/Users/.../vault/resources/images/photo.png`).
+C'est la seule convention : pas de branche « legacy absolu » à maintenir dans le code
+d'affichage.
+
+La résolution en chemin lisible (absolu disque, puis `asset://` via `convertFileSrc`,
+ou lecture d'octets sur Android/iOS) se fait **uniquement au rendu**, jamais en
+persistant un chemin absolu dans le markdown. Voir `imageNodeView.ts` (images),
+`audio-block/config.ts` (audio), `proseToTypst.ts` (export) pour le pattern à suivre :
+`isAbsolutePath(src) ? src : `${vaultPath}/${src}``, résolu juste avant affichage/export.
+
+(Ceci est distinct de la convention `PATH_FIELDS`/tree ids dans `vaultIO.ts`, qui
+concerne les chemins de nœuds de l'arbre en mémoire — toujours absolus là — et les
+champs frontmatter `__Template__`/`__Base__`/`__Children__` sur disque.)
+
 ### Template Propagation
 
 When a template's properties change, `useTemplateSync` collects affected note paths and calls the Rust command `propagate_template_change`. Rust processes files in parallel (Tokio) and writes changes directly to disk. Frontend reloads the tree after completion.

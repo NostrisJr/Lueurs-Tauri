@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { NoteSelector } from "../../../desktop/components/Frontmatter/NoteSelector";
 import { PropertySelector } from "../../../desktop/components/Frontmatter/PropertySelector";
 import {
+  type PropertyOption,
   REF_PROP_TRIGGER_RE,
+  SELF_PROP_TRIGGER_RE,
   getNoteProperties,
 } from "../../../desktop/components/Frontmatter/lib/frontmatterUtils";
 import type { NoteFile } from "../../hooks/useFileTree";
@@ -20,15 +22,28 @@ interface Props {
   noteResolver: (path: string) => NoteFile | undefined;
   autoFocus?: boolean;
   inputClassName?: string;
-  /** Position du caret à l'ouverture (ex: 0 pour une formule vide). */
-  initialCursor?: number;
+  /** Propriétés de la note courante — auto-complétion de `self.`. */
+  selfProperties?: PropertyOption[];
+  /**
+   * Chemin à stocker dans `ref()` pour une note. Absolu dans le frontmatter,
+   * relatif au vault dans le corps de note (cf. plugins/inline-formula/refPaths.ts).
+   */
+  refPathOf?: (note: NoteFile) => string;
 }
+
+// Identité stable : en défaut de paramètre, la fonction serait recréée à chaque
+// render et invaliderait le mémo `notesByName` (reconstruction de la Map de
+// toutes les notes du vault à chaque caractère tapé).
+const noteIdPath = (note: NoteFile) => note.id;
 
 /**
  * Champ d'édition d'une formule humanisée, partagé entre le frontmatter
  * (FrontmatterValue) et le popup d'édition des formules inline du corps.
- * L'utilisateur voit/édite la version humanisée (ref("Nom")), le stockage reste
- * en chemins absolus. Déclencheurs `ref(` → NoteSelector, `ref("…").` → PropertySelector.
+ * L'utilisateur voit/édite la version humanisée (ref("Nom")), le stockage garde
+ * un chemin (absolu dans le frontmatter, relatif au vault dans le corps — cf.
+ * `refPathOf`). Déclencheurs : `ref(` → NoteSelector, `ref("…")[` et `self[` →
+ * PropertySelector (le crochet, pas le point : la forme insérée est toujours
+ * `["prop"]`, seule syntaxe robuste à un nom de propriété avec espaces).
  */
 export function FormulaEditField({
   rawValue,
@@ -38,7 +53,8 @@ export function FormulaEditField({
   noteResolver,
   autoFocus = true,
   inputClassName,
-  initialCursor,
+  selfProperties,
+  refPathOf = noteIdPath,
 }: Props) {
   const isMobile = platform() === "ios";
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -52,25 +68,26 @@ export function FormulaEditField({
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
   });
 
-  // Place le caret à l'ouverture (formule vide : entre les `$$`). Une seule fois.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ouverture uniquement
+  // Caret en fin de formule à l'ouverture. Ce champ REMPLACE l'input texte du
+  // frontmatter au moment où `$$x$$` devient une formule valide (et le popup
+  // inline s'ouvre sur un autre élément DOM) : sans ça le caret retombe en
+  // position 0 et le caractère suivant s'insère AVANT celui qu'on vient de taper.
   useEffect(() => {
-    if (initialCursor == null) return;
     const el = inputRef.current;
     if (!el) return;
     el.focus();
-    el.setSelectionRange(initialCursor, initialCursor);
+    el.setSelectionRange(el.value.length, el.value.length);
   }, []);
   const selectorOpenRef = useRef(false);
   const triggerCursorRef = useRef(0);
   const [refSelectorOpen, setRefSelectorOpen] = useState(false);
-  const [propSelectorNote, setPropSelectorNote] = useState<NoteFile | null>(
-    null
-  );
+  // Options du PropertySelector : propriétés d'une note référencée (`ref("…").`)
+  // ou de la note courante (`self.`).
+  const [propOptions, setPropOptions] = useState<PropertyOption[] | null>(null);
 
   const notesByName = useMemo(
-    () => new Map(allNotes.map((n) => [n.name, n.id])),
-    [allNotes]
+    () => new Map(allNotes.map((n) => [n.name, refPathOf(n)])),
+    [allNotes, refPathOf]
   );
 
   const inner = rawValue.replace(/^\$\$/, "").replace(/\$\$$/, "");
@@ -84,20 +101,20 @@ export function FormulaEditField({
     triggerCursorRef.current = cursorPos;
     selectorOpenRef.current = true;
     setRefSelectorOpen(true);
-    setPropSelectorNote(null);
+    setPropOptions(null);
   }
 
-  function openPropSelector(note: NoteFile, cursorPos: number) {
+  function openPropSelector(options: PropertyOption[], cursorPos: number) {
     triggerCursorRef.current = cursorPos;
     selectorOpenRef.current = true;
-    setPropSelectorNote(note);
+    setPropOptions(options);
     setRefSelectorOpen(false);
   }
 
   function closeSelectors() {
     selectorOpenRef.current = false;
     setRefSelectorOpen(false);
-    setPropSelectorNote(null);
+    setPropOptions(null);
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
@@ -105,7 +122,7 @@ export function FormulaEditField({
     // Ferme sans redonner le focus (l'input l'a déjà).
     selectorOpenRef.current = false;
     setRefSelectorOpen(false);
-    setPropSelectorNote(null);
+    setPropOptions(null);
   }
 
   /** Vérifie les déclencheurs sur le texte jusqu'au curseur. */
@@ -124,9 +141,14 @@ export function FormulaEditField({
         (n) => n.name === nameOrPath || n.id === nameOrPath
       );
       if (note) {
-        openPropSelector(note, cursorPos);
+        openPropSelector(getNoteProperties(note), cursorPos);
         return;
       }
+    }
+
+    if (selfProperties?.length && SELF_PROP_TRIGGER_RE.test(toCursor)) {
+      openPropSelector(selfProperties, cursorPos);
+      return;
     }
 
     resetSelectors();
@@ -166,6 +188,10 @@ export function FormulaEditField({
         }}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
+            // Échap ferme le sélecteur s'il est ouvert, sinon VALIDE la formule
+            // (comme Entrée) — ce n'est volontairement pas un « annuler ». Le
+            // brouillon local rendrait l'annulation triviale à écrire : c'est un
+            // choix de comportement, pas une limite technique. Ne pas « corriger ».
             // preventDefault : sinon le focus rendu à l'éditeur fait suivre le
             // keypress vers ProseMirror (saut de ligne parasite).
             e.preventDefault();
@@ -212,17 +238,19 @@ export function FormulaEditField({
         />
       )}
 
-      {propSelectorNote && (
+      {propOptions && (
         <PropertySelector
-          options={getNoteProperties(propSelectorNote)}
+          options={propOptions}
           onSelect={(key) => {
             const cursor = triggerCursorRef.current;
             const current = inputRef.current?.value ?? displayValue;
+            // Le "[" qui a déclenché le sélecteur est déjà tapé (self[ / ref("…")[) :
+            // on ne complète que le reste, ce qui donne self["clé"] / ref("…")["clé"].
             const { newDisplayed, newCursor } = insertAtCursor(
               current,
               cursor,
-              key,
-              0 /* après le "." déjà là */
+              `${JSON.stringify(key)}]`,
+              0
             );
             onChange(toRaw(newDisplayed));
             closeSelectors();

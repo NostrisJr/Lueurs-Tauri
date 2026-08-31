@@ -1,4 +1,7 @@
-import type { Frontmatter, NoteFile } from "../../../../shared/hooks/useFileTree";
+import type {
+  Frontmatter,
+  NoteFile,
+} from "../../../../shared/hooks/useFileTree";
 import { isSystemField } from "../../../../shared/lib/fileTreeHelpers";
 import { SystemField, getFieldDef } from "../../../../shared/lib/noteTypes";
 
@@ -16,14 +19,39 @@ export interface PropertyOption {
   displayName: string;
 }
 
-/** Regex de trigger pour l'auto-complétion des propriétés de note dans les formules. */
-export const REF_PROP_TRIGGER_RE = /ref\("([^"]+)"\)\.$/;
+/**
+ * Trigger de l'auto-complétion des propriétés de note dans les formules
+ * (`ref("…")[`) — le crochet ouvrant, pas le point : la forme insérée est
+ * toujours `["prop"]`, donc ce qu'on tape correspond à ce qui apparaît.
+ */
+export const REF_PROP_TRIGGER_RE = /ref\("([^"]+)"\)\[$/;
+
+/**
+ * Trigger de l'auto-complétion des propriétés de la note courante (`self[`).
+ * La borne gauche évite de matcher un identifiant qui se termine par « self »
+ * (ex: `monself[`).
+ */
+export const SELF_PROP_TRIGGER_RE = /(?:^|[^\p{L}\p{N}_.])self\[$/u;
+
+/**
+ * Propriétés proposables à l'auto-complétion (hors __Type__ et __Children__).
+ * `excludeKey` sert à `self.` : une propriété ne se référence pas elle-même.
+ */
+export function toPropertyOptions(
+  keys: string[],
+  excludeKey?: string
+): PropertyOption[] {
+  return keys
+    .filter(
+      (k) =>
+        k !== SystemField.TYPE && k !== SystemField.CHILDREN && k !== excludeKey
+    )
+    .map((key) => ({ key, displayName: key.replace(/^__|__$/g, "") }));
+}
 
 /** Liste des propriétés visibles d'une note (hors __Type__ et __Children__). */
 export function getNoteProperties(note: NoteFile): PropertyOption[] {
-  return Object.keys(note.frontmatter)
-    .filter((k) => k !== SystemField.TYPE && k !== SystemField.CHILDREN)
-    .map((key) => ({ key, displayName: key.replace(/^__|__$/g, "") }));
+  return toPropertyOptions(Object.keys(note.frontmatter));
 }
 
 // ── Conversion frontmatter ↔ rows ─────────────────────────────────────────

@@ -11,7 +11,8 @@
  */
 
 import { $node } from "@milkdown/kit/utils";
-import { formulaInner } from "./inlineFormulaState";
+import { formulaInner, inlineFormulaBridge } from "./inlineFormulaState";
+import { relativizeRefPaths } from "./refPaths";
 
 export const inlineFormulaSchema = $node("inline_formula", () => ({
   group: "inline",
@@ -68,7 +69,13 @@ export const inlineFormulaSchema = $node("inline_formula", () => ({
       // Formule vide (`$$$$`, édition en cours) → rien sur disque.
       const raw = node.attrs.raw as string;
       const isEmpty = formulaInner(raw).trim() === "";
-      state.addNode("inline_formula", undefined, isEmpty ? "" : raw);
+      // Chemins ref() toujours relatifs au vault sur disque (cf. refPaths.ts).
+      // Migre au passage les notes écrites en absolu.
+      const onDisk = relativizeRefPaths(
+        raw,
+        inlineFormulaBridge.current?.vaultPath
+      );
+      state.addNode("inline_formula", undefined, isEmpty ? "" : onDisk);
     },
   },
 }));

@@ -12,6 +12,7 @@ import {
   dehumanizeFormula,
   humanizeFormula,
   isFormula,
+  isFormulaError,
 } from "../../../../shared/lib/formulas";
 import { NoteSelector } from "../../Frontmatter/NoteSelector";
 import { PropertySelector } from "../../Frontmatter/PropertySelector";
@@ -151,7 +152,7 @@ export function TableCell({
         noteResolver
       )
     : value;
-  const isError = displayValue === "#ERREUR";
+  const isError = isFormulaError(displayValue);
 
   // ── Contrainte BUTTON : dropdown au lieu de l'édition texte ───────────────
   if (enumConstraint) {

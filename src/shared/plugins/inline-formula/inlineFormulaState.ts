@@ -18,10 +18,12 @@ export interface InlineFormulaContext {
   vars: Record<string, unknown>;
   /** Enfants de la note courante — pour agg() (rare en inline). */
   children?: NoteFile[];
-  /** Résolution d'une note par chemin absolu — pour ref(). */
+  /** Résolution d'une note par chemin relatif au vault — pour ref(). */
   noteResolver: (path: string) => NoteFile | undefined;
   /** Toutes les notes — pour les sélecteurs du popup. */
   allNotes: NoteFile[];
+  /** Racine du vault — pour relativiser les chemins ref() à la sérialisation. */
+  vaultPath: string;
 }
 
 export const inlineFormulaBridge: { current: InlineFormulaContext | null } = {
