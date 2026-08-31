@@ -7,6 +7,7 @@ import {
   IconXCircle,
 } from "../../../shared/components/PlatformIcon";
 import { type NoteFile, useFileTree } from "../../../shared/hooks/useFileTree";
+import { usePropertyRenamePropagation } from "../../../shared/hooks/usePropertyRenamePropagation";
 import { activeNoteAtom, notesByIdAtom } from "../../../shared/lib/atoms";
 import { toArray } from "../../../shared/lib/fileTreeHelpers";
 import { computeFormula, isFormula } from "../../../shared/lib/formulas";
@@ -85,6 +86,7 @@ export function FrontmatterRow({
   const allNotes = useMemo(() => [...notesById.values()], [notesById]);
   const activeNote = useAtomValue(activeNoteAtom);
   const { flushPendingWrite } = useFileTree();
+  const { propagatePropertyRename } = usePropertyRenamePropagation();
 
   // Notes enfant de la base active — pour évaluer agg() dans les formules
   const formulaChildren: NoteFile[] | undefined =
@@ -152,13 +154,19 @@ export function FrontmatterRow({
     );
   }
 
-  function handleRename(oldKey: string, newKey: string) {
+  async function handleRename(oldKey: string, newKey: string) {
     setEditingKey(null);
     if (isTemplate && onRenameTemplateKey) {
+      // Le template propage lui-même (Rust + formules), cf. useTemplateSync.
       onRenameTemplateKey(oldKey, newKey);
-    } else {
-      commit(rows.map((r) => (r.key === oldKey ? { ...r, key: newKey } : r)));
+      return;
     }
+    commit(rows.map((r) => (r.key === oldKey ? { ...r, key: newKey } : r)));
+    if (!activeNote) return;
+    // Vider le debounce avant de patcher : sinon l'écriture en attente (qui
+    // porte l'ancien frontmatter figé) écrase les formules réécrites.
+    await flushPendingWrite(activeNote.id);
+    await propagatePropertyRename([activeNote.id], oldKey, newKey);
   }
 
   // Tout est supprimable sauf __Type__ et les props issues d'un template

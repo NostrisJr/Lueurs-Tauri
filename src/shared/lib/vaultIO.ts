@@ -8,7 +8,12 @@ import { invoke } from "@tauri-apps/api/core";
  */
 import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
-import type { MediaFile, MediaType, NoteFile, TreeNode } from "../hooks/useFileTree";
+import type {
+  MediaFile,
+  MediaType,
+  NoteFile,
+  TreeNode,
+} from "../hooks/useFileTree";
 import { writingPathsRegistry } from "./atoms";
 import {
   type Frontmatter,
@@ -525,8 +530,11 @@ export async function persistNotePatch(
   setTree: (updater: (prev: TreeNode[]) => TreeNode[]) => void,
   vaultPath?: string
 ): Promise<void> {
-  // Optimistic — UI immédiat, frontmatter avec paths absolus
-  setTree((prev) => updateNodeInTree(prev, noteId, { frontmatter }));
+  // Optimistic — UI immédiat, frontmatter avec paths absolus. Le corps aussi :
+  // les appelants qui le réécrivent (propagation de renommage note/propriété)
+  // laisseraient sinon l'arbre sur l'ancienne version, réécrite au prochain
+  // updateNote de la note.
+  setTree((prev) => updateNodeInTree(prev, noteId, { frontmatter, body }));
 
   const diskFrontmatter = vaultPath
     ? relativizePathFields(frontmatter, vaultPath)

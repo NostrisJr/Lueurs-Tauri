@@ -3,6 +3,12 @@ import { ask, message } from "@tauri-apps/plugin-dialog";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import type { Frontmatter, NoteFile } from "../../shared/hooks/useFileTree";
 import { usePersistNote } from "../../shared/hooks/usePersistNote";
+import { usePropertyRenamePropagation } from "../../shared/hooks/usePropertyRenamePropagation";
+import {
+  diffButtonOptions,
+  isButtonFormula,
+  parseButton,
+} from "../../shared/lib/FrontmatterPicker/buttonProperty";
 import {
   parseTableAggregations,
   serializeTableAggregations,
@@ -14,11 +20,6 @@ import {
   treeAtom,
   writingPathsRegistry,
 } from "../../shared/lib/atoms";
-import {
-  diffButtonOptions,
-  isButtonFormula,
-  parseButton,
-} from "../../shared/lib/FrontmatterPicker/buttonProperty";
 import {
   flattenTree,
   isSystemField,
@@ -72,6 +73,7 @@ export function useTemplateSync() {
   const folderPath = useAtomValue(folderPathAtom);
   const setSkipPropagation = useSetAtom(skipPropagationAtom);
   const persistPatch = usePersistNote();
+  const { propagatePropertyRename } = usePropertyRenamePropagation();
 
   async function onTemplateChange(
     templateId: string,
@@ -167,6 +169,10 @@ export function useTemplateSync() {
     for (const base of heirBases) {
       await renameBaseAggregations(base, oldKey, newKey);
     }
+
+    // Rust ne renomme que les CLÉS : les formules qui référencent la propriété
+    // (self. dans le template et ses héritiers, ref() partout) restent à l'ancien nom.
+    await propagatePropertyRename(allPaths, oldKey, newKey);
   }
 
   /**
