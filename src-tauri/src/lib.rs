@@ -261,6 +261,14 @@ pub fn run() {
                     .item(&delete_item)
                     .build()?;
 
+                let find_replace_item = MenuItem::with_id(
+                    app,
+                    "find-replace",
+                    "Rechercher et remplacer\u{2026}",
+                    true,
+                    Some("Cmd+F"),
+                )?;
+
                 let edit_submenu = SubmenuBuilder::new(app, "Édition")
                     .undo()
                     .redo()
@@ -269,6 +277,8 @@ pub fn run() {
                     .copy()
                     .paste()
                     .select_all()
+                    .separator()
+                    .item(&find_replace_item)
                     .build()?;
 
                 let window_submenu = SubmenuBuilder::new(app, "Fenêtre")
@@ -307,6 +317,9 @@ pub fn run() {
                         }
                         "settings" => {
                             let _ = handle.emit("menu:open-settings", ());
+                        }
+                        "find-replace" => {
+                            let _ = handle.emit("menu:find-replace", ());
                         }
                         _ => {}
                     }

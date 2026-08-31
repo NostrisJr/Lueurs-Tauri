@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { EditorErrorBoundary } from "../../../shared/components/EditorErrorBoundary";
 import type { Editor } from "../../../shared/components/NoteEditor/MarkdownEditor";
@@ -14,6 +14,8 @@ import {
   IconArrowUturnBackward,
   IconArrowUturnForward,
   IconChevronLeft,
+  IconEllipsis,
+  IconMagnifyingglass,
   IconRecordAudio,
   IconRectangleStack,
 } from "../../../shared/components/PlatformIcon";
@@ -43,6 +45,7 @@ import {
   isAndroid,
   isIOS,
 } from "../../../shared/lib/platform";
+import { openSearchBar } from "../../../shared/plugins/search/searchState";
 
 import clsx from "clsx";
 import { useKeyboard } from "../../hooks/useKeyboard";
@@ -65,6 +68,22 @@ export function MobileEditor() {
   const setPendingDisplayMode = useSetAtom(pendingDisplayModeAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const editorRef = useRef<Editor | null>(null);
+
+  // Menu "..." (actions secondaires — pour l'instant : recherche/remplacement).
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [moreMenuRendered, setMoreMenuRendered] = useState(false);
+  const [moreMenuVisible, setMoreMenuVisible] = useState(false);
+  const MORE_MENU_ANIM_MS = 180;
+  useEffect(() => {
+    if (showMoreMenu) {
+      setMoreMenuRendered(true);
+      const raf = requestAnimationFrame(() => setMoreMenuVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    setMoreMenuVisible(false);
+    const t = setTimeout(() => setMoreMenuRendered(false), MORE_MENU_ANIM_MS);
+    return () => clearTimeout(t);
+  }, [showMoreMenu]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
   // Pour distinguer "changement de note" (restore) vs "changement clavier" (scroll caret)
@@ -243,6 +262,71 @@ export function MobileEditor() {
             </span>
           )}
         </button>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              hapticImpact("light");
+              setShowMoreMenu((v) => !v);
+            }}
+            className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
+            aria-label="Plus d'actions"
+          >
+            <IconEllipsis className="size-4.5" />
+          </button>
+
+          {moreMenuRendered && (
+            <>
+              {/* biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile de fermeture */}
+              <div
+                className="fixed inset-0 z-40"
+                style={{ background: "rgba(0,0,0,0.01)" }}
+                onClick={() => setShowMoreMenu(false)}
+              />
+              <div className="absolute right-0 top-10 z-50">
+                <div
+                  className="absolute inset-0 rounded-2xl shadow-xl"
+                  style={{
+                    background: "rgba(255,255,255,0.92)",
+                    backdropFilter: "blur(40px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(40px) saturate(180%)",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    transformOrigin: "top right",
+                    transform: moreMenuVisible ? "scale(1)" : "scale(0.85)",
+                    opacity: moreMenuVisible ? 1 : 0,
+                    transition: `transform ${MORE_MENU_ANIM_MS}ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity ${MORE_MENU_ANIM_MS}ms ease-out`,
+                  }}
+                />
+                <div
+                  className="relative rounded-2xl overflow-hidden"
+                  style={{
+                    minWidth: 220,
+                    opacity: moreMenuVisible ? 1 : 0,
+                    transform: moreMenuVisible
+                      ? "translateY(0)"
+                      : "translateY(-6px)",
+                    transition:
+                      "opacity 100ms ease-out, transform 100ms ease-out",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      hapticImpact("light");
+                      openSearchBar();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+                  >
+                    <IconMagnifyingglass className="size-4 text-gray-500" />
+                    Rechercher et remplacer
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </>
   );

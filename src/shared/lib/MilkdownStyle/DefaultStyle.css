@@ -576,8 +576,16 @@
 /* Supprime le padding vertical entre les lignes de vers */
 .milkdown .ProseMirror div[data-poetry-block] p {
   padding: 0;
+  margin: 0;
   line-height: 1.5;
   text-indent: 0;
+}
+
+/* Strophe suivante (ligne vide markdown = paragraphe séparé) : même hauteur
+   qu'une ligne vide obtenue via hardbreak (line-height), pour unifier le rendu
+   quel que soit le moyen utilisé pour créer la ligne vide. */
+.milkdown .ProseMirror div[data-poetry-block] p + p {
+  margin-top: 1.5em;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -611,6 +619,20 @@
 .milkdown .ProseMirror .word-occurrence {
   background-color: color-mix(in srgb, var(--color-amber-500) 10%, transparent);
   border-radius: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Barre recherche/remplacement : occurrences trouvées / occurrence active
+   ───────────────────────────────────────────────────────────────────────── */
+
+.milkdown .ProseMirror .search-match {
+  background-color: color-mix(in srgb, var(--color-amber-500) 25%, transparent);
+  border-radius: 2px;
+}
+
+.milkdown .ProseMirror .search-match-active {
+  background-color: color-mix(in srgb, var(--color-amber-500) 55%, transparent);
+  outline: 1px solid var(--color-amber-500);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

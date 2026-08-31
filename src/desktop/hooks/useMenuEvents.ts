@@ -17,6 +17,7 @@ import {
 } from "../../shared/lib/atoms";
 import { importPaths } from "../../shared/lib/importUtils";
 import { createLogger } from "../../shared/lib/logger";
+import { openSearchBar } from "../../shared/plugins/search/searchState";
 
 const log = createLogger("useMenuEvents");
 
@@ -85,6 +86,12 @@ export function useMenuEvents() {
       if (store.get(activeNoteAtom)) {
         store.set(exportDialogOpenAtom, true);
       }
+    }).then((fn) => unlisteners.push(fn));
+
+    // ── Rechercher et remplacer ────────────────────────────────────────────
+    listen("menu:find-replace", () => {
+      if (!store.get(activeNoteAtom)) return;
+      openSearchBar();
     }).then((fn) => unlisteners.push(fn));
 
     // ── Supprimer la note ──────────────────────────────────────────────────
