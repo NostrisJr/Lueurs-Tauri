@@ -12,7 +12,7 @@ import { history } from "@milkdown/kit/plugin/history";
 import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { trailing } from "@milkdown/kit/plugin/trailing";
 import { commonmark, headingKeymap } from "@milkdown/kit/preset/commonmark";
-import { gfm } from "@milkdown/kit/preset/gfm";
+import { gfm, remarkGFMPlugin } from "@milkdown/kit/preset/gfm";
 import { TextSelection } from "@milkdown/kit/prose/state";
 import { Milkdown, useEditor } from "@milkdown/react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
@@ -34,7 +34,7 @@ import {
 import type { DocumentMapState } from "../../lib/documentMapConfig";
 import { createLogger } from "../../lib/logger";
 import { isNoteReadOnly } from "../../lib/noteTypes";
-import { isAndroid, isDesktop, isIOS } from "../../lib/platform";
+import { isAndroid, isDesktop, isIOS, isMobile } from "../../lib/platform";
 import { createAudioBlockPlugin } from "../../plugins/audio-block/audioBlockPlugin";
 import { customCaretPlugin } from "../../plugins/custom-caret/customCaretPlugin";
 import {
@@ -69,7 +69,9 @@ import {
   inlineFormulaPlugin,
   refreshInlineFormulas,
 } from "../../plugins/inline-formula/inlineFormulaPlugin";
+import { mobileListDeletePlugin } from "../../plugins/list-mobile-delete";
 import { poetryBlockPlugin } from "../../plugins/poetry-block/poetryBlockPlugin";
+import { searchPlugin } from "../../plugins/search/searchPlugin";
 import { setNativeTextChecking } from "../../plugins/spellcheck/appleApi";
 import { warmUpSpellcheck } from "../../plugins/spellcheck/hugoApi";
 import {
@@ -224,18 +226,26 @@ export function MarkdownEditor({
     const children = childPaths
       .map((p) => notesById.get(p))
       .filter((n): n is NoteFile => n !== undefined);
+    // ref("chemin") du corps : relatif à la racine du vault (convention du
+    // corps de note, comme les liens et les médias — cf. refPaths.ts).
+    // L'absolu reste toléré : notes écrites avant le passage au relatif,
+    // migrées à leur prochaine sérialisation.
+    const prefix = vaultPath.endsWith("/") ? vaultPath : `${vaultPath}/`;
+    const resolveRef = (path: string) =>
+      notesById.get(`${prefix}${path}`) ?? notesById.get(path);
     inlineFormulaBridge.current = {
       vars: node.frontmatter as Record<string, unknown>,
       children: children.length > 0 ? children : undefined,
-      noteResolver: (path: string) => notesById.get(path),
+      noteResolver: resolveRef,
       allNotes: [...notesById.values()],
+      vaultPath,
     };
     // L'arbre/le frontmatter a changé → recalcule les résultats affichés
     refreshInlineFormulas();
     return () => {
       inlineFormulaBridge.current = null;
     };
-  }, [node.frontmatter, notesById]);
+  }, [node.frontmatter, notesById, vaultPath]);
 
   // Correcteur Hugo : synchronise l'état activé (actif uniquement pour ce
   // moteur). Le scan initial est piloté par l'init du plugin ; ici on ne
@@ -468,6 +478,13 @@ export function MarkdownEditor({
         });
       })
       .config((ctx) => {
+        // Tilde SIMPLE non interprété comme barré (seul `~~texte~~` l'est).
+        // Sinon un chemin de conteneur iCloud (`iCloud~com~lueurs~app`) écrit
+        // dans le corps est découpé en nœuds `delete`, ce qui fragmente le
+        // nœud texte et empêche le scan `$$…$$` des formules inline.
+        ctx.set(remarkGFMPlugin.options.key, { singleTilde: false });
+      })
+      .config((ctx) => {
         ctx.get(listenerCtx).markdownUpdated((_, markdown, prevMarkdown) => {
           if (markdown !== prevMarkdown) {
             log.info("markdown mis à jour", { length: markdown.length });
@@ -547,6 +564,7 @@ export function MarkdownEditor({
       .use(wikilinkPlugin)
       .use(inlineFormulaPlugin)
       .use(spellcheckPlugin)
+      .use(searchPlugin)
       .use(createDocumentMapPlugin(documentMapCallbackRef))
       .use(toggleBlockquoteCommand)
       .use(toggleBulletListCommand)
@@ -564,6 +582,7 @@ export function MarkdownEditor({
       .use(codeBasedShortcutsPlugin);
 
     if (isDesktop) editor.use(customCaretPlugin);
+    if (isMobile) editor.use(mobileListDeletePlugin);
 
     editorRef.current = editor;
     activeEditorRef.current = editor;
