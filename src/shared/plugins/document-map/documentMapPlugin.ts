@@ -43,12 +43,9 @@ function classifyNode(node: any, offset: number): DocumentBlock {
       return { typeName: "image", pos: offset, nodeSize: node.nodeSize };
     return { typeName: "paragraph", pos: offset, nodeSize: node.nodeSize };
   }
-  // bullet_list, ordered_list, task_list → liste
-  if (
-    typeName === "bullet_list" ||
-    typeName === "ordered_list" ||
-    typeName === "task_list"
-  ) {
+  // bullet_list, ordered_list → liste (les todos sont des list_item avec
+  // `checked`, pas un node distinct : pas de cas "task_list" à part)
+  if (typeName === "bullet_list" || typeName === "ordered_list") {
     return { typeName: "list", pos: offset, nodeSize: node.nodeSize };
   }
   // Tout le reste (types inconnus) → paragraphe

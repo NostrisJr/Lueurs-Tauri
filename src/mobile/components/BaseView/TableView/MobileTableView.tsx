@@ -38,7 +38,7 @@ export function MobileTableView({ base, onBaseChange }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto w-full">
+    <div className="overflow-x-auto w-full scrollbar-none">
       <div className="inline-block min-w-full">
         {/* Header */}
         <div className="flex border-b border-gray-200 bg-gray-50 sticky top-0 z-10">

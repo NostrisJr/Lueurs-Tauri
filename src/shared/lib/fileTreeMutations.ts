@@ -12,6 +12,7 @@ import {
   errorAtom,
   folderPathAtom,
   loadingAtom,
+  openTabIdsAtom,
   showResourcesAtom,
   treeAtom,
   vaultConfigAtom,
@@ -289,6 +290,10 @@ export async function initFolder(store: JotaiStore): Promise<void> {
       // (nécessite le scope FS, donc après allowVaultScope ci-dessus).
       await prefetchActiveNote(store, savedNoteId, folderPath);
       store.set(activeNoteIdAtom, savedNoteId);
+      // openTabIdsAtom n'est pas persisté (contrairement à activeNoteIdAtom) : sans ce
+      // réamorçage, la note active restaurée n'a pas d'onglet et la TabBar desktop
+      // reste vide (map sur [] dans handleSelectNote ne l'ajoute jamais après coup).
+      store.set(openTabIdsAtom, [savedNoteId]);
     }
   }
 

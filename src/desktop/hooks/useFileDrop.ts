@@ -242,17 +242,24 @@ export function useFileDrop(): FileDrop {
               }
             }
             targetId ??= lastOverTargetId;
+            // Pas de dropzone sous le curseur (ex: drop sur l'éditeur) : les
+            // médias sont déjà gérés par dropListener/useDropHandler — on ne
+            // traite ici que les notes/dossiers, que ce dernier ignore.
+            const skipMedia = !targetId;
             targetId ??= store.get(folderPathAtom);
-            if (targetId) log.info("drop position résolue", { targetId });
+            if (targetId)
+              log.info("drop position résolue", { targetId, skipMedia });
             setDragOver(null);
             if (targetId) {
               log.info("drop externe", {
                 targetId,
                 count: pendingPaths.length,
+                skipMedia,
               });
               await handleExternalDropFromPaths(
                 toFolderPath(targetId),
-                pendingPaths
+                pendingPaths,
+                skipMedia
               );
             }
             pendingPaths = [];
@@ -428,7 +435,8 @@ export function useFileDrop(): FileDrop {
 
   async function handleExternalDropFromPaths(
     targetFolderPath: string,
-    paths: string[]
+    paths: string[],
+    skipMedia = false
   ) {
     const vaultPath = store.get(folderPathAtom);
     if (!vaultPath) return;
@@ -439,6 +447,9 @@ export function useFileDrop(): FileDrop {
     await Promise.all(
       paths.map(async (srcPath) => {
         const fileName = srcPath.split("/").pop() ?? "";
+        // skipMedia : drop sans dropzone (hors arborescence) — les médias sont
+        // déjà pris en charge par l'éditeur, ne pas les importer une 2e fois.
+        if (skipMedia && getMediaType(fileName)) return;
         try {
           if (fileName.endsWith(".md")) {
             await importMdFile(srcPath, targetFolderPath, space);
@@ -470,7 +481,7 @@ export function useFileDrop(): FileDrop {
 
     // Médias droppés à la racine du vault alors qu'un espace est actif : faute de
     // frontmatter, ils ne peuvent pas être rattachés à l'espace → ils restent à la racine.
-    if (space && targetFolderPath === vaultPath) {
+    if (!skipMedia && space && targetFolderPath === vaultPath) {
       const mediaCount = paths.filter((p) =>
         getMediaType(p.split("/").pop() ?? "")
       ).length;

@@ -28,6 +28,9 @@ const log = createLogger("vaultConfig");
 const CONFIG_DIR = ".lueurs";
 const CONFIG_FILE = "config.json";
 const CURRENT_VERSION = 1;
+// Délai avant nouvelle tentative de lecture si le fichier existe mais est illisible
+// (item iCloud pas encore matérialisé au cold start).
+const ICLOUD_RETRY_DELAY_MS = 1000;
 
 export const ALL_SPACE_ID = "__all__";
 
@@ -247,6 +250,21 @@ export async function ensureVaultConfig(
   if (isAndroid) return null;
   const existing = await readVaultConfig(vaultRoot);
   if (existing) return existing;
+
+  // Le fichier existe mais n'a pas pu être lu/parsé (ex: item iCloud pas encore
+  // matérialisé juste après un cold start). On ne doit JAMAIS l'écraser dans ce
+  // cas — une seule tentative de re-lecture après un court délai, sinon abandon.
+  if (await pathExists(configFilePath(vaultRoot))) {
+    log.warn("config présente mais illisible, nouvelle tentative", { vaultRoot });
+    await new Promise((resolve) => setTimeout(resolve, ICLOUD_RETRY_DELAY_MS));
+    const retried = await readVaultConfig(vaultRoot);
+    if (retried) return retried;
+    log.error("config toujours illisible après nouvelle tentative — pas d'écrasement", {
+      vaultRoot,
+    });
+    return null;
+  }
+
   const fresh = makeDefaultConfig();
   try {
     await writeVaultConfig(vaultRoot, fresh);

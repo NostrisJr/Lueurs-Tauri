@@ -257,7 +257,7 @@ export function RowContextMenu({
 
   const overlay = (
     <div
-      className="fixed inset-0 z-[70]"
+      className="fixed inset-0 z-70"
       style={{
         // En phase "dragging" l'overlay ne doit plus rien intercepter : les
         // dossiers cibles sont dessous (cf. détection par elementsFromPoint).
