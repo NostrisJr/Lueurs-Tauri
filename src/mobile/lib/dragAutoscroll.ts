@@ -12,6 +12,8 @@ interface Options {
   point: () => { x: number; y: number };
   /** Appelé uniquement sur les frames où le conteneur a réellement défilé. */
   onScroll?: (x: number, y: number) => void;
+  /** Axe scrollé — "y" (défaut) pour une liste verticale, "x" pour un board horizontal. */
+  axis?: "x" | "y";
 }
 
 /**
@@ -27,6 +29,7 @@ export function startDragAutoscroll({
   container,
   point,
   onScroll,
+  axis = "y",
 }: Options): () => void {
   let raf = 0;
   let running = true;
@@ -37,16 +40,21 @@ export function startDragAutoscroll({
     if (el) {
       const rect = el.getBoundingClientRect();
       const { x, y } = point();
-      const distTop = y - rect.top;
-      const distBottom = rect.bottom - y;
+      const near = axis === "y" ? y : x;
+      const start = axis === "y" ? rect.top : rect.left;
+      const end = axis === "y" ? rect.bottom : rect.right;
+      const distStart = near - start;
+      const distEnd = end - near;
       let scrolled = false;
-      if (distTop < AUTOSCROLL_EDGE_PX) {
-        const intensity = 1 - Math.max(0, distTop) / AUTOSCROLL_EDGE_PX;
-        el.scrollTop -= AUTOSCROLL_MAX_STEP_PX * intensity;
+      if (distStart < AUTOSCROLL_EDGE_PX) {
+        const intensity = 1 - Math.max(0, distStart) / AUTOSCROLL_EDGE_PX;
+        if (axis === "y") el.scrollTop -= AUTOSCROLL_MAX_STEP_PX * intensity;
+        else el.scrollLeft -= AUTOSCROLL_MAX_STEP_PX * intensity;
         scrolled = true;
-      } else if (distBottom < AUTOSCROLL_EDGE_PX) {
-        const intensity = 1 - Math.max(0, distBottom) / AUTOSCROLL_EDGE_PX;
-        el.scrollTop += AUTOSCROLL_MAX_STEP_PX * intensity;
+      } else if (distEnd < AUTOSCROLL_EDGE_PX) {
+        const intensity = 1 - Math.max(0, distEnd) / AUTOSCROLL_EDGE_PX;
+        if (axis === "y") el.scrollTop += AUTOSCROLL_MAX_STEP_PX * intensity;
+        else el.scrollLeft += AUTOSCROLL_MAX_STEP_PX * intensity;
         scrolled = true;
       }
       // Le doigt est immobile pendant l'autoscroll (aucun pointermove) mais la

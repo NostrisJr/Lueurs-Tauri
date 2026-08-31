@@ -23,32 +23,53 @@ export function stopMomentumScroll(container: HTMLElement) {
   }
 }
 
-// vy : vitesse verticale signée en px/ms au relâchement (même convention que
-// le scroll image par image, `scrollTop -= dy` : positif = doigt vers le bas).
-export function startMomentumScroll(container: HTMLElement, vy: number) {
+// velocity : vitesse signée en px/ms au relâchement, sur l'axe choisi (même
+// convention que le scroll image par image, `scrollTop -= dy` / `scrollLeft
+// -= dx` : positif = doigt vers le bas/la droite).
+export function startMomentumScroll(
+  container: HTMLElement,
+  velocity: number,
+  axis: "x" | "y" = "y"
+) {
   stopMomentumScroll(container);
-  if (Math.abs(vy) < MIN_VELOCITY) return;
+  if (Math.abs(velocity) < MIN_VELOCITY) return;
 
-  let velocity = vy;
+  let v = velocity;
   let lastTime = performance.now();
 
   function tick(now: number) {
     const dt = now - lastTime;
     lastTime = now;
-    velocity *= DECELERATION ** dt;
-    container.scrollTop -= velocity * dt;
+    v *= DECELERATION ** dt;
 
-    const atTop = container.scrollTop <= 0;
-    const atBottom =
-      container.scrollTop >= container.scrollHeight - container.clientHeight;
-    if (
-      Math.abs(velocity) < MIN_VELOCITY ||
-      (atTop && velocity > 0) ||
-      (atBottom && velocity < 0)
-    ) {
-      activeRaf.delete(container);
-      return;
+    if (axis === "y") {
+      container.scrollTop -= v * dt;
+      const atStart = container.scrollTop <= 0;
+      const atEnd =
+        container.scrollTop >= container.scrollHeight - container.clientHeight;
+      if (
+        Math.abs(v) < MIN_VELOCITY ||
+        (atStart && v > 0) ||
+        (atEnd && v < 0)
+      ) {
+        activeRaf.delete(container);
+        return;
+      }
+    } else {
+      container.scrollLeft -= v * dt;
+      const atStart = container.scrollLeft <= 0;
+      const atEnd =
+        container.scrollLeft >= container.scrollWidth - container.clientWidth;
+      if (
+        Math.abs(v) < MIN_VELOCITY ||
+        (atStart && v > 0) ||
+        (atEnd && v < 0)
+      ) {
+        activeRaf.delete(container);
+        return;
+      }
     }
+
     activeRaf.set(container, requestAnimationFrame(tick));
   }
 

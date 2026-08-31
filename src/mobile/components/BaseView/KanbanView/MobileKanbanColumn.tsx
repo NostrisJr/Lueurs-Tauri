@@ -1,8 +1,3 @@
-import { useDroppable } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { useEffect, useRef, useState } from "react";
 import { ColorDotPicker } from "../../../../shared/components/FrontmatterPicker/ColorDotPicker";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
@@ -17,6 +12,14 @@ interface Props {
   // Défini uniquement pour les colonnes d'une clé BUTTON → pastille couleur cliquable
   onSetColor?: (colId: string, color: string | undefined) => void;
   virtual?: boolean;
+  /** Colonne actuellement survolée par une carte en cours de déplacement. */
+  isOver: boolean;
+  /** Note en cours de déplacement (toutes colonnes confondues) — reste en place, estompée. */
+  draggingNoteId: string | null;
+  onCardDragStart: (noteId: string, x: number, y: number) => void;
+  onCardDragMove: (x: number, y: number) => void;
+  onCardDragEnd: (x: number, y: number) => void;
+  onCardDragCancel: () => void;
 }
 
 export function MobileKanbanColumn({
@@ -26,12 +29,16 @@ export function MobileKanbanColumn({
   onDelete,
   onSetColor,
   virtual = false,
+  isOver,
+  draggingNoteId,
+  onCardDragStart,
+  onCardDragMove,
+  onCardDragEnd,
+  onCardDragCancel,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(column.label);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -110,19 +117,22 @@ export function MobileKanbanColumn({
 
       {/* Drop zone */}
       <div
-        ref={setNodeRef}
+        data-dropzone-column={column.id}
         className={`flex flex-col gap-3 min-h-24 rounded-2xl p-3 transition-colors flex-1 ${
           isOver ? "bg-blue-50" : "bg-gray-50"
         }`}
       >
-        <SortableContext
-          items={notes.map((n) => n.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {notes.map((note) => (
-            <MobileKanbanCard key={note.id} note={note} />
-          ))}
-        </SortableContext>
+        {notes.map((note) => (
+          <MobileKanbanCard
+            key={note.id}
+            note={note}
+            isDragging={note.id === draggingNoteId}
+            onDragStart={onCardDragStart}
+            onDragMove={onCardDragMove}
+            onDragEnd={onCardDragEnd}
+            onDragCancel={onCardDragCancel}
+          />
+        ))}
       </div>
     </div>
   );

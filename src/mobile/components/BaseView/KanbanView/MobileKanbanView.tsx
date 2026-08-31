@@ -1,21 +1,12 @@
-import {
-  DndContext,
-  type DragEndEvent,
-  DragOverlay,
-  type DragStartEvent,
-  PointerSensor,
-  closestCorners,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import {
   type KanbanCards,
   NO_VALUE_COLUMN_ID,
 } from "../../../../shared/lib/atoms";
 import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
-import { MobileKanbanCard } from "./MobileKanbanCard";
+import { startDragAutoscroll } from "../../../lib/dragAutoscroll";
+import { MobileKanbanCardGhost } from "./MobileKanbanCard";
 import { MobileKanbanColumn } from "./MobileKanbanColumn";
 
 interface Props {
@@ -33,6 +24,12 @@ interface Props {
   onSetColumnColor?: (colId: string, color: string | undefined) => void;
 }
 
+interface DragState {
+  noteId: string;
+  fromColId: string;
+  note: NoteFile;
+}
+
 export function MobileKanbanView({
   columns,
   cards,
@@ -42,15 +39,24 @@ export function MobileKanbanView({
   onDeleteColumn,
   onSetColumnColor,
 }: Props) {
-  const [activeNote, setActiveNote] = useState<NoteFile | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColumnLabel, setNewColumnLabel] = useState("");
 
-  // Touch delay court pour ne pas bloquer le scroll horizontal
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { delay: 200, tolerance: 5 },
-    })
+  // ── Déplacement d'une carte (appui long) ──────────────────────────────
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [dropTargetColId, setDropTargetColId] = useState<string | null>(null);
+  const [ghostPoint, setGhostPoint] = useState({ x: 0, y: 0 });
+  const pointRef = useRef({ x: 0, y: 0 });
+  const stopBoardScrollRef = useRef<(() => void) | null>(null);
+  const stopPageScrollRef = useRef<(() => void) | null>(null);
+
+  useEffect(
+    () => () => {
+      stopBoardScrollRef.current?.();
+      stopPageScrollRef.current?.();
+    },
+    []
   );
 
   function findColumnOfNote(noteId: string): string | null {
@@ -60,38 +66,80 @@ export function MobileKanbanView({
     return null;
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: cards capturé intentionnellement
-  const handleDragStart = useCallback(
-    (event: DragStartEvent) => {
-      const noteId = event.active.id as string;
-      const colId = findColumnOfNote(noteId);
-      if (!colId) return;
-      setActiveNote(cards[colId]?.find((n) => n.id === noteId) ?? null);
-    },
-    [cards]
-  );
+  function findNote(noteId: string): NoteFile | null {
+    for (const notes of Object.values(cards)) {
+      const found = notes.find((n) => n.id === noteId);
+      if (found) return found;
+    }
+    return null;
+  }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: cards/columns capturés intentionnellement
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      setActiveNote(null);
-      const { active, over } = event;
-      if (!over) return;
-      const noteId = active.id as string;
-      const fromColId = findColumnOfNote(noteId);
-      if (!fromColId) return;
-      const allColIds = new Set([
-        ...columns.map((c) => c.id),
-        NO_VALUE_COLUMN_ID,
-      ]);
-      const toColId = allColIds.has(over.id as string)
-        ? (over.id as string)
-        : findColumnOfNote(over.id as string);
-      if (!toColId || toColId === fromColId) return;
-      onMoveCard(noteId, fromColId, toColId);
-    },
-    [cards, columns, onMoveCard]
-  );
+  // `elementsFromPoint` (pluriel) et non `elementFromPoint` : le fantôme qui
+  // suit le doigt est au-dessus du board, on traverse donc toute la pile
+  // jusqu'à la première colonne plutôt que de compter sur un `pointer-events:
+  // none` toujours fiable en plein geste (cf. MobileFileTree).
+  const findDropTarget = useCallback((x: number, y: number): string | null => {
+    for (const el of document.elementsFromPoint(x, y)) {
+      const id = el.closest<HTMLElement>("[data-dropzone-column]")?.dataset
+        .dropzoneColumn;
+      if (id) return id;
+    }
+    return null;
+  }, []);
+
+  function handleCardDragStart(noteId: string, x: number, y: number) {
+    const fromColId = findColumnOfNote(noteId);
+    const note = findNote(noteId);
+    if (!fromColId || !note) return;
+    setDragState({ noteId, fromColId, note });
+    pointRef.current = { x, y };
+    setGhostPoint({ x, y });
+    setDropTargetColId(findDropTarget(x, y));
+
+    stopBoardScrollRef.current?.();
+    stopPageScrollRef.current?.();
+    // Deux axes indépendants : le board scrolle horizontalement (changer de
+    // colonne), la page (posée par MobileEditor) scrolle verticalement.
+    stopBoardScrollRef.current = startDragAutoscroll({
+      container: () => boardRef.current,
+      point: () => pointRef.current,
+      axis: "x",
+      onScroll: (px, py) => setDropTargetColId(findDropTarget(px, py)),
+    });
+    stopPageScrollRef.current = startDragAutoscroll({
+      container: () =>
+        boardRef.current?.closest<HTMLElement>("[data-scrollable]") ?? null,
+      point: () => pointRef.current,
+      axis: "y",
+      onScroll: (px, py) => setDropTargetColId(findDropTarget(px, py)),
+    });
+  }
+
+  function handleCardDragMove(x: number, y: number) {
+    pointRef.current = { x, y };
+    setGhostPoint({ x, y });
+    setDropTargetColId(findDropTarget(x, y));
+  }
+
+  function resetDrag() {
+    stopBoardScrollRef.current?.();
+    stopBoardScrollRef.current = null;
+    stopPageScrollRef.current?.();
+    stopPageScrollRef.current = null;
+    setDragState(null);
+    setDropTargetColId(null);
+  }
+
+  function handleCardDragEnd(x: number, y: number) {
+    // Recalculé sur les coordonnées finales : le dernier `move` peut dater
+    // d'un peu avant le lâcher (notamment pendant l'autoscroll, où le doigt
+    // est immobile).
+    const target = findDropTarget(x, y);
+    const source = dragState;
+    resetDrag();
+    if (!source || !target || target === source.fromColId) return;
+    onMoveCard(source.noteId, source.fromColId, target);
+  }
 
   function commitAddColumn() {
     const trimmed = newColumnLabel.trim();
@@ -100,15 +148,20 @@ export function MobileKanbanView({
     setAddingColumn(false);
   }
 
+  const columnDragProps = {
+    draggingNoteId: dragState?.noteId ?? null,
+    onCardDragStart: handleCardDragStart,
+    onCardDragMove: handleCardDragMove,
+    onCardDragEnd: handleCardDragEnd,
+    onCardDragCancel: resetDrag,
+  };
+
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+    <div className="relative h-full">
       <div
-        className="flex gap-4 px-4 py-3 overflow-x-auto h-full"
+        ref={boardRef}
+        data-kanban-board=""
+        className="flex gap-4 px-4 py-3 overflow-x-auto scrollbar-none h-full"
         style={{
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch",
@@ -122,6 +175,8 @@ export function MobileKanbanView({
             onRename={onRenameColumn}
             onDelete={onDeleteColumn}
             onSetColor={onSetColumnColor}
+            isOver={dropTargetColId === col.id}
+            {...columnDragProps}
           />
         ))}
 
@@ -133,6 +188,8 @@ export function MobileKanbanView({
             onRename={() => {}}
             onDelete={() => {}}
             virtual
+            isOver={dropTargetColId === NO_VALUE_COLUMN_ID}
+            {...columnDragProps}
           />
         )}
 
@@ -173,9 +230,20 @@ export function MobileKanbanView({
         </div>
       </div>
 
-      <DragOverlay>
-        {activeNote && <MobileKanbanCard note={activeNote} />}
-      </DragOverlay>
-    </DndContext>
+      {/* Carte fantôme : suit le doigt, ne participe jamais à elementsFromPoint. */}
+      {dragState && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{
+            left: ghostPoint.x,
+            top: ghostPoint.y,
+            width: "calc(85vw - 2rem)",
+            transform: "translate(-50%, -50%) scale(1.04)",
+          }}
+        >
+          <MobileKanbanCardGhost note={dragState.note} />
+        </div>
+      )}
+    </div>
   );
 }

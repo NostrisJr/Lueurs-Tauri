@@ -127,7 +127,7 @@ export function KanbanView({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 p-4 h-full overflow-x-scroll">
+      <div className="flex gap-4 p-4 h-full overflow-x-scroll scrollbar-none">
         {columns.map((col) => (
           <KanbanColumn
             key={col.id}
