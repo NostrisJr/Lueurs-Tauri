@@ -303,7 +303,7 @@ export function useContextMenu(
                   text: item.shortcut
                     ? `${item.label}\t${item.shortcut}`
                     : item.label,
-                  action: () => call(item.cmdKey, item.payload),
+                  action: () => call(item.command.key, item.payload),
                 })
               )
             );

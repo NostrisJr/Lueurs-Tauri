@@ -1,4 +1,3 @@
-import type { CmdKey } from "@milkdown/kit/core";
 import {
   toggleEmphasisCommand,
   toggleInlineCodeCommand,
@@ -6,24 +5,29 @@ import {
   turnIntoTextCommand,
 } from "@milkdown/kit/preset/commonmark";
 import { toggleStrikethroughCommand } from "@milkdown/kit/preset/gfm";
+import type { $Command } from "@milkdown/kit/utils";
 import {
+  toggleBlockquoteCommand,
+  toggleBulletListCommand,
+  toggleCodeBlockCommand,
   toggleDidascalieInlineCommand,
+  toggleHeadingCommand,
   toggleHighlightInlineCommand,
   toggleLinkWithPromptCommand,
-  toggleHeadingCommand,
   toggleOrderedListCommand,
-  toggleBulletListCommand,
-  toggleTaskListCommand,
-  toggleBlockquoteCommand,
-  toggleCodeBlockCommand,
   togglePoetryCommand,
+  toggleTaskListCommand,
 } from "../../../plugins/customKeymap";
 
 export interface FormattingItem {
   id: string;
   label: string;
-  // biome-ignore lint/suspicious/noExplicitAny: CmdKey générique Milkdown
-  cmdKey: CmdKey<any>;
+  // La commande elle-même (pas juste sa `.key`) : `$command()` ne peuple
+  // `.key` qu'à l'initialisation async du plugin dans l'éditeur, donc lire
+  // `.key` ici au chargement du module le figerait à `undefined`. On le lit
+  // au clic à la place (cf. useContextMenu.ts), une fois l'éditeur prêt.
+  // biome-ignore lint/suspicious/noExplicitAny: $Command générique Milkdown
+  command: $Command<any>;
   payload?: unknown;
   shortcut?: string;
 }
@@ -40,43 +44,43 @@ export const EDITOR_FORMATTING_GROUPS: FormattingGroup[] = [
       {
         id: "bold",
         label: "Gras",
-        cmdKey: toggleStrongCommand.key,
+        command: toggleStrongCommand,
         shortcut: "⌘B",
       },
       {
         id: "italic",
         label: "Italique",
-        cmdKey: toggleEmphasisCommand.key,
+        command: toggleEmphasisCommand,
         shortcut: "⌘I",
       },
       {
         id: "strike",
         label: "Barré",
-        cmdKey: toggleStrikethroughCommand.key,
+        command: toggleStrikethroughCommand,
         shortcut: "⌘⇧S",
       },
       {
         id: "code_inline",
         label: "Code inline",
-        cmdKey: toggleInlineCodeCommand.key,
+        command: toggleInlineCodeCommand,
         shortcut: "⌘E",
       },
       {
         id: "didascalie_inline",
         label: "Didascalie inline",
-        cmdKey: toggleDidascalieInlineCommand.key,
+        command: toggleDidascalieInlineCommand,
         shortcut: "⌘D",
       },
       {
         id: "highlight",
         label: "Surligner",
-        cmdKey: toggleHighlightInlineCommand.key,
+        command: toggleHighlightInlineCommand,
         shortcut: "⌘⇧L",
       },
       {
         id: "link",
         label: "Lien",
-        cmdKey: toggleLinkWithPromptCommand.key,
+        command: toggleLinkWithPromptCommand,
         shortcut: "⌘⇧K",
       },
     ],
@@ -87,67 +91,67 @@ export const EDITOR_FORMATTING_GROUPS: FormattingGroup[] = [
       {
         id: "paragraph",
         label: "Paragraphe",
-        cmdKey: turnIntoTextCommand.key,
+        command: turnIntoTextCommand,
         shortcut: "⌘⌥0",
       },
       {
         id: "h1",
         label: "Titre 1",
-        cmdKey: toggleHeadingCommand.key,
+        command: toggleHeadingCommand,
         payload: { level: 1 },
         shortcut: "⌘⌥1",
       },
       {
         id: "h2",
         label: "Titre 2",
-        cmdKey: toggleHeadingCommand.key,
+        command: toggleHeadingCommand,
         payload: { level: 2 },
         shortcut: "⌘⌥2",
       },
       {
         id: "h3",
         label: "Titre 3",
-        cmdKey: toggleHeadingCommand.key,
+        command: toggleHeadingCommand,
         payload: { level: 3 },
         shortcut: "⌘⌥3",
       },
       {
         id: "h4",
         label: "Titre 4",
-        cmdKey: toggleHeadingCommand.key,
+        command: toggleHeadingCommand,
         payload: { level: 4 },
         shortcut: "⌘⌥4",
       },
       {
         id: "h5",
         label: "Titre 5",
-        cmdKey: toggleHeadingCommand.key,
+        command: toggleHeadingCommand,
         payload: { level: 5 },
         shortcut: "⌘⌥5",
       },
       {
         id: "h6",
         label: "Titre 6",
-        cmdKey: toggleHeadingCommand.key,
+        command: toggleHeadingCommand,
         payload: { level: 6 },
         shortcut: "⌘⌥6",
       },
       {
         id: "ordered_list",
         label: "Liste numérotée",
-        cmdKey: toggleOrderedListCommand.key,
+        command: toggleOrderedListCommand,
         shortcut: "⌘⇧7",
       },
       {
         id: "bullet_list",
         label: "Liste à puces",
-        cmdKey: toggleBulletListCommand.key,
+        command: toggleBulletListCommand,
         shortcut: "⌘⇧8",
       },
       {
         id: "task_list",
         label: "Liste de tâches",
-        cmdKey: toggleTaskListCommand.key,
+        command: toggleTaskListCommand,
         shortcut: "⌘⇧9",
       },
     ],
@@ -158,19 +162,19 @@ export const EDITOR_FORMATTING_GROUPS: FormattingGroup[] = [
       {
         id: "blockquote",
         label: "Citation",
-        cmdKey: toggleBlockquoteCommand.key,
+        command: toggleBlockquoteCommand,
         shortcut: "⌘⇧B",
       },
       {
         id: "code_block",
         label: "Bloc de code",
-        cmdKey: toggleCodeBlockCommand.key,
+        command: toggleCodeBlockCommand,
         shortcut: "⌘⇧E",
       },
       {
         id: "poetry",
         label: "Poésie / Chanson",
-        cmdKey: togglePoetryCommand.key,
+        command: togglePoetryCommand,
         shortcut: "⌘⇧P",
       },
     ],
