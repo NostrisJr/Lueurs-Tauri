@@ -1,9 +1,12 @@
 import { useAtomValue } from "jotai";
+import type React from "react";
+import { MobileNoteTitle } from "../../../mobile/components/Editor/MobileNoteTitle.tsx";
 import { type DisplayMode, activeNoteAtom } from "../../lib/atoms";
 import { isMobile } from "../../lib/platform";
 import { EditableText } from "../EditableText.tsx";
 import { IconRecordAudio } from "../PlatformIcon.tsx";
 import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
+import type { EditorRef } from "./lib/editorCommands";
 
 interface Props {
   onRename: (newName: string) => Promise<void>;
@@ -12,6 +15,14 @@ interface Props {
   onRecord?: () => void;
   /** Override du nom affiché — utilisé pour les médias où activeNoteAtom est null. */
   name?: string;
+  editorRef?: EditorRef;
+  /** Propriétés dépliées (mobile) — porté par NoteEditor, absent = pas de chevron (ex: médias). */
+  propertiesExpanded?: boolean;
+  onTogglePropertiesExpanded?: () => void;
+  /** Progression (0-1) du fondu du titre dans la barre flottante (mobile), chevron masqué en fin de course. */
+  titleCollapseProgress?: number;
+  /** Conteneur du portail de morph du titre (mobile) — cf. MobileNoteTitle. */
+  titlePortalContainer?: React.RefObject<HTMLElement | null>;
 }
 
 export function NoteHeader({
@@ -20,11 +31,36 @@ export function NoteHeader({
   isNote,
   onRecord,
   name: nameProp,
+  editorRef,
+  propertiesExpanded,
+  onTogglePropertiesExpanded,
+  titleCollapseProgress,
+  titlePortalContainer,
 }: Props) {
   const activeNote = useAtomValue(activeNoteAtom);
 
   const displayName = nameProp ?? activeNote?.name;
   if (!displayName) return null;
+
+  // Éditeur de note mobile uniquement — la vue média (pas de propriétés) garde
+  // le rendu ci-dessous, comme le desktop.
+  if (isMobile && onTogglePropertiesExpanded && editorRef) {
+    return (
+      // px-3 aligné sur l'inset de FloatingHeaderBar : le chevron s'aligne
+      // horizontalement avec le chevron retour de la barre flottante.
+      <div className="w-full px-3 pt-2">
+        <MobileNoteTitle
+          name={displayName}
+          onRename={onRename}
+          editorRef={editorRef}
+          expanded={!!propertiesExpanded}
+          onToggleExpanded={onTogglePropertiesExpanded}
+          scrollCollapseProgress={titleCollapseProgress ?? 0}
+          portalContainer={titlePortalContainer}
+        />
+      </div>
+    );
+  }
 
   return (
     // Mobile : pas de sticky. La barre de MobileEditor est fixed/z-30 et couvre

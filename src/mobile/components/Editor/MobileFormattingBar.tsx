@@ -37,6 +37,7 @@ import {
   IconStrikethrough,
   IconTextformat,
 } from "../../../shared/components/PlatformIcon";
+import { iconAccentClass } from "../../../shared/lib/platform";
 import { FloatingComponent } from "../Floating/FloatingComponent";
 
 interface Props {
@@ -264,7 +265,9 @@ export function MobileFormattingBar({
           onPointerUp={() => (document.activeElement as HTMLElement)?.blur()}
           className="w-full h-full flex items-center justify-center text-black active:bg-white/30 transition-colors rounded-full"
         >
-          <IconKeyboardChevronCompactDown className="size-5" />
+          <IconKeyboardChevronCompactDown
+            className={`size-5 ${iconAccentClass}`}
+          />
         </button>
       </FloatingComponent>
     </div>

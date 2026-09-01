@@ -165,7 +165,7 @@ export function SearchBar() {
               runAndScroll((v) => runSearch(v, state.query, next));
             }}
             className={clsx(
-              "w-7 h-7 shrink-0 flex items-center justify-center rounded-md hover:bg-gray-100 hover:text-amber-600l disabled:opacity-30 disabled:hover:bg-transparent transition-colors",
+              "w-7 h-7 shrink-0 flex items-center justify-center rounded-md hover:bg-gray-100 hover:text-amber-600 disabled:opacity-30 disabled:hover:bg-transparent transition-colors",
               state.caseSensitive &&
                 "text-amber-600 bg-gray-100 hover:bg-gray-200/70"
             )}

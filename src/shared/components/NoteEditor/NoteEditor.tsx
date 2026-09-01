@@ -1,7 +1,7 @@
 import { MilkdownProvider } from "@milkdown/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BaseView } from "../../../desktop/components/BaseView/BaseView";
 import { FrontmatterEditor } from "../../../desktop/components/Frontmatter/FrontmatterEditor";
 import { MobileBaseView } from "../../../mobile/components/BaseView/MobileBaseView";
@@ -30,17 +30,28 @@ import { WikilinkSuggest } from "./WikilinkSuggest.tsx";
 import { editorInsertAudioBlock } from "./lib/editorCommands.ts";
 
 interface Props {
-  defaultCollapsedFrontmatter?: boolean;
   /** Ref externe reçue depuis le parent (ex: MobileEditor). */
   editorRef?: React.MutableRefObject<Editor | null>;
+  /** Progression (0-1) du fondu du titre dans la barre flottante (mobile) — transmis jusqu'au titre. */
+  titleCollapseProgress?: number;
+  /** Conteneur du portail de morph du titre (mobile) — cf. MobileNoteTitle. */
+  titlePortalContainer?: React.RefObject<HTMLElement | null>;
 }
 
 export function NoteEditor({
-  defaultCollapsedFrontmatter = false,
   editorRef: externalEditorRef,
+  titleCollapseProgress,
+  titlePortalContainer,
 }: Props) {
   const { handleRename, handleChange, handleSelectNote } = useNote();
   const activeNote = useAtomValue(activeNoteAtom);
+  // Chevron du titre (mobile) : déplie le titre en entier + révèle les
+  // propriétés. Réinitialisé à chaque changement de note.
+  const [propertiesExpanded, setPropertiesExpanded] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: réagit au changement de note
+  useEffect(() => {
+    setPropertiesExpanded(false);
+  }, [activeNote?.id]);
   const folderPath = useAtomValue(folderPathAtom);
   const notesById = useAtomValue(notesByIdAtom);
   const mobileSelectNote = useMobileSelectNote();
@@ -129,12 +140,19 @@ export function NoteEditor({
             }}
             onDisplayModeChange={handleDisplayModeChange}
             onRecord={() => setDictaphoneOpen(true)}
+            editorRef={resolvedEditorRef}
+            propertiesExpanded={propertiesExpanded}
+            onTogglePropertiesExpanded={
+              isMobile ? () => setPropertiesExpanded((v) => !v) : undefined
+            }
+            titleCollapseProgress={titleCollapseProgress}
+            titlePortalContainer={titlePortalContainer}
           />
 
           <div className="relative pb-10">
             <FrontmatterEditor
               onChange={handleFrontmatterChange}
-              defaultCollapsed={defaultCollapsedFrontmatter}
+              collapsed={isMobile ? !propertiesExpanded : false}
             />
 
             {/* Ancre sticky — hauteur nulle, le navigateur sort en overflow-visible */}

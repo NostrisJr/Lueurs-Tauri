@@ -7,18 +7,8 @@ import { NoteEditor } from "../../../shared/components/NoteEditor/NoteEditor";
 import {
   editorFocusAtStart,
   editorInsertAudioBlock,
-  editorRedo,
-  editorUndo,
 } from "../../../shared/components/NoteEditor/lib/editorCommands";
-import {
-  IconArrowUturnBackward,
-  IconArrowUturnForward,
-  IconChevronLeft,
-  IconEllipsis,
-  IconMagnifyingglass,
-  IconRecordAudio,
-  IconRectangleStack,
-} from "../../../shared/components/PlatformIcon";
+import { IconChevronLeft } from "../../../shared/components/PlatformIcon";
 import {
   CARET_BOTTOM_PADDING,
   MOBILE_HEADER_HEIGHT,
@@ -38,18 +28,23 @@ import {
   pendingAudioInsertAtom,
   pendingDisplayModeAtom,
 } from "../../../shared/lib/atoms";
-import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { NoteType, isNoteReadOnly } from "../../../shared/lib/noteTypes";
-import {
-  iconAccentClass,
-  isAndroid,
-  isIOS,
-} from "../../../shared/lib/platform";
-import { openSearchBar } from "../../../shared/plugins/search/searchState";
+import { iconAccentClass, isAndroid } from "../../../shared/lib/platform";
 
-import clsx from "clsx";
 import { useKeyboard } from "../../hooks/useKeyboard";
+import {
+  DURATION as SWIPE_DURATION,
+  EASING as SWIPE_EASING,
+  useMobileSwipeGesture,
+} from "../../hooks/useMobileSwipeGesture";
 import { hapticImpact } from "../../lib/haptics";
+import {
+  FLOATING_HEADER_SCROLL_OFFSET,
+  FloatingHeaderBar,
+  TITLE_COLLAPSE_RANGE,
+  TITLE_COLLAPSE_START,
+} from "../Floating/FloatingHeaderBar";
+import { MobileEditorMenu } from "./MobileEditorMenu";
 import { MobileFormattingBar } from "./MobileFormattingBar";
 import { MobileLinkMenu } from "./MobileLinkMenu";
 import { MobileSpellMenu } from "./MobileSpellMenu";
@@ -68,23 +63,12 @@ export function MobileEditor() {
   const setPendingDisplayMode = useSetAtom(pendingDisplayModeAtom);
   const folderPath = useAtomValue(folderPathAtom);
   const editorRef = useRef<Editor | null>(null);
-
-  // Menu "..." (actions secondaires — pour l'instant : recherche/remplacement).
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [moreMenuRendered, setMoreMenuRendered] = useState(false);
-  const [moreMenuVisible, setMoreMenuVisible] = useState(false);
-  const MORE_MENU_ANIM_MS = 180;
-  useEffect(() => {
-    if (showMoreMenu) {
-      setMoreMenuRendered(true);
-      const raf = requestAnimationFrame(() => setMoreMenuVisible(true));
-      return () => cancelAnimationFrame(raf);
-    }
-    setMoreMenuVisible(false);
-    const t = setTimeout(() => setMoreMenuRendered(false), MORE_MENU_ANIM_MS);
-    return () => clearTimeout(t);
-  }, [showMoreMenu]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Racine de l'éditeur — cible du portail du morph de titre (MobileNoteTitle) :
+  // rester dans ce sous-arbre pour suivre le translateX du swipe retour (cf.
+  // wrapper animé dans MobileApp), plutôt qu'un portail vers document.body qui
+  // resterait figé à l'écran pendant la transition.
+  const editorRootRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
   // Pour distinguer "changement de note" (restore) vs "changement clavier" (scroll caret)
   // dans l'effet unifié de scroll.
@@ -109,12 +93,43 @@ export function MobileEditor() {
     topInset: MOBILE_HEADER_HEIGHT,
   });
 
+  // Swipe depuis le bord droit : accès aux onglets de l'espace courant,
+  // symétrique au swipe gauche (retour arrière) géré globalement dans MobileApp.
+  // completeDelay: 0 — pas de reveal à deux couches ici, juste le petit
+  // rubber-band ; attendre DURATION avant navigate() ne faisait qu'ajouter
+  // une latence perçue pour rien.
+  const {
+    swipeProgress: tabsSwipeProgress,
+    isAnimating: isTabsSwipeAnimating,
+    touchHandlers: tabsSwipeHandlers,
+  } = useMobileSwipeGesture(() => navigate("tabs"), {
+    edge: "right",
+    completeDelay: 0,
+  });
+
+  // Titre minimisé au scroll : progression continue (0 = titre plein, 1 = fondu
+  // dans la barre flottante), directement égale à scrollTop sur cette plage —
+  // aucune transition CSS à côté, pour que l'animation reste exactement
+  // synchrone avec le doigt (un petit scroll ne joue qu'une petite partie).
+  const [titleCollapseProgress, setTitleCollapseProgress] = useState(0);
+  const titleCollapseProgressRef = useRef(0);
+
   const handleScroll = useCallback(() => {
-    if (activeNote && scrollContainerRef.current) {
-      scrollPositions.current.set(
-        activeNote.id,
-        scrollContainerRef.current.scrollTop
-      );
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (activeNote) {
+      scrollPositions.current.set(activeNote.id, container.scrollTop);
+    }
+    const progress = Math.min(
+      Math.max(
+        (container.scrollTop - TITLE_COLLAPSE_START) / TITLE_COLLAPSE_RANGE,
+        0
+      ),
+      1
+    );
+    if (progress !== titleCollapseProgressRef.current) {
+      titleCollapseProgressRef.current = progress;
+      setTitleCollapseProgress(progress);
     }
   }, [activeNote]);
 
@@ -177,159 +192,67 @@ export function MobileEditor() {
 
   if (!activeNote) return null;
 
-  const headerContent = (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          hapticImpact("light");
-          setNoteBackStack([]);
-          resetNav();
-        }}
-        className={`flex-1 justify-start flex items-center gap-1 px-2 py-1.5 rounded-lg ${iconAccentClass} active:bg-gray-100 transition-colors`}
-      >
-        <IconChevronLeft className="size-4" />
-        <span className="text-base">Notes</span>
-      </button>
-
-      <div className="flex-1 flex justify-end items-center gap-1">
-        <button
-          type="button"
-          disabled={isReadOnly}
-          onClick={() => editorUndo(editorRef)}
-          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors disabled:opacity-30`}
-          title="Annuler (⌘Z)"
-        >
-          <IconArrowUturnBackward className="size-4.5" />
-        </button>
-        <button
-          type="button"
-          disabled={isReadOnly}
-          onClick={() => editorRedo(editorRef)}
-          className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors disabled:opacity-30`}
-          title="Rétablir (⌘⇧Z)"
-        >
-          <IconArrowUturnForward className="size-4.5" />
-        </button>
-        {!isBase &&
-          (() => {
-            const currentEntry =
-              DISPLAY_MODES.find((m) => m.value === displayMode) ??
-              DISPLAY_MODES[0];
-            const nextEntry =
-              DISPLAY_MODES.find((m) => m.value !== displayMode) ??
-              DISPLAY_MODES[1];
-            return (
-              <button
-                type="button"
-                onClick={() => {
-                  hapticImpact("light");
-                  const next: DisplayMode = nextEntry.value;
-                  setPendingDisplayMode(next);
-                }}
-                className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
-                title={currentEntry.label}
-              >
-                <currentEntry.Icon className="size-5" />
-              </button>
-            );
-          })()}
-        {!isReadOnly && (
-          <button
-            type="button"
-            onClick={() => {
-              hapticImpact("light");
-              setDictaphoneMode("insert");
-            }}
-            className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
-            title="Ajouter un enregistrement"
-          >
-            <IconRecordAudio className="size-5" />
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            hapticImpact("light");
-            navigate("tabs");
-          }}
-          className={`relative w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
-        >
-          <IconRectangleStack className="size-5" />
-          {openTabIds.length > 1 && (
-            <span className="absolute -top-0.5 -right-0.5 bg-amber-400 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
-              {openTabIds.length}
-            </span>
-          )}
-        </button>
-
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              hapticImpact("light");
-              setShowMoreMenu((v) => !v);
-            }}
-            className={`w-9 h-9 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-gray-100 transition-colors`}
-            aria-label="Plus d'actions"
-          >
-            <IconEllipsis className="size-4.5" />
-          </button>
-
-          {moreMenuRendered && (
-            <>
-              {/* biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile de fermeture */}
-              <div
-                className="fixed inset-0 z-40"
-                style={{ background: "rgba(0,0,0,0.01)" }}
-                onClick={() => setShowMoreMenu(false)}
-              />
-              <div className="absolute right-0 top-10 z-50">
-                <div
-                  className="absolute inset-0 rounded-2xl shadow-xl"
-                  style={{
-                    background: "rgba(255,255,255,0.92)",
-                    backdropFilter: "blur(40px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(40px) saturate(180%)",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    transformOrigin: "top right",
-                    transform: moreMenuVisible ? "scale(1)" : "scale(0.85)",
-                    opacity: moreMenuVisible ? 1 : 0,
-                    transition: `transform ${MORE_MENU_ANIM_MS}ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity ${MORE_MENU_ANIM_MS}ms ease-out`,
-                  }}
-                />
-                <div
-                  className="relative rounded-2xl overflow-hidden"
-                  style={{
-                    minWidth: 220,
-                    opacity: moreMenuVisible ? 1 : 0,
-                    transform: moreMenuVisible
-                      ? "translateY(0)"
-                      : "translateY(-6px)",
-                    transition:
-                      "opacity 100ms ease-out, transform 100ms ease-out",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      hapticImpact("light");
-                      openSearchBar();
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
-                  >
-                    <IconMagnifyingglass className="size-4 text-gray-500" />
-                    Rechercher et remplacer
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </>
+  // Contenu des slots gauche/droite de la barre flottante headerless (le
+  // morphing pill/collapse est géré par FloatingHeaderBar) — le reste des
+  // actions vit dans MobileEditorMenu.
+  const backButton = (
+    <button
+      type="button"
+      onClick={() => {
+        hapticImpact("light");
+        setNoteBackStack([]);
+        resetNav();
+      }}
+      className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
+      aria-label="Retour aux notes"
+      title="Retour aux notes"
+    >
+      <IconChevronLeft className="size-4" />
+    </button>
   );
+
+  const menuButton = (
+    <MobileEditorMenu
+      editorRef={editorRef}
+      isBase={isBase}
+      isReadOnly={isReadOnly}
+      displayMode={displayMode}
+      openTabsCount={openTabIds.length}
+      onDisplayModeChange={(mode: DisplayMode) => setPendingDisplayMode(mode)}
+      onRecord={() => setDictaphoneMode("insert")}
+      onOpenTabs={() => navigate("tabs")}
+    />
+  );
+
+  // Zone de fondu en haut du scroll container, alignée sur la hauteur de la
+  // barre flottante : son fond est translucide (pills vitrées ou icônes nues),
+  // donc le contenu qui la traverse en scrollant doit s'estomper progressivement
+  // plutôt que d'être coupé net par l'overflow au bord du scroll container (qui
+  // démarre à y=0, derrière la barre fixe).
+  // Rampe non-linéaire (vs. transparent→black uniforme) : le contenu reste très
+  // estompé sur la majeure partie de la zone, et ne redevient net que juste
+  // avant la barre — un ramp linéaire le laissait trop lisible dès le début.
+  // Stops en px (pas %) : un % serait relatif à toute la hauteur du scroll
+  // container (mask-size 100% 100%), pas à la seule zone de fondu voulue.
+  // Palier intermédiaire à 0.04, repoussé à 80% de la zone (pas 0.12 à 60%) :
+  // le titre morphé (MobileNoteTitle) n'a plus de fond pill derrière lui, donc
+  // le contenu doit rester quasi blanc (quasi entièrement masqué) sur toute la
+  // zone qu'il traverse, et ne redevenir net que dans les tout derniers px.
+  // Zone de fondu volontairement plus haute que FLOATING_HEADER_SCROLL_OFFSET
+  // (déborde sous la zone réservée) : le retour à l'opacité pleine doit se
+  // produire plus bas pour rester lisible, quitte à assombrir un peu de
+  // contenu déjà visible sous la barre.
+  const headerFadeZoneHeight = FLOATING_HEADER_SCROLL_OFFSET * 1.45;
+  // Intensité pilotée par titleCollapseProgress (pas un dégradé statique) :
+  // au repos (progress=0, tout en haut de la page), le titre en flux ne doit
+  // pas être assombri — le fondu n'apparaît qu'au fil du scroll, en même
+  // temps que le morph vers la pill (stop final toujours "black" : le
+  // contenu sous la zone de fondu reste, lui, toujours pleinement visible).
+  const headerFadeTopAlpha = 1 - titleCollapseProgress;
+  const headerFadeMidAlpha = 1 - titleCollapseProgress * 0.96;
+  const headerFadeMask = `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeMidAlpha}) ${
+    headerFadeZoneHeight * 0.8
+  }px, black ${headerFadeZoneHeight}px)`;
 
   // Sur Android, le WebView est déjà au-dessus du clavier (insets natifs), donc
   // on compense uniquement la hauteur de la formatting bar quand elle est visible.
@@ -341,34 +264,53 @@ export function MobileEditor() {
       ? keyboardHeight + MOBILE_TOOLBAR_OFFSET
       : "max(env(safe-area-inset-bottom), 16px)";
 
-  // Sur Android, les insets IME sont appliqués côté natif (MainActivity.kt) : le
-  // WebView se redimensionne, la status bar est en padding du content, donc pt-12
-  // n'est nécessaire que sur iOS (notch). Mais on garde la même structure pour les
-  // deux plateformes : le pt-12 est inoffensif sur Android (status bar déjà gérée).
   return (
-    <div className="flex flex-col h-full w-full fixed bg-white">
-      <div
-        className={clsx(
-          "flex items-center w-full justify-between px-2 py-2 border-b bg-white border-gray-100 fixed top-0 z-30",
-          isIOS ? "pt-12" : "pt-4"
-        )}
-      >
-        {headerContent}
-      </div>
+    <div
+      ref={editorRootRef}
+      className="flex flex-col h-full w-full fixed bg-white"
+      onTouchStart={tabsSwipeHandlers.onTouchStart}
+      onTouchMove={tabsSwipeHandlers.onTouchMove}
+      onTouchEnd={tabsSwipeHandlers.onTouchEnd}
+    >
+      <FloatingHeaderBar
+        collapseProgress={titleCollapseProgress}
+        left={backButton}
+        right={menuButton}
+      />
 
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: onClick étend la zone
+          cliquable d'entrée en édition sur une note vide (cf. handleContentClick) —
+          zone tactile, pas de pendant clavier pertinent ici. */}
       <div
         ref={scrollContainerRef}
-        className={clsx(
-          "flex-1 overflow-auto overscroll-none mobile-prose",
-          isIOS ? "pt-23" : "pt-15"
-        )}
+        className="flex-1 overflow-auto overscroll-none mobile-prose"
         data-scrollable
         onScroll={handleScroll}
         onClick={handleContentClick}
-        style={{ paddingBottom }}
+        style={{
+          paddingTop: FLOATING_HEADER_SCROLL_OFFSET,
+          paddingBottom,
+          maskImage: headerFadeMask,
+          WebkitMaskImage: headerFadeMask,
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+          maskSize: "100% 100%",
+          WebkitMaskSize: "100% 100%",
+          transform:
+            tabsSwipeProgress > 0
+              ? `translateX(${(-tabsSwipeProgress * 24).toFixed(1)}px)`
+              : undefined,
+          transition: isTabsSwipeAnimating
+            ? `transform ${SWIPE_DURATION}ms ${SWIPE_EASING}`
+            : undefined,
+        }}
       >
         <EditorErrorBoundary>
-          <NoteEditor editorRef={editorRef} defaultCollapsedFrontmatter />
+          <NoteEditor
+            editorRef={editorRef}
+            titleCollapseProgress={titleCollapseProgress}
+            titlePortalContainer={editorRootRef}
+          />
         </EditorErrorBoundary>
       </div>
 

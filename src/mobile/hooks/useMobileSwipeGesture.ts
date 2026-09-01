@@ -6,6 +6,13 @@ interface SwipeGestureOptions {
   enabled?: boolean;
   edgeWidth?: number;
   completionThreshold?: number;
+  /** Bord de départ du geste — "left" (retour, défaut) ou "right" (ex: accès aux onglets). */
+  edge?: "left" | "right";
+  /** Délai (ms) avant d'appeler onComplete après un swipe réussi — laisse le
+   * temps à une éventuelle transition pilotée par swipeProgress de se jouer
+   * (cf. retour arrière : les deux couches glissent avant le démontage).
+   * Mettre à 0 si l'appelant n'anime rien de tel — sinon latence perçue pour rien. */
+  completeDelay?: number;
 }
 
 export interface SwipeGestureResult {
@@ -22,7 +29,8 @@ const EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
 const DURATION = 300;
 
 /**
- * Swipe depuis le bord gauche pour déclencher un retour arrière.
+ * Swipe depuis un bord d'écran (gauche = retour arrière par défaut, droit = ex.
+ * accès aux onglets) déclenchant onComplete au-delà du seuil.
  * Expose swipeProgress (0–1) pour animer simultanément deux couches (actuelle + précédente).
  * Cancel = spring vers 0 via double rAF pour garantir que la transition CSS est active.
  */
@@ -30,7 +38,14 @@ export function useMobileSwipeGesture(
   onComplete: () => void,
   opts: SwipeGestureOptions = {}
 ): SwipeGestureResult {
-  const { enabled = true, edgeWidth = 30, completionThreshold = 0.4 } = opts;
+  const {
+    enabled = true,
+    edgeWidth = 30,
+    completionThreshold = 0.4,
+    edge = "left",
+    completeDelay = DURATION,
+  } = opts;
+  const sign = edge === "left" ? 1 : -1;
 
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -61,8 +76,8 @@ export function useMobileSwipeGesture(
       onComplete();
       setSwipeProgress(0);
       setIsAnimating(false);
-    }, DURATION);
-  }, [onComplete]);
+    }, completeDelay);
+  }, [onComplete, completeDelay]);
 
   const cancel = useCallback(() => {
     isTracking.current = false;
@@ -116,7 +131,8 @@ export function useMobileSwipeGesture(
   const onTouchStart = useCallback(
     (e: React.TouchEvent) => {
       const x = e.touches[0].clientX;
-      if (!enabled || x > edgeWidth) {
+      const distanceFromEdge = edge === "left" ? x : window.innerWidth - x;
+      if (!enabled || distanceFromEdge > edgeWidth) {
         isTracking.current = false;
         return;
       }
@@ -127,30 +143,33 @@ export function useMobileSwipeGesture(
       isTracking.current = true;
       hasTriggeredSelection.current = false;
     },
-    [enabled, edgeWidth]
+    [enabled, edgeWidth, edge]
   );
 
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isTracking.current) return;
-    const dx = e.touches[0].clientX - touchStartX.current;
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (Math.abs(dy) > Math.abs(dx) && dx < 10) {
-      isTracking.current = false;
-      return;
-    }
-    if (dx <= 0) return;
-    const progress = Math.min(dx / window.innerWidth, 1);
-    if (progress > 0.05 && !hasTriggeredSelection.current) {
-      hapticSelection();
-      hasTriggeredSelection.current = true;
-    }
-    setSwipeProgress(progress);
-  }, []);
+  const onTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!isTracking.current) return;
+      const dx = (e.touches[0].clientX - touchStartX.current) * sign;
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (Math.abs(dy) > Math.abs(dx) && dx < 10) {
+        isTracking.current = false;
+        return;
+      }
+      if (dx <= 0) return;
+      const progress = Math.min(dx / window.innerWidth, 1);
+      if (progress > 0.05 && !hasTriggeredSelection.current) {
+        hapticSelection();
+        hasTriggeredSelection.current = true;
+      }
+      setSwipeProgress(progress);
+    },
+    [sign]
+  );
 
   const onTouchEnd = useCallback(
     (e: React.TouchEvent) => {
       if (!isTracking.current) return;
-      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dx = (e.changedTouches[0].clientX - touchStartX.current) * sign;
       const dt = Math.max(Date.now() - touchStartTime.current, 1);
       const velocity = dx / dt;
       const progress = dx / window.innerWidth;
@@ -160,7 +179,7 @@ export function useMobileSwipeGesture(
         cancel();
       }
     },
-    [completionThreshold, complete, cancel]
+    [completionThreshold, complete, cancel, sign]
   );
 
   return {
