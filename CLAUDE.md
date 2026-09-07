@@ -17,9 +17,15 @@ pnpm tauri build        # Full desktop app binary
 pnpm biome check src/   # Lint
 pnpm biome format src/  # Format
 
+# Test (Vitest)
+pnpm test               # Run frontend tests once (colocated *.test.ts files)
+pnpm test:watch         # Watch mode
+# Coverage: modules purs uniquement pour l'instant (fileTreeHelpers, formulas,
+# wikilinkRewrite, refPaths...) — pas encore de hooks React ni de code Tauri.
+
 # Rust (inside src-tauri/)
 cargo check             # Check compilation
-cargo test              # Run Rust tests
+cargo test              # Run Rust tests (aspirationnel : aucun #[test] pour l'instant)
 ```
 
 ## Architecture Overview

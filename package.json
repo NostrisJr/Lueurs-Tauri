@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "tauri": "tauri",
     "macos:build": "sh scripts/macos-build.sh",
     "ios:build": "sh scripts/ios-build.sh",
@@ -65,7 +67,8 @@
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "~5.8.3",
     "unplugin-icons": "^23.0.1",
-    "vite": "^7.3.3"
+    "vite": "^7.3.3",
+    "vitest": "^5.0.0"
   },
   "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
 }
