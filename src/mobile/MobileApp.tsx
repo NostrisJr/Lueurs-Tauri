@@ -2,10 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useMobileSelectNote } from "./hooks/useMobileSelectNote";
-import { IconFolder } from "../shared/components/PlatformIcon";
 import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
+import { IconFolder } from "../shared/components/PlatformIcon";
+import { ShareResolutionDialog } from "../shared/components/ShareResolutionDialog";
 import { useFileTree } from "../shared/hooks/useFileTree";
+import { useOpenedFileBundles } from "../shared/hooks/useOpenedFileBundles";
 import { useVaultSync } from "../shared/hooks/useVaultSync";
 import {
   type MobileView,
@@ -15,6 +16,7 @@ import {
   inboxAbsPathAtom,
   mobileGoBackAtom,
   mobileNavStackAtom,
+  mobileNavigateAtom,
   mobilePrevViewAtom,
   mobileViewAtom,
   treeAtom,
@@ -27,6 +29,7 @@ import { SearchView } from "./components/Search/SearchView";
 import { MobileSettingsView } from "./components/Settings/MobileSettingsView";
 import { MobileTabsView } from "./components/TabsView/MobileTabsView";
 import { MobileTrashView } from "./components/Trash/MobileTrashView";
+import { useMobileSelectNote } from "./hooks/useMobileSelectNote";
 import {
   DURATION,
   EASING,
@@ -72,6 +75,7 @@ export function MobileApp() {
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const selectNote = useMobileSelectNote();
   useVaultSync();
+  useOpenedFileBundles();
 
   const [pendingNewNote, setPendingNewNote] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -149,6 +153,7 @@ export function MobileApp() {
   const currentView = useAtomValue(mobileViewAtom);
   const previousView = useAtomValue(mobilePrevViewAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
+  const navigate = useSetAtom(mobileNavigateAtom);
 
   // ── Animation push (navigation avant) ────────────────────────
   // useLayoutEffect garantit que le premier render de la nouvelle vue
@@ -161,12 +166,21 @@ export function MobileApp() {
     isActive: isPushActive,
     trigger: triggerPush,
   } = usePushAnimation(DURATION);
+  // Le swipe avant vers les onglets (cf. plus bas) a déjà entièrement révélé
+  // la vue au doigt avant d'appeler navigate("tabs") — sans ce drapeau, la
+  // croissance de navStack qui en résulte redéclencherait triggerPush() et
+  // rejouerait un slide-in par-dessus une vue déjà pleinement visible.
+  const suppressNextPushRef = useRef(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: navStack.length est intentionnel — l'effet ne doit réagir qu'aux changements de taille (push/pop), pas aux mutations de contenu
   useLayoutEffect(() => {
     const prevLen = prevNavLengthRef.current;
     prevNavLengthRef.current = navStack.length;
     if (navStack.length === prevLen + 1) {
+      if (suppressNextPushRef.current) {
+        suppressNextPushRef.current = false;
+        return;
+      }
       const from = navStack[navStack.length - 2];
       if (!from) return;
       setPushFrom(from);
@@ -177,11 +191,50 @@ export function MobileApp() {
   const isPushing = isPushActive && pushFrom !== null;
 
   // ── Animation swipe retour ────────────────────────────────────
+  // (Pas de garde croisée avec le swipe avant vers les onglets ci-dessous :
+  // les deux bords sont physiquement disjoints, un seul doigt ne peut jamais
+  // armer les deux à la fois.)
   const { swipeProgress, isAnimating, touchHandlers } = useMobileSwipeGesture(
     goBack,
     { enabled: navStack.length > 1 && !isPushing }
   );
   const isSwipingBack = swipeProgress > 0 || isAnimating;
+
+  // ── Animation swipe avant vers les onglets ────────────────────
+  // Symétrique du swipe retour : la vue "onglets" est révélée en direct sous
+  // le doigt (cf. tabsPreviewStyle plus bas), navigate("tabs") n'arrivant
+  // qu'au relâchement, une fois le geste validé. excludeSelector laisse le
+  // switcher d'espaces (qui chevauche le bord droit, cf. MobileSpaceSwitcher)
+  // gérer lui-même ses taps/appuis longs.
+  const {
+    swipeProgress: tabsSwipeProgress,
+    isAnimating: isTabsSwipeAnimating,
+    touchHandlers: tabsTouchHandlers,
+  } = useMobileSwipeGesture(
+    () => {
+      suppressNextPushRef.current = true;
+      navigate("tabs");
+    },
+    {
+      edge: "right",
+      enabled: currentView !== "tabs" && !isPushing && !isSwipingBack,
+      excludeSelector: "[data-mobile-space-switcher]",
+    }
+  );
+  const isSwipingForward = tabsSwipeProgress > 0 || isTabsSwipeAnimating;
+
+  function handleRootTouchStart(e: React.TouchEvent) {
+    touchHandlers.onTouchStart(e);
+    tabsTouchHandlers.onTouchStart(e);
+  }
+  function handleRootTouchMove(e: React.TouchEvent) {
+    touchHandlers.onTouchMove(e);
+    tabsTouchHandlers.onTouchMove(e);
+  }
+  function handleRootTouchEnd(e: React.TouchEvent) {
+    touchHandlers.onTouchEnd(e);
+    tabsTouchHandlers.onTouchEnd(e);
+  }
 
   // ── Styles ────────────────────────────────────────────────────
   const showBg = isPushing || isSwipingBack;
@@ -219,7 +272,28 @@ export function MobileApp() {
             swipeProgress > 0 ? "-6px 0 20px rgba(0,0,0,0.10)" : undefined,
           willChange: "transform",
         }
-      : {};
+      : isSwipingForward
+        ? {
+            // La vue courante recule en position "parquée" (-30%, même valeur
+            // que pushFrom pendant un push) à mesure que les onglets arrivent
+            // par-dessus — cf. tabsPreviewStyle.
+            transform: `translateX(${(-30 * tabsSwipeProgress).toFixed(1)}%)`,
+            transition: isTabsSwipeAnimating
+              ? `transform ${DURATION}ms ${EASING}`
+              : "none",
+            willChange: "transform",
+          }
+        : {};
+
+  const tabsPreviewStyle: React.CSSProperties = {
+    transform: `translateX(${(100 - tabsSwipeProgress * 100).toFixed(1)}%)`,
+    transition: isTabsSwipeAnimating
+      ? `transform ${DURATION}ms ${EASING}`
+      : "none",
+    boxShadow:
+      tabsSwipeProgress > 0 ? "-6px 0 20px rgba(0,0,0,0.10)" : undefined,
+    willChange: "transform",
+  };
 
   if (!folderPath && isAndroid) {
     return (
@@ -260,9 +334,9 @@ export function MobileApp() {
     <div
       ref={rootRef}
       className="fixed inset-0 overflow-hidden bg-gray-100"
-      onTouchStart={touchHandlers.onTouchStart}
-      onTouchMove={touchHandlers.onTouchMove}
-      onTouchEnd={touchHandlers.onTouchEnd}
+      onTouchStart={handleRootTouchStart}
+      onTouchMove={handleRootTouchMove}
+      onTouchEnd={handleRootTouchEnd}
     >
       {/* Couche de fond — vues non-éditeur seulement */}
       {showBg && bgView && bgView !== "editor" && (
@@ -287,12 +361,29 @@ export function MobileApp() {
 
       {/* Couche de premier plan — vues non-éditeur seulement */}
       {currentView !== "editor" && (
-        <div className="absolute inset-0" style={{ ...currentStyle, zIndex: 2 }}>
+        <div
+          className="absolute inset-0"
+          style={{ ...currentStyle, zIndex: 2 }}
+        >
           <ViewRenderer view={currentView} />
         </div>
       )}
 
+      {/* Aperçu des onglets pendant un swipe avant depuis le bord droit — révélé
+          au doigt (cf. tabsPreviewStyle), symétrique de la couche de fond du
+          swipe retour ci-dessus. navigate("tabs") ne fait que confirmer l'état
+          déjà visible une fois le geste validé (cf. suppressNextPushRef). */}
+      {isSwipingForward && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ ...tabsPreviewStyle, zIndex: 3 }}
+        >
+          <MobileTabsView />
+        </div>
+      )}
+
       {dictaphoneMode !== null && <MobileDictaphone />}
+      <ShareResolutionDialog />
     </div>
   );
 }

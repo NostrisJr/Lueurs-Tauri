@@ -31,7 +31,6 @@ import {
   FLOATING_HEADER_SLOT_SIZE,
   FLOATING_HEADER_TOP_OFFSET,
   TITLE_COLLAPSE_RANGE,
-  TITLE_COLLAPSE_START,
 } from "../Floating/FloatingHeaderBar";
 
 function lerp(a: number, b: number, t: number) {
@@ -187,13 +186,14 @@ export function MobileNoteTitle({
   let morphOverlay: React.ReactNode = null;
   if (!isEditing && scrollCollapseProgress > 0 && titleRef.current) {
     const rect = titleRef.current.getBoundingClientRect();
-    // scrollTop reconstruit depuis la progression : exact tant que
-    // 0 < progress < 1 (au-delà, MobileEditor clampe et on n'a de toute façon
-    // plus besoin du rect de départ — lerp(_, end, 1) = end).
-    const scrollTopNow =
-      TITLE_COLLAPSE_START + scrollCollapseProgress * TITLE_COLLAPSE_RANGE;
+    // rect.top est déjà la position réelle, scrollée — le titre en flux suit le
+    // scroll 1:1 pendant la zone morte (avant TITLE_COLLAPSE_START), donc le
+    // point de départ du morph doit juste compenser le scroll parcouru DEPUIS
+    // que le morph a démarré (scrollCollapseProgress * RANGE), pas depuis
+    // scrollTop=0 — sinon l'overlay réapparaît plus bas que le titre qu'il
+    // remplace (saut visible, cf. le bug qu'il corrige).
     const restLeft = rect.left;
-    const restTop = rect.top + scrollTopNow;
+    const restTop = rect.top + scrollCollapseProgress * TITLE_COLLAPSE_RANGE;
     const restWidth = rect.width;
 
     const slotLeft =

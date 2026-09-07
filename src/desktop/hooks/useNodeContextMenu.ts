@@ -16,16 +16,27 @@ import {
   PredefinedMenuItem,
   Submenu,
 } from "@tauri-apps/api/menu";
+import { save as saveFilePicker } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 import { Command } from "@tauri-apps/plugin-shell";
 import { useStore } from "jotai";
 import { useCallback, useRef } from "react";
 import { useNote } from "../../shared/hooks/useNote";
 import {
+  fileRedoStackAtom,
+  fileUndoStackAtom,
+  folderPathAtom,
+  infoAuteurAtom,
   notesByIdAtom,
   treeAtom,
   vaultConfigAtom,
 } from "../../shared/lib/atoms";
-import { toArray } from "../../shared/lib/fileTreeHelpers";
+import { resolveAndBuildBundle } from "../../shared/lib/bundle/bundleShare";
+import { findNodeById, toArray } from "../../shared/lib/fileTreeHelpers";
+import {
+  redoLastFileAction,
+  undoLastFileAction,
+} from "../../shared/lib/fileTreeUndo";
 import { importPaths } from "../../shared/lib/importUtils";
 import { createLogger } from "../../shared/lib/logger";
 import { SystemField, isNoteReadOnly } from "../../shared/lib/noteTypes";
@@ -57,6 +68,35 @@ export function useNodeContextMenu() {
 
       const escaped = nodeId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
+      // Annuler/Rétablir la dernière opération du file tree (suppression,
+      // renommage, déplacement) — global, pas spécifique au nœud cliqué :
+      // c'est le seul menu associé au file tree sur desktop (pas de menu
+      // "global" séparé comme le "..." mobile), d'où le libellé qui rappelle
+      // l'action concernée plutôt qu'un simple "Annuler".
+      const undoStack = store.get(fileUndoStackAtom);
+      const redoStack = store.get(fileRedoStackAtom);
+      const undoItem = await MenuItem.new({
+        text:
+          undoStack.length > 0
+            ? `Annuler : ${undoStack[undoStack.length - 1].label}`
+            : "Annuler",
+        enabled: undoStack.length > 0,
+        action: async () => {
+          await undoLastFileAction(store);
+        },
+      });
+      const redoItem = await MenuItem.new({
+        text:
+          redoStack.length > 0
+            ? `Rétablir : ${redoStack[redoStack.length - 1].label}`
+            : "Rétablir",
+        enabled: redoStack.length > 0,
+        action: async () => {
+          await redoLastFileAction(store);
+        },
+      });
+      const undoSep = await PredefinedMenuItem.new({ item: "Separator" });
+
       const revealItem = await MenuItem.new({
         text: "Révéler dans le Finder",
         action: async () => {
@@ -86,6 +126,36 @@ export function useNodeContextMenu() {
             });
           } catch (err) {
             log.error("import contextuel échoué", err);
+          }
+        },
+      });
+
+      const shareItem = await MenuItem.new({
+        text: "Partager…",
+        action: async () => {
+          const vaultPath = store.get(folderPathAtom);
+          const node = findNodeById(store.get(treeAtom), nodeId);
+          if (!vaultPath || !node) return;
+          try {
+            const result = await resolveAndBuildBundle(
+              store,
+              node,
+              vaultPath,
+              store.get(infoAuteurAtom),
+              store.get(treeAtom)
+            );
+            if (!result) return; // annulé depuis le dialogue de résolution
+            const dest = await saveFilePicker({
+              defaultPath: result.suggestedFileName,
+            });
+            if (!dest) return;
+            await writeFile(dest, result.bytes);
+            log.info("bundle exporté via Partager", { nodeId, dest });
+          } catch (err) {
+            log.error("échec partage depuis le menu contextuel", {
+              nodeId,
+              err,
+            });
           }
         },
       });
@@ -174,7 +244,17 @@ export function useNodeContextMenu() {
       }
 
       const menu = await Menu.new({
-        items: [revealItem, importItem, ...spacesItems, sep, trashItem],
+        items: [
+          undoItem,
+          redoItem,
+          undoSep,
+          revealItem,
+          importItem,
+          shareItem,
+          ...spacesItems,
+          sep,
+          trashItem,
+        ],
       });
       await menu.popup();
     },

@@ -32,8 +32,19 @@ function scrollableAncestor(el: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
-/** Scrolle `pos` dans la vue avec les mêmes marges que la frappe (instantané). */
-export function scrollPosIntoViewLikeEditing(view: EditorView, pos: number) {
+/**
+ * Scrolle `pos` dans la vue avec les mêmes marges que la frappe (instantané).
+ *
+ * `bottomInsetOverride` : remplace MOBILE_TOOLBAR_OFFSET quand l'obstruction
+ * réelle en bas d'écran diffère de la barre de formatage (ex. la bottom sheet
+ * de recherche mobile, dont la hauteur varie avec le clavier et le contenu —
+ * cf. MobileSearchBar, qui la calcule via BottomSheet.onHeightChange).
+ */
+export function scrollPosIntoViewLikeEditing(
+  view: EditorView,
+  pos: number,
+  bottomInsetOverride?: number
+) {
   const coords = view.coordsAtPos(pos);
   const container = scrollableAncestor(view.dom as HTMLElement);
   if (!container) {
@@ -52,7 +63,8 @@ export function scrollPosIntoViewLikeEditing(view: EditorView, pos: number) {
 
   const cRect = container.getBoundingClientRect();
   const topInset = isDesktop ? DESKTOP_HEADER_HEIGHT : MOBILE_HEADER_HEIGHT;
-  const bottomInset = isDesktop ? 0 : MOBILE_TOOLBAR_OFFSET;
+  const bottomInset =
+    bottomInsetOverride ?? (isDesktop ? 0 : MOBILE_TOOLBAR_OFFSET);
   const visibleTop = cRect.top + topInset + CARET_TOP_PADDING;
   const visibleBottom = cRect.bottom - bottomInset - CARET_BOTTOM_PADDING;
 

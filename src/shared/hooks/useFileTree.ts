@@ -8,6 +8,7 @@ import {
   flattenTree,
 } from "../lib/fileTreeHelpers";
 import * as mut from "../lib/fileTreeMutations";
+import { redoLastFileAction, undoLastFileAction } from "../lib/fileTreeUndo";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -112,5 +113,7 @@ export function useFileTree() {
       (fileId: string) => mut.flushPendingWrite(fileId),
       []
     ),
+    undo: useCallback(() => undoLastFileAction(store), [store]),
+    redo: useCallback(() => redoLastFileAction(store), [store]),
   };
 }

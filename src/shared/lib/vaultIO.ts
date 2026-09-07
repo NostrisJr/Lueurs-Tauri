@@ -189,6 +189,11 @@ const PATH_FIELDS = [
   SystemField.CHILDREN,
 ] as const;
 
+// Champs path à valeur scalaire (kind "string", pas "noteArray") : même convention
+// absolu/relatif que PATH_FIELDS, mais sans passer par toArray (ça écraserait le
+// scalaire en tableau à 1 élément).
+const SCALAR_PATH_FIELDS = [SystemField.DEFAULT_FOLDER] as const;
+
 // Détecte les ref() dans les formules pour la conversion de chemins
 const FORMULA_REF_RE = /ref\("([^"]+)"\)/g;
 
@@ -257,6 +262,12 @@ export function absolutifyPathFields(
     );
     result[field] = paths.map((p) => toAbsolute(p as string, vaultPath));
   }
+  for (const field of SCALAR_PATH_FIELDS) {
+    const val = result[field];
+    if (typeof val !== "string" || !val || val.startsWith("[") || isFormula(val))
+      continue;
+    result[field] = toAbsolute(val, vaultPath);
+  }
   // Absolutifier les chemins ref() dans les formules
   for (const [key, val] of Object.entries(result)) {
     if (typeof val === "string" && isFormula(val)) {
@@ -281,6 +292,11 @@ export function relativizePathFields(
     const val = result[field];
     if (!val) continue;
     result[field] = toArray(val).map((p) => toRelative(p as string, vaultPath));
+  }
+  for (const field of SCALAR_PATH_FIELDS) {
+    const val = result[field];
+    if (typeof val !== "string" || !val || isFormula(val)) continue;
+    result[field] = toRelative(val, vaultPath);
   }
   // Relativiser les chemins ref() dans les formules
   for (const [key, val] of Object.entries(result)) {

@@ -1,22 +1,18 @@
 /**
  * SearchBar.tsx
  *
- * Barre recherche/remplacement (Cmd+F) — singleton monté dans
- * NoteEditor, comme InlineFormulaPopup/WikilinkEditPopup. Piloté par
- * searchState.ts (ouverture via le menu natif macOS ou le menu "..." mobile),
- * agit sur l'éditeur actif via searchPlugin.ts.
+ * Barre recherche/remplacement (Cmd+F) — desktop uniquement (mobile utilise
+ * MobileSearchBar, une bottom sheet — cf. son commentaire d'en-tête pour le
+ * pourquoi). Singleton monté dans NoteEditor, comme InlineFormulaPopup/
+ * WikilinkEditPopup. Piloté par searchState.ts, agit sur l'éditeur actif via
+ * searchPlugin.ts.
  */
 
-import { editorViewCtx } from "@milkdown/kit/core";
-import type { EditorView } from "@milkdown/kit/prose/view";
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { MOBILE_HEADER_HEIGHT } from "../../hooks/useCaretScroll";
-import { isMobile } from "../../lib/platform";
 import {
   clearSearch,
-  getActiveMatchFrom,
   replaceAllMatches,
   replaceCurrentMatch,
   runSearch,
@@ -38,30 +34,7 @@ import {
   IconXmark,
 } from "../PlatformIcon";
 import { Squircle } from "../Squircle";
-import { activeEditorRef } from "./lib/activeEditorRef";
-import { scrollPosIntoViewLikeEditing } from "./lib/editorScroll";
-
-function withActiveView(fn: (view: EditorView) => void) {
-  activeEditorRef.current?.action((ctx) => {
-    try {
-      fn(ctx.get(editorViewCtx));
-    } catch {
-      /* editorViewCtx pas encore injecté */
-    }
-  });
-}
-
-// Exécute une action de recherche puis scrolle vers l'occurrence active avec
-// les marges du header fixe (le scroll natif ProseMirror `.scrollIntoView()`
-// les ignore et la cible finit masquée — cf. scrollPosIntoViewLikeEditing,
-// déjà utilisé par WikilinkEditPopup pour la même raison).
-function runAndScroll(action: (view: EditorView) => void) {
-  withActiveView((v) => {
-    action(v);
-    const pos = getActiveMatchFrom(v);
-    if (pos !== null) scrollPosIntoViewLikeEditing(v, pos);
-  });
-}
+import { runAndScroll, withActiveView } from "./lib/searchBarActions";
 
 export function SearchBar() {
   const state = useSyncExternalStore(subscribeSearchBar, getSearchBarState);
@@ -109,19 +82,13 @@ export function SearchBar() {
       : `${state.matchIndex + 1}/${state.matchCount}`;
 
   const bar = (
-    <div
-      className={clsx(
-        "fixed z-50",
-        isMobile ? "left-2 right-2" : "top-16 right-4 w-96"
-      )}
-      style={isMobile ? { top: MOBILE_HEADER_HEIGHT } : undefined}
-    >
+    <div className="fixed z-50 top-16 right-4 w-96">
       {/* Couche d'ombre séparée, non clippée : box-shadow ignore le clip-path de
           Squircle (d'où rounded-2xl ici, pas la vraie forme squircle — invisible
           vu le flou). Et filter: drop-shadow sur le panneau lui-même serait trop
           faible : son alpha est presque nul (bg-white/10, effet verre), or
           drop-shadow module l'ombre par l'alpha source. Même contournement que
-          le menu vitré de FileTreeHeader. */}
+          le menu vitré de FileTreeMenuButton. */}
       <div className="absolute inset-0 rounded-2xl shadow-xl" />
       {/* Panneau vitré : un seul Squircle. Un second clip-path imbriqué pour la
           bordure (essayé plus haut dans l'historique) opacifiait le fond derrière

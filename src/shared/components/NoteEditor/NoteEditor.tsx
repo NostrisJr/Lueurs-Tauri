@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BaseView } from "../../../desktop/components/BaseView/BaseView";
 import { FrontmatterEditor } from "../../../desktop/components/Frontmatter/FrontmatterEditor";
 import { MobileBaseView } from "../../../mobile/components/BaseView/MobileBaseView";
+import { MobileSearchBar } from "../../../mobile/components/Editor/MobileSearchBar";
 import { useMobileSelectNote } from "../../../mobile/hooks/useMobileSelectNote";
 import type { Frontmatter } from "../../hooks/useFileTree";
 import { useNote } from "../../hooks/useNote.ts";
@@ -27,7 +28,10 @@ import { NoteHeader } from "./NoteHeader.tsx";
 import { SearchBar } from "./SearchBar.tsx";
 import { WikilinkEditPopup } from "./WikilinkEditPopup.tsx";
 import { WikilinkSuggest } from "./WikilinkSuggest.tsx";
-import { editorInsertAudioBlock } from "./lib/editorCommands.ts";
+import {
+  editorInsertAudioBlock,
+  requestFocusAtStartOnMount,
+} from "./lib/editorCommands.ts";
 
 interface Props {
   /** Ref externe reçue depuis le parent (ex: MobileEditor). */
@@ -136,7 +140,16 @@ export function NoteEditor({
           <NoteHeader
             isNote={isNote}
             onRename={async (newName) => {
-              await handleRename(activeNote.id, newName, false);
+              const oldId = activeNote.id;
+              const newId = await handleRename(oldId, newName, false);
+              // Le renommage change le chemin (= l'id) → <MilkdownProvider
+              // key={activeNote.id}> remonte l'éditeur, ce qui détruit la vue
+              // sur laquelle EditableText/MobileNoteTitle viennent d'appeler
+              // editorFocusAtStart : redemander le focus pour le montage à
+              // venir (cf. consumePendingFocusAtStart dans MarkdownEditor).
+              if (newId && newId !== oldId) {
+                requestFocusAtStartOnMount(newId);
+              }
             }}
             onDisplayModeChange={handleDisplayModeChange}
             onRecord={() => setDictaphoneOpen(true)}
@@ -187,7 +200,7 @@ export function NoteEditor({
                 <WikilinkSuggest vaultPath={folderPath} />
                 <WikilinkEditPopup vaultPath={folderPath} />
                 <InlineFormulaPopup />
-                <SearchBar />
+                {isMobile ? <MobileSearchBar /> : <SearchBar />}
               </MilkdownProvider>
             )}
           </div>

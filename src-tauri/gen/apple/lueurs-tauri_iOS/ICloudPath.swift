@@ -34,6 +34,40 @@ public func getICloudDocumentsPath(
     return Int32(bytes.count)
 }
 
+/// Force le téléchargement d'un item iCloud non matérialisé (placeholder) et attend
+/// jusqu'à `timeoutMs` qu'il devienne disponible localement. Sans ça, l'OS télécharge
+/// les fichiers ubiquity de façon paresseuse et un cold start juste après une sync
+/// peut lire un fichier encore absent du disque (cf. .lueurs/config.json).
+/// Retourne true si le fichier est accessible localement à la fin de l'appel.
+@_cdecl("ensure_icloud_file_downloaded")
+public func ensureICloudFileDownloaded(
+    pathPtr: UnsafePointer<CChar>,
+    timeoutMs: Int32
+) -> Bool {
+    guard let path = String(cString: pathPtr, encoding: .utf8) else { return false }
+    let url = URL(fileURLWithPath: path)
+    let fm = FileManager.default
+
+    guard fm.fileExists(atPath: path) else { return false }
+
+    func isCurrent() -> Bool {
+        let status = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey])
+            .ubiquitousItemDownloadingStatus
+        return status == .current
+    }
+
+    if isCurrent() { return true }
+
+    try? fm.startDownloadingUbiquitousItem(at: url)
+
+    let deadline = Date().addingTimeInterval(Double(timeoutMs) / 1000)
+    while Date() < deadline {
+        if isCurrent() { return true }
+        Thread.sleep(forTimeInterval: 0.15)
+    }
+    return isCurrent()
+}
+
 // ── Comportement clavier iOS ───────────────────────────────────────────────
 //
 // Le clavier passe devant la WebView sans la redimensionner ni la scroller.

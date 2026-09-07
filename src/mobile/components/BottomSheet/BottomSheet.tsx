@@ -13,7 +13,13 @@
  * Monté dans un Portal (document.body) pour échapper aux overflow:hidden parents.
  * Swipe vers le bas pour fermer.
  */
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { Squircle } from "../../../shared/components/Squircle";
 import { useKeyboard } from "../../hooks/useKeyboard";
@@ -21,12 +27,35 @@ import { useKeyboard } from "../../hooks/useKeyboard";
 // Durée de l'animation de sortie (doit matcher la transition transform ci-dessous)
 const EXIT_DURATION_MS = 300;
 
+// Doit rester synchro avec les classes du drag handle ci-dessous
+// (mt-3 + h-1 + mb-2 = 12 + 4 + 8) — mesuré séparément du contenu (cf.
+// autoHeight) car pas dans contentRef.
+const DRAG_HANDLE_HEIGHT = 24;
+
 interface Props {
   onClose: () => void;
   children: ReactNode;
   title?: string;
-  /** Fraction de la hauteur du viewport utilisée (sans clavier). Défaut : 0.45 */
+  /** Fraction de la hauteur du viewport utilisée (sans clavier). Défaut : 0.45.
+   * Ignoré si `autoHeight` est actif. */
   heightFraction?: number;
+  /** Hauteur ajustée au contenu réel (mesuré via ResizeObserver) plutôt qu'une
+   * fraction fixe de l'écran — pour un contenu compact (ex: recherche) où une
+   * fraction fixe laisserait un vide inutile. Prime sur heightFraction, y
+   * compris clavier ouvert. Ne prend pas en compte `title` dans la mesure
+   * (non utilisé par les appelants actuels de autoHeight). */
+  autoHeight?: boolean;
+  /** false pour ne pas assombrir ce qu'il y a derrière (ex: recherche, où on
+   * veut voir le texte/les surlignages du document pendant que la sheet est
+   * ouverte) — la zone de fermeture au tap reste présente, juste invisible.
+   * Défaut true. */
+  dimBackground?: boolean;
+  /** Appelé avec le nombre de pixels occupés en bas de l'écran par la sheet
+   * (clavier + hauteur de la sheet elle-même) à chaque changement — pour un
+   * appelant qui doit garder du contenu visible au-dessus (ex: MobileSearchBar,
+   * qui recale son scroll-to-match dessus puisque la hauteur varie avec le
+   * clavier et le contenu en autoHeight). */
+  onHeightChange?: (bottomObstructionPx: number) => void;
 }
 
 export function BottomSheet({
@@ -34,6 +63,9 @@ export function BottomSheet({
   children,
   title,
   heightFraction = 0.45,
+  autoHeight = false,
+  dimBackground = true,
+  onHeightChange,
 }: Props) {
   const { height: keyboardHeight, isOpen: isKeyboardOpen } = useKeyboard();
   const startYRef = useRef(0);
@@ -46,6 +78,13 @@ export function BottomSheet({
   const contentRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [canScroll, setCanScroll] = useState(false);
+  // autoHeight : hauteur mesurée du contenu (scrollHeight de contentRef,
+  // padding-bottom inclus puisqu'il porte sur cet élément) — indépendante de
+  // canScroll ci-dessous, qui compare au clientHeight déjà contraint par
+  // sheetH (donc circulaire si utilisé pour dériver sheetH lui-même).
+  const [measuredContentHeight, setMeasuredContentHeight] = useState<
+    number | null
+  >(null);
 
   // Monté fermé (hors écran) puis ouvert une frame plus tard, pour que la transition
   // CSS ait deux états distincts à interpoler (sinon le sheet apparaît déjà en place).
@@ -79,6 +118,27 @@ export function BottomSheet({
     return () => ro.disconnect();
   }, []);
 
+  // useLayoutEffect (pas useEffect) : mesure avant peinture, sinon la sheet
+  // s'ouvre un instant à la hauteur "fraction" par défaut puis rétrécit
+  // visiblement dès que la mesure arrive — un flash indésirable pour un
+  // contenu censé être minimal dès le premier rendu.
+  useLayoutEffect(() => {
+    if (!autoHeight) return;
+    // Mesure sur innerRef, pas contentRef : contentRef est flex-1, donc sa
+    // propre hauteur dépend déjà de sheetH (celle qu'on calcule à partir de
+    // cette mesure) — circulaire, et scrollHeight d'un flex-1 sans overflow
+    // vaut son clientHeight (la hauteur imposée), pas la hauteur naturelle du
+    // contenu. innerRef est un div normal, sa hauteur reste toujours celle du
+    // contenu réel.
+    const inner = innerRef.current;
+    if (!inner) return;
+    const measure = () => setMeasuredContentHeight(inner.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [autoHeight]);
+
   // Fermeture "gestuelle" (overlay/swipe) : joue l'animation de sortie avant
   // de démonter réellement via onClose.
   function requestClose() {
@@ -89,25 +149,31 @@ export function BottomSheet({
 
   // Hauteur disponible au-dessus du clavier (ou de l'écran entier)
   const visibleH = window.innerHeight - keyboardHeight;
-  const sheetH = isKeyboardOpen
-    ? Math.min(Math.round(visibleH * 0.85), visibleH - 40)
-    : Math.round(window.innerHeight * heightFraction);
+  const sheetH =
+    autoHeight && measuredContentHeight != null
+      ? Math.min(measuredContentHeight + DRAG_HANDLE_HEIGHT, visibleH - 40)
+      : isKeyboardOpen
+        ? Math.min(Math.round(visibleH * 0.85), visibleH - 40)
+        : Math.round(window.innerHeight * heightFraction);
   const translateY = closing || !entered ? "100%" : `${swipe}px`;
+
+  useEffect(() => {
+    onHeightChange?.(keyboardHeight + sheetH);
+  }, [keyboardHeight, sheetH, onHeightChange]);
 
   const sheet = (
     // stopPropagation : évite que le tap sur l'overlay remonte dans l'arbre React
     // vers un BottomSheet parent (ex: NoteSelector au-dessus du BottomSheet formule).
     // biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile
     <div
-      className="fixed inset-0 z-50 bg-gray-600/30"
+      className={`fixed inset-0 z-50 ${dimBackground ? "bg-gray-600/30" : ""}`}
       onClick={(e) => {
         e.stopPropagation();
         requestClose();
       }}
     >
-      <Squircle
-        topRadius={28}
-        className="fixed left-0 right-0 bg-white flex flex-col"
+      <div
+        className="fixed left-0 right-0"
         style={{
           bottom: keyboardHeight,
           height: sheetH,
@@ -116,57 +182,79 @@ export function BottomSheet({
             swipe === 0
               ? "bottom 0.3s ease-out, height 0.3s ease-out, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)"
               : undefined,
-          filter: "drop-shadow(0px -4px 20px rgba(0,0,0,0.12))",
-        }}
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        onTouchStart={(e: React.TouchEvent) => {
-          startYRef.current = e.touches[0].clientY;
-          // Le swipe-to-close ne doit s'engager que si le contenu est déjà
-          // scrollé en haut, sinon il vole le geste de scroll interne (ex:
-          // remonter dans la liste d'emojis) et referme la sheet par erreur.
-          swipeAllowedRef.current = (contentRef.current?.scrollTop ?? 0) <= 0;
-        }}
-        onTouchMove={(e: React.TouchEvent) => {
-          if (!swipeAllowedRef.current) return;
-          const dy = e.touches[0].clientY - startYRef.current;
-          if (dy > 0) {
-            setSwipe(dy);
-            // Seuil 10px avant preventDefault : en dessous, iOS interprète comme
-            // un tap et synthétise un click ; preventDefault trop tôt le tue.
-            if (dy > 10) e.preventDefault();
-          }
-        }}
-        onTouchEnd={() => {
-          if (swipe > 60) {
-            setSwipe(0);
-            requestClose();
-          } else {
-            setSwipe(0);
-          }
         }}
       >
-        {/* Drag handle */}
-        <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-2 shrink-0" />
-        {title && (
-          <p className="px-4 pb-2 text-sm text-gray-400 uppercase tracking-wide shrink-0">
-            {title}
-          </p>
-        )}
+        {/* Couche d'ombre séparée, non clippée : box-shadow (pas filter:
+            drop-shadow) car Squircle applique son clip-path sur son propre
+            élément — combiné à drop-shadow sur ce même élément, l'ombre serait
+            elle aussi rognée par le clip-path (même contournement que
+            SearchBar.tsx desktop). rounded-t plutôt que la vraie forme
+            squircle : invisible vu le flou. Sans dimBackground, rien d'autre
+            ne détache visuellement la sheet de la page (même fond blanc) —
+            ombre plus marquée pour compenser, et surtout vers le haut (dy < 0)
+            puisque le bas colle à l'écran/au clavier.  */}
         <div
-          ref={contentRef}
-          className="flex-1"
-          data-scrollable
+          className="absolute inset-0 rounded-t-[28px] pointer-events-none"
           style={{
-            overflowY: canScroll ? "auto" : "hidden",
-            WebkitOverflowScrolling: canScroll ? "touch" : undefined,
-            paddingBottom: isKeyboardOpen
-              ? "4px"
-              : "calc(env(safe-area-inset-bottom) + 4px)",
+            boxShadow: dimBackground
+              ? "0px -4px 20px rgba(0,0,0,0.12)"
+              : "0px -8px 28px rgba(0,0,0,0.28)",
+          }}
+        />
+        <Squircle
+          topRadius={28}
+          className="absolute inset-0 bg-white flex flex-col"
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          onTouchStart={(e: React.TouchEvent) => {
+            startYRef.current = e.touches[0].clientY;
+            // Le swipe-to-close ne doit s'engager que si le contenu est déjà
+            // scrollé en haut, sinon il vole le geste de scroll interne (ex:
+            // remonter dans la liste d'emojis) et referme la sheet par erreur.
+            swipeAllowedRef.current =
+              (contentRef.current?.scrollTop ?? 0) <= 0;
+          }}
+          onTouchMove={(e: React.TouchEvent) => {
+            if (!swipeAllowedRef.current) return;
+            const dy = e.touches[0].clientY - startYRef.current;
+            if (dy > 0) {
+              setSwipe(dy);
+              // Seuil 10px avant preventDefault : en dessous, iOS interprète comme
+              // un tap et synthétise un click ; preventDefault trop tôt le tue.
+              if (dy > 10) e.preventDefault();
+            }
+          }}
+          onTouchEnd={() => {
+            if (swipe > 60) {
+              setSwipe(0);
+              requestClose();
+            } else {
+              setSwipe(0);
+            }
           }}
         >
-          <div ref={innerRef}>{children}</div>
-        </div>
-      </Squircle>
+          {/* Drag handle */}
+          <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-2 shrink-0" />
+          {title && (
+            <p className="px-4 pb-2 text-sm text-gray-400 uppercase tracking-wide shrink-0">
+              {title}
+            </p>
+          )}
+          <div
+            ref={contentRef}
+            className="flex-1"
+            data-scrollable
+            style={{
+              overflowY: canScroll ? "auto" : "hidden",
+              WebkitOverflowScrolling: canScroll ? "touch" : undefined,
+              paddingBottom: isKeyboardOpen
+                ? "4px"
+                : "calc(env(safe-area-inset-bottom) + 4px)",
+            }}
+          >
+            <div ref={innerRef}>{children}</div>
+          </div>
+        </Squircle>
+      </div>
     </div>
   );
 

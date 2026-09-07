@@ -13,6 +13,10 @@ interface SwipeGestureOptions {
    * (cf. retour arrière : les deux couches glissent avant le démontage).
    * Mettre à 0 si l'appelant n'anime rien de tel — sinon latence perçue pour rien. */
   completeDelay?: number;
+  /** Sélecteur CSS : un toucher démarrant dans un élément qui matche (ou un de
+   * ses ancêtres) n'arme pas le geste — laisse l'élément gérer lui-même son tap
+   * / appui long (ex: le switcher d'espaces, qui chevauche la zone de bord). */
+  excludeSelector?: string;
 }
 
 export interface SwipeGestureResult {
@@ -44,6 +48,7 @@ export function useMobileSwipeGesture(
     completionThreshold = 0.4,
     edge = "left",
     completeDelay = DURATION,
+    excludeSelector,
   } = opts;
   const sign = edge === "left" ? 1 : -1;
 
@@ -136,6 +141,13 @@ export function useMobileSwipeGesture(
         isTracking.current = false;
         return;
       }
+      if (
+        excludeSelector &&
+        (e.target as HTMLElement).closest(excludeSelector)
+      ) {
+        isTracking.current = false;
+        return;
+      }
       e.stopPropagation();
       touchStartX.current = x;
       touchStartY.current = e.touches[0].clientY;
@@ -143,7 +155,7 @@ export function useMobileSwipeGesture(
       isTracking.current = true;
       hasTriggeredSelection.current = false;
     },
-    [enabled, edgeWidth, edge]
+    [enabled, edgeWidth, edge, excludeSelector]
   );
 
   const onTouchMove = useCallback(

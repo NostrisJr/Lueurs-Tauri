@@ -8,7 +8,8 @@ import { useNote } from "../../../../shared/hooks/useNote";
 import { navigateToNoteAtom } from "../../../../shared/lib/atoms";
 import { isNoteReadOnly } from "../../../../shared/lib/noteTypes";
 import { useKeyboard } from "../../../hooks/useKeyboard";
-import { getPreviewLines } from "../../FileTree/helpers";
+import { MarkdownPreview } from "../../FileTree/MarkdownPreview";
+import { parsePreviewBlocks } from "../../FileTree/parseMarkdownPreview";
 import { useMobileCardDrag } from "./useMobileCardDrag";
 
 interface Props {
@@ -26,7 +27,7 @@ interface Props {
  * édition, pour ne pas réarmer inutilement useMobileCardDrag sous le doigt.
  */
 export function MobileKanbanCardGhost({ note }: { note: NoteFile }) {
-  const previewLines = useMemo(() => getPreviewLines(note.body), [note.body]);
+  const blocks = useMemo(() => parsePreviewBlocks(note.body, 6), [note.body]);
 
   return (
     <Squircle radius={16} className="w-full bg-white px-3.5 py-3 shadow-xl">
@@ -42,18 +43,11 @@ export function MobileKanbanCardGhost({ note }: { note: NoteFile }) {
           <IconLock className="text-gray-400 shrink-0 size-3.5" />
         )}
       </div>
-      {previewLines.length > 0 && (
-        <div className="mt-1 space-y-0.5">
-          {previewLines.map((line, i) => (
-            <p
-              // biome-ignore lint/suspicious/noArrayIndexKey: lignes statiques
-              key={i}
-              className="text-sm text-gray-400 truncate leading-relaxed"
-            >
-              {line}
-            </p>
-          ))}
-        </div>
+      {blocks.length > 0 && (
+        <MarkdownPreview
+          blocks={blocks}
+          className="mt-1 text-sm text-gray-400 leading-relaxed line-clamp-2"
+        />
       )}
     </Squircle>
   );
@@ -73,7 +67,7 @@ export function MobileKanbanCard({
   const [draft, setDraft] = useState(note.name);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { isOpen: isKeyboardOpen } = useKeyboard();
-  const previewLines = useMemo(() => getPreviewLines(note.body), [note.body]);
+  const blocks = useMemo(() => parsePreviewBlocks(note.body, 6), [note.body]);
 
   const { armProps, bind, style } = useMobileCardDrag({
     onDragStart: (x, y) => onDragStart(note.id, x, y),
@@ -162,18 +156,11 @@ export function MobileKanbanCard({
             )}
           </div>
 
-          {previewLines.length > 0 && (
-            <div className="mt-1 space-y-0.5">
-              {previewLines.map((line, i) => (
-                <p
-                  // biome-ignore lint/suspicious/noArrayIndexKey: lignes statiques
-                  key={i}
-                  className="text-sm text-gray-400 truncate leading-relaxed"
-                >
-                  {line}
-                </p>
-              ))}
-            </div>
+          {blocks.length > 0 && (
+            <MarkdownPreview
+              blocks={blocks}
+              className="mt-1 text-sm text-gray-400 leading-relaxed line-clamp-2"
+            />
           )}
 
           <button

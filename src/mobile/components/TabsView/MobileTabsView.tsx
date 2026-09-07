@@ -1,9 +1,8 @@
-import { clsx } from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useRef, useState } from "react";
 import {
   IconChevronLeft,
-  IconRectangleStack,
-  IconXmark,
+  IconTrash,
 } from "../../../shared/components/PlatformIcon";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
@@ -15,11 +14,18 @@ import {
   openTabIdsAtom,
   tabNodeByIdAtom,
 } from "../../../shared/lib/atoms";
-import { iconAccentClass, isIOS } from "../../../shared/lib/platform";
+import { iconAccentClass } from "../../../shared/lib/platform";
 import { hapticImpact } from "../../lib/haptics";
-import { FileRow } from "../FileTree/FileRow";
+import { FloatingCollapsibleTitle } from "../Floating/FloatingCollapsibleTitle";
+import {
+  FLOATING_HEADER_LIST_GAP,
+  FLOATING_HEADER_SCROLL_OFFSET,
+  FloatingHeaderBar,
+  TITLE_COLLAPSE_RANGE,
+  TITLE_COLLAPSE_START,
+} from "../Floating/FloatingHeaderBar";
 import { MobileSpaceSwitcher } from "../Floating/MobileSpaceSwitcher";
-import { MobileRowGestures, NodePreviewCard } from "../Row";
+import { TabCard } from "./TabCard";
 
 export function MobileTabsView() {
   const openTabIds = useAtomValue(openTabIdsAtom);
@@ -32,6 +38,26 @@ export function MobileTabsView() {
   const setOpenTabIds = useSetAtom(openTabIdsAtom);
   const { handleCloseTab, handleCloseAllTabs } = useNote();
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [titleCollapseProgress, setTitleCollapseProgress] = useState(0);
+  const titleCollapseProgressRef = useRef(0);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const progress = Math.min(
+      Math.max(
+        (container.scrollTop - TITLE_COLLAPSE_START) / TITLE_COLLAPSE_RANGE,
+        0
+      ),
+      1
+    );
+    if (progress !== titleCollapseProgressRef.current) {
+      titleCollapseProgressRef.current = progress;
+      setTitleCollapseProgress(progress);
+    }
+  }, []);
+
   function handleSelectTab(id: string) {
     hapticImpact("light");
     setNoteBackStack([]);
@@ -40,103 +66,106 @@ export function MobileTabsView() {
     navigate("editor");
   }
 
+  function handleClose(id: string) {
+    if (handleCloseTab(id)) resetNav();
+  }
+
   function handleCloseOthers(id: string) {
     hapticImpact("medium");
     setOpenTabIds([id]);
     setActiveNoteId(id);
   }
 
+  // Même technique de fondu que MobileEditor/MobileFileTree : le contenu qui
+  // traverse la zone sous la barre translucide s'estompe plutôt que d'être
+  // coupé net par l'overflow.
+  const headerFadeZoneHeight = FLOATING_HEADER_SCROLL_OFFSET * 1.45;
+  const headerFadeTopAlpha = 1 - titleCollapseProgress;
+  const headerFadeMidAlpha = 1 - titleCollapseProgress * 0.96;
+  const headerFadeMask = `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeMidAlpha}) ${
+    headerFadeZoneHeight * 0.8
+  }px, black ${headerFadeZoneHeight}px)`;
+
   return (
     <div className="relative flex flex-col h-screen bg-gray-100">
-      {/* Header */}
-      <div
-        className={clsx(
-          "flex items-center justify-between px-4 py-3 bg-white",
-          isIOS ? "pt-13" : "pt-3"
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            hapticImpact("light");
-            goBack();
-          }}
-          className={`flex items-center justify-center w-8 h-8 rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
-        >
-          <IconChevronLeft className="size-4" />
-        </button>
-        <h1 className="font-semibold text-gray-900">
-          {openTabIds.length} onglet{openTabIds.length > 1 ? "s" : ""}
-        </h1>
-        <button
-          type="button"
-          onClick={() => {
-            hapticImpact("medium");
-            handleCloseAllTabs();
-            resetNav();
-          }}
-          className="text-sm text-red-500 active:opacity-60 transition-opacity"
-        >
-          Tout fermer
-        </button>
-      </div>
+      <FloatingHeaderBar
+        collapseProgress={titleCollapseProgress}
+        rightPill={openTabIds.length > 0}
+        left={
+          <button
+            type="button"
+            onClick={() => {
+              hapticImpact("light");
+              goBack();
+            }}
+            className={`flex items-center justify-center w-8 h-8 rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
+          >
+            <IconChevronLeft className="size-4" />
+          </button>
+        }
+        center={
+          <FloatingCollapsibleTitle
+            text={`${openTabIds.length} onglet${openTabIds.length > 1 ? "s" : ""}`}
+            collapseProgress={titleCollapseProgress}
+          />
+        }
+        right={
+          openTabIds.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                hapticImpact("medium");
+                handleCloseAllTabs();
+                resetNav();
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-full text-red-500 active:bg-black/5 transition-colors"
+              aria-label="Tout fermer"
+              title="Tout fermer"
+            >
+              <IconTrash className="size-4.5" />
+            </button>
+          ) : (
+            <div className="w-8 h-8" />
+          )
+        }
+      />
 
-      {/* Liste d'onglets */}
       <div
-        className="flex-1 overflow-auto py-4 flex flex-col gap-2"
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 16px)" }}
+        ref={scrollContainerRef}
+        className="flex-1 overflow-auto"
+        onScroll={handleScroll}
+        style={{
+          paddingTop: FLOATING_HEADER_SCROLL_OFFSET + FLOATING_HEADER_LIST_GAP,
+          paddingBottom: "max(env(safe-area-inset-bottom), 16px)",
+          maskImage: headerFadeMask,
+          WebkitMaskImage: headerFadeMask,
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+          maskSize: "100% 100%",
+          WebkitMaskSize: "100% 100%",
+        }}
       >
         {openTabIds.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-16">
             Aucun onglet ouvert
           </p>
         ) : (
-          openTabIds.map((id) => {
-            const node = tabNodeById(id);
-            if (!node) return null;
-
-            return (
-              <div key={id} className="w-11/12 mx-auto">
-                <MobileRowGestures
-                  onDelete={() => {
-                    if (handleCloseTab(id)) resetNav();
-                  }}
-                  icon={IconXmark}
-                  onActivate={() => handleSelectTab(id)}
-                  menu={{
-                    preview: <NodePreviewCard node={node} />,
-                    items: [
-                      {
-                        id: "close",
-                        label: "Fermer l'onglet",
-                        icon: IconXmark,
-                        destructive: true,
-                        onPress: () => {
-                          if (handleCloseTab(id)) resetNav();
-                        },
-                      },
-                      ...(openTabIds.length > 1
-                        ? [
-                            {
-                              id: "close-others",
-                              label: "Fermer les autres onglets",
-                              icon: IconRectangleStack,
-                              onPress: () => handleCloseOthers(id),
-                            },
-                          ]
-                        : []),
-                    ],
-                  }}
-                >
-                  <FileRow
-                    node={node}
-                    onDrillIn={() => {}}
-                    onClick={() => handleSelectTab(id)}
-                  />
-                </MobileRowGestures>
-              </div>
-            );
-          })
+          <div className="grid grid-cols-2 gap-3 w-11/12 mx-auto">
+            {openTabIds.map((id) => {
+              const node = tabNodeById(id);
+              if (!node) return null;
+              return (
+                <TabCard
+                  key={id}
+                  node={node}
+                  hasOtherTabs={openTabIds.length > 1}
+                  onSelect={() => handleSelectTab(id)}
+                  onClose={() => handleClose(id)}
+                  onCloseOthers={() => handleCloseOthers(id)}
+                />
+              );
+            })}
+          </div>
         )}
       </div>
 

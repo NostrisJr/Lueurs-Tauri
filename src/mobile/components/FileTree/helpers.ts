@@ -15,21 +15,3 @@ export function rowContainerClass(kind: "folder" | "file" | "media"): string {
       : "flex-col justify-center min-h-16 h-fit"
   }`;
 }
-
-/** Extrait les premières lignes de texte visible d'un body markdown. */
-export function getPreviewLines(body: string, count = 2): string[] {
-  const withoutFrontmatter = body.replace(/^---[\s\S]*?---\n?/, "");
-  return withoutFrontmatter
-    .split("\n")
-    .map((l) =>
-      l
-        .replace(/^#{1,6}\s+/, "")
-        .replace(/\*\*(.+?)\*\*/g, "$1")
-        .replace(/\*(.+?)\*/g, "$1")
-        .replace(/~~(.+?)~~/g, "$1")
-        .replace(/`(.+?)`/g, "$1")
-        .trim()
-    )
-    .filter((l) => l.length > 1)
-    .slice(0, count);
-}

@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFileReferences } from "../../../shared/hooks/useFileReferences";
 import type {
   FolderNode,
   NoteFile,
@@ -8,7 +9,6 @@ import type {
 } from "../../../shared/hooks/useFileTree";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
-import { useFileReferences } from "../../../shared/hooks/useFileReferences";
 import {
   activeSpaceAtom,
   dictaphoneModeAtom,
@@ -23,7 +23,7 @@ import {
   sortNodes,
 } from "../../../shared/lib/fileTreeHelpers";
 import { NoteType } from "../../../shared/lib/noteTypes";
-import { isAndroid, isIOS } from "../../../shared/lib/platform";
+import { isAndroid } from "../../../shared/lib/platform";
 import { findFolderById } from "../../../shared/lib/spaceAssignment";
 import {
   ALL_SPACE_ID,
@@ -40,12 +40,22 @@ import { usePushAnimation } from "../../hooks/usePushAnimation";
 import { startDragAutoscroll } from "../../lib/dragAutoscroll";
 import { hapticImpact } from "../../lib/haptics";
 import { stopMomentumScroll } from "../../lib/momentumScroll";
+import { vaultDisplayName } from "../../lib/vault";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
+import {
+  FLOATING_HEADER_LIST_GAP,
+  FLOATING_HEADER_SCROLL_OFFSET,
+  FloatingHeaderBar,
+  TITLE_COLLAPSE_RANGE,
+  TITLE_COLLAPSE_START,
+} from "../Floating/FloatingHeaderBar";
 import { MobileSpaceSwitcher } from "../Floating/MobileSpaceSwitcher";
 import { MobileRowGestures, NodePreviewCard } from "../Row";
 import { FileRow } from "./FileRow";
+import { FileTreeBackButton } from "./FileTreeBackButton";
 import { FileTreeBottomBar } from "./FileTreeBottomBar";
-import { FileTreeHeader } from "./FileTreeHeader";
+import { FileTreeMenuButton } from "./FileTreeMenuButton";
+import { FileTreeTitle } from "./FileTreeTitle";
 import { FolderNoteCard } from "./FolderNoteCard";
 import { useNodeMenuActions } from "./useNodeMenuActions";
 
@@ -248,8 +258,9 @@ export function MobileFileTree() {
   // le doigt est au-dessus de la liste, on traverse donc toute la pile jusqu'à
   // la première cible plutôt que de compter sur un `pointer-events: none` du
   // ghost — fragile en plein geste (le pointer capture est sur cet élément).
-  // Les éléments arrivent du plus haut au plus bas : le header (z-10) l'emporte
-  // donc naturellement sur la liste là où ils se recouvrent.
+  // Les éléments arrivent du plus haut au plus bas : la barre flottante
+  // (z-30, cf. FloatingHeaderBar) l'emporte donc naturellement sur la liste
+  // là où elles se recouvrent.
   const findDropTarget = useCallback((x: number, y: number): DropTarget => {
     for (const el of document.elementsFromPoint(x, y)) {
       if (el.closest("[data-dropzone-parent]")) return { kind: "parent" };
@@ -294,6 +305,25 @@ export function MobileFileTree() {
       ? (folderStack[folderStack.length - 2] ?? null)
       : undefined;
   const canGoBack = folderStack.length > 1;
+
+  // Nom affiché par le titre headerless — dossier courant, ou à la racine :
+  // nom (et emoji) de l'espace actif, sinon du vault. vaultConfig=null →
+  // encore en chargement : ne rien afficher pour éviter le flash "Documents"
+  // → "Tout" pendant l'hydratation asynchrone.
+  const vaultName = folderPath ? vaultDisplayName(folderPath) : undefined;
+  const activeSpaceEntry = activeSpace
+    ? vaultConfig?.spaces.find((s) => s.name === activeSpace)
+    : undefined;
+  const hasToutMode = vaultConfig && vaultConfig.spaces.length > 0;
+  const toutIcon = vaultConfig?.toutIcon;
+  const rootName = activeSpaceEntry
+    ? `${activeSpaceEntry.icon ? `${activeSpaceEntry.icon} ` : ""}${activeSpaceEntry.name}`
+    : hasToutMode
+      ? `${toutIcon ? `${toutIcon} ` : ""}Tout`
+      : vaultConfig !== null
+        ? (vaultName ?? "Notes")
+        : "";
+  const folderName = currentFolder?.name ?? rootName;
 
   // Destination du dépôt sur la flèche de retour. `parentFolder === null` (et
   // non `undefined`) signifie « le parent est la racine du vault » : les ids de
@@ -376,6 +406,29 @@ export function MobileFileTree() {
     setFolderStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }
 
+  // ── Titre headerless : rétrécit sur place au scroll ───────────
+  // Même formule que MobileEditor (cf. FloatingHeaderBar) : progression
+  // continue directement égale à scrollTop sur la plage, aucune transition
+  // CSS à côté pour rester exactement synchrone avec le doigt.
+  const [titleCollapseProgress, setTitleCollapseProgress] = useState(0);
+  const titleCollapseProgressRef = useRef(0);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const progress = Math.min(
+      Math.max(
+        (container.scrollTop - TITLE_COLLAPSE_START) / TITLE_COLLAPSE_RANGE,
+        0
+      ),
+      1
+    );
+    if (progress !== titleCollapseProgressRef.current) {
+      titleCollapseProgressRef.current = progress;
+      setTitleCollapseProgress(progress);
+    }
+  }, []);
+
   // ── Animation swipe retour (drill-out) ───────────────────────
   const { swipeProgress, isAnimating, touchHandlers } = useMobileSwipeGesture(
     handleDrillOut,
@@ -423,25 +476,42 @@ export function MobileFileTree() {
         }
       : {};
 
+  // Zone de fondu en haut du scroll container, alignée sur la hauteur de la
+  // barre flottante : son fond est translucide, donc le contenu qui la
+  // traverse en scrollant doit s'estomper progressivement plutôt que d'être
+  // coupé net par l'overflow — même technique que MobileEditor (cf. son
+  // commentaire pour le détail de la courbe non-linéaire).
+  const headerFadeZoneHeight = FLOATING_HEADER_SCROLL_OFFSET * 1.45;
+  const headerFadeTopAlpha = 1 - titleCollapseProgress;
+  const headerFadeMidAlpha = 1 - titleCollapseProgress * 0.96;
+  const headerFadeMask = `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeMidAlpha}) ${
+    headerFadeZoneHeight * 0.8
+  }px, black ${headerFadeZoneHeight}px)`;
+
   return (
-    <div
-      className={clsx(
-        "relative flex flex-col w-full h-screen overflow-hidden select-none",
-        isIOS ? " pt-24 " : "pt-14"
-      )}
-    >
-      <div
-        className={clsx(
-          "absolute top-0 w-full h-fit bg-white shadow-lg shadow-gray-500/5 z-10",
-          isIOS ? "pt-10" : "pt-4"
-        )}
-      >
-        <FileTreeHeader
-          dragActive={!!dragState && parentDropPath !== null}
-          dropOverParent={dropTarget?.kind === "parent"}
-          parentName={parentFolder?.name}
-        />
-      </div>
+    <div className="relative flex flex-col w-full h-screen overflow-hidden select-none">
+      <FloatingHeaderBar
+        collapseProgress={titleCollapseProgress}
+        leftPill={canGoBack}
+        left={
+          <FileTreeBackButton
+            canGoBack={canGoBack}
+            onDrillOut={handleDrillOut}
+            dragActive={!!dragState && parentDropPath !== null}
+            dropOverParent={dropTarget?.kind === "parent"}
+            parentName={parentFolder?.name}
+            rootName={rootName}
+          />
+        }
+        center={
+          <FileTreeTitle
+            folderName={folderName}
+            currentFolder={currentFolder}
+            collapseProgress={titleCollapseProgress}
+          />
+        }
+        right={<FileTreeMenuButton />}
+      />
 
       {/* Zone de contenu avec transitions push et swipe */}
       <div className="relative flex-1 overflow-hidden">
@@ -450,7 +520,13 @@ export function MobileFileTree() {
             className="absolute inset-0 overflow-y-scroll pointer-events-none bg-gray-100"
             style={bgContentStyle}
           >
-            <div className="flex flex-col gap-2 p-4">
+            <div
+              className="flex flex-col gap-2 px-4 pb-4"
+              style={{
+                paddingTop:
+                  FLOATING_HEADER_SCROLL_OFFSET + FLOATING_HEADER_LIST_GAP,
+              }}
+            >
               <NodeList nodes={bgNodes} onDrillIn={() => {}} />
               <BottomBarSpacer />
             </div>
@@ -460,8 +536,18 @@ export function MobileFileTree() {
         <div
           ref={scrollContainerRef}
           data-mobile-scroll-container=""
-          className="absolute inset-0 flex flex-col gap-0 py-4 bg-gray-100 overflow-y-scroll"
-          style={contentStyle}
+          className="absolute inset-0 flex flex-col gap-0 pb-4 bg-gray-100 overflow-y-scroll"
+          style={{
+            ...contentStyle,
+            paddingTop:
+              FLOATING_HEADER_SCROLL_OFFSET + FLOATING_HEADER_LIST_GAP,
+            maskImage: headerFadeMask,
+            WebkitMaskImage: headerFadeMask,
+            maskRepeat: "no-repeat",
+            WebkitMaskRepeat: "no-repeat",
+            maskSize: "100% 100%",
+            WebkitMaskSize: "100% 100%",
+          }}
           // Un nouveau toucher sur la liste coupe net une inertie en cours (cf.
           // momentumScroll.ts) — comme n'importe quelle scrollview native. En
           // capture pour agir avant les handlers de la rangée touchée.
@@ -469,6 +555,7 @@ export function MobileFileTree() {
             if (scrollContainerRef.current)
               stopMomentumScroll(scrollContainerRef.current);
           }}
+          onScroll={handleScroll}
           onTouchStart={touchHandlers.onTouchStart}
           onTouchMove={touchHandlers.onTouchMove}
           onTouchEnd={touchHandlers.onTouchEnd}

@@ -6,7 +6,7 @@ import { isMobile } from "../../lib/platform";
 import { EditableText } from "../EditableText.tsx";
 import { IconRecordAudio } from "../PlatformIcon.tsx";
 import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
-import type { EditorRef } from "./lib/editorCommands";
+import { editorFocusAtStart, type EditorRef } from "./lib/editorCommands";
 
 interface Props {
   onRename: (newName: string) => Promise<void>;
@@ -75,6 +75,11 @@ export function NoteHeader({
         className=" hover:bg-gray-100"
         value={displayName}
         onSave={async (newName: string) => onRename(newName)}
+        // Entrée valide le titre → caret en début de corps de note (comme
+        // MobileNoteTitle). Absent pour les médias (pas d'éditeur associé).
+        onEnterCommit={
+          editorRef ? () => editorFocusAtStart(editorRef) : undefined
+        }
       />
       <div className="flex items-center gap-3">
         {isNote && !isMobile && onRecord && (

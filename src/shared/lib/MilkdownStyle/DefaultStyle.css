@@ -16,7 +16,7 @@
   font-family: 'Inter', Arial, Helvetica, sans-serif;
   font-size: 16px;
   /* Attention, si moins, iOS fait un zoom automatique pour des questions d'accessibilité */
-  line-height: 1.5;
+  line-height: 1.2;
   color: #1a1918;
 
   caret-color: transparent;
@@ -593,7 +593,7 @@
 /* Strophe suivante (ligne vide markdown = paragraphe séparé) : même hauteur
    qu'une ligne vide obtenue via hardbreak (line-height), pour unifier le rendu
    quel que soit le moyen utilisé pour créer la ligne vide. */
-.milkdown .ProseMirror div[data-poetry-block] p + p {
+.milkdown .ProseMirror div[data-poetry-block] p+p {
   margin-top: 1.5em;
 }
 

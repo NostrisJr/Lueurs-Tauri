@@ -17,6 +17,7 @@ import {
   getFieldDef,
 } from "../../../shared/lib/noteTypes";
 import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
+import { FolderSelector } from "./FolderSelector";
 import { FrontmatterValue } from "./FrontmatterValue";
 import { NoteSelector } from "./NoteSelector";
 import { PropertyEditModal } from "./PropertyEditModal";
@@ -53,6 +54,10 @@ function hasNoteSelector(key: string) {
 
 function hasSpaceSelector(key: string) {
   return key === SystemField.SPACE;
+}
+
+function hasFolderSelector(key: string) {
+  return key === SystemField.DEFAULT_FOLDER;
 }
 
 export function FrontmatterRow({
@@ -141,6 +146,13 @@ export function FrontmatterRow({
       rows.map((r, i) =>
         i === index ? { ...r, value: [...current, notePath] } : r
       )
+    );
+    setSelectorOpen(null);
+  }
+
+  function selectFolder(absolutePath: string) {
+    commit(
+      rows.map((r, i) => (i === index ? { ...r, value: absolutePath } : r))
     );
     setSelectorOpen(null);
   }
@@ -241,14 +253,19 @@ export function FrontmatterRow({
         aria-hidden="true"
       />
 
-      {!locked && (hasNoteSelector(row.key) || hasSpaceSelector(row.key)) ? (
+      {!locked &&
+      (hasNoteSelector(row.key) ||
+        hasSpaceSelector(row.key) ||
+        hasFolderSelector(row.key)) ? (
         <span ref={selectorAnchorRef}>
           <button
             type="button"
             title={
               hasSpaceSelector(row.key)
                 ? "Ajouter un espace"
-                : "Ajouter une note"
+                : hasFolderSelector(row.key)
+                  ? "Choisir un dossier"
+                  : "Ajouter une note"
             }
             onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
             className={`p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
@@ -308,6 +325,14 @@ export function FrontmatterRow({
         <SpaceSelector
           currentSpaces={row.value as string[]}
           onSelect={(spaceName) => addNote(spaceName)}
+          onClose={() => setSelectorOpen(null)}
+          anchorRef={selectorAnchorRef}
+        />
+      )}
+
+      {isSelectorOpen && hasFolderSelector(row.key) && (
+        <FolderSelector
+          onSelect={selectFolder}
           onClose={() => setSelectorOpen(null)}
           anchorRef={selectorAnchorRef}
         />

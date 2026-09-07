@@ -1,7 +1,10 @@
-import { joinBackward } from "@milkdown/kit/prose/commands";
 import { Plugin } from "@milkdown/kit/prose/state";
 import { $prose } from "@milkdown/kit/utils";
-import { isInEmptyListItem, stepOutOfEmptyListItem } from "./customKeymap";
+import {
+  isInEmptyListItem,
+  safeJoinBackward,
+  stepOutOfEmptyListItem,
+} from "./customKeymap";
 
 // Sur clavier virtuel mobile, Backspace en début de list_item peut être livré
 // via `beforeinput` (deleteContentBackward) sans `keydown` fiable — le keymap
@@ -32,7 +35,7 @@ export const mobileListDeletePlugin = $prose(
             if (isInEmptyListItem(state, state.schema)) {
               stepOutOfEmptyListItem(state.schema)(state, view.dispatch);
             } else {
-              joinBackward(state, view.dispatch, view);
+              safeJoinBackward(state.schema)(state, view.dispatch, view);
             }
             return true;
           },

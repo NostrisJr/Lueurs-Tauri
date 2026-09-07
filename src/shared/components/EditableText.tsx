@@ -8,6 +8,10 @@ interface EditableTextProps {
   className?: string;
   clickToEdit?: boolean;
   disabled?: boolean;
+  /** Desktop uniquement — appelé juste après la validation par Entrée (que le
+   * nom ait changé ou non), pour rendre la main ailleurs (ex: titre de note →
+   * caret en début de corps). Pas déclenché par un blur/clic ailleurs. */
+  onEnterCommit?: () => void;
 }
 
 export function EditableText({
@@ -16,6 +20,7 @@ export function EditableText({
   className = "",
   clickToEdit = false,
   disabled = false,
+  onEnterCommit,
 }: EditableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -81,7 +86,7 @@ export function EditableText({
         inputRef.current?.blur();
         return;
       }
-      handleSave();
+      handleSave().then(() => onEnterCommit?.());
     } else if (e.key === "Escape") {
       setEditValue(value);
       setIsEditing(false);

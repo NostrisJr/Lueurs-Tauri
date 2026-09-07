@@ -15,7 +15,9 @@ import type {
 import { isNoteReadOnly } from "../../../shared/lib/noteTypes";
 import { isIOS } from "../../../shared/lib/platform";
 import { useMobileSelectNote } from "../../hooks/useMobileSelectNote";
-import { MEDIA_LABEL, getPreviewLines, rowContainerClass } from "./helpers";
+import { MarkdownPreview } from "./MarkdownPreview";
+import { MEDIA_LABEL, rowContainerClass } from "./helpers";
+import { parsePreviewBlocks } from "./parseMarkdownPreview";
 
 interface Props {
   node: FolderNode | NoteFile | MediaFile;
@@ -24,7 +26,7 @@ interface Props {
 }
 
 function NoteContent({ note }: { note: NoteFile }) {
-  const previewLines = useMemo(() => getPreviewLines(note.body), [note.body]);
+  const blocks = useMemo(() => parsePreviewBlocks(note.body, 6), [note.body]);
 
   return (
     <div>
@@ -43,18 +45,11 @@ function NoteContent({ note }: { note: NoteFile }) {
           <IconLock className="text-gray-400 shrink-0 size-3.5" />
         )}
       </div>
-      {previewLines.length > 0 ? (
-        <div className="mt-0.5 space-y-0.5">
-          {previewLines.map((line, i) => (
-            <p
-              // biome-ignore lint/suspicious/noArrayIndexKey: lignes statiques
-              key={i}
-              className="text-sm text-gray-400 truncate leading-relaxed"
-            >
-              {line}
-            </p>
-          ))}
-        </div>
+      {blocks.length > 0 ? (
+        <MarkdownPreview
+          blocks={blocks}
+          className="mt-0.5 text-sm text-gray-400 leading-relaxed line-clamp-2"
+        />
       ) : (
         <p className="text-sm text-gray-400 truncate mt-0.5 italic">
           Note vide

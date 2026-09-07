@@ -7,6 +7,7 @@ import {
 } from "@milkdown/kit/preset/commonmark";
 import { toggleStrikethroughCommand } from "@milkdown/kit/preset/gfm";
 import {
+  joinBackward,
   lift,
   setBlockType,
   splitBlock,
@@ -19,6 +20,7 @@ import type {
   Mark,
   MarkType,
   Node as ProseNode,
+  ResolvedPos,
 } from "@milkdown/kit/prose/model";
 import type { Schema } from "@milkdown/kit/prose/model";
 import { liftListItem, wrapInList } from "@milkdown/kit/prose/schema-list";
@@ -98,6 +100,52 @@ export function stepOutOfEmptyListItem(schema: Schema): Command {
     }
 
     liftListItem(schema.nodes.list_item)(state, dispatch);
+    return true;
+  };
+}
+
+// Backspace en début d'item de liste NON vide (donc hors cascade
+// stepOutOfEmptyListItem ci-dessus) : le joinBackward natif de ProseMirror
+// fusionne l'item courant avec l'item précédent, mais peut réinitialiser
+// l'attribut `checked` de ce dernier au passage (coche du dessus effacée par
+// erreur — même symptôme que le cas vide, cf. commentaire plus haut). On
+// laisse joinBackward faire son travail puis on restaure les `checked` de
+// tous les list_item toujours présents après coup si le join les a altérés.
+// Exportée : réutilisée par mobileListDeletePlugin (list-mobile-delete.ts).
+export function safeJoinBackward(schema: Schema): Command {
+  return (state, dispatch, view) => {
+    const listItem = schema.nodes.list_item;
+    if (!listItem) return joinBackward(state, dispatch, view);
+
+    const before: { pos: number; checked: boolean | null }[] = [];
+    state.doc.descendants((node, pos) => {
+      if (node.type === listItem) {
+        before.push({ pos, checked: node.attrs.checked });
+      }
+    });
+
+    if (!dispatch) return joinBackward(state, undefined, view);
+
+    let result: Transaction | null = null;
+    const ok = joinBackward(
+      state,
+      (tr) => {
+        result = tr;
+      },
+      view
+    );
+    if (!ok || !result) return ok;
+
+    const tr = result as Transaction;
+    for (const { pos, checked } of before) {
+      const mapped = tr.mapping.mapResult(pos);
+      if (mapped.deleted) continue;
+      const node = tr.doc.nodeAt(mapped.pos);
+      if (node?.type === listItem && node.attrs.checked !== checked) {
+        tr.setNodeMarkup(mapped.pos, undefined, { ...node.attrs, checked });
+      }
+    }
+    dispatch(tr);
     return true;
   };
 }
@@ -391,6 +439,233 @@ export const toggleHighlightInlineCommand = $command(
   }
 );
 
+// ── Toggle poésie : alignement de la sélection sur des frontières de ligne ──
+// Enter en mode poésie fusionne des vers dans un même paragraphe via des
+// hardbreak (cf. keymap Enter plus bas) pour distinguer strophe (paragraphe,
+// marge) et vers (hardbreak, serré). Mais wrapIn/lift natifs opèrent au grain
+// du nœud paragraphe : une sélection partielle à l'intérieur d'une strophe
+// fusionnée leur fait toggler TOUTE la strophe (voire tout le bloc si elle
+// n'a qu'un seul paragraphe), pas seulement les vers sélectionnés. On scinde
+// donc d'abord le(s) paragraphe(s) concerné(s) aux frontières de vers pour que
+// wrapIn/lift n'agissent plus que sur la portion réellement sélectionnée.
+// Sélection vide (curseur) : comportement inchangé, on cible toute la strophe.
+
+function paragraphLines(schema: Schema, para: ProseNode): ProseNode[][] {
+  const lines: ProseNode[][] = [[]];
+  for (let i = 0; i < para.childCount; i++) {
+    const child = para.child(i);
+    if (child.type === schema.nodes.hardbreak) lines.push([]);
+    else lines[lines.length - 1].push(child);
+  }
+  return lines;
+}
+
+function fragmentFromLines(schema: Schema, lines: ProseNode[][]): Fragment {
+  const nodes: ProseNode[] = [];
+  lines.forEach((line, i) => {
+    if (i > 0) nodes.push(schema.nodes.hardbreak.create());
+    nodes.push(...line);
+  });
+  return Fragment.fromArray(nodes);
+}
+
+// Positions absolues de début de chaque vers (starts[0] = début du contenu).
+function computeLineStarts(
+  schema: Schema,
+  para: ProseNode,
+  contentStart: number
+): number[] {
+  const starts = [contentStart];
+  para.forEach((child, offset) => {
+    if (child.type === schema.nodes.hardbreak) {
+      starts.push(contentStart + offset + child.nodeSize);
+    }
+  });
+  return starts;
+}
+
+function lineIndexForPos(starts: number[], pos: number): number {
+  let idx = 0;
+  for (let i = 1; i < starts.length; i++) {
+    if (starts[i] <= pos) idx = i;
+    else break;
+  }
+  return idx;
+}
+
+function hasHardbreak(schema: Schema, node: ProseNode): boolean {
+  for (let i = 0; i < node.childCount; i++) {
+    if (node.child(i).type === schema.nodes.hardbreak) return true;
+  }
+  return false;
+}
+
+// Sélection entièrement dans une même strophe fusionnée : scinde en jusqu'à
+// 3 paragraphes (vers avant / vers touchés / vers après) et retourne la
+// sélection alignée sur les vers touchés.
+function splitSingleParagraph(
+  state: EditorState,
+  schema: Schema,
+  $from: ResolvedPos,
+  $to: ResolvedPos
+): Transaction {
+  const para = $from.parent;
+  const contentStart = $from.start();
+  const starts = computeLineStarts(schema, para, contentStart);
+  const startLineIdx = lineIndexForPos(starts, $from.pos);
+  const endLineIdx = lineIndexForPos(starts, Math.max($from.pos, $to.pos - 1));
+
+  const lines = paragraphLines(schema, para);
+  const before = lines.slice(0, startLineIdx);
+  const touched = lines.slice(startLineIdx, endLineIdx + 1);
+  const after = lines.slice(endLineIdx + 1);
+
+  const paragraphType = schema.nodes.paragraph;
+  const paraStart = $from.before();
+  const paraEnd = paraStart + para.nodeSize;
+
+  const newNodes: ProseNode[] = [];
+  if (before.length)
+    newNodes.push(
+      paragraphType.create(null, fragmentFromLines(schema, before))
+    );
+  const touchedNode = paragraphType.create(
+    null,
+    fragmentFromLines(schema, touched)
+  );
+  newNodes.push(touchedNode);
+  if (after.length)
+    newNodes.push(paragraphType.create(null, fragmentFromLines(schema, after)));
+
+  const tr = state.tr.replaceWith(paraStart, paraEnd, newNodes);
+  const touchedFrom =
+    paraStart + (before.length ? newNodes[0].nodeSize : 0) + 1;
+  const touchedTo = touchedFrom + touchedNode.content.size;
+  tr.setSelection(TextSelection.create(tr.doc, touchedFrom, touchedTo));
+  return tr;
+}
+
+// Sélection à cheval sur deux paragraphes distincts : scinde indépendamment
+// chaque extrémité concernée (fin du 1er paragraphe touché, début du dernier),
+// sans toucher aux paragraphes pleinement couverts entre les deux. Traite la
+// fin d'abord (position la plus haute) pour que les positions du début restent
+// valides, puis remappe la position de fin à travers les steps du début.
+function splitParagraphEnds(
+  state: EditorState,
+  schema: Schema,
+  $from: ResolvedPos,
+  $to: ResolvedPos,
+  needsStartSplit: boolean,
+  needsEndSplit: boolean
+): Transaction {
+  const paragraphType = schema.nodes.paragraph;
+  const tr = state.tr;
+
+  let touchedToEnd = $to.pos;
+  if (needsEndSplit) {
+    const toPara = $to.parent;
+    const contentStart = $to.start();
+    const starts = computeLineStarts(schema, toPara, contentStart);
+    const endLineIdx = lineIndexForPos(
+      starts,
+      Math.max(contentStart, $to.pos - 1)
+    );
+    const lines = paragraphLines(schema, toPara);
+    const touched = lines.slice(0, endLineIdx + 1);
+    const after = lines.slice(endLineIdx + 1);
+
+    const nodeStart = $to.before();
+    const nodeEnd = nodeStart + toPara.nodeSize;
+    const touchedNode = paragraphType.create(
+      null,
+      fragmentFromLines(schema, touched)
+    );
+    const newNodes: ProseNode[] = [touchedNode];
+    if (after.length)
+      newNodes.push(
+        paragraphType.create(null, fragmentFromLines(schema, after))
+      );
+
+    tr.replaceWith(nodeStart, nodeEnd, newNodes);
+    touchedToEnd = nodeStart + 1 + touchedNode.content.size;
+  }
+
+  const stepsBeforeStartSplit = tr.mapping.maps.length;
+
+  let touchedFromStart = $from.pos;
+  if (needsStartSplit) {
+    const fromPara = $from.parent;
+    const contentStart = $from.start();
+    const starts = computeLineStarts(schema, fromPara, contentStart);
+    const startLineIdx = lineIndexForPos(starts, $from.pos);
+    const lines = paragraphLines(schema, fromPara);
+    const before = lines.slice(0, startLineIdx);
+    const touched = lines.slice(startLineIdx);
+
+    const nodeStart = $from.before();
+    const nodeEnd = nodeStart + fromPara.nodeSize;
+    const newNodes: ProseNode[] = [];
+    if (before.length)
+      newNodes.push(
+        paragraphType.create(null, fragmentFromLines(schema, before))
+      );
+    newNodes.push(
+      paragraphType.create(null, fragmentFromLines(schema, touched))
+    );
+
+    tr.replaceWith(nodeStart, nodeEnd, newNodes);
+    touchedFromStart =
+      nodeStart + (before.length ? newNodes[0].nodeSize : 0) + 1;
+    touchedToEnd = tr.mapping.slice(stepsBeforeStartSplit).map(touchedToEnd);
+  }
+
+  tr.setSelection(TextSelection.create(tr.doc, touchedFromStart, touchedToEnd));
+  return tr;
+}
+
+// Retourne la transaction de scission à appliquer avant wrapIn/lift, ou null
+// si la sélection est déjà alignée sur des frontières de nœud (paragraphes
+// séparés, sélection vide, ou couvrant déjà tout le paragraphe concerné) :
+// le comportement natif wrapIn/lift s'applique alors sans modification.
+function alignPoetrySelectionToLines(
+  state: EditorState,
+  schema: Schema
+): Transaction | null {
+  if (!schema.nodes.hardbreak || !schema.nodes.paragraph) return null;
+
+  const { $from, $to, empty } = state.selection;
+  if (empty) return null;
+
+  const paragraphType = schema.nodes.paragraph;
+  const fromPara = $from.parent;
+  const toPara = $to.parent;
+
+  const needsStartSplit =
+    fromPara.type === paragraphType &&
+    hasHardbreak(schema, fromPara) &&
+    $from.parentOffset > 0;
+
+  const needsEndSplit =
+    toPara.type === paragraphType &&
+    hasHardbreak(schema, toPara) &&
+    $to.parentOffset < toPara.content.size;
+
+  if (!needsStartSplit && !needsEndSplit) return null;
+
+  if ($from.sameParent($to)) {
+    return splitSingleParagraph(state, schema, $from, $to);
+  }
+
+  return splitParagraphEnds(
+    state,
+    schema,
+    $from,
+    $to,
+    needsStartSplit,
+    needsEndSplit
+  );
+}
+
 export const togglePoetryCommand = $command(
   "TogglePoetry",
   (ctx) => () => (state, dispatch) => {
@@ -398,11 +673,31 @@ export const togglePoetryCommand = $command(
     const poetryType = schema.nodes.poetry_block;
     if (!poetryType) return false;
 
-    if (isInNodeType(state, schema, "poetry_block")) {
-      return lift(state, dispatch);
-    }
+    const alignTr = alignPoetrySelectionToLines(state, schema);
+    const workingState = alignTr ? state.apply(alignTr) : state;
 
-    return applyWithEscape(state, dispatch, schema, wrapIn(poetryType));
+    const finalCmd: Command = isInNodeType(workingState, schema, "poetry_block")
+      ? lift
+      : (s, d) => applyWithEscape(s, d, schema, wrapIn(poetryType));
+
+    if (!dispatch) return finalCmd(workingState, undefined);
+    if (!alignTr) return finalCmd(state, dispatch);
+
+    let resultTr: Transaction | null = null;
+    if (
+      !finalCmd(workingState, (tr) => {
+        resultTr = tr;
+      })
+    )
+      return false;
+    if (!resultTr) return false;
+
+    const combined = state.tr;
+    for (const step of alignTr.steps) combined.step(step);
+    for (const step of (resultTr as Transaction).steps) combined.step(step);
+    dispatch(combined.scrollIntoView());
+    log.info("toggle poésie aligné sur les vers sélectionnés");
+    return true;
   }
 );
 
@@ -641,10 +936,22 @@ export const customKeymapPlugin = $prose((ctx) =>
     },
     // Backspace sur item vide → cascade (cf. stepOutOfEmptyListItem), au lieu
     // du joinBackward natif qui empile un 2e paragraphe dans l'item précédent
-    // ou peut corrompre l'item voisin.
-    Backspace: (state, dispatch) => {
+    // ou peut corrompre l'item voisin. Item non vide en tout début → fusion
+    // protégée (cf. safeJoinBackward) pour ne pas perdre la coche de l'item
+    // précédent.
+    Backspace: (state, dispatch, view) => {
       const { schema } = state;
-      return stepOutOfEmptyListItem(schema)(state, dispatch);
+      if (stepOutOfEmptyListItem(schema)(state, dispatch)) return true;
+
+      const { $from, empty } = state.selection;
+      if (
+        empty &&
+        $from.parentOffset === 0 &&
+        $from.node(-1)?.type === schema.nodes.list_item
+      ) {
+        return safeJoinBackward(schema)(state, dispatch, view);
+      }
+      return false;
     },
     // Marks (Mod-b, Mod-i déjà natifs dans le preset)
     "Mod-e": () => ctx.get(commandsCtx).call(toggleInlineCodeCommand.key),
@@ -853,7 +1160,11 @@ export const codeBasedShortcutsPlugin = $prose(
               setInlineFormulaEdit({
                 pos,
                 raw: "$$$$",
-                coords: { left: coords.left, top: coords.top, bottom: coords.bottom },
+                coords: {
+                  left: coords.left,
+                  top: coords.top,
+                  bottom: coords.bottom,
+                },
               });
             }
             return true;

@@ -196,6 +196,10 @@ export function MobileSpaceSwitcher() {
   return (
     <div
       ref={containerRef}
+      // Repère pour useMobileSwipeGesture (excludeSelector) : le switcher
+      // chevauche la zone de bord droit du swipe vers les onglets, il ne doit
+      // pas lui laisser voler ses taps / appuis longs.
+      data-mobile-space-switcher=""
       className="absolute right-3 top-1/2 -translate-y-1/2 z-20"
     >
       {alwaysVisible ? (

@@ -13,6 +13,7 @@ import {
 } from "@milkdown/kit/preset/commonmark";
 import { toggleMark } from "@milkdown/kit/prose/commands";
 import { TextSelection } from "@milkdown/kit/prose/state";
+import type { EditorView } from "@milkdown/kit/prose/view";
 import { liftListItem, sinkListItem } from "prosemirror-schema-list";
 import { redo, undo } from "prosemirror-history";
 import {
@@ -192,16 +193,47 @@ export function editorInsertFormula(editorRef: EditorRef) {
   });
 }
 
+// focus() AVANT dispatch : le plugin custom-caret (customCaretPlugin, desktop)
+// ne positionne/affiche le caret que si view.hasFocus() est déjà vrai au
+// moment du dispatch (son update() tourne de façon synchrone dans le
+// dispatch) — dans l'autre ordre, le caret reste invisible jusqu'à la frappe
+// (1er dispatch suivant, focus alors déjà acquis).
+function focusViewAtStart(view: EditorView) {
+  view.focus();
+  const { state } = view;
+  const selection = TextSelection.near(state.doc.resolve(0));
+  view.dispatch(state.tr.setSelection(selection));
+}
+
 // Focalise l'éditeur avec le caret au tout début du document (note vide :
 // clic n'importe où dans la zone d'édition, pas seulement sur la ligne rendue).
 export function editorFocusAtStart(editorRef: EditorRef) {
   editorRef.current?.action((ctx) => {
-    const view = ctx.get(editorViewCtx);
-    const { state } = view;
-    const selection = TextSelection.near(state.doc.resolve(0));
-    view.dispatch(state.tr.setSelection(selection));
-    view.focus();
+    focusViewAtStart(ctx.get(editorViewCtx));
   });
+}
+
+// Signal one-shot consommé par le hook `mounted` du listener plugin (cf.
+// MarkdownEditor) : valider le titre (Entrée) doit amener le caret en tout
+// début de note, mais si le renommage change le chemin de la note, le
+// <MilkdownProvider key={activeNote.id}> remonte tout l'éditeur — la vue sur
+// laquelle on vient d'appeler focusViewAtStart est alors détruite. Ce flag
+// redemande le focus une fois la nouvelle vue montée.
+// Ciblé par id de note (pas un simple booléen) : si le renommage n'a en fait
+// pas changé le chemin (nom inchangé, échec…), aucun remount n'a lieu et le
+// flag ne doit pas traîner pour se déclencher plus tard sur une note sans
+// rapport — il ne peut matcher que le montage de CE id précis.
+const pendingFocusAtStart = { noteId: null as string | null };
+
+export function requestFocusAtStartOnMount(noteId: string) {
+  pendingFocusAtStart.noteId = noteId;
+}
+
+// Utilisé par le hook `mounted` (reçoit directement la vue via ctx, pas de ref).
+export function consumePendingFocusAtStart(view: EditorView, noteId: string) {
+  if (pendingFocusAtStart.noteId !== noteId) return;
+  pendingFocusAtStart.noteId = null;
+  focusViewAtStart(view);
 }
 
 export function editorScrollToPos(editorRef: EditorRef, pos: number) {

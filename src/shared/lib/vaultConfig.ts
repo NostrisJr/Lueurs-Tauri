@@ -14,6 +14,8 @@
  * le haut au-delà du dossier racine permissionné — cf. point d'attention).
  */
 
+import { invoke } from "@tauri-apps/api/core";
+import { message } from "@tauri-apps/plugin-dialog";
 import {
   exists,
   mkdir,
@@ -21,7 +23,7 @@ import {
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
 import { createLogger } from "./logger";
-import { isAndroid } from "./platform";
+import { isAndroid, isIOS } from "./platform";
 
 const log = createLogger("vaultConfig");
 
@@ -31,6 +33,8 @@ const CURRENT_VERSION = 1;
 // Délai avant nouvelle tentative de lecture si le fichier existe mais est illisible
 // (item iCloud pas encore matérialisé au cold start).
 const ICLOUD_RETRY_DELAY_MS = 1000;
+// Délai laissé à l'OS pour matérialiser un placeholder iCloud avant de lire (iOS).
+const ICLOUD_DOWNLOAD_TIMEOUT_MS = 4000;
 
 export const ALL_SPACE_ID = "__all__";
 
@@ -125,12 +129,44 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
+/** Comme `pathExists`, mais conserve l'erreur brute si `exists()` a levé une exception
+ * (au lieu de la confondre avec un simple "fichier absent"). */
+async function pathExistsWithError(
+  path: string
+): Promise<{ found: boolean; error?: unknown }> {
+  try {
+    // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+    const found = await exists(path, { baseDir: null } as any);
+    return { found };
+  } catch (error) {
+    return { found: false, error };
+  }
+}
+
+/**
+ * Force le téléchargement du fichier iCloud s'il s'agit d'un placeholder pas encore
+ * matérialisé (iOS uniquement — sans ça l'OS télécharge de façon paresseuse et un
+ * cold start juste après une sync peut lire un fichier encore absent du disque).
+ */
+async function ensureICloudMaterialized(filePath: string): Promise<void> {
+  if (!isIOS) return;
+  try {
+    await invoke("ensure_icloud_downloaded", {
+      path: filePath,
+      timeoutMs: ICLOUD_DOWNLOAD_TIMEOUT_MS,
+    });
+  } catch (err) {
+    log.warn("échec matérialisation iCloud", { filePath, err });
+  }
+}
+
 /** Lit le config à `vaultRoot/.lueurs/config.json`, ou null si absent/illisible. */
 export async function readVaultConfig(
   vaultRoot: string
 ): Promise<VaultConfig | null> {
   if (isAndroid) return null;
   const filePath = configFilePath(vaultRoot);
+  await ensureICloudMaterialized(filePath);
   try {
     // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
     const raw = await readTextFile(filePath, { baseDir: null } as any);
@@ -254,7 +290,9 @@ export async function ensureVaultConfig(
   // Le fichier existe mais n'a pas pu être lu/parsé (ex: item iCloud pas encore
   // matérialisé juste après un cold start). On ne doit JAMAIS l'écraser dans ce
   // cas — une seule tentative de re-lecture après un court délai, sinon abandon.
-  if (await pathExists(configFilePath(vaultRoot))) {
+  const filePath = configFilePath(vaultRoot);
+  const check = await pathExistsWithError(filePath);
+  if (check.found) {
     log.warn("config présente mais illisible, nouvelle tentative", { vaultRoot });
     await new Promise((resolve) => setTimeout(resolve, ICLOUD_RETRY_DELAY_MS));
     const retried = await readVaultConfig(vaultRoot);
@@ -262,8 +300,21 @@ export async function ensureVaultConfig(
     log.error("config toujours illisible après nouvelle tentative — pas d'écrasement", {
       vaultRoot,
     });
+    await showVaultConfigDialog(
+      `Le fichier .lueurs/config.json existe dans ${vaultRoot} mais reste illisible après une nouvelle tentative — aucune donnée n'est écrasée, les espaces resteront vides jusqu'au prochain démarrage.`
+    );
     return null;
   }
+
+  // Fichier réellement absent : avertir avant de recréer un config vierge (nouveau
+  // vaultId, spaces vides), car ça peut aussi être un item iCloud pas encore visible
+  // plutôt qu'un vault neuf légitime — voir le détail exact de la vérification.
+  const reason = check.error
+    ? `Erreur lors de la vérification de présence : ${String(check.error)}`
+    : "Aucun fichier trouvé à cet emplacement (vault neuf, ou item iCloud pas encore visible).";
+  await showVaultConfigDialog(
+    `.lueurs/config.json introuvable dans ${vaultRoot} — un nouveau va être créé.\n\n${reason}`
+  );
 
   const fresh = makeDefaultConfig();
   try {
@@ -273,6 +324,14 @@ export async function ensureVaultConfig(
   } catch (err) {
     log.error("échec création marqueur vault", { vaultRoot, err });
     return null;
+  }
+}
+
+async function showVaultConfigDialog(text: string): Promise<void> {
+  try {
+    await message(text, { title: "Config vault", kind: "warning" });
+  } catch (err) {
+    log.warn("échec affichage dialog config vault", { err });
   }
 }
 

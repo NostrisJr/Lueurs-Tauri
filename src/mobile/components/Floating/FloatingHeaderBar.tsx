@@ -23,6 +23,10 @@ export const FLOATING_HEADER_CONTENT_HEIGHT = 52;
 // la barre (safe-area + contenu) : pt-23 (iOS) / pt-15 (Android). Sert aussi
 // de hauteur au fondu de sortie de contenu sous la barre (cf. MobileEditor).
 export const FLOATING_HEADER_SCROLL_OFFSET = isIOS ? 92 : 60;
+// Respiration additionnelle entre le titre au repos (plein, non rétréci) et
+// le premier élément de la liste en dessous — au-delà du seul dégagement de
+// FLOATING_HEADER_SCROLL_OFFSET, qui ne fait que passer sous la barre.
+export const FLOATING_HEADER_LIST_GAP = 20;
 
 // Géométrie brute de la barre (safe-area + insets + slots), exposée pour que
 // le morph du titre (MobileNoteTitle) puisse calculer la position exacte du
@@ -92,6 +96,11 @@ interface FloatingHeaderBarProps {
   left: ReactNode;
   center?: ReactNode;
   right: ReactNode;
+  /** false quand le slot gauche est vide (ex: pas de bouton retour à la
+   * racine du file tree) — sinon une pill vide se matérialise au scroll.
+   * Défaut true. */
+  leftPill?: boolean;
+  rightPill?: boolean;
 }
 
 export function FloatingHeaderBar({
@@ -99,13 +108,17 @@ export function FloatingHeaderBar({
   left,
   center,
   right,
+  leftPill = true,
+  rightPill = true,
 }: FloatingHeaderBarProps) {
   return (
     <div
       className={clsx("w-full fixed top-0 z-30 px-3", isIOS ? "pt-12" : "pt-4")}
     >
       <div className="w-full flex items-center justify-between gap-2 h-13">
-        <Slot collapseProgress={collapseProgress}>{left}</Slot>
+        <Slot collapseProgress={collapseProgress} withPillBackground={leftPill}>
+          {left}
+        </Slot>
         <Slot
           collapseProgress={collapseProgress}
           flex
@@ -113,7 +126,12 @@ export function FloatingHeaderBar({
         >
           {center}
         </Slot>
-        <Slot collapseProgress={collapseProgress}>{right}</Slot>
+        <Slot
+          collapseProgress={collapseProgress}
+          withPillBackground={rightPill}
+        >
+          {right}
+        </Slot>
       </div>
     </div>
   );

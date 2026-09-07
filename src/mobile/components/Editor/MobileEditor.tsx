@@ -32,11 +32,6 @@ import { NoteType, isNoteReadOnly } from "../../../shared/lib/noteTypes";
 import { iconAccentClass, isAndroid } from "../../../shared/lib/platform";
 
 import { useKeyboard } from "../../hooks/useKeyboard";
-import {
-  DURATION as SWIPE_DURATION,
-  EASING as SWIPE_EASING,
-  useMobileSwipeGesture,
-} from "../../hooks/useMobileSwipeGesture";
 import { hapticImpact } from "../../lib/haptics";
 import {
   FLOATING_HEADER_SCROLL_OFFSET,
@@ -91,20 +86,6 @@ export function MobileEditor() {
   useCaretScroll(scrollContainerRef, {
     bottomInset: totalMobileInset,
     topInset: MOBILE_HEADER_HEIGHT,
-  });
-
-  // Swipe depuis le bord droit : accès aux onglets de l'espace courant,
-  // symétrique au swipe gauche (retour arrière) géré globalement dans MobileApp.
-  // completeDelay: 0 — pas de reveal à deux couches ici, juste le petit
-  // rubber-band ; attendre DURATION avant navigate() ne faisait qu'ajouter
-  // une latence perçue pour rien.
-  const {
-    swipeProgress: tabsSwipeProgress,
-    isAnimating: isTabsSwipeAnimating,
-    touchHandlers: tabsSwipeHandlers,
-  } = useMobileSwipeGesture(() => navigate("tabs"), {
-    edge: "right",
-    completeDelay: 0,
   });
 
   // Titre minimisé au scroll : progression continue (0 = titre plein, 1 = fondu
@@ -268,9 +249,6 @@ export function MobileEditor() {
     <div
       ref={editorRootRef}
       className="flex flex-col h-full w-full fixed bg-white"
-      onTouchStart={tabsSwipeHandlers.onTouchStart}
-      onTouchMove={tabsSwipeHandlers.onTouchMove}
-      onTouchEnd={tabsSwipeHandlers.onTouchEnd}
     >
       <FloatingHeaderBar
         collapseProgress={titleCollapseProgress}
@@ -296,13 +274,6 @@ export function MobileEditor() {
           WebkitMaskRepeat: "no-repeat",
           maskSize: "100% 100%",
           WebkitMaskSize: "100% 100%",
-          transform:
-            tabsSwipeProgress > 0
-              ? `translateX(${(-tabsSwipeProgress * 24).toFixed(1)}px)`
-              : undefined,
-          transition: isTabsSwipeAnimating
-            ? `transform ${SWIPE_DURATION}ms ${SWIPE_EASING}`
-            : undefined,
         }}
       >
         <EditorErrorBoundary>

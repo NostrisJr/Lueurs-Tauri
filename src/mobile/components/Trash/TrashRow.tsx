@@ -10,7 +10,9 @@ import type {
   MediaFile,
   NoteFile,
 } from "../../../shared/hooks/useFileTree";
-import { getPreviewLines, rowContainerClass } from "../FileTree/helpers";
+import { MarkdownPreview } from "../FileTree/MarkdownPreview";
+import { rowContainerClass } from "../FileTree/helpers";
+import { parsePreviewBlocks } from "../FileTree/parseMarkdownPreview";
 
 interface Props {
   node: FolderNode | MediaFile | NoteFile;
@@ -19,7 +21,7 @@ interface Props {
 }
 
 function TrashNoteContent({ note }: { note: NoteFile }) {
-  const previewLines = useMemo(() => getPreviewLines(note.body), [note.body]);
+  const blocks = useMemo(() => parsePreviewBlocks(note.body, 6), [note.body]);
 
   return (
     <div>
@@ -32,18 +34,11 @@ function TrashNoteContent({ note }: { note: NoteFile }) {
           {note.name}
         </p>
       </div>
-      {previewLines.length > 0 && (
-        <div className="mt-0.5 space-y-0.5">
-          {previewLines.map((line, i) => (
-            <p
-              // biome-ignore lint/suspicious/noArrayIndexKey: lignes statiques
-              key={i}
-              className="text-sm text-gray-400 truncate leading-relaxed"
-            >
-              {line}
-            </p>
-          ))}
-        </div>
+      {blocks.length > 0 && (
+        <MarkdownPreview
+          blocks={blocks}
+          className="mt-0.5 text-sm text-gray-400 leading-relaxed line-clamp-2"
+        />
       )}
     </div>
   );

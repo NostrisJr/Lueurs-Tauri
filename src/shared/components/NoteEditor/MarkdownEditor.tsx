@@ -95,7 +95,10 @@ import { useMobileLinkLongPress } from "./hooks/useMobileLinkLongPress";
 import { useMobileSpellTap } from "./hooks/useMobileSpellTap";
 import { activeEditorRef } from "./lib/activeEditorRef";
 import { dropHandlerRef } from "./lib/dropListener";
-import { editorScrollToPos } from "./lib/editorCommands";
+import {
+  consumePendingFocusAtStart,
+  editorScrollToPos,
+} from "./lib/editorCommands";
 import {
   makeImageNodeViewPlugin,
   readVaultBytesAndroid,
@@ -485,11 +488,19 @@ export function MarkdownEditor({
         ctx.set(remarkGFMPlugin.options.key, { singleTilde: false });
       })
       .config((ctx) => {
-        ctx.get(listenerCtx).markdownUpdated((_, markdown, prevMarkdown) => {
+        const manager = ctx.get(listenerCtx);
+        manager.markdownUpdated((_, markdown, prevMarkdown) => {
           if (markdown !== prevMarkdown) {
             log.info("markdown mis à jour", { length: markdown.length });
             onChangeRef.current(markdown);
           }
+        });
+        // Validation du titre (Entrée) → caret en début de note : si le
+        // renommage a changé l'id (chemin) de la note, ce montage est un
+        // remplacement de la vue précédente sur laquelle le focus venait
+        // d'être posé (cf. requestFocusAtStartOnMount).
+        manager.mounted((mountCtx) => {
+          consumePendingFocusAtStart(mountCtx.get(editorViewCtx), node.id);
         });
       })
       .config((ctx) => {

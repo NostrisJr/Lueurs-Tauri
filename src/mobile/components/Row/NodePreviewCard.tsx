@@ -3,12 +3,14 @@ import { useMemo } from "react";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 import { IconFolder } from "../../../shared/components/PlatformIcon";
 import type { TreeNode } from "../../../shared/hooks/useFileTree";
-import { MEDIA_LABEL, getPreviewLines } from "../FileTree/helpers";
+import { MarkdownPreview } from "../FileTree/MarkdownPreview";
+import { MEDIA_LABEL } from "../FileTree/helpers";
+import { parsePreviewBlocks } from "../FileTree/parseMarkdownPreview";
 
-// Nombre de lignes du corps affichées dans l'aperçu soulevé. Volontairement
+// Plafond de blocs du corps affichés dans l'aperçu soulevé. Volontairement
 // généreux (l'aperçu iOS montre le début du document) : la carte est ensuite
 // écrêtée par la hauteur disponible, calculée par RowContextMenu.
-const PREVIEW_LINES = 14;
+const PREVIEW_MAX_BLOCKS = 20;
 
 interface Props {
   node: TreeNode;
@@ -22,9 +24,11 @@ interface Props {
  * Dossier/média : carte compacte, il n'y a rien de pertinent à agrandir.
  */
 export function NodePreviewCard({ node, muted }: Props) {
-  const lines = useMemo(
+  const blocks = useMemo(
     () =>
-      node.kind === "file" ? getPreviewLines(node.body, PREVIEW_LINES) : [],
+      node.kind === "file"
+        ? parsePreviewBlocks(node.body, PREVIEW_MAX_BLOCKS)
+        : [],
     [node]
   );
 
@@ -71,18 +75,12 @@ export function NodePreviewCard({ node, muted }: Props) {
   return (
     <div className="px-5 py-4">
       <p className={clsx(titleClass, "mb-1.5")}>{node.name}</p>
-      {lines.length > 0 ? (
-        <div className="space-y-1">
-          {lines.map((line, i) => (
-            <p
-              // biome-ignore lint/suspicious/noArrayIndexKey: lignes statiques
-              key={i}
-              className="text-base text-gray-500 truncate leading-snug"
-            >
-              {line}
-            </p>
-          ))}
-        </div>
+      {blocks.length > 0 ? (
+        <MarkdownPreview
+          blocks={blocks}
+          spaced
+          className="text-base text-gray-500 leading-snug"
+        />
       ) : (
         <p className="text-base text-gray-400 italic">Note vide</p>
       )}
