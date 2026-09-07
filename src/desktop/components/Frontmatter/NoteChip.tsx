@@ -25,6 +25,10 @@ export function NoteChip({
   const { handleSelectNote } = useNote();
   const notesById = useAtomValue(notesByIdAtom);
   const cmdHeld = useCmdHeld();
+  // Cible introuvable (renommée/déplacée/supprimée sans passer par le flux de
+  // suppression, ou choix "ne pas nettoyer") — même convention rouge que
+  // note-link-broken (éditeur) et media-broken (images).
+  const broken = !!noteId && !notesById.has(noteId);
 
   function handleClick(e: React.MouseEvent) {
     if (!e.metaKey || !noteId) return;
@@ -33,11 +37,16 @@ export function NoteChip({
   }
 
   return (
-    <span className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs font-medium group/chip">
+    <span
+      className={`inline-flex items-center gap-2 px-2 py-0.5 rounded-md text-xs font-medium group/chip ${
+        broken ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"
+      }`}
+    >
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
       <span
         className={`max-w-30 truncate ${cmdHeld && noteId ? "cursor-pointer" : "cursor-default"}`}
         onClick={handleClick}
+        title={broken ? `« ${name} » est introuvable` : undefined}
       >
         {name}
       </span>

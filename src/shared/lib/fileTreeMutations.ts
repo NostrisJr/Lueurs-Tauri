@@ -5,7 +5,12 @@ import { watchImmediate } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
 import type { useStore } from "jotai";
 
-import type { FolderNode, MediaFile, NoteFile } from "../hooks/useFileTree";
+import type {
+  FolderNode,
+  MediaFile,
+  NoteFile,
+  TreeNode,
+} from "../hooks/useFileTree";
 import {
   ACTIVE_NOTE_ID_STORAGE_KEY,
   activeNoteIdAtom,
@@ -19,8 +24,10 @@ import {
   writingPathsRegistry,
 } from "./atoms";
 import {
+  type FileKind,
   type Frontmatter,
   addNodeInTree,
+  classifyPathKind,
   deleteNodeInTree,
   ensureType,
   extractTags,
@@ -32,9 +39,11 @@ import {
   updateFolderInTree,
   updateNodeInTree,
 } from "./fileTreeHelpers";
+import { pushFileUndo } from "./fileTreeUndo";
 import { createLogger } from "./logger";
 import { NoteType, SystemField } from "./noteTypes";
 import { isAndroid } from "./platform";
+import { findFolderById } from "./spaceAssignment";
 import {
   ensureVaultConfig,
   findVaultRoot,
@@ -75,14 +84,29 @@ let unwatcher: (() => void) | null = null;
 const TREE_CACHE_KEY = "lueurs_tree_cache";
 
 type CachedFile = Omit<NoteFile, "body" | "updatedAt"> & { updatedAt: string };
-type CachedFolderNode = { kind: "folder"; id: string; name: string; children: CachedNode[] };
+type CachedFolderNode = {
+  kind: "folder";
+  id: string;
+  name: string;
+  children: CachedNode[];
+};
 type CachedNode = CachedFile | CachedFolderNode | MediaFile;
-interface TreeCacheData { vaultPath: string; nodes: CachedNode[] }
+interface TreeCacheData {
+  vaultPath: string;
+  nodes: CachedNode[];
+}
 
-function stripBodies(nodes: import("../hooks/useFileTree").TreeNode[]): CachedNode[] {
+function stripBodies(
+  nodes: import("../hooks/useFileTree").TreeNode[]
+): CachedNode[] {
   return nodes.map((n) => {
     if (n.kind === "folder")
-      return { kind: "folder", id: n.id, name: n.name, children: stripBodies(n.children) };
+      return {
+        kind: "folder",
+        id: n.id,
+        name: n.name,
+        children: stripBodies(n.children),
+      };
     if (n.kind === "file") {
       const { body: _body, updatedAt, ...rest } = n;
       return { ...rest, updatedAt: updatedAt.toISOString() };
@@ -91,24 +115,36 @@ function stripBodies(nodes: import("../hooks/useFileTree").TreeNode[]): CachedNo
   });
 }
 
-function restoreBodies(nodes: CachedNode[]): import("../hooks/useFileTree").TreeNode[] {
+function restoreBodies(
+  nodes: CachedNode[]
+): import("../hooks/useFileTree").TreeNode[] {
   return nodes.map((n) => {
     if (n.kind === "folder")
-      return { kind: "folder", id: n.id, name: n.name, children: restoreBodies(n.children) };
+      return {
+        kind: "folder",
+        id: n.id,
+        name: n.name,
+        children: restoreBodies(n.children),
+      };
     if (n.kind === "file")
       return { ...n, body: "", updatedAt: new Date(n.updatedAt) };
     return n;
   });
 }
 
-function saveTreeCache(vaultPath: string, nodes: import("../hooks/useFileTree").TreeNode[]): void {
+function saveTreeCache(
+  vaultPath: string,
+  nodes: import("../hooks/useFileTree").TreeNode[]
+): void {
   try {
     const cache: TreeCacheData = { vaultPath, nodes: stripBodies(nodes) };
     localStorage.setItem(TREE_CACHE_KEY, JSON.stringify(cache));
   } catch {}
 }
 
-function loadTreeCache(vaultPath: string): import("../hooks/useFileTree").TreeNode[] | null {
+function loadTreeCache(
+  vaultPath: string
+): import("../hooks/useFileTree").TreeNode[] | null {
   try {
     const raw = localStorage.getItem(TREE_CACHE_KEY);
     if (!raw) return null;
@@ -298,7 +334,10 @@ export async function initFolder(store: JotaiStore): Promise<void> {
   }
 
   // Reload complet (données fraîches) et watcher en parallèle.
-  await Promise.all([reload(store, folderPath), startWatcher(store, folderPath)]);
+  await Promise.all([
+    reload(store, folderPath),
+    startWatcher(store, folderPath),
+  ]);
 }
 
 export async function autoInitFolder(store: JotaiStore): Promise<void> {
@@ -612,8 +651,15 @@ export async function createFolder(
 }
 
 // ── Suppression ────────────────────────────────────────────────────────────
+// Annulable, sauf sur Android (cf. fileTreeUndo.ts et moveNode plus bas pour
+// la même réserve — SAF ne garantit pas des URI stables après suppression/
+// recréation) : snapshot du contenu BRUT (disque, pas la représentation en
+// mémoire — évite toute divergence de sérialisation, cf. relativizePathFields
+// dans updateNote) pris juste avant la suppression, pour recréer exactement
+// le(s) fichier(s) à l'identique. La corbeille OS/appli (vaultIO.delete) reste
+// le filet de secours habituel en parallèle, inchangée.
 
-export async function deleteNote(
+async function deleteNoteCore(
   store: JotaiStore,
   fileId: string
 ): Promise<void> {
@@ -622,6 +668,136 @@ export async function deleteNote(
   store.set(treeAtom, (prev) => deleteNodeInTree(prev, fileId));
   await vaultIO.delete(fileId, vaultPath ?? undefined, "file");
   writingPathsRegistry.delete(fileId);
+}
+
+export async function deleteNote(
+  store: JotaiStore,
+  fileId: string
+): Promise<void> {
+  const note = isAndroid
+    ? null
+    : (flattenTree(store.get(treeAtom)).find((n) => n.id === fileId) ?? null);
+  let rawSnapshot: string | null = null;
+  if (note) {
+    await flushPendingWrite(fileId);
+    try {
+      rawSnapshot = await vaultIO.readFile(fileId);
+    } catch {
+      rawSnapshot = null;
+    }
+  }
+
+  await deleteNoteCore(store, fileId);
+
+  if (note && rawSnapshot !== null) {
+    const parentId = fileId.split("/").slice(0, -1).join("/");
+    const originalFileName = fileId.split("/").pop() ?? fileId;
+    // Piste le chemin réel après chaque undo (une collision peut renommer,
+    // cf. plus bas) — le redo doit supprimer là où le fichier est vraiment,
+    // pas au chemin d'origine (potentiellement déjà repris par autre chose).
+    let currentPath = fileId;
+    pushFileUndo(store, {
+      label: `Suppression de « ${note.title || note.name} »`,
+      undo: async () => {
+        // Un fichier peut déjà occuper ce chemin au moment d'annuler (recréé
+        // entre-temps, une autre suppression du même nom déjà annulée…) —
+        // même garde anti-collision que la restauration depuis la corbeille
+        // (cf. trashIO.restoreFromTrash) : on ne réécrit jamais à l'aveugle.
+        const destName = await resolveDestName(parentId, originalFileName);
+        currentPath = `${parentId}/${destName}`;
+        await vaultIO.writeFile(currentPath, rawSnapshot);
+        const restoredNote: NoteFile = {
+          ...note,
+          id: currentPath,
+          name: destName.replace(/\.md$/, ""),
+        };
+        const vaultPath = store.get(folderPathAtom);
+        store.set(treeAtom, (prev) =>
+          addNodeInTree(prev, parentId, restoredNote, vaultPath ?? undefined)
+        );
+      },
+      redo: async () => {
+        await deleteNoteCore(store, currentPath);
+      },
+    });
+  }
+}
+
+// Parcourt récursivement un dossier en mémoire pour préparer son snapshot
+// d'annulation : chemins de sous-dossiers (ordre parent → enfant, pour les
+// recréer dans le bon ordre) et fichiers notes. hasMedia signale un média
+// (image, audio…) dans l'arborescence — on n'en détient pas les octets, donc
+// pas d'annulation proposée dans ce cas (un « undo » partiel serait trompeur ;
+// le fichier reste récupérable via la corbeille, comme avant).
+function collectFolderSnapshot(folder: FolderNode): {
+  folderPaths: string[];
+  filePaths: string[];
+  hasMedia: boolean;
+} {
+  const folderPaths: string[] = [folder.id];
+  const filePaths: string[] = [];
+  let hasMedia = false;
+  function walk(node: TreeNode) {
+    if (node.kind === "folder") {
+      folderPaths.push(node.id);
+      for (const child of node.children) walk(child);
+    } else if (node.kind === "file") {
+      filePaths.push(node.id);
+    } else {
+      hasMedia = true;
+    }
+  }
+  for (const child of folder.children) walk(child);
+  return { folderPaths, filePaths, hasMedia };
+}
+
+function splitPath(path: string): { parent: string; name: string } {
+  const idx = path.lastIndexOf("/");
+  return { parent: path.slice(0, idx), name: path.slice(idx + 1) };
+}
+
+async function snapshotFolderForUndo(
+  store: JotaiStore,
+  folderId: string
+): Promise<{
+  parentId: string;
+  folderNode: FolderNode;
+  folderPaths: string[];
+  rawFiles: Map<string, string>;
+} | null> {
+  const folderNode = findFolderById(store.get(treeAtom), folderId);
+  if (!folderNode) return null;
+  const { folderPaths, filePaths, hasMedia } =
+    collectFolderSnapshot(folderNode);
+  if (hasMedia) return null;
+
+  const rawFiles = new Map<string, string>();
+  try {
+    for (const p of filePaths) {
+      await flushPendingWrite(p);
+      rawFiles.set(p, await vaultIO.readFile(p));
+    }
+  } catch {
+    return null;
+  }
+
+  return {
+    parentId: folderId.split("/").slice(0, -1).join("/"),
+    folderNode,
+    folderPaths,
+    rawFiles,
+  };
+}
+
+async function deleteFolderCore(
+  store: JotaiStore,
+  folderId: string
+): Promise<void> {
+  const vaultPath = store.get(folderPathAtom);
+  writingPathsRegistry.add(folderId);
+  store.set(treeAtom, (prev) => deleteNodeInTree(prev, folderId));
+  await vaultIO.delete(folderId, vaultPath ?? undefined, "folder");
+  writingPathsRegistry.delete(folderId);
 }
 
 export async function deleteFolder(
@@ -634,22 +810,101 @@ export async function deleteFolder(
     if (entries.filter((e) => !e.name.startsWith(".")).length > 0)
       throw new Error("Le dossier n'est pas vide.");
   }
-  const vaultPath = store.get(folderPathAtom);
-  writingPathsRegistry.add(folderId);
-  store.set(treeAtom, (prev) => deleteNodeInTree(prev, folderId));
-  await vaultIO.delete(folderId, vaultPath ?? undefined, "folder");
-  writingPathsRegistry.delete(folderId);
+
+  const snapshot = isAndroid
+    ? null
+    : await snapshotFolderForUndo(store, folderId);
+
+  await deleteFolderCore(store, folderId);
+
+  if (snapshot) {
+    // Piste le chemin réel du dossier après chaque undo (une collision sur son
+    // propre nom peut le renommer, cf. plus bas) — le redo doit le supprimer
+    // là où il est vraiment.
+    let currentFolderId = folderId;
+    pushFileUndo(store, {
+      label: `Suppression de « ${snapshot.folderNode.name} »`,
+      undo: async () => {
+        // Le dossier lui-même peut déjà exister à ce chemin (recréé entre-
+        // temps sous le même nom) — même garde anti-collision que
+        // deleteNote/restoreFromTrash. Seul le dossier racine du snapshot est
+        // vérifié : ses enfants sont recréés dans un dossier qu'on vient tout
+        // juste de créer, donc sans risque de collision propre.
+        const oldFolderId = snapshot.folderNode.id;
+        const { parent, name: originalName } = splitPath(oldFolderId);
+        const destName = await resolveDestName(parent, originalName);
+        const newFolderId = `${parent}/${destName}`;
+        const remapPath = (p: string) =>
+          p === oldFolderId
+            ? newFolderId
+            : newFolderId + p.slice(oldFolderId.length);
+
+        for (const dir of snapshot.folderPaths) {
+          const { parent: dirParent, name: dirName } = splitPath(
+            remapPath(dir)
+          );
+          await vaultIO.createDir(dirParent, dirName);
+        }
+        for (const [path, content] of snapshot.rawFiles) {
+          await vaultIO.writeFile(remapPath(path), content);
+        }
+
+        function remapNode(node: TreeNode): TreeNode {
+          const newId = remapPath(node.id);
+          if (node.kind === "folder") {
+            return {
+              ...node,
+              id: newId,
+              children: node.children.map(remapNode),
+            };
+          }
+          return { ...node, id: newId };
+        }
+        const restoredFolderNode = remapNode(snapshot.folderNode) as FolderNode;
+        if (destName !== originalName) restoredFolderNode.name = destName;
+        currentFolderId = newFolderId;
+
+        const vaultPath = store.get(folderPathAtom);
+        store.set(treeAtom, (prev) =>
+          addNodeInTree(
+            prev,
+            snapshot.parentId,
+            restoredFolderNode,
+            vaultPath ?? undefined
+          )
+        );
+      },
+      redo: async () => {
+        await deleteFolderCore(store, currentFolderId);
+      },
+    });
+  }
 }
 
 // ── Renommage ──────────────────────────────────────────────────────────────
+// Annulable, sauf sur Android (SAF ne garantit pas des URI stables — le
+// rechargement complet qui suit un renommage de dossier y rend d'ailleurs le
+// chemin "avant" déjà caduc). Naturellement réversible : annuler un
+// renommage, c'est juste en rejouer un autre en sens inverse — pas besoin de
+// snapshot de contenu (contrairement à la suppression).
 
-export async function renameNode(
+// Extension à réappliquer après renommage : .md pour une note (imposée, même
+// si le disque en manquait), l'extension d'origine pour un média (préservée
+// telle quelle), rien pour un dossier.
+function renamedExt(kind: FileKind, oldPath: string): string {
+  if (kind === "folder") return "";
+  if (kind === "note") return ".md";
+  return oldPath.match(/\.[^/.]+$/)?.[0] ?? "";
+}
+
+async function renameNodeCore(
   store: JotaiStore,
   oldPath: string,
   newName: string,
-  isFolder: boolean
+  kind: FileKind
 ): Promise<string> {
-  const newFileName = isFolder ? newName : `${newName}.md`;
+  const isFolder = kind === "folder";
+  const newFileName = `${newName}${renamedExt(kind, oldPath)}`;
 
   if (!isFolder) await flushPendingWrite(oldPath);
 
@@ -676,9 +931,15 @@ export async function renameNode(
       return newPath;
     }
     const newPath = await vaultIO.rename(oldPath, newFileName);
-    store.set(treeAtom, (prev) =>
-      renameNodeInTree(prev, oldPath, newPath, newName)
-    );
+    if (kind === "media") {
+      // fileName (extension incluse) n'est pas dérivable d'un simple patch
+      // in-memory — rechargement complet, comme pour un déplacement de média.
+      if (folderPath) await reload(store, folderPath);
+    } else {
+      store.set(treeAtom, (prev) =>
+        renameNodeInTree(prev, oldPath, newPath, newName)
+      );
+    }
     return newPath;
   }
 
@@ -699,6 +960,9 @@ export async function renameNode(
     store.set(treeAtom, (prev) =>
       updateFolderInTree(prev, oldPath, newPath, newName, updatedChildren)
     );
+  } else if (kind === "media") {
+    await vaultIO.rename(oldPath, newFileName);
+    if (folderPath) await reload(store, folderPath);
   } else {
     await vaultIO.rename(oldPath, newFileName);
     store.set(treeAtom, (prev) =>
@@ -709,9 +973,42 @@ export async function renameNode(
   return newPath;
 }
 
-// ── Déplacement d'un nœud vers un autre dossier ────────────────────────────
+export async function renameNode(
+  store: JotaiStore,
+  oldPath: string,
+  newName: string,
+  kind: FileKind
+): Promise<string> {
+  const oldSegment = oldPath.split("/").pop() ?? oldPath;
+  const oldExt = renamedExt(kind, oldPath);
+  const oldName = oldExt ? oldSegment.slice(0, -oldExt.length) : oldSegment;
 
-export async function moveNode(
+  const newPath = await renameNodeCore(store, oldPath, newName, kind);
+
+  if (!isAndroid && oldName !== newName) {
+    pushFileUndo(store, {
+      label: `Renommage de « ${oldName} » en « ${newName} »`,
+      undo: async () => {
+        await renameNodeCore(store, newPath, oldName, kind);
+      },
+      redo: async () => {
+        await renameNodeCore(store, oldPath, newName, kind);
+      },
+    });
+  }
+
+  return newPath;
+}
+
+// ── Déplacement d'un nœud vers un autre dossier ────────────────────────────
+// Annulable, mais non supporté sur Android comme le déplacement lui-même (SAF
+// ne propose pas de moveDocument unifié). Naturellement réversible (pas de
+// snapshot de contenu) : annuler, c'est déplacer en sens inverse — sauf
+// qu'une collision de nom peut faire dériver le chemin réel du fichier d'un
+// aller-retour à l'autre (resolveDestName le renomme alors), d'où le suivi de
+// `currentPath` plutôt qu'un simple aller-retour sourceId/newPath figé.
+
+async function moveNodeCore(
   store: JotaiStore,
   sourceId: string,
   targetFolderPath: string
@@ -741,11 +1038,9 @@ export async function moveNode(
     writingPathsRegistry.delete(sourceId);
   }
 
-  // Un dossier n'a pas d'extension de fichier.
-  // Les médias (.jpg, .mp3…) ont une extension mais ne sont pas des dossiers.
-  const fileExt = /\.[^/]+$/.test(sourceName);
-  const isNote = sourceName.endsWith(".md");
-  const isFolder = !fileExt;
+  const kind = classifyPathKind(sourceName);
+  const isNote = kind === "note";
+  const isFolder = kind === "folder";
   const folderPath = store.get(folderPathAtom);
 
   if (isNote) {
@@ -770,5 +1065,33 @@ export async function moveNode(
   }
 
   log.info("nœud déplacé", { sourceId, newPath, isFolder });
+  return newPath;
+}
+
+export async function moveNode(
+  store: JotaiStore,
+  sourceId: string,
+  targetFolderPath: string
+): Promise<string | null> {
+  const originalParent = sourceId.split("/").slice(0, -1).join("/");
+  const rawName = (sourceId.split("/").pop() ?? sourceId).replace(/\.md$/, "");
+
+  const newPath = await moveNodeCore(store, sourceId, targetFolderPath);
+
+  if (newPath && !isAndroid) {
+    let currentPath = newPath;
+    pushFileUndo(store, {
+      label: `Déplacement de « ${rawName} »`,
+      undo: async () => {
+        const back = await moveNodeCore(store, currentPath, originalParent);
+        if (back) currentPath = back;
+      },
+      redo: async () => {
+        const fwd = await moveNodeCore(store, currentPath, targetFolderPath);
+        if (fwd) currentPath = fwd;
+      },
+    });
+  }
+
   return newPath;
 }

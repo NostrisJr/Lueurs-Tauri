@@ -2,7 +2,11 @@ import { useStore } from "jotai";
 import { useCallback } from "react";
 
 import { folderPathAtom } from "../lib/atoms";
-import { type Frontmatter, flattenTree } from "../lib/fileTreeHelpers";
+import {
+  type FileKind,
+  type Frontmatter,
+  flattenTree,
+} from "../lib/fileTreeHelpers";
 import * as mut from "../lib/fileTreeMutations";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -91,8 +95,8 @@ export function useFileTree() {
       [store]
     ),
     renameNode: useCallback(
-      (oldPath: string, newName: string, isFolder: boolean) =>
-        mut.renameNode(store, oldPath, newName, isFolder),
+      (oldPath: string, newName: string, kind: FileKind) =>
+        mut.renameNode(store, oldPath, newName, kind),
       [store]
     ),
     openFolderNote: useCallback(

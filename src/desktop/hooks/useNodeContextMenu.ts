@@ -4,8 +4,9 @@
 // note ou média → le dossier parent.
 //
 // La suppression passe par handleDeleteNote / handleDeleteFolder (même chemin
-// que le bouton 🗑️ du file tree) : onglets, navigation, cleanupNoteFromBases,
-// writingPathsRegistry et mise à jour optimiste de l'arbre sont tous gérés.
+// que le bouton 🗑️ du file tree) : onglets, navigation, nettoyage des
+// références (cf. useFileReferences), writingPathsRegistry et mise à jour
+// optimiste de l'arbre sont tous gérés.
 
 import { invoke } from "@tauri-apps/api/core";
 import {

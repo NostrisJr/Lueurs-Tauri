@@ -1,3 +1,4 @@
+import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 /**
  * imageNodeView.ts — NodeView ProseMirror pour les images.
  *
@@ -8,9 +9,8 @@
  */
 import { $prose } from "@milkdown/kit/utils";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
-import { isAndroid } from "../../../lib/platform";
 import { createLogger } from "../../../lib/logger";
+import { isAndroid } from "../../../lib/platform";
 
 const log = createLogger("imageNodeView");
 
@@ -51,6 +51,9 @@ export function makeImageNodeViewBuilder(vaultPath: string) {
         URL.revokeObjectURL(currentBlobUrl);
         currentBlobUrl = null;
       }
+      // Reset avant chaque résolution — un onerror précédent ne doit pas
+      // persister si le nouveau src (ou une relecture) réussit.
+      img.classList.remove("media-broken");
       if (!src) {
         img.src = "";
         return;
@@ -62,11 +65,17 @@ export function makeImageNodeViewBuilder(vaultPath: string) {
             currentBlobUrl = url;
             img.src = url;
           })
-          .catch((err) =>
-            log.error("image Android résolution échec", { src, err })
-          );
+          .catch((err) => {
+            log.error("image Android résolution échec", { src, err });
+            img.classList.add("media-broken");
+          });
         return;
       }
+      // Fichier introuvable (renommé/déplacé/supprimé sans propagation, ou
+      // suppression sans nettoyage du corps, cf. useFileReferences) → l'OS/
+      // webview échoue à charger l'asset : signaler visuellement plutôt que
+      // laisser l'icône "image cassée" native, incohérente entre plateformes.
+      img.onerror = () => img.classList.add("media-broken");
       img.src = convertFileSrc(toAbsolutePath(src, vaultPath));
     };
 

@@ -12,7 +12,7 @@
  * du frontmatter portent un chemin absolu en mémoire, ceux du corps un chemin
  * relatif au vault. D'où les deux jeux d'options ci-dessous.
  *
- * Pendant symétrique de usePathPropagation (renommage de NOTE).
+ * Pendant symétrique de useFileReferences (renommage de NOTE, celui-ci de PROPRIÉTÉ).
  */
 
 import { useStore } from "jotai";

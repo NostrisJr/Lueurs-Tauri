@@ -2,8 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useEffect, useRef } from "react";
+import { useFileReferences } from "../../shared/hooks/useFileReferences";
 import { useFileTree } from "../../shared/hooks/useFileTree";
-import { usePathPropagation } from "../../shared/hooks/usePathPropagation";
 import {
   activeNoteIdAtom,
   activeSpaceAtom,
@@ -13,6 +13,7 @@ import {
   selectedIdsAtom,
   toastAtom,
 } from "../../shared/lib/atoms";
+import { classifyPathKind } from "../../shared/lib/fileTreeHelpers";
 import {
   BASE_NULL,
   importFolderRecursive,
@@ -161,21 +162,19 @@ export function useFileDrop(): FileDrop {
   const setActiveNoteId = useSetAtom(activeNoteIdAtom);
   const selectedIds = useAtomValue(selectedIdsAtom);
   const { moveNode, reload } = useFileTree();
-  const { propagateNoteRename, propagateFolderRename } = usePathPropagation();
+  const { propagateRename } = useFileReferences();
 
   // Refs miroirs — un seul objet pour éviter les fermetures périmées dans les callbacks singleton
   const cbRef = useRef({
     moveNode,
     reload,
-    propagateNoteRename,
-    propagateFolderRename,
+    propagateRename,
     selectedIds,
   });
   cbRef.current = {
     moveNode,
     reload,
-    propagateNoteRename,
-    propagateFolderRename,
+    propagateRename,
     selectedIds,
   };
 
@@ -406,20 +405,13 @@ export function useFileDrop(): FileDrop {
     for (const sourceId of sourceIds) {
       if (!isValidMove(sourceId, targetFolderPath)) continue;
 
-      const sourceName = sourceId.split("/").pop() ?? "";
-      const fileExt = /\.[^/]+$/.test(sourceName);
-      const isNote = sourceName.endsWith(".md");
-      const isFolder = !fileExt;
+      const kind = classifyPathKind(sourceId);
+      const isFolder = kind === "folder";
 
       const newPath = await cbRef.current.moveNode(sourceId, targetFolderPath);
       if (!newPath) continue;
 
-      if (isFolder) {
-        await cbRef.current.propagateFolderRename(sourceId, newPath);
-      } else if (isNote) {
-        await cbRef.current.propagateNoteRename(sourceId, newPath);
-      }
-      // Les médias n'ont pas de références frontmatter à propager
+      await cbRef.current.propagateRename(sourceId, newPath, kind);
 
       if (currentActive) {
         if (!isFolder && currentActive === sourceId) {

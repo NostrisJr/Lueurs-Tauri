@@ -578,7 +578,9 @@ export function AudioBlockComponent({
         "border bg-gray-50",
         isSelected
           ? "border-amber-400 shadow-amber-700/20 shadow-lg"
-          : "border-black/10 hover:border-black/18"
+          : waveformStatus === "error"
+            ? "border-red-300/60"
+            : "border-black/10 hover:border-black/18"
       )}
       style={{ fontFamily: "'Inter', Arial, Helvetica, sans-serif" }}
       onClick={
@@ -660,10 +662,15 @@ export function AudioBlockComponent({
           style={{ width: "0%" }}
         />
         {waveformStatus !== "ready" && (
-          <div className="absolute inset-0 flex items-center justify-center text-[11px] text-gray-400 tracking-[0.02em]">
+          <div
+            className={clsx(
+              "absolute inset-0 flex items-center justify-center text-[11px] tracking-[0.02em]",
+              waveformStatus === "error" ? "text-red-400" : "text-gray-400"
+            )}
+          >
             {waveformStatus === "loading"
               ? "Chargement de l'audio..."
-              : "Aperçu audio"}
+              : "Audio introuvable ou illisible"}
           </div>
         )}
       </div>

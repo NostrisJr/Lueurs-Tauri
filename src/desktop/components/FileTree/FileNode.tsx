@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
+import { useAtom, useAtomValue, useStore } from "jotai";
 import { EditableText } from "../../../shared/components/EditableText";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider.tsx";
 import {
@@ -19,17 +19,14 @@ import {
 } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
-  activeNoteIdAtom,
   dragOverAtom,
   dragSourceAtom,
   openFoldersAtom,
-  openTabIdsAtom,
   selectedIdsAtom,
   selectionAnchorAtom,
   treeAtom,
 } from "../../../shared/lib/atoms";
 import { isNoteReadOnly } from "../../../shared/lib/noteTypes";
-import { vaultIO } from "../../../shared/lib/vaultIO";
 import { useFileDragCtx } from "./FileDragCtx";
 
 // ── Helpers range selection ────────────────────────────────────────────────────
@@ -226,10 +223,7 @@ function MediaNodeComponent({
   activeId: string | null;
 }) {
   const isActive = activeId === node.id;
-  const setActiveNoteId = useSetAtom(activeNoteIdAtom);
-  const [openTabIds, setOpenTabIds] = useAtom(openTabIdsAtom);
-  const { handleSelectNote, handleDeleteMedia } = useNote();
-  const { reload } = useFileTree();
+  const { handleSelectNote, handleDeleteMedia, handleRenameMedia } = useNote();
   const dnd = useFileDragCtx();
   const dragSource = useAtomValue(dragSourceAtom);
   const isDragging = dragSource === node.id;
@@ -257,17 +251,7 @@ function MediaNodeComponent({
   }
 
   async function handleRename(newName: string) {
-    const dotIdx = node.fileName.lastIndexOf(".");
-    const ext = dotIdx > 0 ? node.fileName.slice(dotIdx) : "";
-    const newFileName = `${newName}${ext}`;
-    const parentPath = node.id.split("/").slice(0, -1).join("/");
-    const newId = `${parentPath}/${newFileName}`;
-    await vaultIO.rename(node.id, newFileName);
-    if (openTabIds.includes(node.id)) {
-      setOpenTabIds(openTabIds.map((id) => (id === node.id ? newId : id)));
-    }
-    setActiveNoteId(newId);
-    reload();
+    await handleRenameMedia(node.id, newName);
   }
 
   return (

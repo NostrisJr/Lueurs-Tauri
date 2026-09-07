@@ -8,7 +8,7 @@ import type {
 } from "../../../shared/hooks/useFileTree";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
-import { usePathPropagation } from "../../../shared/hooks/usePathPropagation";
+import { useFileReferences } from "../../../shared/hooks/useFileReferences";
 import {
   activeSpaceAtom,
   dictaphoneModeAtom,
@@ -18,7 +18,10 @@ import {
   inboxAbsPathAtom,
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
-import { sortNodes } from "../../../shared/lib/fileTreeHelpers";
+import {
+  classifyPathKind,
+  sortNodes,
+} from "../../../shared/lib/fileTreeHelpers";
 import { NoteType } from "../../../shared/lib/noteTypes";
 import { isAndroid, isIOS } from "../../../shared/lib/platform";
 import { findFolderById } from "../../../shared/lib/spaceAssignment";
@@ -180,7 +183,7 @@ export function MobileFileTree() {
   const folderStack = useAtomValue(folderStackAtom);
   const setFolderStack = useSetAtom(folderStackAtom);
   const { createNote, moveNode } = useFileTree();
-  const { propagateNoteRename } = usePathPropagation();
+  const { propagateRename } = useFileReferences();
   const selectNote = useMobileSelectNote();
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const folderPath = useAtomValue(folderPathAtom);
@@ -280,8 +283,8 @@ export function MobileFileTree() {
     if (!targetPath) return;
     hapticImpact("medium");
     const newPath = await moveNode(source.id, targetPath);
-    if (newPath && source.id.endsWith(".md")) {
-      await propagateNoteRename(source.id, newPath);
+    if (newPath) {
+      await propagateRename(source.id, newPath, classifyPathKind(source.id));
     }
   }
 

@@ -207,24 +207,8 @@ export function useFrontmatter() {
     });
   }
 
-  async function cleanupNoteFromBases(noteId: string) {
-    const bases = [...getNotesById().values()].filter((n) =>
-      toArray(n.frontmatter.__Children__).includes(noteId)
-    );
-    log.info("cleanup — bases trouvées", { noteId, baseCount: bases.length });
-    if (bases.length === 0) return;
-    for (const base of bases) {
-      const updated = toArray(base.frontmatter.__Children__).filter(
-        (c) => c !== noteId
-      );
-      writeBaseChildren(base, updated);
-    }
-    log.info("cleanup terminé", { noteId });
-  }
-
   return {
     onFrontmatterChange,
     applyTemplateProps,
-    cleanupNoteFromBases,
   };
 }

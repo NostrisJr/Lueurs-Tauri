@@ -269,6 +269,15 @@
   background-color: rgba(179, 38, 30, 0.06);
 }
 
+/* Image dont le fichier est introuvable (renommé/déplacé/supprimé) — même
+   convention rouge discrète que note-link-broken. */
+.milkdown .ProseMirror img.media-broken {
+  border: 1.5px dashed rgba(179, 38, 30, 0.4);
+  border-radius: 6px;
+  opacity: 0.55;
+  background-color: rgba(179, 38, 30, 0.04);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Formules inline ($$expr$$ → ƒ résultat)
    ───────────────────────────────────────────────────────────────────────── */

@@ -120,6 +120,7 @@ Variable names, comments, and UI strings are in French throughout the codebase.
 ## Collaboration Guidelines
 
 - **Valider avant de coder** — pour toute tâche non triviale, proposer l'approche technique et attendre validation avant d'écrire du code.
+- **Tests avant le code** — pour toute nouvelle fonctionnalité, ou toute fonctionnalité existante sur laquelle on retombe et qui n'a pas encore de tests, commencer par mettre en place ses tests avant de coder/modifier le comportement. Objectif : ne plus coder à l'aveugle sans filet de régression.
 - **Pas de patch sur patch** — quand une solution ne fonctionne pas, retirer le code ajouté avant d'essayer autre chose. Ne jamais empiler des correctifs.
 - **Commentaires FR, minimalistes** — uniquement pour les subtilités, points d'attention et TODO. Pas de commentaires qui paraphrasent le code.
 - **Logging permanent** — utiliser `src/lib/logger.ts` avec des messages précis et contextualisés, destinés à rester dans le code.

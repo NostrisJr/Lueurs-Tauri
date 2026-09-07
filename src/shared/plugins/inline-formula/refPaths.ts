@@ -37,3 +37,21 @@ export function relativizeRefPaths(
     (_, p: string) => `ref("${toVaultRelative(p, vaultPath)}")`
   );
 }
+
+/**
+ * Réécrit les chemins `ref()` d'une formule brute selon `mapPath` (chemin →
+ * nouveau chemin, ou null si inchangé). Symétrique à rewriteNoteLinkHrefs
+ * (wikilinkRewrite.ts) côté formules — utilisé par la propagation de
+ * renommage/déplacement (useFileReferences) pour suivre une note dont un
+ * ref() dépend, en frontmatter (chemins absolus) comme en corps (relatifs).
+ */
+export function rewriteRefPaths(
+  raw: string,
+  mapPath: (path: string) => string | null
+): string {
+  REF_RE.lastIndex = 0;
+  return raw.replace(REF_RE, (full, p: string) => {
+    const mapped = mapPath(p);
+    return mapped === null || mapped === p ? full : `ref("${mapped}")`;
+  });
+}

@@ -1,29 +1,19 @@
 // Visionneuse de fichiers médias (image, vidéo, PDF, audio).
 
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useSetAtom } from "jotai";
 import { useId } from "react";
-import { NoteHeader } from "../NoteEditor/NoteHeader";
-import { useFileTree } from "../../hooks/useFileTree";
 import type { MediaFile } from "../../hooks/useFileTree";
-import { activeNoteIdAtom } from "../../lib/atoms";
-import { vaultIO } from "../../lib/vaultIO";
+import { useNote } from "../../hooks/useNote";
 import { isIOS, isMobile } from "../../lib/platform";
+import { NoteHeader } from "../NoteEditor/NoteHeader";
 import { StandaloneAudioPlayer } from "./StandaloneAudioPlayer";
 
 export function MediaViewer({ media }: { media: MediaFile }) {
-  const setActiveNoteId = useSetAtom(activeNoteIdAtom);
-  const { reload } = useFileTree();
+  const { handleRenameMedia } = useNote();
   const audioNodeId = useId();
 
   async function handleRename(newName: string) {
-    const dotIdx = media.fileName.lastIndexOf(".");
-    const ext = dotIdx > 0 ? media.fileName.slice(dotIdx) : "";
-    const newFileName = `${newName}${ext}`;
-    const parentPath = media.id.split("/").slice(0, -1).join("/");
-    await vaultIO.rename(media.id, newFileName);
-    setActiveNoteId(`${parentPath}/${newFileName}`);
-    reload();
+    await handleRenameMedia(media.id, newName);
   }
 
   const assetUrl = convertFileSrc(media.id);
@@ -35,7 +25,11 @@ export function MediaViewer({ media }: { media: MediaFile }) {
     return (
       <div className="flex flex-col h-full w-full bg-white">
         <div className={isIOS ? "pt-12" : "pt-4"}>
-          <NoteHeader isNote={false} name={media.name} onRename={handleRename} />
+          <NoteHeader
+            isNote={false}
+            name={media.name}
+            onRename={handleRename}
+          />
         </div>
         {/* Conteneur flex-1 avec position relative : l'iframe absolute inset-0
             est le seul moyen fiable de lui donner une hauteur sur WKWebView. */}

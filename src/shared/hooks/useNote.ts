@@ -18,6 +18,7 @@ import {
 import { frontmatterEqual } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { NoteType } from "../lib/noteTypes";
+import { useFileReferences } from "./useFileReferences";
 import {
   type FolderNode,
   type Frontmatter,
@@ -26,7 +27,6 @@ import {
   type TreeNode,
   useFileTree,
 } from "./useFileTree";
-import { usePathPropagation } from "./usePathPropagation";
 
 const log = createLogger("useNote");
 
@@ -59,9 +59,33 @@ export function useNote() {
     renameNode,
     openFolderNote,
   } = useFileTree();
-  const { onFrontmatterChange, cleanupNoteFromBases } = useFrontmatter();
+  const { onFrontmatterChange } = useFrontmatter();
   const { onTemplateChange } = useTemplateSync();
-  const { propagateNoteRename, propagateFolderRename } = usePathPropagation();
+  const { propagateRename, countReferences, cleanupReferences } =
+    useFileReferences();
+
+  /**
+   * Avant suppression : compte les références au chemin visé et, s'il y en a,
+   * demande confirmation (même pattern que la propagation de suppression de
+   * propriété de template, cf. FrontmatterEditor.tsx) avant de les nettoyer.
+   * Un refus laisse les références telles quelles (signalées cassées au rendu).
+   */
+  async function confirmAndCleanupReferences(
+    path: string,
+    kind: Parameters<typeof cleanupReferences>[1]
+  ) {
+    const count = await countReferences(path, kind);
+    if (count === 0) return;
+    const label =
+      count === 1
+        ? "1 référence va être cassée."
+        : `${count} références vont être cassées.`;
+    const clean = await ask(`${label} Nettoyer automatiquement ?`, {
+      title: "Suppression",
+      kind: "warning",
+    });
+    if (clean) await cleanupReferences(path, kind);
+  }
 
   // Enregistre une visite dans l'historique (dédupliqué, plus récent en dernier)
   function pushHistory(id: string) {
@@ -189,7 +213,7 @@ export function useNote() {
     }
 
     log.info("suppression note", { fileId });
-    await cleanupNoteFromBases(fileId);
+    await confirmAndCleanupReferences(fileId, "note");
     await deleteNote(fileId);
     log.info("suppression terminée", { fileId });
   }
@@ -205,6 +229,7 @@ export function useNote() {
     }
 
     log.info("suppression média", { fileId });
+    await confirmAndCleanupReferences(fileId, "media");
     await deleteNote(fileId);
     log.info("suppression média terminée", { fileId });
   }
@@ -237,19 +262,16 @@ export function useNote() {
     const fileCount = node.kind === "folder" ? countFilesInFolder(node) : 0;
 
     if (fileCount === 0) {
+      // Vide, mais peut rester ciblé par un __DefaultFolder__ ailleurs.
+      await confirmAndCleanupReferences(node.id, "folder");
       await deleteFolder(node.id, false);
       return;
     }
 
-    const notesInFolder = [...notesById.values()].filter((n) =>
-      n.id.startsWith(`${node.id}/`)
-    );
     const newTabIds = openTabIds.filter((id) => !id.startsWith(`${node.id}/`));
     setOpenTabIds(newTabIds);
 
-    for (const n of notesInFolder) {
-      await cleanupNoteFromBases(n.id);
-    }
+    await confirmAndCleanupReferences(node.id, "folder");
 
     if (activeNote?.id.startsWith(node.id)) {
       const newActive = newTabIds.length > 0 ? newTabIds[0] : null;
@@ -296,17 +318,21 @@ export function useNote() {
       return handleRename(folderPath, newName, true);
     }
 
-    const newPath = await renameNode(oldPath, newName, isFolder);
+    const newPath = await renameNode(
+      oldPath,
+      newName,
+      isFolder ? "folder" : "note"
+    );
 
     if (!isFolder) {
-      await propagateNoteRename(oldPath, newPath);
+      await propagateRename(oldPath, newPath, "note");
       if (activeNote?.id === oldPath) setActiveNoteId(newPath);
       // Mettre à jour les onglets ouverts
       if (openTabIds.includes(oldPath)) {
         setOpenTabIds(openTabIds.map((id) => (id === oldPath ? newPath : id)));
       }
     } else {
-      await propagateFolderRename(oldPath, newPath);
+      await propagateRename(oldPath, newPath, "folder");
       // Mettre à jour les onglets des notes du dossier
       const newTabIds = openTabIds.map((id) =>
         id.startsWith(`${oldPath}/`) ? id.replace(oldPath, newPath) : id
@@ -325,6 +351,17 @@ export function useNote() {
       }
     }
 
+    return newPath;
+  }
+
+  /** Renommage d'un média (image, audio…) — même flux que note/dossier : undo + propagation des références au corps. */
+  async function handleRenameMedia(oldPath: string, newName: string) {
+    const newPath = await renameNode(oldPath, newName, "media");
+    await propagateRename(oldPath, newPath, "media");
+    if (activeNoteId === oldPath) setActiveNoteId(newPath);
+    if (openTabIds.includes(oldPath)) {
+      setOpenTabIds(openTabIds.map((id) => (id === oldPath ? newPath : id)));
+    }
     return newPath;
   }
 
@@ -366,6 +403,7 @@ export function useNote() {
     handleCreateNote,
     handleCreateFolder,
     handleRename,
+    handleRenameMedia,
     handleCloseTab,
     handleCloseAllTabs,
     pushHistory,
