@@ -40,6 +40,7 @@
     "@use-gesture/react": "^10.3.1",
     "clsx": "^2.1.1",
     "emoji-picker-react": "^4.19.1",
+    "fflate": "^0.8.3",
     "figma-squircle": "^1.1.0",
     "jotai": "^2.20.0",
     "prosemirror-history": "^1.5.0",

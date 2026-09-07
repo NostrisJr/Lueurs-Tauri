@@ -503,6 +503,28 @@ export function flattenTree(nodes: TreeNode[]): NoteFile[] {
   });
 }
 
+/** Nature d'un chemin d'arbre — même heuristique que moveNodeCore/useFileDrop (extension = média ou note, sinon dossier). */
+export type FileKind = "note" | "folder" | "media";
+
+/** Classe un chemin selon son nom : dossier (pas d'extension), note (.md) ou média (autre extension). */
+export function classifyPathKind(path: string): FileKind {
+  const name = path.split("/").pop() ?? path;
+  if (!/\.[^/]+$/.test(name)) return "folder";
+  return name.endsWith(".md") ? "note" : "media";
+}
+
+/** Trouve un nœud (note, dossier ou média) par id, quel que soit son kind. */
+export function findNodeById(nodes: TreeNode[], id: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.kind === "folder") {
+      const found = findNodeById(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 // ── Corbeille ─────────────────────────────────────────────────────────────────
 
 export async function moveToTrash(filePath: string): Promise<void> {

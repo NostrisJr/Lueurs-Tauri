@@ -72,6 +72,13 @@ struct NotePatch {
     raw_content: String,
 }
 
+// ── Association de fichier (.lueurs-note) ───────────────────────────────────
+//
+// RunEvent::Opened peut se déclencher avant que le frontend soit prêt à écouter
+// (cold start) : on bufferise les chemins ici, `opened_files` les vide au premier
+// appel (poll au montage), et l'event "opened-files" couvre le cas app déjà lancée.
+struct OpenedFilesState(std::sync::Mutex<Vec<String>>);
+
 // ── Picker import macOS ────────────────────────────────────────────────────
 
 /// Ouvre un NSOpenPanel permettant de sélectionner plusieurs fichiers ET dossiers.
@@ -142,6 +149,16 @@ async fn open_import_picker() -> Result<Vec<String>, String> {
     Ok(vec![])
 }
 
+/// Vide et retourne les chemins de fichiers ouverts via association (.lueurs-note)
+/// reçus avant que le frontend soit prêt à écouter (cold start). Le frontend
+/// appelle cette commande une fois monté ; les ouvertures suivantes (app déjà
+/// lancée) arrivent via l'event "opened-files".
+#[tauri::command]
+fn opened_files(state: tauri::State<OpenedFilesState>) -> Vec<String> {
+    let mut guard = state.0.lock().unwrap();
+    std::mem::take(&mut *guard)
+}
+
 // ── Entrée Tauri ───────────────────────────────────────────────────────────
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -156,8 +173,10 @@ pub fn run() {
         .plugin(tauri_plugin_native_audio::init())
         .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_haptics::init())
+        .plugin(tauri_plugin_share::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(hugo_tauri::init());
+        .plugin(hugo_tauri::init())
+        .manage(OpenedFilesState(std::sync::Mutex::new(Vec::new())));
 
     #[cfg(target_os = "android")]
     {
@@ -334,6 +353,7 @@ pub fn run() {
             propagate_template_change,
             dismiss_native_splash,
             check_pending_action,
+            opened_files,
             compiler_typst_apercu,
             exporter_pdf,
             exporter_typst,
@@ -342,6 +362,7 @@ pub fn run() {
             get_scale_factor,
             get_icloud_path,
             get_icloud_path_macos,
+            ensure_icloud_downloaded,
             show_action_sheet,
             show_rename_prompt,
             open_import_picker,
@@ -372,8 +393,24 @@ pub fn run() {
             #[cfg(target_os = "android")]
             vault_read_bytes,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Opened { urls } = event {
+                let paths: Vec<String> = urls
+                    .iter()
+                    .filter_map(|u| u.to_file_path().ok())
+                    .map(|p| p.to_string_lossy().to_string())
+                    .collect();
+                if paths.is_empty() {
+                    return;
+                }
+                if let Some(state) = app_handle.try_state::<OpenedFilesState>() {
+                    state.0.lock().unwrap().extend(paths.clone());
+                }
+                let _ = app_handle.emit("opened-files", paths);
+            }
+        });
 }
 
 // ── Commandes ──────────────────────────────────────────────────────────────
@@ -853,6 +890,37 @@ async fn icloud_path_impl() -> Option<String> {
 #[cfg(not(any(target_os = "ios", target_os = "macos")))]
 async fn icloud_path_impl() -> Option<String> {
     None
+}
+
+/// Force la matérialisation d'un fichier iCloud (placeholder non téléchargé) avant
+/// lecture. Sur iOS uniquement — cf. `ensure_icloud_file_downloaded` (Swift) pour
+/// le contexte. No-op (true) sur les autres plateformes.
+#[tauri::command]
+async fn ensure_icloud_downloaded(path: String, timeout_ms: u32) -> bool {
+    icloud_download_impl(path, timeout_ms).await
+}
+
+#[cfg(target_os = "ios")]
+async fn icloud_download_impl(path: String, timeout_ms: u32) -> bool {
+    extern "C" {
+        fn ensure_icloud_file_downloaded(
+            path_ptr: *const std::os::raw::c_char,
+            timeout_ms: i32,
+        ) -> bool;
+    }
+    tokio::task::spawn_blocking(move || {
+        let Ok(c_path) = std::ffi::CString::new(path) else {
+            return false;
+        };
+        unsafe { ensure_icloud_file_downloaded(c_path.as_ptr(), timeout_ms as i32) }
+    })
+    .await
+    .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "ios"))]
+async fn icloud_download_impl(_path: String, _timeout_ms: u32) -> bool {
+    true
 }
 
 // ── UI native iOS ──────────────────────────────────────────────────────────

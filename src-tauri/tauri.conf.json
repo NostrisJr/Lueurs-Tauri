@@ -36,6 +36,18 @@
     "active": true,
     "category": "Productivity",
     "targets": "all",
+    "fileAssociations": [
+      {
+        "ext": ["lueurs-note"],
+        "mimeType": "application/x-lueurs-note",
+        "role": "Editor",
+        "name": "Note Lueurs",
+        "exportedType": {
+          "identifier": "com.theophiledonato.lueurs.note",
+          "conformsTo": ["public.data"]
+        }
+      }
+    ],
     "macOS": {
       "entitlements": "./Entitlements.plist",
       "signingIdentity": "Developer ID Application: JUBILATE POP LOUANGE (TBX8DPCBL9)",

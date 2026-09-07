@@ -92,6 +92,18 @@ export const errorAtom = atom<string | null>(null);
 // Notification transitoire bas-centre (auto-disparition). Réinitialiser à null la masque.
 export const toastAtom = atom<string | null>(null);
 
+// ── Undo/redo des opérations du file tree ───────────────────────────────────
+// Suppression/renommage/déplacement — distinct de l'undo de frappe interne à
+// l'éditeur (ProseMirror history), qui reste scopé au contenu d'une note.
+// Piles en mémoire (non persistées) — cf. fileTreeUndo.ts pour la logique.
+export interface FileUndoEntry {
+  label: string;
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+}
+export const fileUndoStackAtom = atom<FileUndoEntry[]>([]);
+export const fileRedoStackAtom = atom<FileUndoEntry[]>([]);
+
 // Couleur de surlignage par défaut (appliquée via raccourci ou sans couleur explicite)
 export const defaultHighlightColorAtom = atomWithStorage<HighlightColorId>(
   "lueurs_default_highlight_color",
@@ -201,6 +213,56 @@ export const dictaphoneAbsPathAtom = atom((get) => {
   if (!folderPath || !relPath) return folderPath;
   return `${folderPath}/${relPath}`;
 });
+
+// Boîte aux lettres : dossier de destination des notes/dossiers/médias reçus par
+// bundle partagé (.lueurs-note). "recus" crée/utilise un dossier "Reçus" à la racine
+// (défaut), "racine" dépose directement à la racine du vault, "custom" utilise
+// mailboxCustomRelPathAtom (résolu comme inbox/dictaphone).
+export type MailboxMode = "recus" | "racine" | "custom";
+
+export const mailboxModeAtom = atomWithStorage<MailboxMode>(
+  "lueurs_mailbox_mode",
+  "recus",
+  undefined,
+  { getOnInit: true }
+);
+
+export const mailboxCustomRelPathAtom = atomWithStorage<string | null>(
+  "lueurs_mailbox_custom_rel_path",
+  null,
+  undefined,
+  { getOnInit: true }
+);
+
+export const MAILBOX_DEFAULT_FOLDER_NAME = "Reçus";
+
+// Chemin absolu de la boîte aux lettres — null si aucun vault ouvert
+export const mailboxAbsPathAtom = atom((get) => {
+  const folderPath = get(folderPathAtom);
+  if (!folderPath) return null;
+  const mode = get(mailboxModeAtom);
+  if (mode === "racine") return folderPath;
+  if (mode === "custom") {
+    const rel = get(mailboxCustomRelPathAtom);
+    return rel ? `${folderPath}/${rel}` : folderPath;
+  }
+  return `${folderPath}/${MAILBOX_DEFAULT_FOLDER_NAME}`;
+});
+
+// Requête de résolution affichée par ShareResolutionDialog quand le bundle en
+// cours de partage référence des notes hors de sa sélection (wikilinks, ref()
+// de formules) — voir bundleShare.ts. `resolve(null)` = partage annulé.
+export interface ShareResolutionChoice {
+  mode: "asis" | "bake" | "recursive";
+  includeChildren: boolean;
+}
+export interface ShareResolutionRequest {
+  wikilinkCount: number;
+  formulaCount: number;
+  hasChildren: boolean;
+  resolve: (choice: ShareResolutionChoice | null) => void;
+}
+export const shareResolutionAtom = atom<ShareResolutionRequest | null>(null);
 
 export const ACTIVE_NOTE_ID_STORAGE_KEY = "lueurs_active_note_id";
 

@@ -34,6 +34,11 @@ tokio = { version = "1.50.0", features = ["full"] }
 tauri-plugin-audio-recorder = { git = "https://github.com/NostrisJr/tauri-plugin-audio-recorder.git", version = "0.1.0" }
 tauri-plugin-native-audio = "1"
 tauri-plugin-haptics = "2"
+# Feuille de partage native (UIActivityViewController / Intent.ACTION_SEND) — pour
+# le bouton "Partager" (bundle .lueurs-note). navigator.share() de la WKWebView ne
+# partage pas de vrai fichier joint. Enregistré partout comme haptics/native-audio
+# (mobile-only à l'usage, mais compile cross-plateforme).
+tauri-plugin-share = "2"
 window-vibrancy = "0.7.1"
 # Correcteur orthographique/grammatical local (Hugo). Chemin local pour l'instant ;
 # deviendra une dépendance git/publiée plus tard.

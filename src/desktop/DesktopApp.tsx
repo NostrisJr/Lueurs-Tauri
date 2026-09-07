@@ -3,12 +3,14 @@ import { Suspense, lazy, useCallback, useEffect, useRef } from "react";
 import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
 import { NoteEditor } from "../shared/components/NoteEditor/NoteEditor.tsx";
 import { registerDropListener } from "../shared/components/NoteEditor/lib/dropListener.ts";
+import { ShareResolutionDialog } from "../shared/components/ShareResolutionDialog.tsx";
 import {
   DESKTOP_HEADER_HEIGHT,
   useCaretScroll,
 } from "../shared/hooks/useCaretScroll";
 import { useFileTree } from "../shared/hooks/useFileTree";
 import { useNote } from "../shared/hooks/useNote";
+import { useOpenedFileBundles } from "../shared/hooks/useOpenedFileBundles";
 import { useVaultSync } from "../shared/hooks/useVaultSync";
 import {
   activeMediaAtom,
@@ -49,6 +51,7 @@ export function DesktopApp() {
   const { handleCreateNote } = useNote();
   useVaultSync();
   useMenuEvents();
+  useOpenedFileBundles();
 
   const activeNote = useAtomValue(activeNoteAtom);
   const activeMedia = useAtomValue(activeMediaAtom);
@@ -102,14 +105,20 @@ export function DesktopApp() {
         setSettingsOpen(true);
       }
       // Capture avant ProseMirror (Mod-Shift-s est pris par barré dans l'éditeur)
-      if (e.key === "w" && (e.metaKey || e.ctrlKey) && e.shiftKey && activeNote) {
+      if (
+        e.key === "w" &&
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        activeNote
+      ) {
         e.preventDefault();
         e.stopPropagation();
         setExportOpen(true);
       }
     }
     window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onKey, { capture: true });
   }, [setSettingsOpen, setExportOpen, activeNote]);
 
   // Listener drop natif (audio/images), enregistré pour toute la session desktop.
@@ -140,6 +149,7 @@ export function DesktopApp() {
         <ExportDialog />
       </Suspense>
       <Toast />
+      <ShareResolutionDialog />
       <SideBar />
 
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">

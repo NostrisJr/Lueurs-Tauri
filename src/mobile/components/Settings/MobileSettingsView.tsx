@@ -9,24 +9,32 @@ import {
 import { Squircle } from "../../../shared/components/Squircle";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import {
+  MAILBOX_DEFAULT_FOLDER_NAME,
+  type MailboxMode,
+  SPELLCHECK_ENGINES,
   allFoldersAtom,
   defaultDisplayModeAtom,
   defaultHighlightColorAtom,
   dictaphoneRelPathAtom,
   folderPathAtom,
   inboxRelPathAtom,
+  mailboxCustomRelPathAtom,
+  mailboxModeAtom,
   mobileGoBackAtom,
   mobileNavigateAtom,
   mobileSettingsScrollTargetAtom,
   showResourcesAtom,
-  SPELLCHECK_ENGINES,
   spellcheckEngineAtom,
   textJustificationAtom,
   treeAtom,
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
 import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
-import { iconAccentClass, isAndroid, isIOS } from "../../../shared/lib/platform";
+import {
+  iconAccentClass,
+  isAndroid,
+  isIOS,
+} from "../../../shared/lib/platform";
 import { vaultIO } from "../../../shared/lib/vaultIO";
 import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
 import { useKeyboard } from "../../hooks/useKeyboard";
@@ -55,6 +63,10 @@ export function MobileSettingsView() {
   const [inboxRelPath, setInboxRelPath] = useAtom(inboxRelPathAtom);
   const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(
     dictaphoneRelPathAtom
+  );
+  const [mailboxMode, setMailboxMode] = useAtom(mailboxModeAtom);
+  const [mailboxCustomRelPath, setMailboxCustomRelPath] = useAtom(
+    mailboxCustomRelPathAtom
   );
   const allFolders = useAtomValue(allFoldersAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
@@ -388,7 +400,7 @@ export function MobileSettingsView() {
                 Destination des nouvelles notes (bouton + et raccourcis).
               </p>
             </div>
-            <div className="px-4 py-3.5">
+            <div className="px-4 py-3.5 border-b border-gray-100">
               <p className="text-base text-gray-900 mb-1.5">Dictaphone</p>
               <select
                 value={dictaphoneRelPath ?? ""}
@@ -412,6 +424,62 @@ export function MobileSettingsView() {
               </select>
               <p className="text-xs text-gray-400 mt-1.5">
                 Destination des enregistrements dictaphone.
+              </p>
+            </div>
+            <div className="px-4 py-3.5">
+              <p className="text-base text-gray-900 mb-1.5">
+                Boîte aux lettres
+              </p>
+              <div className="flex gap-1 bg-gray-50 rounded-lg p-0.75 border border-gray-200">
+                {(
+                  [
+                    ["recus", MAILBOX_DEFAULT_FOLDER_NAME],
+                    ["racine", "Racine"],
+                    ["custom", "Autre"],
+                  ] as [MailboxMode, string][]
+                ).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => {
+                      hapticImpact("light");
+                      setMailboxMode(mode);
+                    }}
+                    className={`flex-1 px-2 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      mailboxMode === mode
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {mailboxMode === "custom" && (
+                <select
+                  value={mailboxCustomRelPath ?? ""}
+                  onChange={(e) => {
+                    hapticImpact("light");
+                    setMailboxCustomRelPath(e.target.value || null);
+                  }}
+                  className="w-full text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 mt-2"
+                >
+                  <option value="">Racine du vault</option>
+                  {allFolders.map((folder) => {
+                    const rel = folderPath
+                      ? folder.id.slice(folderPath.length + 1)
+                      : folder.id;
+                    return (
+                      <option key={folder.id} value={rel}>
+                        {rel}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
+              <p className="text-xs text-gray-400 mt-1.5">
+                Destination des notes, dossiers et médias reçus par bundle
+                partagé (.lueurs-note).
               </p>
             </div>
           </Squircle>

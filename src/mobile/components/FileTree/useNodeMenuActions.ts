@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
@@ -15,11 +16,17 @@ import { useFileTree } from "../../../shared/hooks/useFileTree";
 import type { TreeNode } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
 import {
+  folderPathAtom,
+  infoAuteurAtom,
   mobileContextMenuAtom,
   notesByIdAtom,
   treeAtom,
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
+import {
+  BUNDLE_MIME,
+  writeShareableBundle,
+} from "../../../shared/lib/bundle/bundleShare";
 import { importPaths } from "../../../shared/lib/importUtils";
 import { createLogger } from "../../../shared/lib/logger";
 import { isNoteReadOnly } from "../../../shared/lib/noteTypes";
@@ -171,10 +178,25 @@ export function useNodeMenuActions() {
         label: "Partager",
         icon: IconSquareAndArrowUp,
         onPress: async () => {
-          if (!navigator.share) return;
-          await navigator
-            .share({ title: node.name, text: node.id })
-            .catch(() => {});
+          const vaultPath = store.get(folderPathAtom);
+          if (!vaultPath) return;
+          try {
+            const tmpPath = await writeShareableBundle(
+              store,
+              node,
+              vaultPath,
+              store.get(infoAuteurAtom),
+              tree
+            );
+            if (!tmpPath) return; // annulé depuis le dialogue de résolution
+            await invoke("plugin:share|share_file", {
+              path: tmpPath,
+              mime: BUNDLE_MIME,
+            });
+            log.info("bundle partagé", { id: node.id });
+          } catch (err) {
+            log.error("échec partage", { id: node.id, err });
+          }
         },
       },
     ];

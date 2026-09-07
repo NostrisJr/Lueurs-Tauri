@@ -3,10 +3,14 @@ import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { useFileTree } from "../../../../shared/hooks/useFileTree";
 import {
+  MAILBOX_DEFAULT_FOLDER_NAME,
+  type MailboxMode,
   allFoldersAtom,
   dictaphoneRelPathAtom,
   folderPathAtom,
   inboxRelPathAtom,
+  mailboxCustomRelPathAtom,
+  mailboxModeAtom,
   settingsOpenAtom,
   showResourcesAtom,
   treeAtom,
@@ -20,14 +24,22 @@ export function VaultTab() {
   const folderPath = useAtomValue(folderPathAtom);
   const [showResources, setShowResources] = useAtom(showResourcesAtom);
   const [inboxRelPath, setInboxRelPath] = useAtom(inboxRelPathAtom);
-  const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(dictaphoneRelPathAtom);
+  const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(
+    dictaphoneRelPathAtom
+  );
+  const [mailboxMode, setMailboxMode] = useAtom(mailboxModeAtom);
+  const [mailboxCustomRelPath, setMailboxCustomRelPath] = useAtom(
+    mailboxCustomRelPathAtom
+  );
   const allFolders = useAtomValue(allFoldersAtom);
   const tree = useAtomValue(treeAtom);
   const [, setOpen] = useAtom(settingsOpenAtom);
   const { pickFolder, switchVault, reload } = useFileTree();
 
   const [cleanStatus, setCleanStatus] = useState<CleanStatus>(null);
-  const [icloudPath, setIcloudPath] = useState<string | null | undefined>(undefined);
+  const [icloudPath, setIcloudPath] = useState<string | null | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     invoke<string | null>("get_icloud_path_macos").then(setIcloudPath);
@@ -49,7 +61,9 @@ export function VaultTab() {
       let count = 0;
       for (const sub of ["images", "audio"] as const) {
         try {
-          const entries = await vaultIO.readDir(`${folderPath}/resources/${sub}`);
+          const entries = await vaultIO.readDir(
+            `${folderPath}/resources/${sub}`
+          );
           for (const e of entries) {
             if (!e.isDir && !referenced.has(e.name)) {
               await vaultIO.delete(e.uri);
@@ -104,7 +118,9 @@ export function VaultTab() {
             }}
             className="rounded accent-gray-800 cursor-pointer"
           />
-          <span className="text-sm text-gray-700">Afficher les ressources dans le vault</span>
+          <span className="text-sm text-gray-700">
+            Afficher les ressources dans le vault
+          </span>
         </label>
         <div className="flex items-center gap-3">
           <button
@@ -113,7 +129,9 @@ export function VaultTab() {
             disabled={cleanStatus === "running" || !folderPath}
             className="px-3 py-2 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-default transition-colors cursor-pointer"
           >
-            {cleanStatus === "running" ? "Nettoyage…" : "Nettoyer les ressources"}
+            {cleanStatus === "running"
+              ? "Nettoyage…"
+              : "Nettoyer les ressources"}
           </button>
           {cleanStatus !== null && cleanStatus !== "running" && (
             <span className="text-xs text-gray-500">
@@ -128,7 +146,9 @@ export function VaultTab() {
       </div>
 
       <div className="space-y-2">
-        <p className={`text-xs ${icloudAvailable ? "text-gray-500" : "text-gray-300"}`}>
+        <p
+          className={`text-xs ${icloudAvailable ? "text-gray-500" : "text-gray-300"}`}
+        >
           Vault iCloud (partagé avec l'app iOS)
         </p>
         {icloudAvailable ? (
@@ -177,6 +197,55 @@ export function VaultTab() {
         value={dictaphoneRelPath}
         onChange={setDictaphoneRelPath}
       />
+
+      <div className="space-y-2">
+        <p className="text-xs text-gray-500">Boîte aux lettres</p>
+        <div className="flex gap-1 bg-gray-100 rounded-full p-0.75">
+          {(
+            [
+              ["recus", `Dossier "${MAILBOX_DEFAULT_FOLDER_NAME}"`],
+              ["racine", "Racine du vault"],
+              ["custom", "Personnalisé"],
+            ] as [MailboxMode, string][]
+          ).map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setMailboxMode(mode)}
+              className={`flex-1 px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                mailboxMode === mode
+                  ? "bg-white text-black shadow-sm"
+                  : "text-gray-400 hover:bg-gray-200"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {mailboxMode === "custom" && (
+          <select
+            value={mailboxCustomRelPath ?? ""}
+            onChange={(e) => setMailboxCustomRelPath(e.target.value || null)}
+            className="w-full text-sm text-gray-700 bg-gray-50 rounded-md px-3 py-2 ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+          >
+            <option value="">Racine du vault</option>
+            {allFolders.map((folder) => {
+              const rel = folderPath
+                ? folder.id.slice(folderPath.length + 1)
+                : folder.id;
+              return (
+                <option key={folder.id} value={rel}>
+                  {rel}
+                </option>
+              );
+            })}
+          </select>
+        )}
+        <p className="text-xs text-gray-400">
+          Destination des notes, dossiers et médias reçus par bundle partagé
+          (.lueurs-note), en local comme via l'association de fichier.
+        </p>
+      </div>
     </div>
   );
 }
