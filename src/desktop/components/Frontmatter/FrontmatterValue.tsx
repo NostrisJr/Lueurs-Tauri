@@ -1,4 +1,5 @@
 import { platform } from "@tauri-apps/plugin-os";
+import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { FormulaEditField } from "../../../shared/components/FormulaField/FormulaEditField";
 import { ButtonOptionsEditor } from "../../../shared/components/FrontmatterPicker/ButtonOptionsEditor";
@@ -9,6 +10,11 @@ import {
   isButtonFormula,
   parseButton,
 } from "../../../shared/lib/FrontmatterPicker/buttonProperty";
+import {
+  allFoldersAtom,
+  folderPathAtom,
+  vaultConfigAtom,
+} from "../../../shared/lib/atoms";
 import {
   computeFormula,
   humanizeFormula,
@@ -55,6 +61,9 @@ export function FrontmatterValue({
   noteName,
 }: Props) {
   const isMobile = platform() === "ios";
+  const folderPath = useAtomValue(folderPathAtom);
+  const allFolders = useAtomValue(allFoldersAtom);
+  const vaultConfig = useAtomValue(vaultConfigAtom);
   const [editingFormula, setEditingFormula] = useState(false);
   // Brouillon local le temps de l'édition — même modèle que le popup inline.
   // Sans lui, chaque caractère tapé déclenche commit() : réécriture de toutes
@@ -65,19 +74,6 @@ export function FrontmatterValue({
   const inputRef = useRef<HTMLInputElement>(null);
   const selectorOpenRef = useRef(false);
   const triggerCursorRef = useRef(0);
-  // Suivi pour l'auto-pair $$ → transition automatique en mode édition
-  const autoPairedRef = useRef(false);
-  const wasFormulaRef = useRef(isFormula(value as string));
-
-  // Quand une valeur texte devient une formule valide après auto-pair, entrer en mode édition
-  useEffect(() => {
-    const nowFormula = isFormula(value as string);
-    if (!wasFormulaRef.current && nowFormula && autoPairedRef.current) {
-      setEditingFormula(true);
-      autoPairedRef.current = false;
-    }
-    wasFormulaRef.current = nowFormula;
-  });
 
   // Filet du brouillon : les sorties d'édition normales (Entrée, Échap, clic
   // ailleurs) passent par onDone, mais un démontage direct — changement de note
@@ -157,25 +153,73 @@ export function FrontmatterValue({
     );
   }
 
+  // ── Dossier par défaut : choix unique via le sélecteur, jamais au clavier ──
+  // Affiché comme un NoteChip même si c'est un dossier : clic → sa note
+  // __folder__ (créée à la volée si besoin, cf. openFolderNote). Le chemin
+  // absolu ne doit jamais être visible, seul le nom du dossier compte.
+  if (fieldKey === SystemField.DEFAULT_FOLDER) {
+    const path = value as string;
+    if (!path) {
+      return (
+        <span className="flex-1 mt-0.5 text-gray-300 italic text-xs select-none">
+          aucun dossier
+        </span>
+      );
+    }
+    const isRoot = !!folderPath && path === folderPath;
+    const folderNode = isRoot
+      ? undefined
+      : allFolders.find((f) => f.id === path);
+    return (
+      <div className="flex-1 mt-0.5">
+        <NoteChip
+          name={
+            isRoot ? "Racine du vault" : (folderNode?.name ?? noteName(path))
+          }
+          folderNode={folderNode}
+          broken={!isRoot && !folderNode}
+          openOnClick
+          readOnly={isValueLocked}
+          onRemove={() => {
+            onTextChange("");
+            onTextBlur();
+          }}
+        />
+      </div>
+    );
+  }
+
   if (isNoteArray) {
     const paths = value as string[];
     const scrollable = fieldKey === SystemField.CHILDREN;
+    const isSpaceField = fieldKey === SystemField.SPACE;
+    const spaceNames = new Set((vaultConfig?.spaces ?? []).map((s) => s.name));
     return (
       <div
         className={`flex flex-wrap gap-1 flex-1 ${scrollable ? "max-h-18 overflow-y-auto" : ""}`}
       >
-        {paths.map((path) => (
-          <NoteChip
-            key={path}
-            name={noteName(path)}
-            noteId={path}
-            readOnly={isValueLocked}
-            onRemove={() => onRemoveNote(path)}
-          />
-        ))}
+        {paths.map((path) =>
+          isSpaceField ? (
+            <NoteChip
+              key={path}
+              name={path}
+              broken={!spaceNames.has(path)}
+              readOnly={isValueLocked}
+              onRemove={() => onRemoveNote(path)}
+            />
+          ) : (
+            <NoteChip
+              key={path}
+              name={noteName(path)}
+              noteId={path}
+              readOnly={isValueLocked}
+              onRemove={() => onRemoveNote(path)}
+            />
+          )
+        )}
         {paths.length === 0 && (
           <span className="text-gray-300 italic text-xs mt-0.5">
-            {fieldKey === SystemField.SPACE ? "aucun espace" : "aucune note"}
+            {isSpaceField ? "aucun espace" : "aucune note"}
           </span>
         )}
       </div>
@@ -185,7 +229,11 @@ export function FrontmatterValue({
   const strValue = value as string;
 
   // ── Propriété calculée ────────────────────────────────────────────────────
-  if (isFormula(strValue)) {
+  // `editingFormula` est inclus dans la condition (pas seulement isFormula) :
+  // pendant la frappe juste après l'auto-pair "$$", la valeur committée peut
+  // transitoirement ne pas matcher isFormula (ex. "$$$$" vide) ; sans ce OR,
+  // le composant retomberait sur l'input texte standard le temps d'un render.
+  if (isFormula(strValue) || editingFormula) {
     if (editingFormula && !isValueLocked) {
       return (
         <FormulaEditField
@@ -268,15 +316,13 @@ export function FrontmatterValue({
           const toCursor = newVal.slice(0, cursorPos);
           const afterCursor = newVal.slice(cursorPos);
 
-          // Auto-pair : $$ → $$|$$
+          // Auto-pair : $$ → $$|$$, bascule immédiate en édition de formule
+          // (synchrone, pas via un effect) pour éviter tout render intermédiaire
+          // où la valeur committée serait évaluée comme formule invalide.
           if (toCursor.endsWith("$$") && !afterCursor.startsWith("$$")) {
-            autoPairedRef.current = true;
             const paired = `${toCursor}$$${afterCursor}`;
             onTextChange(paired);
-            setTimeout(
-              () => inputRef.current?.setSelectionRange(cursorPos, cursorPos),
-              0
-            );
+            setEditingFormula(true);
             return;
           }
 

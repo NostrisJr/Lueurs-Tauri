@@ -89,7 +89,7 @@ function DesktopDropdown({
         minWidth: Math.max(pos.width, 220),
         zIndex: 9999,
       }}
-      className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden ${className}`}
+      className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden whitespace-normal ${className}`}
     >
       {children}
     </div>

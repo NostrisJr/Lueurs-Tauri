@@ -91,6 +91,7 @@ export function TableRow({
       {columns.map((col) => (
         <TableCell
           key={col.key}
+          fieldKey={col.key}
           value={(note.frontmatter[col.key] as string) ?? ""}
           isImposed={col.isImposed}
           enumConstraint={col.enumConstraint}
