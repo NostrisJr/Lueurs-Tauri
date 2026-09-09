@@ -19,6 +19,7 @@ import {
   exportDialogOpenAtom,
   folderPathAtom,
   loadingAtom,
+  noteScrollContainerAtom,
   pendingAudioInsertAtom,
   settingsOpenAtom,
 } from "../shared/lib/atoms";
@@ -66,6 +67,19 @@ export function DesktopApp() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
   useCaretScroll(scrollContainerRef, { topInset: DESKTOP_HEADER_HEIGHT });
+
+  // Callback ref (pas un effet à dépendances vides) : le montage réel de ce
+  // div peut survenir après le tout premier rendu (ex. WelcomeScreen tant que
+  // folderPath n'est pas résolu) — un effet [setNoteScrollContainer] ne
+  // repasserait jamais dessus une fois exécuté avec current encore à null.
+  const setNoteScrollContainer = useSetAtom(noteScrollContainerAtom);
+  const setScrollContainer = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollContainerRef.current = node;
+      setNoteScrollContainer(node);
+    },
+    [setNoteScrollContainer]
+  );
 
   const handleScroll = useCallback(() => {
     if (activeNote && scrollContainerRef.current) {
@@ -171,7 +185,7 @@ export function DesktopApp() {
             )}
 
           <div
-            ref={scrollContainerRef}
+            ref={setScrollContainer}
             className="w-full h-full overflow-auto overscroll-none"
             onScroll={handleScroll}
           >

@@ -1,11 +1,13 @@
 import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   IconArrowRight,
+  IconGearshape,
   IconPlusCircle,
   IconXCircle,
 } from "../../../shared/components/PlatformIcon";
+import { SegmentedControl } from "../../../shared/components/SegmentedControl";
 import { type NoteFile, useFileTree } from "../../../shared/hooks/useFileTree";
 import { usePropertyRenamePropagation } from "../../../shared/hooks/usePropertyRenamePropagation";
 import { activeNoteAtom, notesByIdAtom } from "../../../shared/lib/atoms";
@@ -20,6 +22,7 @@ import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
 import { FolderSelector } from "./FolderSelector";
 import { FrontmatterValue } from "./FrontmatterValue";
 import { NoteSelector } from "./NoteSelector";
+import { NumberFormatFields } from "./NumberFormatFields";
 import { PropertyEditModal } from "./PropertyEditModal";
 import { SpaceSelector } from "./SpaceSelector";
 import {
@@ -28,6 +31,9 @@ import {
   selectorOpenAtom,
 } from "./lib/frontMatterAtoms";
 import type { Row } from "./lib/frontmatterUtils";
+import { useAnimatedHeight } from "./lib/useAnimatedHeight";
+import { useScrollCompensation } from "./lib/useScrollCompensation";
+import { type PropertyType, useValueEditor } from "./lib/useValueEditor";
 
 interface Props {
   row: Row;
@@ -38,6 +44,11 @@ interface Props {
   /** Note verrouillée en lecture seule : bloque tout sauf la case __ReadOnly__ elle-même. */
   locked?: boolean;
 }
+
+const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
+  { value: "text", label: "Texte" },
+  { value: "number", label: "Nombre" },
+];
 
 const SELECTOR_PLACEHOLDERS: Partial<Record<string, string>> = {
   [SystemField.BASE]: "Rechercher une base...",
@@ -71,6 +82,7 @@ export function FrontmatterRow({
   const isMobile = platform() === "ios";
   const rowRef = useRef<HTMLDivElement>(null);
   const selectorAnchorRef = useRef<HTMLButtonElement>(null);
+  const switcherWrapperRef = useRef<HTMLDivElement>(null);
 
   const rows = useAtomValue(rowsAtom);
   const { lockedKeys, lockedValues, enumConstraints } =
@@ -86,6 +98,25 @@ export function FrontmatterRow({
 
   const isEditing = editingKey === row.key;
   const isSelectorOpen = selectorOpen === row.key;
+
+  // Édition inline du nom de propriété (desktop uniquement — le mobile garde
+  // la modale PropertyEditModal, cf. rendu plus bas).
+  const [keyDraft, setKeyDraft] = useState(row.key);
+  const trimmedKeyDraft = keyDraft.trim();
+  const isKeyUnchanged = trimmedKeyDraft === row.key;
+  const isKeyDuplicate =
+    !isKeyUnchanged && rows.some((r) => r.key === trimmedKeyDraft);
+  const canSaveKey = trimmedKeyDraft !== "" && !isKeyUnchanged && !isKeyDuplicate;
+
+  function startKeyEdit() {
+    setKeyDraft(row.key);
+    setEditingKey(row.key);
+  }
+
+  function commitKeyEdit() {
+    if (canSaveKey) handleRename(row.key, trimmedKeyDraft);
+    else setEditingKey(null);
+  }
 
   const notesById = useAtomValue(notesByIdAtom);
   const allNotes = useMemo(() => [...notesById.values()], [notesById]);
@@ -133,6 +164,12 @@ export function FrontmatterRow({
 
   function updateText(value: string) {
     commit(rows.map((r, i) => (i === index ? { ...r, value } : r)));
+  }
+
+  function handleTextBlur() {
+    // Flush immédiat : pour un template, déclenche onTemplateChange tout de
+    // suite au lieu d'attendre les 1000ms du debounce.
+    if (activeNote) flushPendingWrite(activeNote.id);
   }
 
   function removeRow() {
@@ -186,6 +223,8 @@ export function FrontmatterRow({
   // Sur le template lui-même, les props sont toujours renommables.
   // Sur les enfants, isKeyLocked bloque le renommage.
   const canRename = !locked && !row.isSystem && (isTemplate || !isKeyLocked);
+  // Réglages (type/décimales/unité) : propriétés personnalisées non verrouillées.
+  const canConfigure = !locked && !row.isSystem && !isValueLocked;
 
   const noteResolver = (path: string) => notesById.get(path);
 
@@ -206,99 +245,266 @@ export function FrontmatterRow({
     })
   );
 
+  const strValue = typeof row.value === "string" ? row.value : "";
+  const editor = useValueEditor(row.key, strValue, updateText, handleTextBlur);
+
+  // Tab switcher au-dessus / décimales+unité en dessous de la ligne
+  // icônes+champ (jamais dans la même cellule qu'elle) : le champ ne bouge
+  // jamais de place à l'écran, qu'on soit déplié ou non — cf. useValueEditor.
+  const showTypePanel =
+    editor.visible && !isValueLocked && !locked && !editor.isCurrentlyButton;
+  const showDecimals = showTypePanel && editor.draft.type === "number";
+
+  const { contentRef: switcherContentRef, height: switcherHeight } =
+    useAnimatedHeight(showTypePanel);
+  const { contentRef: decimalsContentRef, height: decimalsHeight } =
+    useAnimatedHeight(showDecimals);
+
+  // Le switcher grandit au-dessus de la ligne icônes+champ : sans ça le champ
+  // (et la suite du frontmatter) est repoussé vers le bas à l'ouverture.
+  // Déclenché par `editor.mounted` (pas `showTypePanel`) : c'est ce flag qui
+  // pilote réellement la transition CSS (height, cf. useAnimatedHeight) dans
+  // les deux sens — `showTypePanel`/`editor.visible` ne repasse à false qu'après
+  // coup (CLOSE_TRANSITION_MS plus tard, une fois le repli déjà terminé), ce
+  // qui démarrait la compensation de fermeture bien après le fait, en
+  // aller-retour.
+  useScrollCompensation(
+    switcherWrapperRef,
+    showTypePanel,
+    switcherHeight,
+    editor.mounted
+  );
+
+  const keyEditMessage =
+    !isMobile && isEditing
+      ? isKeyDuplicate
+        ? { text: "Ce nom est déjà utilisé.", className: "text-red-400" }
+        : isTemplate && canSaveKey
+          ? {
+              text: "Sera propagé à toutes les notes héritières.",
+              className: "text-amber-500",
+            }
+          : null
+      : null;
+
+  let rowCursor = 1;
+  const switcherRow = showTypePanel ? rowCursor++ : null;
+  const mainRow = rowCursor++;
+  const decimalsRow = showDecimals ? rowCursor++ : null;
+  const keyMessageRow = keyEditMessage ? rowCursor++ : null;
+  // Vrai aussi pour l'édition brute d'un BUTTON (pas de switcher/décimales,
+  // mais le champ formule a besoin des mêmes handlers blur/Entrée/Échap).
+  const panelActive = editor.visible && !isValueLocked && !locked;
+
+  // Transition `height` (0 ↔ hauteur mesurée par useAnimatedHeight) plutôt que
+  // grid-template-rows 0fr↔1fr : sous WebKit (webview Tauri), cette dernière
+  // ne s'anime pas de façon fiable à l'ouverture (saute directement à la
+  // taille finale) alors que la fermeture s'anime bien — une transition
+  // `height` vers une valeur en px connue n'a pas ce problème, dans les deux
+  // sens.
+  const nestedTransitionClass =
+    "overflow-hidden transition-[height] duration-200 ease-out";
+
+  const { ref: panelRefSetter, ...containerHandlers } = editor.containerProps;
+
   return (
     <div
-      ref={rowRef}
-      className={`flex items-center gap-2 group transition duration-300 select-none ${isMobile ? "text-sm min-h-10" : "text-xs min-h-5"}`}
+      ref={(node) => {
+        rowRef.current = node;
+        panelRefSetter.current = node;
+      }}
+      className={`grid gap-x-2 gap-y-1 group transition duration-300 select-none ${isMobile ? "text-sm min-h-10" : "text-xs min-h-5"}`}
+      style={{ gridTemplateColumns: "auto 1fr" }}
+      {...(panelActive ? containerHandlers : {})}
     >
-      {row.key !== SystemField.TYPE ? (
-        <button
-          type="button"
-          onClick={canDelete ? removeRow : undefined}
-          title={canDelete ? "Supprimer la propriété" : undefined}
-          className={`shrink-0 transition-all p-0 bg-transparent border-0 ${isMobile ? "size-4" : "size-3"}
-            ${
-              canDelete
-                ? "text-transparent hover:text-red-400 group-hover:text-gray-300 cursor-pointer"
-                : "text-transparent cursor-default"
-            }`}
+      {showTypePanel && (
+        <div
+          ref={switcherWrapperRef}
+          className={nestedTransitionClass}
+          style={{
+            height: editor.mounted ? switcherHeight : 0,
+            gridRow: switcherRow ?? undefined,
+            gridColumn: 2,
+          }}
         >
-          <IconXCircle className="size-full" />
-        </button>
-      ) : (
-        <span className={`shrink-0 ${isMobile ? "w-4" : "w-3"}`} />
+          <div ref={switcherContentRef}>
+            <SegmentedControl
+              options={TYPE_OPTIONS}
+              value={editor.draft.type}
+              onChange={editor.handleTypeChange}
+              variant="pill"
+            />
+          </div>
+        </div>
       )}
 
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
-      <span
-        className={`shrink-0 mt-0.5 truncate ${isMobile ? "w-24 text-sm" : "w-28 text-xs"}
-          ${row.isSystem ? "font-bold text-gray-500 select-none" : ""}
-          ${!row.isSystem && canRename ? "text-gray-500 cursor-pointer hover:text-gray-700" : ""}
-          ${isKeyLocked && !isTemplate ? "text-amber-500/70 select-none" : ""}`}
-        onDoubleClick={() => !isMobile && canRename && setEditingKey(row.key)}
-        onClick={() => isMobile && canRename && setEditingKey(row.key)}
-        title={
-          isKeyLocked && !isTemplate
-            ? isValueLocked
-              ? "Propriété imposée par le template"
-              : "Propriété contraignante — valeur éditable"
-            : undefined
-        }
+      <div
+        className="flex items-start gap-2"
+        style={{ gridRow: mainRow, gridColumn: 1 }}
       >
-        {row.key.replace(/^__|__$/g, "")}
-      </span>
-
-      <IconArrowRight
-        className={`shrink-0 text-gray-300 select-none ${isMobile ? "size-4" : "size-3"}`}
-        aria-hidden="true"
-      />
-
-      {!locked &&
-      (hasNoteSelector(row.key) ||
-        hasSpaceSelector(row.key) ||
-        hasFolderSelector(row.key)) ? (
-        <span ref={selectorAnchorRef}>
+        {row.key !== SystemField.TYPE ? (
           <button
             type="button"
-            title={
-              hasSpaceSelector(row.key)
-                ? "Ajouter un espace"
-                : hasFolderSelector(row.key)
-                  ? "Choisir un dossier"
-                  : "Ajouter une note"
-            }
-            onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
-            className={`p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
+            onClick={canDelete ? removeRow : undefined}
+            title={canDelete ? "Supprimer la propriété" : undefined}
+            className={`shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 ${isMobile ? "size-4" : "size-3"}
+              ${
+                canDelete
+                  ? "text-transparent hover:text-red-400 group-hover:text-gray-300 cursor-pointer"
+                  : "text-transparent cursor-default"
+              }`}
           >
-            <IconPlusCircle className="size-full" />
+            <IconXCircle className="size-full" />
           </button>
-        </span>
-      ) : (
-        <span className={`shrink-0 ${isMobile ? "w-4" : "w-3"}`} />
+        ) : (
+          <span className={`shrink-0 mt-0.5 ${isMobile ? "w-4" : "w-3"}`} />
+        )}
+
+        {!isMobile && isEditing ? (
+          <input
+            // biome-ignore lint/a11y/noAutofocus: on ouvre l'édition inline directement en tapant, pas en cliquant deux fois
+            autoFocus
+            value={keyDraft}
+            onChange={(e) => setKeyDraft(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            onBlur={commitKeyEdit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") {
+                setKeyDraft(row.key);
+                setEditingKey(null);
+              }
+            }}
+            className={`shrink-0 mt-0.5 w-28 text-xs bg-transparent border-b outline-none
+              ${isKeyDuplicate ? "border-red-400 text-red-500" : "border-gray-300 focus:border-gray-500"}`}
+          />
+        ) : (
+          // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
+          <span
+            className={`shrink-0 mt-0.5 truncate ${isMobile ? "w-24 text-sm" : "w-28 text-xs"}
+              ${row.isSystem ? "font-bold text-gray-500 select-none" : ""}
+              ${!row.isSystem && canRename ? "text-gray-500 cursor-pointer hover:text-gray-700" : ""}
+              ${isKeyLocked && !isTemplate ? "text-amber-500/70 select-none" : ""}`}
+            onDoubleClick={() => !isMobile && canRename && startKeyEdit()}
+            onClick={() => isMobile && canRename && setEditingKey(row.key)}
+            title={
+              isKeyLocked && !isTemplate
+                ? isValueLocked
+                  ? "Propriété imposée par le template"
+                  : "Propriété contraignante — valeur éditable"
+                : undefined
+            }
+          >
+            {row.key.replace(/^__|__$/g, "")}
+          </span>
+        )}
+
+        {canConfigure ? (
+          <button
+            type="button"
+            // Bascule déterministe (toggleOpen) : ferme immédiatement (avec
+            // commit) si déjà ouvert, sinon ouvre — cf. commentaire dans
+            // useValueEditor.toggleOpen sur la course avec le blur différé.
+            onClick={editor.toggleOpen}
+            // Empêche de voler le focus au champ actif du panneau (même
+            // pattern que SegmentedControl) : sans ça, cliquer la roue blur
+            // d'abord le champ, ce qui programme une fermeture différée qui
+            // vient courser avec toggleOpen ci-dessus.
+            onMouseDown={(e) => e.preventDefault()}
+            title="Réglages de la propriété"
+            className={`shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 cursor-pointer
+              ${isMobile ? "size-4" : "size-3"}
+              ${editor.visible ? "text-gray-500" : "text-transparent group-hover:text-gray-300 hover:text-gray-500"}`}
+          >
+            <IconGearshape className="size-full" />
+          </button>
+        ) : (
+          <span className={`shrink-0 mt-0.5 ${isMobile ? "w-4" : "w-3"}`} />
+        )}
+
+        <IconArrowRight
+          className={`shrink-0 mt-0.5 text-gray-300 select-none ${isMobile ? "size-4" : "size-3"}`}
+          aria-hidden="true"
+        />
+
+        {!locked &&
+        (hasNoteSelector(row.key) ||
+          hasSpaceSelector(row.key) ||
+          hasFolderSelector(row.key)) ? (
+          <span ref={selectorAnchorRef} className="mt-0.5">
+            <button
+              type="button"
+              title={
+                hasSpaceSelector(row.key)
+                  ? "Ajouter un espace"
+                  : hasFolderSelector(row.key)
+                    ? "Choisir un dossier"
+                    : "Ajouter une note"
+              }
+              onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
+              className={`p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
+            >
+              <IconPlusCircle className="size-full" />
+            </button>
+          </span>
+        ) : (
+          <span className={`shrink-0 mt-0.5 ${isMobile ? "w-4" : "w-3"}`} />
+        )}
+      </div>
+
+      <div
+        className="flex items-start min-w-0"
+        style={{ gridRow: mainRow, gridColumn: 2 }}
+      >
+        <FrontmatterValue
+          fieldKey={row.key}
+          value={row.value}
+          isNoteArray={row.isNoteArray}
+          isSystem={row.isSystem}
+          isValueLocked={isValueLocked || locked}
+          enumConstraint={enumConstraint}
+          formulaVars={formulaVars}
+          formulaChildren={formulaChildren}
+          noteResolver={noteResolver}
+          allNotes={allNotes}
+          onTextChange={updateText}
+          onTextBlur={handleTextBlur}
+          onRemoveNote={removeNote}
+          noteName={noteName}
+          editor={editor}
+        />
+      </div>
+
+      {showDecimals && (
+        <div
+          className={nestedTransitionClass}
+          style={{
+            height: editor.mounted ? decimalsHeight : 0,
+            gridRow: decimalsRow ?? undefined,
+            gridColumn: 2,
+          }}
+        >
+          <div ref={decimalsContentRef}>
+            <NumberFormatFields
+              numberDef={editor.draft.numberDef}
+              onChange={(next) =>
+                editor.setDraft({ ...editor.draft, numberDef: next })
+              }
+            />
+          </div>
+        </div>
       )}
 
-      <FrontmatterValue
-        fieldKey={row.key}
-        value={row.value}
-        isNoteArray={row.isNoteArray}
-        isSystem={row.isSystem}
-        isValueLocked={isValueLocked || locked}
-        enumConstraint={enumConstraint}
-        formulaVars={formulaVars}
-        formulaChildren={formulaChildren}
-        noteResolver={noteResolver}
-        allNotes={allNotes}
-        onTextChange={updateText}
-        onTextBlur={() => {
-          // Flush immédiat : pour un template, déclenche onTemplateChange tout
-          // de suite au lieu d'attendre les 1000ms du debounce.
-          if (activeNote) flushPendingWrite(activeNote.id);
-        }}
-        onRemoveNote={removeNote}
-        noteName={noteName}
-      />
+      {keyEditMessage && (
+        <p
+          className={`text-[10px] ${keyEditMessage.className}`}
+          style={{ gridRow: keyMessageRow ?? undefined, gridColumn: 2 }}
+        >
+          {keyEditMessage.text}
+        </p>
+      )}
 
-      {isEditing && (
+      {isMobile && isEditing && (
         <PropertyEditModal
           propKey={row.key}
           isTemplate={isTemplate}

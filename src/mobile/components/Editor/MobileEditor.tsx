@@ -24,6 +24,7 @@ import {
   mobileNavigateAtom,
   mobileResetNavAtom,
   noteBackStackAtom,
+  noteScrollContainerAtom,
   openTabIdsAtom,
   pendingAudioInsertAtom,
   pendingDisplayModeAtom,
@@ -87,6 +88,17 @@ export function MobileEditor() {
     bottomInset: totalMobileInset,
     topInset: MOBILE_HEADER_HEIGHT,
   });
+
+  // Callback ref (pas un effet à dépendances vides) : garantit que l'atom
+  // reflète le nœud DOM réel dès son montage, quel que soit l'ordre de rendu.
+  const setNoteScrollContainer = useSetAtom(noteScrollContainerAtom);
+  const setScrollContainer = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollContainerRef.current = node;
+      setNoteScrollContainer(node);
+    },
+    [setNoteScrollContainer]
+  );
 
   // Titre minimisé au scroll : progression continue (0 = titre plein, 1 = fondu
   // dans la barre flottante), directement égale à scrollTop sur cette plage —
@@ -260,7 +272,7 @@ export function MobileEditor() {
           cliquable d'entrée en édition sur une note vide (cf. handleContentClick) —
           zone tactile, pas de pendant clavier pertinent ici. */}
       <div
-        ref={scrollContainerRef}
+        ref={setScrollContainer}
         className="flex-1 overflow-auto overscroll-none mobile-prose"
         data-scrollable
         onScroll={handleScroll}

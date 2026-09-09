@@ -77,6 +77,10 @@ export const exportFolderIdAtom = atom<string | null>(null);
 
 // Affichage du dictaphone desktop (rendu en overlay au-dessus de l'éditeur)
 export const dictaphoneOpenAtom = atom(false);
+// Conteneur scrollable de la note active (desktop : DesktopApp, mobile : MobileEditor)
+// — même ref que useCaretScroll, réutilisée par les panneaux de frontmatter pour
+// compenser leur propre décalage de layout au lieu de re-détecter un ancêtre scrollable.
+export const noteScrollContainerAtom = atom<HTMLElement | null>(null);
 // État du drag & drop dans le file tree
 export const dragSourceAtom = atom<string | null>(null);
 export const dragOverAtom = atom<string | null>(null);
@@ -215,7 +219,7 @@ export const dictaphoneAbsPathAtom = atom((get) => {
 });
 
 // Boîte aux lettres : dossier de destination des notes/dossiers/médias reçus par
-// bundle partagé (.lueurs-note). "recus" crée/utilise un dossier "Reçus" à la racine
+// bundle partagé (.lueurs). "recus" crée/utilise un dossier "Reçus" à la racine
 // (défaut), "racine" dépose directement à la racine du vault, "custom" utilise
 // mailboxCustomRelPathAtom (résolu comme inbox/dictaphone).
 export type MailboxMode = "recus" | "racine" | "custom";
