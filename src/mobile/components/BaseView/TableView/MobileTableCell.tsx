@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { EnumValueSelector } from "../../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import { NumberCellSelector } from "../../../../shared/components/FrontmatterPicker/NumberCellSelector";
+import { PropertyCellSettingsPopup } from "../../../../shared/components/FrontmatterPicker/PropertyCellSettingsPopup";
+import { usePropertyCellSettings } from "../../../../shared/components/FrontmatterPicker/usePropertyCellSettings";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
-import type { EnumDef } from "../../../../shared/lib/FrontmatterPicker/enumProperty";
+import {
+  type EnumDef,
+  parseEnum,
+  serializeEnum,
+} from "../../../../shared/lib/FrontmatterPicker/enumProperty";
 import {
   type NumberDef,
   isNumberFormula,
@@ -37,6 +43,10 @@ export function MobileTableCell({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const formula = isFormula(value);
+  // Réglages Texte/Nombre/Bouton (roue crantée) : cf. TableCell desktop,
+  // atteignable seulement hors enumConstraint/numberFormatConstraint de
+  // template (déjà couverts par EnumValueSelector/NumberCellSelector).
+  const cellSettings = usePropertyCellSettings(value);
 
   const displayValue = formula
     ? computeFormula(value, frontmatter, undefined, noteResolver)
@@ -83,10 +93,55 @@ export function MobileTableCell({
     );
   }
 
+  // ── Propriété ENUM non contrainte (définie directement sur la note, sans
+  // template) : même pill + dropdown, plutôt que le texte brut de la formule.
+  const committedEnumDef = !isImposed ? parseEnum(value) : null;
+  if (committedEnumDef) {
+    // Réglages ouverts en Bouton : le pill lit/écrit le brouillon en cours
+    // plutôt que de committer directement — sinon un tap sur le pill pendant
+    // que le popup de réglages est ouvert écrirait la nouvelle valeur, puis la
+    // fermeture du popup écraserait ce choix avec son brouillon désormais
+    // périmé (même risque que celui corrigé plus haut, via un autre chemin).
+    const openEnumDraft =
+      cellSettings.open && cellSettings.draft?.type === "enum"
+        ? cellSettings.draft
+        : null;
+    const activeEnumDef = openEnumDraft?.enumDef ?? committedEnumDef;
+    return (
+      <div
+        className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none flex items-center relative group"
+        style={{ width: CELL_WIDTH }}
+      >
+        <EnumValueSelector
+          value={activeEnumDef.default}
+          constraint={activeEnumDef}
+          onChange={(v) => {
+            if (openEnumDraft) {
+              cellSettings.setDraft({
+                ...openEnumDraft,
+                enumDef: { ...activeEnumDef, default: v },
+              });
+            } else {
+              onCommit(serializeEnum({ ...committedEnumDef, default: v }));
+            }
+          }}
+        />
+        <PropertyCellSettingsPopup
+          settings={cellSettings}
+          fieldKey={fieldKey}
+          frontmatter={frontmatter}
+          noteResolver={noteResolver}
+          allNotes={allNotes}
+          onCommit={onCommit}
+        />
+      </div>
+    );
+  }
+
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
     <div
-      className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none"
+      className={`shrink-0 px-3 py-2 border-r border-gray-100 last:border-none relative ${!isImposed ? "group" : ""}`}
       style={{ width: CELL_WIDTH }}
       onClick={() => {
         if (!isImposed && !formula) {
@@ -100,7 +155,18 @@ export function MobileTableCell({
           // biome-ignore lint/a11y/noAutofocus: focus intentionnel
           autoFocus
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            const newVal = e.target.value;
+            // Auto-pair : $$ → ouvre les réglages Texte/Nombre/Bouton (roue
+            // crantée) plutôt que de basculer en édition de formule brute —
+            // même mécanique que TableCell desktop.
+            if (newVal.endsWith("$$") && !draft.endsWith("$$")) {
+              setEditing(false);
+              cellSettings.openAsFormula();
+              return;
+            }
+            setDraft(newVal);
+          }}
           onBlur={commit}
           onKeyDown={(e) => {
             if (e.key === "Enter") commit();
@@ -133,6 +199,16 @@ export function MobileTableCell({
             displayValue || "—"
           )}
         </span>
+      )}
+      {!isImposed && !editing && (
+        <PropertyCellSettingsPopup
+          settings={cellSettings}
+          fieldKey={fieldKey}
+          frontmatter={frontmatter}
+          noteResolver={noteResolver}
+          allNotes={allNotes}
+          onCommit={onCommit}
+        />
       )}
     </div>
   );

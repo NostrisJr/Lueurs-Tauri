@@ -2,11 +2,17 @@ import { useCallback, useRef, useState } from "react";
 import { FormulaEditField } from "../../../../shared/components/FormulaField/FormulaEditField";
 import { EnumValueSelector } from "../../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import { NumberCellSelector } from "../../../../shared/components/FrontmatterPicker/NumberCellSelector";
+import { PropertyCellSettingsPopup } from "../../../../shared/components/FrontmatterPicker/PropertyCellSettingsPopup";
+import { usePropertyCellSettings } from "../../../../shared/components/FrontmatterPicker/usePropertyCellSettings";
 import type {
   Frontmatter,
   NoteFile,
 } from "../../../../shared/hooks/useFileTree";
-import type { EnumDef } from "../../../../shared/lib/FrontmatterPicker/enumProperty";
+import {
+  type EnumDef,
+  parseEnum,
+  serializeEnum,
+} from "../../../../shared/lib/FrontmatterPicker/enumProperty";
 import {
   type NumberDef,
   isNumberFormula,
@@ -47,11 +53,11 @@ export function TableCell({
 }: Props) {
   const [draft, setDraft] = useState(value);
   const [editing, setEditing] = useState(false);
-  // Sous-mode formule : bascule immédiate (synchrone) à l'auto-pair "$$", pas
-  // via un effect — même correctif que FrontmatterValue, pour la même raison
-  // (éviter un render où le draft "$$$$" serait évalué comme formule invalide).
-  const [editingFormula, setEditingFormula] = useState(false);
   const [refSelectorOpen, setRefSelectorOpen] = useState(false);
+  // Réglages Texte/Nombre/Bouton (roue crantée) : cf. TableCell plus bas,
+  // atteignable seulement hors enumConstraint/numberFormatConstraint de
+  // template (déjà couverts par EnumValueSelector/NumberCellSelector).
+  const cellSettings = usePropertyCellSettings(value);
   const inputRef = useRef<HTMLInputElement>(null);
   // Ref stable → assigne inputRef et sélectionne le texte au montage de l'input d'édition uniquement
   const editInputRef = useCallback((el: HTMLInputElement | null) => {
@@ -83,20 +89,17 @@ export function TableCell({
   function startEdit() {
     if (isImposed) return;
     setDraft(value);
-    setEditingFormula(false);
     setEditing(true);
   }
 
   function commit(rawValue: string) {
     setEditing(false);
-    setEditingFormula(false);
     resetSelectors();
     onCommit(rawValue);
   }
 
   function cancel() {
     setDraft(value);
-    setEditingFormula(false);
     setEditing(false);
   }
 
@@ -147,10 +150,57 @@ export function TableCell({
     );
   }
 
+  // ── Propriété ENUM non contrainte (définie directement sur la note, sans
+  // template) : même pill + dropdown, plutôt que le texte brut de la formule.
+  const committedEnumDef = !isImposed ? parseEnum(value) : null;
+  if (committedEnumDef) {
+    // Réglages ouverts en Bouton : le pill lit/écrit le brouillon en cours
+    // plutôt que de committer directement — sinon un clic sur le pill pendant
+    // que le popup de réglages est ouvert écrirait la nouvelle valeur, puis la
+    // fermeture du popup écraserait ce choix avec son brouillon désormais
+    // périmé (même risque que celui corrigé plus haut, via un autre chemin).
+    const openEnumDraft =
+      cellSettings.open && cellSettings.draft?.type === "enum"
+        ? cellSettings.draft
+        : null;
+    const activeEnumDef = openEnumDraft?.enumDef ?? committedEnumDef;
+    return (
+      <div
+        style={{ width }}
+        className="shrink-0 border-r border-gray-100 px-3 flex items-center relative group last:border-none"
+      >
+        <EnumValueSelector
+          value={activeEnumDef.default}
+          constraint={activeEnumDef}
+          onChange={(v) => {
+            if (openEnumDraft) {
+              cellSettings.setDraft({
+                ...openEnumDraft,
+                enumDef: { ...activeEnumDef, default: v },
+              });
+            } else {
+              onCommit(serializeEnum({ ...committedEnumDef, default: v }));
+            }
+          }}
+        />
+        <PropertyCellSettingsPopup
+          settings={cellSettings}
+          fieldKey={fieldKey}
+          frontmatter={frontmatter}
+          noteResolver={noteResolver ?? (() => undefined)}
+          allNotes={allNotes ?? []}
+          onCommit={onCommit}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       style={{ width }}
-      className={`shrink-0 border-r border-gray-100 px-3 text-xs truncate last:border-none ${
+      className={`shrink-0 border-r border-gray-100 px-3 text-xs truncate last:border-none relative ${
+        !isImposed ? "group" : ""
+      } ${
         isImposed
           ? "cursor-default text-gray-300"
           : value
@@ -160,7 +210,7 @@ export function TableCell({
       onDoubleClick={startEdit}
     >
       {editing ? (
-        isFormula(draft) || editingFormula ? (
+        isFormula(draft) ? (
           <FormulaEditField
             rawValue={draft}
             onChange={setDraft}
@@ -186,10 +236,13 @@ export function TableCell({
                 const toCursor = newVal.slice(0, cursorPos);
                 const afterCursor = newVal.slice(cursorPos);
 
-                // Auto-pair : $$ → $$|$$, bascule immédiate en édition de formule
+                // Auto-pair : $$ → ouvre les réglages Texte/Nombre/Bouton
+                // (roue crantée) plutôt que de basculer directement en
+                // édition de formule brute — même mécanique que
+                // useValueEditor.openFormulaEditor côté frontmatter panel.
                 if (toCursor.endsWith("$$") && !afterCursor.startsWith("$$")) {
-                  setDraft(`${toCursor}$$${afterCursor}`);
-                  setEditingFormula(true);
+                  setEditing(false);
+                  cellSettings.openAsFormula();
                   return;
                 }
 
@@ -258,6 +311,16 @@ export function TableCell({
         </span>
       ) : (
         <span>{value || "—"}</span>
+      )}
+      {!isImposed && !editing && (
+        <PropertyCellSettingsPopup
+          settings={cellSettings}
+          fieldKey={fieldKey}
+          frontmatter={frontmatter}
+          noteResolver={noteResolver ?? (() => undefined)}
+          allNotes={allNotes ?? []}
+          onCommit={onCommit}
+        />
       )}
     </div>
   );

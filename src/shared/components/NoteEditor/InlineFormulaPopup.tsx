@@ -31,17 +31,16 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { EnumOptionsFields } from "../../../desktop/components/Frontmatter/EnumOptionsFields";
-import { NumberExprField } from "../../../desktop/components/Frontmatter/NumberExprField";
-import { NumberFormatFields } from "../../../desktop/components/Frontmatter/NumberFormatFields";
 import { toPropertyOptions } from "../../../desktop/components/Frontmatter/lib/frontmatterUtils";
 import { BottomSheet } from "../../../mobile/components/BottomSheet/BottomSheet";
 import { EnumOptionsDropdown } from "../../components/FrontmatterPicker/EnumOptionsDropdown";
+import { PropertyModeFields } from "../../components/FrontmatterPicker/PropertyModeFields";
 import type { NoteFile } from "../../hooks/useFileTree";
 import {
   parseEnum,
   serializeEnum,
 } from "../../lib/FrontmatterPicker/enumProperty";
+import type { PropertyType } from "../../lib/FrontmatterPicker/propertyDraft";
 import { createLogger } from "../../lib/logger";
 import { isMobile } from "../../lib/platform";
 import {
@@ -57,7 +56,6 @@ import {
   subscribeInlineFormulaEdit,
 } from "../../plugins/inline-formula/inlineFormulaState";
 import { toVaultRelative } from "../../plugins/inline-formula/refPaths";
-import { SegmentedControl } from "../SegmentedControl";
 import { activeEditorRef } from "./lib/activeEditorRef";
 import { clampPopup } from "./lib/popupPosition";
 
@@ -227,55 +225,26 @@ function InlineFormulaEditPopup({
         }
       }}
     >
-      <SegmentedControl
-        options={MODE_OPTIONS}
-        value={draft.mode}
-        onChange={(mode) => updateDraft(switchInlineFormulaMode(draft, mode))}
-        variant="pill"
+      <PropertyModeFields
+        modeOptions={MODE_OPTIONS}
+        mode={draft.mode}
+        onModeChange={(mode: PropertyType) => {
+          // "text" n'apparaît jamais dans MODE_OPTIONS — un nœud de formule
+          // inline n'est jamais "juste du texte" (cf. PropertyModeFields).
+          if (mode === "text") return;
+          updateDraft(switchInlineFormulaMode(draft, mode));
+        }}
+        numberDef={draft.numberDef}
+        onNumberDefChange={(numberDef) => updateDraft({ ...draft, numberDef })}
+        enumDef={draft.enumDef}
+        onEnumDefChange={(enumDef) => updateDraft({ ...draft, enumDef })}
+        allNotes={ctx?.allNotes ?? []}
+        noteResolver={ctx?.noteResolver ?? (() => undefined)}
+        selfProperties={selfProperties}
+        refPathOf={refPathOf}
+        dropdownZIndex={DROPDOWN_Z_INDEX}
+        autoFocus
       />
-
-      {draft.mode === "number" ? (
-        <div className="flex items-center gap-1">
-          <span
-            className={`text-gray-300 font-mono leading-none shrink-0 ${isMobile ? "text-base" : "text-xs"}`}
-          >
-            ƒ
-          </span>
-          <NumberExprField
-            expr={draft.numberDef.expr}
-            onChange={(expr) =>
-              updateDraft({
-                ...draft,
-                numberDef: { ...draft.numberDef, expr },
-              })
-            }
-            allNotes={ctx?.allNotes ?? []}
-            noteResolver={ctx?.noteResolver ?? (() => undefined)}
-            selfProperties={selfProperties}
-            inputClassName={`w-full bg-transparent outline-none border-b text-gray-700 focus:border-amber-400 transition-colors font-mono ${
-              isMobile
-                ? "text-base py-1 border-gray-200"
-                : "text-sm border-gray-300"
-            }`}
-            autoFocus
-            refPathOf={refPathOf}
-            dropdownZIndex={DROPDOWN_Z_INDEX}
-          />
-        </div>
-      ) : (
-        <EnumOptionsFields
-          enumDef={draft.enumDef}
-          onChange={(enumDef) => updateDraft({ ...draft, enumDef })}
-          dropdownZIndex={DROPDOWN_Z_INDEX}
-        />
-      )}
-
-      {draft.mode === "number" && (
-        <NumberFormatFields
-          numberDef={draft.numberDef}
-          onChange={(numberDef) => updateDraft({ ...draft, numberDef })}
-        />
-      )}
     </div>
   );
 
