@@ -5,7 +5,7 @@ import type {
   Frontmatter,
   NoteFile,
 } from "../../../../shared/hooks/useFileTree";
-import type { ButtonDef } from "../../../../shared/lib/FrontmatterPicker/buttonProperty";
+import type { EnumDef } from "../../../../shared/lib/FrontmatterPicker/enumProperty";
 import {
   computeFormula,
   humanizeFormula,
@@ -19,7 +19,7 @@ interface Props {
   fieldKey: string;
   value: string;
   isImposed: boolean;
-  enumConstraint?: ButtonDef;
+  enumConstraint?: EnumDef;
   width: number;
   frontmatter: Frontmatter;
   noteResolver?: (path: string) => NoteFile | undefined;
@@ -63,7 +63,9 @@ export function TableCell({
   function closeSelectors() {
     selectorOpenRef.current = false;
     setRefSelectorOpen(false);
-    setTimeout(() => inputRef.current?.focus(), 0);
+    // rAF, pas setTimeout : cf. FormulaEditField.closeSelectors (même course
+    // avec la vérification de focus du panneau englobant).
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   function resetSelectors() {
@@ -101,7 +103,7 @@ export function TableCell({
     : value;
   const isError = isFormulaError(displayValue);
 
-  // ── Contrainte BUTTON : dropdown au lieu de l'édition texte ───────────────
+  // ── Contrainte ENUM : dropdown au lieu de l'édition texte ───────────────
   if (enumConstraint) {
     return (
       <div
@@ -203,10 +205,7 @@ export function TableCell({
                   const newCursor = before.length + inserted.length;
                   setTimeout(
                     () =>
-                      inputRef.current?.setSelectionRange(
-                        newCursor,
-                        newCursor
-                      ),
+                      inputRef.current?.setSelectionRange(newCursor, newCursor),
                     0
                   );
                 }}

@@ -19,7 +19,7 @@ import {
   getFieldDef,
 } from "../../../shared/lib/noteTypes";
 import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
-import { ButtonOptionsFields } from "./ButtonOptionsFields";
+import { EnumOptionsFields } from "./EnumOptionsFields";
 import { FolderSelector } from "./FolderSelector";
 import { FrontmatterValue } from "./FrontmatterValue";
 import { NoteSelector } from "./NoteSelector";
@@ -49,7 +49,7 @@ interface Props {
 const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: "text", label: "Texte" },
   { value: "number", label: "Nombre" },
-  { value: "button", label: "Bouton" },
+  { value: "enum", label: "Bouton" },
 ];
 
 const SELECTOR_PLACEHOLDERS: Partial<Record<string, string>> = {
@@ -228,7 +228,7 @@ export function FrontmatterRow({
   // Sur les enfants, isKeyLocked bloque le renommage.
   const canRename = !locked && !row.isSystem && (isTemplate || !isKeyLocked);
   // Réglages (type/décimales/unité/options Bouton) : propriétés personnalisées
-  // non verrouillées. Un héritier contraint par un BUTTON (enumConstraint)
+  // non verrouillées. Un héritier contraint par un ENUM (enumConstraint)
   // n'a rien à régler ici — choix et couleurs imposés par le template, valeur
   // choisie directement sur la ligne via EnumValueSelector (jamais ce panneau).
   const canConfigure =
@@ -264,9 +264,9 @@ export function FrontmatterRow({
   );
 
   // Texte/Bouton désactivés quand le template impose un format NUMBER, et
-  // Texte/Nombre désactivés quand il impose un BUTTON — cf.
+  // Texte/Nombre désactivés quand il impose un ENUM — cf.
   // useValueEditor.handleTypeChange. En pratique ce switcher n'est jamais
-  // affiché pour un héritier BUTTON (canConfigure l'exclut, cf. plus bas) ;
+  // affiché pour un héritier ENUM (canConfigure l'exclut, cf. plus bas) ;
   // gardé par cohérence avec le cas NUMBER si ce panneau devait s'ouvrir.
   const typeOptions = numberFormatConstraint
     ? TYPE_OPTIONS.map((o) =>
@@ -280,7 +280,7 @@ export function FrontmatterRow({
       )
     : enumConstraint
       ? TYPE_OPTIONS.map((o) =>
-          o.value !== "button"
+          o.value !== "enum"
             ? {
                 ...o,
                 disabled: true,
@@ -297,16 +297,16 @@ export function FrontmatterRow({
   // useValueEditor.
   const showTypePanel = editor.visible && !isValueLocked && !locked;
   const showDecimals = showTypePanel && editor.draft.type === "number";
-  const showButtonOptions = showTypePanel && editor.draft.type === "button";
+  const showEnumOptions = showTypePanel && editor.draft.type === "enum";
 
   const { contentRef: switcherContentRef, height: switcherHeight } =
     useAnimatedHeight(showTypePanel);
   const { contentRef: decimalsContentRef, height: decimalsHeight } =
     useAnimatedHeight(showDecimals);
-  const { contentRef: buttonOptionsContentRef, height: buttonOptionsHeight } =
+  const { contentRef: enumOptionsContentRef, height: enumOptionsHeight } =
     useAnimatedHeight(
-      showButtonOptions,
-      editor.draft.type === "button" ? editor.draft.buttonDef.options.length : 0
+      showEnumOptions,
+      editor.draft.type === "enum" ? editor.draft.enumDef.options.length : 0
     );
 
   // Le switcher grandit au-dessus de la ligne icônes+champ : sans ça le champ
@@ -340,7 +340,7 @@ export function FrontmatterRow({
   const switcherRow = showTypePanel ? rowCursor++ : null;
   const mainRow = rowCursor++;
   const decimalsRow = showDecimals ? rowCursor++ : null;
-  const buttonOptionsRow = showButtonOptions ? rowCursor++ : null;
+  const enumOptionsRow = showEnumOptions ? rowCursor++ : null;
   const keyMessageRow = keyEditMessage ? rowCursor++ : null;
 
   // Transition `height` (0 ↔ hauteur mesurée par useAnimatedHeight) plutôt que
@@ -543,20 +543,20 @@ export function FrontmatterRow({
         </div>
       )}
 
-      {showButtonOptions && (
+      {showEnumOptions && (
         <div
           className={nestedTransitionClass}
           style={{
-            height: editor.mounted ? buttonOptionsHeight : 0,
-            gridRow: buttonOptionsRow ?? undefined,
+            height: editor.mounted ? enumOptionsHeight : 0,
+            gridRow: enumOptionsRow ?? undefined,
             gridColumn: 2,
           }}
         >
-          <div ref={buttonOptionsContentRef}>
-            <ButtonOptionsFields
-              buttonDef={editor.draft.buttonDef}
+          <div ref={enumOptionsContentRef}>
+            <EnumOptionsFields
+              enumDef={editor.draft.enumDef}
               onChange={(next) =>
-                editor.setDraft({ ...editor.draft, buttonDef: next })
+                editor.setDraft({ ...editor.draft, enumDef: next })
               }
             />
           </div>

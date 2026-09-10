@@ -1,6 +1,11 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import {
+  type EnumDef,
+  isEnumFormula,
+  parseEnum,
+} from "../lib/FrontmatterPicker/enumProperty";
+import {
   type AggregationOp,
   type TableAggregations,
   parseTableAggregations,
@@ -11,11 +16,6 @@ import {
   parseTableColumns,
   serializeTableColumns,
 } from "../lib/atoms";
-import {
-  type ButtonDef,
-  isButtonFormula,
-  parseButton,
-} from "../lib/FrontmatterPicker/buttonProperty";
 import { isSystemField } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { SystemField } from "../lib/noteTypes";
@@ -33,8 +33,8 @@ export interface TableColumn {
   width: number;
   // Propriété contraignante (valeur libre dans le template) vs imposée (valeur forcée)
   isImposed: boolean;
-  // Contrainte BUTTON : valeur choisie via dropdown parmi des options
-  enumConstraint?: ButtonDef;
+  // Contrainte ENUM : valeur choisie via dropdown parmi des options
+  enumConstraint?: EnumDef;
   // Templates qui définissent cette propriété — pour le renommage
   templatePaths: string[];
 }
@@ -76,10 +76,10 @@ export function useTable({ base, onBaseChange }: UseTableProps) {
         continue;
       }
       seenKeys.add(key);
-      const enumConstraint = isButtonFormula(value)
-        ? (parseButton(value as string) ?? undefined)
+      const enumConstraint = isEnumFormula(value)
+        ? (parseEnum(value as string) ?? undefined)
         : undefined;
-      // Une contrainte BUTTON n'est jamais imposée (valeur éditable via dropdown)
+      // Une contrainte ENUM n'est jamais imposée (valeur éditable via dropdown)
       const isImposed =
         !enumConstraint &&
         value !== "" &&

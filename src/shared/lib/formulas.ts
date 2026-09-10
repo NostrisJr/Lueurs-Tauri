@@ -7,7 +7,7 @@
 //   round(n, decimals?)         — arrondi
 //   iif(cond, alors, sinon)     — conditionnel
 //   agg(col, op)                — agrégation sur les enfants (bases uniquement)
-//   BUTTON([a;b;c],def)         — contrainte de valeurs (déclaratif, jamais calculé — voir buttonProperty.ts)
+//   ENUM([a;b;c],def)         — contrainte de valeurs (déclaratif, jamais calculé — voir enumProperty.ts)
 // Opérateurs : + - * / () > < >= <= === !==
 //
 // Un seul système d'accès aux propriétés : crochets + guillemets, jamais de
@@ -17,10 +17,13 @@
 // `self[` / `ref("…")[` dans FormulaEditField) insère cette forme.
 
 import type { NoteFile } from "../hooks/useFileTree";
+import { isEnumFormula, parseEnum } from "./FrontmatterPicker/enumProperty";
 import {
-  isButtonFormula,
-  parseButton,
-} from "./FrontmatterPicker/buttonProperty";
+  formatNumberResult,
+  isFormatOnlyNumber,
+  isNumberFormula,
+  parseNumber,
+} from "./FrontmatterPicker/numberProperty";
 import { type AggregationOp, computeAggregation } from "./aggregations";
 
 const FORMULA_RE = /^\$\$(.+)\$\$$/s;
@@ -133,12 +136,30 @@ export function computeFormula(
   const match = FORMULA_RE.exec(raw);
   if (!match) return raw;
 
-  // BUTTON est déclaratif (contrainte de template), jamais évalué : aperçu lisible
-  // pour la note template elle-même (les héritiers ne stockent qu'un littéral).
-  if (isButtonFormula(raw)) {
-    const def = parseButton(raw);
-    return def ? def.options.map((o) => o.value).join(" · ") : raw;
+  // ENUM est déclaratif (contrainte de template), jamais évalué : mais quand
+  // une formule le référence (self[]/ref()[]), c'est la valeur CHOISIE (default)
+  // qui doit remonter — exactement comme un héritier contraint, qui stocke ce
+  // même littéral directement (cf. enumProperty.ts). Sans ça, self["statut"]
+  // sur une note qui porte encore le $$ENUM(...)$$ brut (le template lui-même,
+  // ou une propriété Bouton auto-déclarée sans template) renverrait la liste des
+  // options au lieu de la valeur active.
+  if (isEnumFormula(raw)) {
+    const def = parseEnum(raw);
+    return def ? def.default : raw;
   }
+
+  // NUMBER(expr, decimals?, unit?) : expr est évaluée normalement, decimals/unit
+  // ne formatent que le résultat affiché (jamais persistés dans expr elle-même).
+  const numberDef = isNumberFormula(raw) ? parseNumber(raw) : null;
+  if (isNumberFormula(raw) && !numberDef) return raw;
+
+  // NUMBER format seul (expr vide, contrainte de template) : déclaratif comme
+  // ENUM — rien à évaluer, aperçu du format imposé aux héritiers.
+  if (numberDef && isFormatOnlyNumber(numberDef)) {
+    return formatNumberResult("0", numberDef);
+  }
+
+  const exprToEvaluate = numberDef ? numberDef.expr : match[1].trim();
 
   const cached = ctx.cache.get(vars)?.get(raw);
   if (cached !== undefined) return cached;
@@ -156,13 +177,17 @@ export function computeFormula(
   const inner: EvalCtx = { ...ctx, depth: ctx.depth + 1 };
 
   try {
-    const result = evaluate(
-      match[1].trim(),
+    const rawResult = evaluate(
+      exprToEvaluate,
       vars,
       children,
       noteResolver,
       inner
     );
+    const result =
+      numberDef && !isFormulaError(rawResult)
+        ? formatNumberResult(rawResult, numberDef)
+        : rawResult;
     let byRaw = ctx.cache.get(vars);
     if (!byRaw) {
       byRaw = new Map();

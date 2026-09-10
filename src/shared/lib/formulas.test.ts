@@ -118,4 +118,48 @@ describe("computeFormula", () => {
   it("renvoie la valeur brute si ce n'est pas une formule", () => {
     expect(computeFormula("texte simple", {})).toBe("texte simple");
   });
+
+  it("évalue NUMBER(expr) et applique decimals + unit au résultat", () => {
+    expect(
+      computeFormula('$$NUMBER(self["a"], decimals=1, unit="km")$$', {
+        a: "3.456",
+      })
+    ).toBe("3.5 km");
+  });
+
+  it("NUMBER avec un littéral simple reste éditable comme un nombre", () => {
+    expect(computeFormula("$$NUMBER(42, decimals=2)$$", {})).toBe("42.00");
+  });
+
+  it("NUMBER propage #ERREUR sans le reformater", () => {
+    expect(
+      computeFormula("$$NUMBER(this is not valid js(((, decimals=2)$$", {})
+    ).toBe("#ERREUR");
+  });
+
+  it("NUMBER format seul (contrainte de template, expr vide) : aperçu déclaratif, jamais #ERREUR", () => {
+    expect(computeFormula('$$NUMBER(, decimals=1, unit="km")$$', {})).toBe(
+      "0.0 km"
+    );
+    expect(computeFormula('$$NUMBER(, unit="kg")$$', {})).toBe("0 kg");
+    expect(computeFormula("$$NUMBER(, decimals=2)$$", {})).toBe("0.00");
+  });
+
+  it("évalue ENUM(...) et renvoie la valeur choisie (default), pas la liste d'options", () => {
+    expect(computeFormula("$$ENUM([Todo;Doing;Done],Doing)$$", {})).toBe(
+      "Doing"
+    );
+  });
+
+  it("ENUM sans default explicite retombe sur la première option", () => {
+    expect(computeFormula("$$ENUM([Todo;Doing;Done])$$", {})).toBe("Todo");
+  });
+
+  it("self[\"prop\"] référence la valeur choisie d'une propriété ENUM encore brute (ex: la note template elle-même, qui n'a pas d'héritier littéral)", () => {
+    expect(
+      computeFormula('$$self["statut"]$$', {
+        statut: "$$ENUM([Todo;Doing;Done],Doing)$$",
+      })
+    ).toBe("Doing");
+  });
 });

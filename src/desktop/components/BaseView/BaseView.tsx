@@ -48,7 +48,7 @@ export function BaseView({ base, onBaseChange }: Props) {
     renameColumn,
     removeColumn,
     setColumnColor,
-    isButtonKey,
+    isEnumKey,
   } = useKanban({ base, onBaseChange });
 
   // Tableau est la vue par défaut
@@ -154,7 +154,7 @@ export function BaseView({ base, onBaseChange }: Props) {
             onRenameColumn={renameColumn}
             onAddColumn={addColumn}
             onDeleteColumn={removeColumn}
-            onSetColumnColor={isButtonKey ? setColumnColor : undefined}
+            onSetColumnColor={isEnumKey ? setColumnColor : undefined}
           />
         ) : (
           <TableView base={base} onBaseChange={onBaseChange} />

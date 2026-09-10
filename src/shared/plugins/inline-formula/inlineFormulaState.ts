@@ -39,6 +39,14 @@ export interface InlineFormulaEditRequest {
   raw: string;
   /** Ancre écran (coin haut-gauche du nœud). */
   coords: { left: number; top: number; bottom: number };
+  /**
+   * "value" (ENUM uniquement) : dropdown rapide de sélection, pas le popup
+   * complet (switcher + options) — cf. clic sur le pill vs son icône réglages
+   * dans node-view.ts. Défaut : "edit".
+   */
+  mode?: "edit" | "value";
+  /** Mode "value" uniquement : ancre du dropdown (le span DOM du pill lui-même). */
+  anchorEl?: HTMLElement;
 }
 
 let current: InlineFormulaEditRequest | null = null;

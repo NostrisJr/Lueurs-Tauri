@@ -9,10 +9,12 @@ import {
   addNodeInTree,
   arraysEqualUnordered,
   classifyPathKind,
+  computeTemplateProps,
   deleteNodeInTree,
   findNodeById,
   frontmatterEqual,
   frontmatterFieldEqual,
+  migrateLegacySpaceKey,
   parseFrontmatter,
   renameNodeInTree,
   serializeFrontmatter,
@@ -138,6 +140,35 @@ describe("serializeFrontmatter", () => {
     const { frontmatter, body } = parseFrontmatter(serialized);
     expect(frontmatter).toEqual(original);
     expect(body).toBe("# Titre\n");
+  });
+});
+
+// ── Migration __space__ → __Space__ ──────────────────────────────────────
+
+describe("migrateLegacySpaceKey", () => {
+  it("laisse le frontmatter inchangé sans clé legacy", () => {
+    const fm = { __Type__: "__note__", __Space__: ["Perso"] };
+    expect(migrateLegacySpaceKey(fm)).toBe(fm);
+  });
+
+  it("renomme __space__ en __Space__", () => {
+    const fm = migrateLegacySpaceKey({ __space__: ["Perso"] });
+    expect(fm).toEqual({ __Space__: ["Perso"] });
+    expect(fm.__space__).toBeUndefined();
+  });
+
+  it("fusionne __space__ dans __Space__ existant sans doublon", () => {
+    const fm = migrateLegacySpaceKey({
+      __space__: ["Perso", "Travail"],
+      __Space__: ["Travail"],
+    });
+    expect(fm.__Space__).toEqual(["Travail", "Perso"]);
+    expect(fm.__space__).toBeUndefined();
+  });
+
+  it("retire __space__ sans laisser __Space__ si vide", () => {
+    const fm = migrateLegacySpaceKey({ __space__: [] });
+    expect(fm).toEqual({});
   });
 });
 
@@ -312,5 +343,117 @@ describe("classifyPathKind", () => {
 
   it("ne confond pas un nom de dossier avec un point pour une extension inexistante", () => {
     expect(classifyPathKind("/vault/Dossier v2.1")).toBe("media");
+  });
+});
+
+describe("computeTemplateProps", () => {
+  it("ajoute une prop manquante avec la valeur du template", () => {
+    const { updated, changed } = computeTemplateProps(
+      {},
+      [{ statut: "actif" }],
+      { applyForced: false }
+    );
+    expect(updated.statut).toBe("actif");
+    expect(changed).toEqual(["statut"]);
+  });
+
+  it("n'écrase pas une valeur existante quand applyForced=false", () => {
+    const { updated, changed } = computeTemplateProps(
+      { statut: "en cours" },
+      [{ statut: "actif" }],
+      { applyForced: false }
+    );
+    expect(updated.statut).toBe("en cours");
+    expect(changed).toEqual([]);
+  });
+
+  it("écrase une valeur existante quand applyForced=true et le template impose une valeur", () => {
+    const { updated, changed } = computeTemplateProps(
+      { statut: "en cours" },
+      [{ statut: "actif" }],
+      { applyForced: true }
+    );
+    expect(updated.statut).toBe("actif");
+    expect(changed).toEqual(["statut"]);
+  });
+
+  it("ENUM : seed le default (jamais la formule) sur une prop manquante", () => {
+    const { updated, changed } = computeTemplateProps(
+      {},
+      [{ priorite: "$$ENUM([bas;haut],bas)$$" }],
+      { applyForced: false }
+    );
+    expect(updated.priorite).toBe("bas");
+    expect(changed).toEqual(["priorite"]);
+  });
+
+  it("ENUM : réinitialise une valeur devenue invalide, même sans applyForced", () => {
+    const { updated, changed } = computeTemplateProps(
+      { priorite: "supprimée" },
+      [{ priorite: "$$ENUM([bas;haut],bas)$$" }],
+      { applyForced: false }
+    );
+    expect(updated.priorite).toBe("bas");
+    expect(changed).toEqual(["priorite"]);
+  });
+
+  it("ENUM : ne force jamais une valeur valide, même avec applyForced", () => {
+    const { updated, changed } = computeTemplateProps(
+      { priorite: "haut" },
+      [{ priorite: "$$ENUM([bas;haut],bas)$$" }],
+      { applyForced: true }
+    );
+    expect(updated.priorite).toBe("haut");
+    expect(changed).toEqual([]);
+  });
+
+  it("NUMBER format seul : seed un littéral (expr 0) avec le format imposé sur une prop manquante", () => {
+    const { updated, changed } = computeTemplateProps(
+      {},
+      [{ poids: '$$NUMBER(, decimals=1, unit="kg")$$' }],
+      { applyForced: false }
+    );
+    expect(updated.poids).toBe('$$NUMBER(0, decimals=1, unit="kg")$$');
+    expect(changed).toEqual(["poids"]);
+  });
+
+  it("NUMBER format seul : préserve l'expr de l'héritier, réconcilie juste decimals/unit — même sans applyForced", () => {
+    const { updated, changed } = computeTemplateProps(
+      { poids: '$$NUMBER(42, decimals=2, unit="g")$$' },
+      [{ poids: '$$NUMBER(, decimals=1, unit="kg")$$' }],
+      { applyForced: false }
+    );
+    expect(updated.poids).toBe('$$NUMBER(42, decimals=1, unit="kg")$$');
+    expect(changed).toEqual(["poids"]);
+  });
+
+  it("NUMBER format seul : ne touche rien si le format de l'héritier est déjà à jour", () => {
+    const { updated, changed } = computeTemplateProps(
+      { poids: '$$NUMBER(42, decimals=1, unit="kg")$$' },
+      [{ poids: '$$NUMBER(, decimals=1, unit="kg")$$' }],
+      { applyForced: false }
+    );
+    expect(updated.poids).toBe('$$NUMBER(42, decimals=1, unit="kg")$$');
+    expect(changed).toEqual([]);
+  });
+
+  it("NUMBER format seul : reprend un littéral texte simple comme expr plutôt que de l'écraser", () => {
+    const { updated, changed } = computeTemplateProps(
+      { poids: "17" },
+      [{ poids: '$$NUMBER(, decimals=0, unit="kg")$$' }],
+      { applyForced: false }
+    );
+    expect(updated.poids).toBe('$$NUMBER(17, decimals=0, unit="kg")$$');
+    expect(changed).toEqual(["poids"]);
+  });
+
+  it("NUMBER avec expr non vide dans le template : comportement inchangé (valeur imposée en bloc)", () => {
+    const { updated, changed } = computeTemplateProps(
+      { distance: '$$NUMBER(5, decimals=1, unit="km")$$' },
+      [{ distance: '$$NUMBER(10, decimals=2, unit="mi")$$' }],
+      { applyForced: true }
+    );
+    expect(updated.distance).toBe('$$NUMBER(10, decimals=2, unit="mi")$$');
+    expect(changed).toEqual(["distance"]);
   });
 });

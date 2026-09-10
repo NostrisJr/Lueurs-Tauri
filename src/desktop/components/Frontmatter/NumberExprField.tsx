@@ -25,6 +25,15 @@ interface Props {
    * frère du même panneau — décimales, unité — ne doit pas le fermer).
    */
   onFieldDone?: () => void;
+  /**
+   * Chemin à stocker dans `ref()` pour une note — cf. FormulaEditField.
+   * Absolu par défaut (frontmatter) ; un appelant hors frontmatter (ex:
+   * InlineFormulaPopup, chemins relatifs au vault dans le corps) doit le
+   * passer explicitement.
+   */
+  refPathOf?: (note: NoteFile) => string;
+  /** Cf. FormulaEditField.dropdownZIndex — nécessaire si ce champ est rendu dans un popup déjà empilé. */
+  dropdownZIndex?: number;
 }
 
 export function NumberExprField({
@@ -36,6 +45,8 @@ export function NumberExprField({
   inputClassName,
   autoFocus,
   onFieldDone,
+  refPathOf,
+  dropdownZIndex,
 }: Props) {
   // Une expression vide (ex: "$$" tapé sur un champ vierge) démarre en mode
   // formule, prête à taper — seul un littéral déjà présent reste en mode simple.
@@ -77,6 +88,8 @@ export function NumberExprField({
         selfProperties={selfProperties}
         inputClassName={inputClassName}
         autoFocus={autoFocus}
+        refPathOf={refPathOf}
+        dropdownZIndex={dropdownZIndex}
       />
     );
   }

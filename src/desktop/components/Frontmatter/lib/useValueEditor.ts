@@ -1,12 +1,12 @@
 import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
 import {
-  type ButtonDef,
-  createEmptyButtonDef,
-  isButtonFormula,
-  parseButton,
-  serializeButton,
-} from "../../../../shared/lib/FrontmatterPicker/buttonProperty";
+  type EnumDef,
+  createEmptyEnumDef,
+  isEnumFormula,
+  parseEnum,
+  serializeEnum,
+} from "../../../../shared/lib/FrontmatterPicker/enumProperty";
 import {
   type NumberDef,
   applyFormatConstraint,
@@ -19,13 +19,13 @@ import { isFormula } from "../../../../shared/lib/formulas";
 import { settingsKeyAtom } from "./frontMatterAtoms";
 import { useExpandPanel } from "./useExpandPanel";
 
-export type PropertyType = "text" | "number" | "button";
+export type PropertyType = "text" | "number" | "enum";
 
 export interface EditorDraft {
   type: PropertyType;
   text: string;
   numberDef: NumberDef;
-  buttonDef: ButtonDef;
+  enumDef: EnumDef;
 }
 
 // Boolean simple (pas un type predicate) : appeler ces guards "value is string"
@@ -35,11 +35,11 @@ export interface EditorDraft {
 function isNumberFormulaValue(raw: string): boolean {
   return isNumberFormula(raw);
 }
-function isButtonFormulaValue(raw: string): boolean {
-  return isButtonFormula(raw);
+function isEnumFormulaValue(raw: string): boolean {
+  return isEnumFormula(raw);
 }
 function isBareFormula(raw: string): boolean {
-  return isFormula(raw) && !isButtonFormulaValue(raw);
+  return isFormula(raw) && !isEnumFormulaValue(raw);
 }
 
 /**
@@ -57,16 +57,16 @@ function makeInitialDraft(raw: string): EditorDraft {
       type: "number",
       text: def.expr,
       numberDef: def,
-      buttonDef: createEmptyButtonDef(),
+      enumDef: createEmptyEnumDef(),
     };
   }
-  if (isButtonFormulaValue(raw)) {
-    const def = parseButton(raw) ?? createEmptyButtonDef();
+  if (isEnumFormulaValue(raw)) {
+    const def = parseEnum(raw) ?? createEmptyEnumDef();
     return {
-      type: "button",
+      type: "enum",
       text: "",
       numberDef: { expr: "" },
-      buttonDef: def,
+      enumDef: def,
     };
   }
   if (isBareFormula(raw)) {
@@ -76,7 +76,7 @@ function makeInitialDraft(raw: string): EditorDraft {
       type: "number",
       text: inner,
       numberDef: { expr: inner },
-      buttonDef: createEmptyButtonDef(),
+      enumDef: createEmptyEnumDef(),
     };
   }
   // numberDef.expr : simple graine si on bascule vers Nombre depuis l'onglet
@@ -85,7 +85,7 @@ function makeInitialDraft(raw: string): EditorDraft {
     type: "text",
     text: raw,
     numberDef: { expr: raw },
-    buttonDef: createEmptyButtonDef(),
+    enumDef: createEmptyEnumDef(),
   };
 }
 
@@ -113,10 +113,10 @@ function withFormatConstraint(
 }
 
 /**
- * Impose une contrainte BUTTON de template (options/couleurs) au brouillon :
+ * Impose une contrainte ENUM de template (options/couleurs) au brouillon :
  * toujours Bouton, options remplacées par celles du template — même logique
  * que withFormatConstraint pour Nombre. En pratique le panneau de réglages
- * n'est jamais accessible pour une propriété contrainte par un BUTTON (la
+ * n'est jamais accessible pour une propriété contrainte par un ENUM (la
  * valeur se choisit directement sur la ligne, cf. EnumValueSelector dans
  * FrontmatterValue) ; ce filet de sécurité évite malgré tout qu'un héritier
  * puisse changer de type ou réécrire les options si ce panneau s'ouvrait un
@@ -124,10 +124,10 @@ function withFormatConstraint(
  */
 function withEnumConstraint(
   base: EditorDraft,
-  constraint: ButtonDef | undefined
+  constraint: EnumDef | undefined
 ): EditorDraft {
   if (!constraint) return base;
-  return { ...base, type: "button", buttonDef: constraint };
+  return { ...base, type: "enum", enumDef: constraint };
 }
 
 /**
@@ -149,11 +149,11 @@ export function useValueEditor(
    */
   numberFormatConstraint?: NumberDef,
   /**
-   * Contrainte BUTTON imposée par un template (options/couleurs) —
+   * Contrainte ENUM imposée par un template (options/couleurs) —
    * cf. useTemplateConstraints.enumConstraints. undefined = propriété libre,
    * comportement inchangé.
    */
-  enumConstraint?: ButtonDef
+  enumConstraint?: EnumDef
 ) {
   const [settingsKey, setSettingsKey] = useAtom(settingsKeyAtom);
   const expanded = settingsKey === fieldKey;
@@ -184,24 +184,24 @@ export function useValueEditor(
         }
       : effectiveDraft;
 
-    if (draftForCommit.type === "button") {
+    if (draftForCommit.type === "enum") {
       // Héritier contraint : la valeur se choisit directement sur la ligne
       // (EnumValueSelector, jamais ce panneau) — rien à committer ici, sous
       // peine d'écraser la valeur littérale de l'héritier par la formule
-      // $$BUTTON(...)$$ elle-même.
+      // $$ENUM(...)$$ elle-même.
       if (enumConstraint) {
         onTextBlur();
         return;
       }
       // Options vides tapées en cours d'édition : elles n'ont rien à
       // contraindre, autant ne pas les faire survivre à la sérialisation.
-      const options = draftForCommit.buttonDef.options.filter(
+      const options = draftForCommit.enumDef.options.filter(
         (o) => o.value.trim() !== ""
       );
       const newValue =
         options.length === 0
           ? ""
-          : serializeButton({ ...draftForCommit.buttonDef, options });
+          : serializeEnum({ ...draftForCommit.enumDef, options });
       if (newValue !== strValue) onTextChange(newValue);
       onTextBlur();
       return;
@@ -233,7 +233,7 @@ export function useValueEditor(
       type: "number",
       text: "",
       numberDef: { expr: "" },
-      buttonDef: createEmptyButtonDef(),
+      enumDef: createEmptyEnumDef(),
     });
     setSettingsKey(fieldKey);
   }
@@ -260,28 +260,28 @@ export function useValueEditor(
   function handleTypeChange(next: PropertyType) {
     if (next === effectiveDraft.type) return;
     // Texte/Bouton désactivés quand le template impose un format NUMBER, et
-    // Texte/Nombre désactivés quand il impose un BUTTON : dans les deux cas
+    // Texte/Nombre désactivés quand il impose un ENUM : dans les deux cas
     // ce serait perdre la contrainte de template pour un autre type.
     if (numberFormatConstraint && next !== "number") return;
-    if (enumConstraint && next !== "button") return;
+    if (enumConstraint && next !== "enum") return;
     if (next === "number") {
       setDraft({
         ...effectiveDraft,
         type: next,
         numberDef: {
           ...effectiveDraft.numberDef,
-          expr: effectiveDraft.type === "button" ? "" : effectiveDraft.text,
+          expr: effectiveDraft.type === "enum" ? "" : effectiveDraft.text,
         },
       });
-    } else if (next === "button") {
+    } else if (next === "enum") {
       setDraft({ ...effectiveDraft, type: next });
     } else {
       setDraft({
         ...effectiveDraft,
         type: next,
         text:
-          effectiveDraft.type === "button"
-            ? effectiveDraft.buttonDef.default
+          effectiveDraft.type === "enum"
+            ? effectiveDraft.enumDef.default
             : effectiveDraft.numberDef.expr,
       });
     }

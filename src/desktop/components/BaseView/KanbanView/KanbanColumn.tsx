@@ -14,7 +14,7 @@ interface Props {
   notes: NoteFile[];
   onRename: (colId: string, newLabel: string) => void;
   onDelete: (colId: string) => void;
-  // Défini uniquement pour les colonnes d'une clé BUTTON → pastille couleur cliquable
+  // Défini uniquement pour les colonnes d'une clé ENUM → pastille couleur cliquable
   onSetColor?: (colId: string, color: string | undefined) => void;
   // Colonne virtuelle — header non éditable, style distinct
   virtual?: boolean;
@@ -60,7 +60,7 @@ export function KanbanColumn({
     <div className="flex flex-col w-64 shrink-0 group/col">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3 px-1">
-        {/* Pastille couleur cliquable — colonnes d'une clé BUTTON.
+        {/* Pastille couleur cliquable — colonnes d'une clé ENUM.
             Couleur définie → toujours visible ; sinon → au survol. */}
         {!virtual && onSetColor && (
           <ColorDotPicker

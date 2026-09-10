@@ -4,10 +4,10 @@ import { useRef, useState } from "react";
 import { EnumValueSelector } from "../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
 import {
-  type ButtonDef,
-  parseButton,
-  serializeButton,
-} from "../../../shared/lib/FrontmatterPicker/buttonProperty";
+  type EnumDef,
+  parseEnum,
+  serializeEnum,
+} from "../../../shared/lib/FrontmatterPicker/enumProperty";
 import {
   allFoldersAtom,
   folderPathAtom,
@@ -33,7 +33,7 @@ interface Props {
   isNoteArray: boolean;
   isSystem: boolean;
   isValueLocked: boolean;
-  enumConstraint?: ButtonDef;
+  enumConstraint?: EnumDef;
   formulaVars?: Record<string, unknown>;
   formulaChildren?: NoteFile[];
   noteResolver?: (path: string) => NoteFile | undefined;
@@ -81,7 +81,9 @@ export function FrontmatterValue({
   function closeSelectors() {
     selectorOpenRef.current = false;
     setRefSelectorOpen(false);
-    setTimeout(() => inputRef.current?.focus(), 0);
+    // rAF, pas setTimeout : cf. FormulaEditField.closeSelectors (même course
+    // avec la vérification de focus du panneau englobant).
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   function resetSelectors() {
@@ -122,7 +124,7 @@ export function FrontmatterValue({
     );
   }
 
-  // ── Contrainte BUTTON (valeur choisie via dropdown) ───────────────────────
+  // ── Contrainte ENUM (valeur choisie via dropdown) ───────────────────────
   if (enumConstraint) {
     return (
       <div className="flex-1 mt-0.5">
@@ -138,16 +140,16 @@ export function FrontmatterValue({
     );
   }
 
-  // ── Propriété BUTTON non contrainte (template définissant ou note normale) ─
+  // ── Propriété ENUM non contrainte (template définissant ou note normale) ─
   // Toujours le même pill + dropdown que pour un héritier contraint : le clic
   // choisit la valeur "courante" (= default) parmi les options — que le
   // panneau de réglages soit ouvert (options en cours d'édition, brouillon) ou
   // fermé (valeur committée). Éditer la LISTE d'options/couleurs passe
   // exclusivement par les réglages (roue crantée) — jamais par ce dropdown.
-  const isEditingButton = editor.visible && editor.draft.type === "button";
-  const committedButtonDef = isEditingButton ? null : parseButton(strValue);
-  if (isEditingButton || committedButtonDef) {
-    const def = isEditingButton ? editor.draft.buttonDef : committedButtonDef;
+  const isEditingEnum = editor.visible && editor.draft.type === "enum";
+  const committedEnumDef = isEditingEnum ? null : parseEnum(strValue);
+  if (isEditingEnum || committedEnumDef) {
+    const def = isEditingEnum ? editor.draft.enumDef : committedEnumDef;
     if (def) {
       return (
         <div className="flex-1 mt-0.5">
@@ -156,13 +158,13 @@ export function FrontmatterValue({
             constraint={def}
             disabled={isValueLocked}
             onChange={(v) => {
-              if (isEditingButton) {
+              if (isEditingEnum) {
                 editor.setDraft({
                   ...editor.draft,
-                  buttonDef: { ...def, default: v },
+                  enumDef: { ...def, default: v },
                 });
               } else {
-                onTextChange(serializeButton({ ...def, default: v }));
+                onTextChange(serializeEnum({ ...def, default: v }));
                 onTextBlur();
               }
             }}
@@ -304,7 +306,7 @@ export function FrontmatterValue({
     );
     const isError = isFormulaError(computed);
 
-    // BUTTON n'arrive jamais ici : intercepté plus haut (pill + dropdown),
+    // ENUM n'arrive jamais ici : intercepté plus haut (pill + dropdown),
     // qu'il soit committé ou en cours d'édition — cf. bloc ci-dessus.
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>

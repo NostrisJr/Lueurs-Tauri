@@ -24,9 +24,9 @@ import type {
 } from "../hooks/useFileTree";
 import { flattenTree } from "../hooks/useFileTree";
 import {
-  buttonColumns,
+  enumColumns,
   filterTreeBySpace,
-  resolveButtonKey,
+  resolveEnumKey,
 } from "./fileTreeHelpers";
 import { createLogger } from "./logger";
 import { type KanbanColumn, NoteType, SystemField } from "./noteTypes";
@@ -81,6 +81,11 @@ export const dictaphoneOpenAtom = atom(false);
 // — même ref que useCaretScroll, réutilisée par les panneaux de frontmatter pour
 // compenser leur propre décalage de layout au lieu de re-détecter un ancêtre scrollable.
 export const noteScrollContainerAtom = atom<HTMLElement | null>(null);
+// Racine du contenu de la note (NoteEditor), à l'intérieur du conteneur scrollable
+// ci-dessus — cf. useScrollCompensation, qui la translate (transform, pas scrollTop)
+// pour compenser le déroulé d'un panneau de frontmatter même sur une note vide/courte
+// (aucun overflow réel n'est nécessaire pour un transform, contrairement à un scroll).
+export const noteContentRootAtom = atom<HTMLElement | null>(null);
 // État du drag & drop dans le file tree
 export const dragSourceAtom = atom<string | null>(null);
 export const dragOverAtom = atom<string | null>(null);
@@ -703,11 +708,11 @@ export const kanbanCardsAtom = atom((get): KanbanCards => {
 
   const notesById = get(notesByIdAtom);
 
-  // Clé BUTTON : colonnes dérivées des options du template (source de vérité unique).
+  // Clé ENUM : colonnes dérivées des options du template (source de vérité unique).
   // Clé libre : colonnes persistées dans __KanbanColumns__.
-  const buttonKey = resolveButtonKey(base, notesById, kanbanKey);
-  const columns = buttonKey
-    ? buttonColumns(buttonKey.def)
+  const enumKey = resolveEnumKey(base, notesById, kanbanKey);
+  const columns = enumKey
+    ? enumColumns(enumKey.def)
     : parseColumns(base.frontmatter[SystemField.KANBAN_COLUMNS]);
   // Pas de guard sur columns.length — la colonne "Sans valeur" doit apparaître même si aucune colonne n'est configurée
 

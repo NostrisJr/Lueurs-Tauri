@@ -32,7 +32,7 @@ interface Props {
   onRenameColumn: (colId: string, newLabel: string) => Promise<void>;
   onAddColumn: (label: string) => void;
   onDeleteColumn: (colId: string) => void;
-  // Défini uniquement pour une clé BUTTON → pastille couleur cliquable
+  // Défini uniquement pour une clé ENUM → pastille couleur cliquable
   onSetColumnColor?: (colId: string, color: string | undefined) => void;
 }
 

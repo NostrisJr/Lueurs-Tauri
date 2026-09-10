@@ -9,7 +9,7 @@ interface Props {
   notes: NoteFile[];
   onRename: (colId: string, newLabel: string) => void;
   onDelete: (colId: string) => void;
-  // Défini uniquement pour les colonnes d'une clé BUTTON → pastille couleur cliquable
+  // Défini uniquement pour les colonnes d'une clé ENUM → pastille couleur cliquable
   onSetColor?: (colId: string, color: string | undefined) => void;
   virtual?: boolean;
   /** Colonne actuellement survolée par une carte en cours de déplacement. */
@@ -69,7 +69,7 @@ export function MobileKanbanColumn({
     >
       {/* Header colonne */}
       <div className="flex items-center gap-2 mb-3 px-1">
-        {/* Pastille couleur cliquable — colonnes d'une clé BUTTON.
+        {/* Pastille couleur cliquable — colonnes d'une clé ENUM.
             Pas de survol sur mobile → toujours visible, atténuée si aucune couleur. */}
         {!virtual && onSetColor && (
           <ColorDotPicker

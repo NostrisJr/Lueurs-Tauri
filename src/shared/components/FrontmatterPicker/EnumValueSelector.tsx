@@ -1,24 +1,25 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useRef, useState } from "react";
+import { pillClasses } from "../../lib/FrontmatterPicker/enumPillColors";
 import {
-  type ButtonDef,
+  type EnumDef,
   enumValueState,
   optionColor,
-} from "../../lib/FrontmatterPicker/buttonProperty";
-import { pillClasses } from "../../lib/FrontmatterPicker/enumPillColors";
-import { AnchoredDropdown } from "../AnchoredDropdown";
+} from "../../lib/FrontmatterPicker/enumProperty";
+import { EnumOptionsDropdown } from "./EnumOptionsDropdown";
 
 interface Props {
   value: string;
-  constraint: ButtonDef;
+  constraint: EnumDef;
   disabled?: boolean;
   onChange: (value: string) => void;
 }
 
 /**
- * Pill + dropdown pour une propriété contrainte par un BUTTON.
+ * Pill + dropdown pour une propriété contrainte par un ENUM.
  * Le dropdown ne liste que les valeurs permises (pas de retour au placeholder).
  * Une valeur hors-liste est signalée (invalide) sans être effacée.
+ * Éditer la définition (options/couleurs) passe par la roue crantée de
+ * FrontmatterRow — pas de second bouton réglages ici, ce serait redondant.
  */
 export function EnumValueSelector({
   value,
@@ -26,7 +27,6 @@ export function EnumValueSelector({
   disabled,
   onChange,
 }: Props) {
-  const isMobile = platform() === "ios";
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const state = enumValueState(value, constraint);
@@ -59,33 +59,16 @@ export function EnumValueSelector({
       </button>
 
       {open && (
-        <AnchoredDropdown
+        <EnumOptionsDropdown
           anchorRef={buttonRef}
+          value={value}
+          constraint={constraint}
+          onSelect={(v) => {
+            onChange(v);
+            setOpen(false);
+          }}
           onClose={() => setOpen(false)}
-          className="w-40"
-        >
-          {constraint.options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-              className={`w-full text-left hover:bg-gray-50 active:bg-gray-50 transition-colors flex items-center gap-2
-                ${isMobile ? "px-4 py-3.5" : "px-3 py-1.5"}`}
-            >
-              <span
-                className={`inline-flex px-2 py-0.5 rounded-md font-medium ${isMobile ? "text-sm" : "text-xs"} ${pillClasses(opt.color)}`}
-              >
-                {opt.value}
-              </span>
-              {opt.value === value && (
-                <span className={`text-gray-400 ${isMobile ? "text-sm" : "text-[10px]"}`}>✓</span>
-              )}
-            </button>
-          ))}
-        </AnchoredDropdown>
+        />
       )}
     </span>
   );

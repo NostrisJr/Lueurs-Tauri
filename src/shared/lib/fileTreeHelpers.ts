@@ -1,10 +1,16 @@
 import { Command } from "@tauri-apps/plugin-shell";
 import type { NoteFile, TreeNode } from "../hooks/useFileTree";
 import {
-  type ButtonDef,
-  isButtonFormula,
-  parseButton,
-} from "./FrontmatterPicker/buttonProperty";
+  type EnumDef,
+  isEnumFormula,
+  parseEnum,
+} from "./FrontmatterPicker/enumProperty";
+import {
+  isFormatOnlyNumber,
+  isNumberFormula,
+  parseNumber,
+  reconcileNumberFormat,
+} from "./FrontmatterPicker/numberProperty";
 import {
   type KanbanColumn,
   NoteType,
@@ -116,9 +122,9 @@ export function computeTemplateProps(
       const templateHasValue =
         value !== "" && value !== null && value !== undefined;
 
-      // Contrainte BUTTON : l'héritier reçoit le default (jamais la formule),
+      // Contrainte ENUM : l'héritier reçoit le default (jamais la formule),
       // et n'est jamais forcé. Une valeur non permise est écrasée par le default.
-      const def = isButtonFormula(value) ? parseButton(value) : null;
+      const def = isEnumFormula(value) ? parseEnum(value) : null;
       if (def) {
         if (isMissing) {
           updated[key] = def.default;
@@ -131,6 +137,24 @@ export function computeTemplateProps(
             updated[key] = def.default;
             changed.push(key);
           }
+        }
+        continue;
+      }
+
+      // Contrainte NUMBER format seul (expr vide, decimals/unit défini) :
+      // analogue à ENUM — decimals/unit sont réconciliés (même sans
+      // applyForced), l'expr de l'héritier n'est jamais touché.
+      const numberDef =
+        typeof value === "string" && isNumberFormula(value)
+          ? parseNumber(value)
+          : null;
+      if (numberDef && isFormatOnlyNumber(numberDef)) {
+        const current = updated[key];
+        const curStr = typeof current === "string" ? current : "";
+        const reconciled = reconcileNumberFormat(curStr, numberDef);
+        if (isMissing || reconciled !== curStr) {
+          updated[key] = reconciled;
+          changed.push(key);
         }
         continue;
       }
@@ -227,6 +251,27 @@ export function parseFrontmatter(markdown: string): {
   return { frontmatter, body };
 }
 
+// SystemField.SPACE valait "__space__" (minuscule) avant d'être aligné sur la
+// convention PascalCase des autres clés système (__Type__, __Base__...).
+// Fusionne l'ancienne clé dans la nouvelle à la lecture d'une note existante ;
+// noteFromRaw() l'applique systématiquement, loadTree() persiste le résultat
+// sur disque (même mécanisme que l'injection de __Type__ absent).
+const LEGACY_SPACE_KEY = "__space__";
+
+export function migrateLegacySpaceKey(frontmatter: Frontmatter): Frontmatter {
+  if (!(LEGACY_SPACE_KEY in frontmatter)) return frontmatter;
+  const { [LEGACY_SPACE_KEY]: legacy, ...rest } = frontmatter;
+  const merged = [
+    ...new Set([...toArray(rest[SystemField.SPACE]), ...toArray(legacy)]),
+  ];
+  if (merged.length > 0) rest[SystemField.SPACE] = merged;
+  return rest;
+}
+
+export function hasLegacySpaceKey(frontmatter: Frontmatter): boolean {
+  return LEGACY_SPACE_KEY in frontmatter;
+}
+
 export function serializeFrontmatter(
   frontmatter: Frontmatter,
   body: string
@@ -298,34 +343,34 @@ export function getFreeProps(templateFrontmatter: Frontmatter): string[] {
     .map(([key]) => key);
 }
 
-/** Propriétés contraintes BUTTON d'un template — également utilisables comme KanbanKey
- *  (leurs colonnes sont alors dérivées des options, voir resolveButtonKey). */
+/** Propriétés contraintes ENUM d'un template — également utilisables comme KanbanKey
+ *  (leurs colonnes sont alors dérivées des options, voir resolveEnumKey). */
 export function getButtonProps(templateFrontmatter: Frontmatter): string[] {
   return Object.entries(templateFrontmatter)
-    .filter(([key, value]) => !isSystemField(key) && isButtonFormula(value))
+    .filter(([key, value]) => !isSystemField(key) && isEnumFormula(value))
     .map(([key]) => key);
 }
 
 /**
- * Si `key` est définie comme propriété BUTTON dans au moins un template de la base,
+ * Si `key` est définie comme propriété ENUM dans au moins un template de la base,
  * renvoie la def (du premier template trouvé) et tous les templates qui la définissent.
  * null sinon (clé libre classique).
  */
-export function resolveButtonKey(
+export function resolveEnumKey(
   base: NoteFile,
   notesById: Map<string, NoteFile>,
   key: string
-): { def: ButtonDef; templates: NoteFile[] } | null {
+): { def: EnumDef; templates: NoteFile[] } | null {
   const templatePaths = base.frontmatter[SystemField.TEMPLATE];
   if (!Array.isArray(templatePaths)) return null;
 
-  let def: ButtonDef | null = null;
+  let def: EnumDef | null = null;
   const templates: NoteFile[] = [];
   for (const path of templatePaths as string[]) {
     const t = notesById.get(path);
     const v = t?.frontmatter[key];
-    if (!t || !isButtonFormula(v)) continue;
-    const parsed = parseButton(v);
+    if (!t || !isEnumFormula(v)) continue;
+    const parsed = parseEnum(v);
     if (!parsed) continue;
     if (!def) def = parsed;
     templates.push(t);
@@ -333,9 +378,9 @@ export function resolveButtonKey(
   return def ? { def, templates } : null;
 }
 
-/** Colonnes Kanban dérivées d'une def BUTTON : ordre des options, couleurs incluses.
+/** Colonnes Kanban dérivées d'une def ENUM : ordre des options, couleurs incluses.
  *  L'id vaut la valeur (label === value pour une colonne contrainte). */
-export function buttonColumns(def: ButtonDef): KanbanColumn[] {
+export function enumColumns(def: EnumDef): KanbanColumn[] {
   return def.options.map((o) => ({
     id: o.value,
     label: o.value,
@@ -432,8 +477,8 @@ export function addNodeInTree(
  * Filtre l'arborescence pour n'afficher que les nœuds appartenant à `spaceName`.
  *
  * Règles :
- * - Une note est dans l'espace si son frontmatter __space__ contient le nom.
- * - Un dossier est dans l'espace si sa note-dossier (même nom) a __space__ → tout
+ * - Une note est dans l'espace si son frontmatter __Space__ contient le nom.
+ * - Un dossier est dans l'espace si sa note-dossier (même nom) a __Space__ → tout
  *   son contenu est inclus inchangé (propagation totale).
  * - Si le dossier n'est pas tagué, on filtre ses enfants récursivement ; il n'apparaît
  *   que s'il contient au moins un descendant dans l'espace.

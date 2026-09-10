@@ -26,7 +26,7 @@ export const SystemField = {
   TABLE_AGGREGATIONS: "__TableAggregations__",
   DEFAULT_FOLDER: "__DefaultFolder__",
   DISPLAY_MODE: "__DisplayMode__",
-  SPACE: "__space__",
+  SPACE: "__Space__",
   READ_ONLY: "__ReadOnly__",
 } as const;
 
@@ -46,8 +46,8 @@ export type BaseViewType = (typeof BaseViewEnum)[keyof typeof BaseViewEnum];
 
 // Persistée en YAML dans __KanbanColumns__ de la base.
 // id : clé stable (jamais modifiée), label : valeur écrite dans les notes enfants.
-// color : id couleur highlight, uniquement pour les clés BUTTON (colonnes dérivées
-// des options du template, voir resolveButtonKey).
+// color : id couleur highlight, uniquement pour les clés ENUM (colonnes dérivées
+// des options du template, voir resolveEnumKey).
 export interface KanbanColumn {
   id: string;
   label: string;

@@ -311,6 +311,100 @@
   color: #b3261e;
 }
 
+/* Pill BUTTON (alternative au sigil ƒ + résultat, cf. node-view.ts — présent
+   dans le DOM SEULEMENT quand la formule est un BUTTON, jamais juste masqué).
+   CSS à la main (pas Tailwind) comme le reste de ce bloc : taille en `em`,
+   donc héritée du corps de note (16px de base, cf. règle générale plus haut) —
+   un pill en text-xs (12px, pensé pour la densité du panneau frontmatter)
+   paraissait chétif au milieu du texte normal. */
+.milkdown .ProseMirror span.inline-formula-button-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+  vertical-align: middle;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: 500;
+  line-height: 1.3;
+  background: #d1d5db;
+  color: #374151;
+}
+
+/* Défensif : la note peut être en "mode livre" (texte justifié + 1re ligne
+   indentée, cf. règle .mode-livre.text-justified .milkdown .ProseMirror p,
+   qui pose text-align: justify ET text-indent: 27px). Les deux sont héritées
+   — sans ce reset, l'une pousse le texte du pill vers la droite, l'autre
+   ouvre un espace avant lui, uniquement en mode livre (jamais en mode normal,
+   qui ne pose ni l'un ni l'autre). */
+.milkdown .ProseMirror span.inline-formula-button-pill,
+.milkdown .ProseMirror span.inline-formula-button-pill-text {
+  text-indent: 0;
+}
+.milkdown .ProseMirror span.inline-formula-button-pill-text {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.milkdown .ProseMirror span.inline-formula-button-pill-chevron {
+  font-size: 0.55em;
+  line-height: 1;
+  opacity: 0.6;
+  margin-left: 0.3em;
+}
+
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="yellow"] { background: #fcd34d; color: #b45309; }
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="green"]  { background: #86efac; color: #15803d; }
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="blue"]   { background: #93c5fd; color: #1d4ed8; }
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="red"]    { background: #fca5a5; color: #b91c1c; }
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="orange"] { background: #fdba74; color: #c2410c; }
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="purple"] { background: #d8b4fe; color: #7e22ce; }
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="gray"],
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="neutral"] { background: #d1d5db; color: #374151; }
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="invalid"] {
+  background: #fef2f2;
+  color: #ef4444;
+  text-decoration: line-through;
+}
+.milkdown .ProseMirror span.inline-formula-button-pill[data-tone="placeholder"] {
+  background: #f9fafb;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.milkdown .ProseMirror span.inline-formula-button-pill .inline-formula-gear {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.08);
+  color: #9ca3af;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+
+/* SVG plutôt que le glyphe unicode ⚙ : les métriques de ce caractère varient
+   trop selon la police/le moteur de rendu pour rester centré de façon fiable
+   dans le badge (constaté avec EB Garamond) — un chemin vectoriel se centre
+   toujours correctement via flex, indépendamment de la police du corps. */
+.milkdown .ProseMirror span.inline-formula-button-pill .inline-formula-gear svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+}
+
+.milkdown .ProseMirror span.inline-formula-button-pill:hover .inline-formula-gear {
+  opacity: 1;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Code
    ───────────────────────────────────────────────────────────────────────── */

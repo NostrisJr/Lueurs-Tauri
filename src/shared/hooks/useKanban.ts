@@ -3,10 +3,10 @@ import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { useTemplateSync } from "../../desktop/hooks/useTemplateSync";
 import {
-  type ButtonDef,
-  parseButton,
-  serializeButton,
-} from "../lib/FrontmatterPicker/buttonProperty";
+  type EnumDef,
+  parseEnum,
+  serializeEnum,
+} from "../lib/FrontmatterPicker/enumProperty";
 import {
   type KanbanCards,
   NO_VALUE_COLUMN_ID,
@@ -17,10 +17,10 @@ import {
   serializeColumns,
 } from "../lib/atoms";
 import {
-  buttonColumns,
+  enumColumns,
   getButtonProps,
   getFreeProps,
-  resolveButtonKey,
+  resolveEnumKey,
 } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { type KanbanColumn, SystemField } from "../lib/noteTypes";
@@ -53,7 +53,7 @@ export function getAvailableKanbanKeys(
   return templatePaths.flatMap((path) => {
     const template = notesById.get(path);
     if (!template) return [];
-    // Props libres (valeur vide) + props contraintes BUTTON
+    // Props libres (valeur vide) + props contraintes ENUM
     return [
       ...getFreeProps(template.frontmatter),
       ...getButtonProps(template.frontmatter),
@@ -97,16 +97,14 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
     | string
     | undefined;
 
-  // Clé BUTTON : colonnes dérivées des options du/des template(s) (avec couleurs),
-  // toute mutation de colonne édite la formule BUTTON et se propage via onTemplateChange.
+  // Clé ENUM : colonnes dérivées des options du/des template(s) (avec couleurs),
+  // toute mutation de colonne édite la formule ENUM et se propage via onTemplateChange.
   // Clé libre : colonnes persistées dans __KanbanColumns__, propagation manuelle.
-  const buttonKey = kanbanKey
-    ? resolveButtonKey(base, notesById, kanbanKey)
-    : null;
+  const enumKey = kanbanKey ? resolveEnumKey(base, notesById, kanbanKey) : null;
   const persistedColumns = parseColumns(
     base.frontmatter[SystemField.KANBAN_COLUMNS]
   );
-  const columns = buttonKey ? buttonColumns(buttonKey.def) : persistedColumns;
+  const columns = enumKey ? enumColumns(enumKey.def) : persistedColumns;
 
   const childNotes = (() => {
     const paths = Array.isArray(base.frontmatter[SystemField.CHILDREN])
@@ -132,8 +130,8 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
     (key: string) => {
       log.info("initialisation kanban", { baseId: base.id, key });
 
-      // Clé BUTTON : colonnes dérivées des options du template, pas de __KanbanColumns__
-      if (resolveButtonKey(base, notesById, key)) {
+      // Clé ENUM : colonnes dérivées des options du template, pas de __KanbanColumns__
+      if (resolveEnumKey(base, notesById, key)) {
         onBaseChange({
           ...base.frontmatter,
           [SystemField.VIEW]: "kanban",
@@ -259,32 +257,32 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
 
   // ── Gestion des colonnes ──────────────────────────────────────────────
 
-  // Clé BUTTON : édite la formule du/des template(s) puis propage aux héritiers
+  // Clé ENUM : édite la formule du/des template(s) puis propage aux héritiers
   // via onTemplateChange (renameEnumValue / enforceEnum déjà gérés par le pipeline).
-  const mutateButtonTemplates = useCallback(
-    async (mutate: (def: ButtonDef) => ButtonDef) => {
-      if (!kanbanKey || !buttonKey) return;
-      for (const template of buttonKey.templates) {
-        const def = parseButton(template.frontmatter[kanbanKey] as string);
+  const mutateEnumTemplates = useCallback(
+    async (mutate: (def: EnumDef) => EnumDef) => {
+      if (!kanbanKey || !enumKey) return;
+      for (const template of enumKey.templates) {
+        const def = parseEnum(template.frontmatter[kanbanKey] as string);
         if (!def) continue;
         const prev = template.frontmatter;
         const next: Frontmatter = {
           ...template.frontmatter,
-          [kanbanKey]: serializeButton(mutate(def)),
+          [kanbanKey]: serializeEnum(mutate(def)),
         };
         await persistPatch(template.id, next, template.body);
         await onTemplateChange(template.id, prev, next);
       }
     },
-    [kanbanKey, buttonKey, persistPatch, onTemplateChange]
+    [kanbanKey, enumKey, persistPatch, onTemplateChange]
   );
 
   const addColumn = useCallback(
     async (label: string) => {
       log.info("ajout colonne", { baseId: base.id, label });
 
-      if (buttonKey) {
-        await mutateButtonTemplates((def) =>
+      if (enumKey) {
+        await mutateEnumTemplates((def) =>
           def.options.some((o) => o.value === label)
             ? def
             : { ...def, options: [...def.options, { value: label }] }
@@ -306,7 +304,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
         [newCol.id]: [],
       }));
     },
-    [base, buttonKey, persistedColumns, onBaseChange, mutateButtonTemplates]
+    [base, enumKey, persistedColumns, onBaseChange, mutateEnumTemplates]
   );
 
   const renameColumn = useCallback(
@@ -316,9 +314,9 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
 
       log.info("renommage colonne", { colId, oldLabel: col.label, newLabel });
 
-      // Clé BUTTON : renomme l'option dans le template → propagation auto aux héritiers
-      if (buttonKey) {
-        await mutateButtonTemplates((def) => ({
+      // Clé ENUM : renomme l'option dans le template → propagation auto aux héritiers
+      if (enumKey) {
+        await mutateEnumTemplates((def) => ({
           ...def,
           options: def.options.map((o) =>
             o.value === col.label ? { ...o, value: newLabel } : o
@@ -375,16 +373,16 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
       base,
       columns,
       persistedColumns,
-      buttonKey,
+      enumKey,
       kanbanKey,
       childNotes,
       onBaseChange,
       persistPatch,
-      mutateButtonTemplates,
+      mutateEnumTemplates,
     ]
   );
 
-  // Supprime une colonne. Clé BUTTON : retire l'option du template (les héritiers
+  // Supprime une colonne. Clé ENUM : retire l'option du template (les héritiers
   // concernés retombent sur le default via enforceEnum). Clé libre : retire la
   // colonne de __KanbanColumns__ (les notes concernées passent en « Sans valeur »).
   const removeColumn = useCallback(
@@ -394,8 +392,8 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
 
       log.info("suppression colonne", { colId, label: col.label });
 
-      if (buttonKey) {
-        await mutateButtonTemplates((def) => {
+      if (enumKey) {
+        await mutateEnumTemplates((def) => {
           const options = def.options.filter((o) => o.value !== col.label);
           const def_ =
             def.default === col.label ? (options[0]?.value ?? "") : def.default;
@@ -414,30 +412,30 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
     [
       base,
       columns,
-      buttonKey,
+      enumKey,
       persistedColumns,
       onBaseChange,
-      mutateButtonTemplates,
+      mutateEnumTemplates,
     ]
   );
 
-  // Recolore une colonne BUTTON → modifie la couleur de l'option dans le template.
+  // Recolore une colonne ENUM → modifie la couleur de l'option dans le template.
   // Sans effet sur les héritiers (ils ne stockent que la valeur, pas la couleur).
   const setColumnColor = useCallback(
     async (colId: string, color: string | undefined) => {
       const col = columns.find((c) => c.id === colId);
-      if (!col || !buttonKey) return;
+      if (!col || !enumKey) return;
 
       log.info("recoloration colonne", { colId, label: col.label, color });
 
-      await mutateButtonTemplates((def) => ({
+      await mutateEnumTemplates((def) => ({
         ...def,
         options: def.options.map((o) =>
           o.value === col.label ? { ...o, color } : o
         ),
       }));
     },
-    [columns, buttonKey, mutateButtonTemplates]
+    [columns, enumKey, mutateEnumTemplates]
   );
 
   const reorderColumns = useCallback(
@@ -453,7 +451,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
 
   return {
     kanbanKey,
-    isButtonKey: !!buttonKey,
+    isEnumKey: !!enumKey,
     columns,
     cards,
     availableKeys: getAvailableKanbanKeys(base, notesById),

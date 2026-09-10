@@ -1,61 +1,61 @@
 import { describe, expect, it } from "vitest";
 import {
   addOption,
-  createEmptyButtonDef,
-  diffButtonOptions,
+  createEmptyEnumDef,
+  diffEnumOptions,
   enumValueState,
-  isButtonFormula,
+  isEnumFormula,
   optionColor,
   optionValues,
-  parseButton,
+  parseEnum,
   removeOption,
-  serializeButton,
+  serializeEnum,
   updateOptionValue,
-} from "./buttonProperty";
+} from "./enumProperty";
 
-describe("isButtonFormula", () => {
-  it("reconnaît la syntaxe BUTTON(...)", () => {
-    expect(isButtonFormula("$$BUTTON([a;b;c],a)$$")).toBe(true);
-    expect(isButtonFormula("$$BUTTON([a])$$")).toBe(true);
+describe("isEnumFormula", () => {
+  it("reconnaît la syntaxe ENUM(...)", () => {
+    expect(isEnumFormula("$$ENUM([a;b;c],a)$$")).toBe(true);
+    expect(isEnumFormula("$$ENUM([a])$$")).toBe(true);
   });
 
   it("rejette une formule ou un texte quelconque", () => {
-    expect(isButtonFormula('$$self["a"] + 1$$')).toBe(false);
-    expect(isButtonFormula("$$NUMBER(42)$$")).toBe(false);
-    expect(isButtonFormula(undefined)).toBe(false);
+    expect(isEnumFormula('$$self["a"] + 1$$')).toBe(false);
+    expect(isEnumFormula("$$NUMBER(42)$$")).toBe(false);
+    expect(isEnumFormula(undefined)).toBe(false);
   });
 });
 
-describe("parseButton", () => {
+describe("parseEnum", () => {
   it("parse une liste d'options sans couleur, default explicite", () => {
-    expect(parseButton("$$BUTTON([a;b;c],b)$$")).toEqual({
+    expect(parseEnum("$$ENUM([a;b;c],b)$$")).toEqual({
       options: [{ value: "a" }, { value: "b" }, { value: "c" }],
       default: "b",
     });
   });
 
   it("default omis → première valeur", () => {
-    expect(parseButton("$$BUTTON([a;b;c])$$")).toEqual({
+    expect(parseEnum("$$ENUM([a;b;c])$$")).toEqual({
       options: [{ value: "a" }, { value: "b" }, { value: "c" }],
       default: "a",
     });
   });
 
   it("parse une option colorée ==label== et =={color}label==", () => {
-    const def = parseButton("$$BUTTON([==a==;=={green}b==],a)$$");
+    const def = parseEnum("$$ENUM([==a==;=={green}b==],a)$$");
     expect(def?.options[1]).toEqual({ value: "b", color: "green" });
   });
 
   it("renvoie null si la syntaxe ne correspond pas", () => {
-    expect(parseButton('$$self["a"]$$')).toBeNull();
-    expect(parseButton("texte simple")).toBeNull();
+    expect(parseEnum('$$self["a"]$$')).toBeNull();
+    expect(parseEnum("texte simple")).toBeNull();
   });
 });
 
-describe("serializeButton", () => {
+describe("serializeEnum", () => {
   it("round-trip options + default", () => {
     const def = { options: [{ value: "a" }, { value: "b" }], default: "b" };
-    expect(parseButton(serializeButton(def))).toEqual(def);
+    expect(parseEnum(serializeEnum(def))).toEqual(def);
   });
 
   it("round-trip avec couleur", () => {
@@ -63,15 +63,15 @@ describe("serializeButton", () => {
       options: [{ value: "a", color: "green" }],
       default: "a",
     };
-    expect(parseButton(serializeButton(def))).toEqual(def);
+    expect(parseEnum(serializeEnum(def))).toEqual(def);
   });
 });
 
-describe("diffButtonOptions", () => {
+describe("diffEnumOptions", () => {
   it("détecte un renommage (une retirée + une ajoutée)", () => {
     const prev = { options: [{ value: "a" }, { value: "b" }], default: "a" };
     const next = { options: [{ value: "a" }, { value: "c" }], default: "a" };
-    expect(diffButtonOptions(prev, next)).toEqual({
+    expect(diffEnumOptions(prev, next)).toEqual({
       renames: [{ old: "b", new: "c" }],
       added: [],
       removed: [],
@@ -84,7 +84,7 @@ describe("diffButtonOptions", () => {
       options: [{ value: "a" }, { value: "b" }, { value: "c" }],
       default: "a",
     };
-    expect(diffButtonOptions(prev, next)).toEqual({
+    expect(diffEnumOptions(prev, next)).toEqual({
       renames: [],
       added: ["b", "c"],
       removed: [],
@@ -121,9 +121,9 @@ describe("enumValueState", () => {
   });
 });
 
-describe("createEmptyButtonDef", () => {
+describe("createEmptyEnumDef", () => {
   it("renvoie une définition vide", () => {
-    expect(createEmptyButtonDef()).toEqual({ options: [], default: "" });
+    expect(createEmptyEnumDef()).toEqual({ options: [], default: "" });
   });
 });
 
@@ -198,9 +198,9 @@ describe("updateOptionValue", () => {
   });
 
   it("première option ajoutée (vierge) devient default dès qu'on la nomme", () => {
-    // Cas réel : createEmptyButtonDef() + addOption() → default et la
+    // Cas réel : createEmptyEnumDef() + addOption() → default et la
     // nouvelle option valent tous deux "" → updateOptionValue les fait suivre.
-    const def = addOption(createEmptyButtonDef());
+    const def = addOption(createEmptyEnumDef());
     expect(updateOptionValue(def, 0, "a")).toEqual({
       options: [{ value: "a" }],
       default: "a",

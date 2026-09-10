@@ -1,6 +1,6 @@
-// ── Propriété contrainte BUTTON ─────────────────────────────────────────────
+// ── Propriété contrainte ENUM ────────────────────────────────────────────────
 //
-// Syntaxe (déclarée dans un template) : $$BUTTON([v1;v2;v3],default)$$
+// Syntaxe (déclarée dans un template) : $$ENUM([v1;v2;v3],default)$$
 // - séparateur `;` dans le tableau (évite le conflit avec la `,` des arguments)
 // - `default` : valeur initiale des héritiers (peut être hors-liste = placeholder).
 //   Si omis → première valeur de la liste.
@@ -12,29 +12,29 @@
 
 import { defaultHighlightColorRef } from "../../plugins/highlight/defaultColorRef";
 
-export interface ButtonOption {
+export interface EnumOption {
   /** Libellé propre, stocké tel quel par l'héritier. */
   value: string;
   /** Id couleur highlight (yellow, green, …) ; undefined = pill neutre. */
   color?: string;
 }
 
-export interface ButtonDef {
-  options: ButtonOption[];
+export interface EnumDef {
+  options: EnumOption[];
   default: string;
 }
 
 export type EnumValueState = "valid" | "placeholder" | "invalid";
 
-const BUTTON_RE = /^\$\$\s*BUTTON\s*\(([\s\S]*)\)\s*\$\$$/;
+const ENUM_RE = /^\$\$\s*ENUM\s*\(([\s\S]*)\)\s*\$\$$/;
 // Option colorée : =={color}label== ou ==label==
 const OPTION_COLOR_RE = /^==(?:\{([a-z]+)\})?([\s\S]+?)==$/;
 
-export function isButtonFormula(value: unknown): value is string {
-  return typeof value === "string" && BUTTON_RE.test(value.trim());
+export function isEnumFormula(value: unknown): value is string {
+  return typeof value === "string" && ENUM_RE.test(value.trim());
 }
 
-function parseOption(token: string): ButtonOption {
+function parseOption(token: string): EnumOption {
   const m = OPTION_COLOR_RE.exec(token);
   if (m) {
     // Couleur omise (==label==) → couleur par défaut des réglages
@@ -46,9 +46,9 @@ function parseOption(token: string): ButtonOption {
   return { value: token };
 }
 
-/** Parse `$$BUTTON([a;b;c],def)$$` → { options, default }. null si invalide. */
-export function parseButton(value: string): ButtonDef | null {
-  const m = BUTTON_RE.exec(value.trim());
+/** Parse `$$ENUM([a;b;c],def)$$` → { options, default }. null si invalide. */
+export function parseEnum(value: string): EnumDef | null {
+  const m = ENUM_RE.exec(value.trim());
   if (!m) return null;
 
   const inner = m[1].trim();
@@ -70,28 +70,25 @@ export function parseButton(value: string): ButtonDef | null {
   return { options, default: def };
 }
 
-export function serializeButton(def: ButtonDef): string {
+export function serializeEnum(def: EnumDef): string {
   const opts = def.options
     .map((o) => (o.color ? `=={${o.color}}${o.value}==` : o.value))
     .join(";");
-  return `$$BUTTON([${opts}],${def.default})$$`;
+  return `$$ENUM([${opts}],${def.default})$$`;
 }
 
-export interface ButtonOptionsDiff {
+export interface EnumOptionsDiff {
   renames: { old: string; new: string }[];
   added: string[];
   removed: string[];
 }
 
 /**
- * Diff entre deux définitions BUTTON, comparé par valeur (la couleur n'affecte
+ * Diff entre deux définitions ENUM, comparé par valeur (la couleur n'affecte
  * pas les héritiers). Heuristique : exactement une retirée + une ajoutée →
  * renommage (même logique que diffFrontmatter pour les clés).
  */
-export function diffButtonOptions(
-  prev: ButtonDef,
-  next: ButtonDef
-): ButtonOptionsDiff {
+export function diffEnumOptions(prev: EnumDef, next: EnumDef): EnumOptionsDiff {
   const prevVals = prev.options.map((o) => o.value);
   const nextVals = next.options.map((o) => o.value);
   const added = nextVals.filter((v) => !prevVals.includes(v));
@@ -108,25 +105,25 @@ export function diffButtonOptions(
 }
 
 /** Valeurs permises (libellés), pour la propagation/réconciliation. */
-export function optionValues(def: ButtonDef): string[] {
+export function optionValues(def: EnumDef): string[] {
   return def.options.map((o) => o.value);
 }
 
 /** Couleur associée à une valeur dans la définition, le cas échéant. */
-export function optionColor(value: string, def: ButtonDef): string | undefined {
+export function optionColor(value: string, def: EnumDef): string | undefined {
   return def.options.find((o) => o.value === value)?.color;
 }
 
 // ── Édition structurée (panneau de réglages) ────────────────────────────────
-// Mutations pures d'un ButtonDef en cours d'édition (avant sérialisation),
+// Mutations pures d'un EnumDef en cours d'édition (avant sérialisation),
 // utilisées par le panneau d'ajout/retrait/renommage d'options du frontmatter.
 
-export function createEmptyButtonDef(): ButtonDef {
+export function createEmptyEnumDef(): EnumDef {
   return { options: [], default: "" };
 }
 
 /** Ajoute une option vierge en fin de liste. */
-export function addOption(def: ButtonDef): ButtonDef {
+export function addOption(def: EnumDef): EnumDef {
   return { ...def, options: [...def.options, { value: "" }] };
 }
 
@@ -134,7 +131,7 @@ export function addOption(def: ButtonDef): ButtonDef {
  * Retire l'option à `index`. Si elle portait le default, celui-ci retombe sur
  * la première option restante (ou "" s'il n'en reste aucune).
  */
-export function removeOption(def: ButtonDef, index: number): ButtonDef {
+export function removeOption(def: EnumDef, index: number): EnumDef {
   const removed = def.options[index];
   const options = def.options.filter((_, i) => i !== index);
   const nextDefault =
@@ -147,10 +144,10 @@ export function removeOption(def: ButtonDef, index: number): ButtonDef {
  * renommage (pas de retour au placeholder pendant la frappe).
  */
 export function updateOptionValue(
-  def: ButtonDef,
+  def: EnumDef,
   index: number,
   value: string
-): ButtonDef {
+): EnumDef {
   const previous = def.options[index];
   const options = def.options.map((o, i) =>
     i === index ? { ...o, value } : o
@@ -165,7 +162,7 @@ export function updateOptionValue(
  * - placeholder : valeur === default mais default hors-liste (état « non choisi »)
  * - invalid     : valeur ni dans les options ni égale au default
  */
-export function enumValueState(value: string, def: ButtonDef): EnumValueState {
+export function enumValueState(value: string, def: EnumDef): EnumValueState {
   if (def.options.some((o) => o.value === value)) return "valid";
   if (value === def.default) return "placeholder";
   return "invalid";
