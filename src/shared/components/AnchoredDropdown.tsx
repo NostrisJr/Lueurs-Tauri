@@ -12,13 +12,24 @@ interface AnchoredDropdownProps {
   onClose: () => void;
   children: ReactNode;
   className?: string;
+  /**
+   * Z-index de la popover — défaut pensé pour le contexte frontmatter (sous le
+   * NoteHeader sticky, cf. plus bas). Un appelant qui rend cette popover à
+   * l'intérieur d'un AUTRE calque déjà empilé (ex: InlineFormulaPopup, z-50)
+   * doit passer un z-index supérieur à ce calque, sous peine que la popover
+   * s'affiche (et surtout : reçoive les clics) DERRIÈRE lui.
+   */
+  zIndex?: number;
 }
+
+const DEFAULT_Z_INDEX = 15;
 
 export function AnchoredDropdown({
   anchorRef,
   onClose,
   children,
   className = "",
+  zIndex = DEFAULT_Z_INDEX,
 }: AnchoredDropdownProps) {
   if (isMobile) {
     return <BottomSheet onClose={onClose}>{children}</BottomSheet>;
@@ -28,6 +39,7 @@ export function AnchoredDropdown({
       anchorRef={anchorRef}
       onClose={onClose}
       className={className}
+      zIndex={zIndex}
     >
       {children}
     </DesktopDropdown>
@@ -41,6 +53,7 @@ function DesktopDropdown({
   onClose,
   children,
   className,
+  zIndex = DEFAULT_Z_INDEX,
 }: AnchoredDropdownProps) {
   const [pos, setPos] = useState<{
     top: number;
@@ -78,10 +91,17 @@ function DesktopDropdown({
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
+      const target = e.target as Element;
       if (
         containerRef.current &&
-        !containerRef.current.contains(e.target as Node) &&
-        !anchorRef.current?.contains(e.target as Node)
+        !containerRef.current.contains(target) &&
+        !anchorRef.current?.contains(target) &&
+        // Un AnchoredDropdown imbriqué (ex: sélecteur ref()/self[ ouvert depuis
+        // un NumberExprField à l'intérieur de ce dropdown) porte aussi ce
+        // marqueur mais atterrit dans un portail séparé, donc hors de
+        // containerRef — sans cette exclusion, un clic dedans serait vu comme
+        // "extérieur" et fermerait prématurément CE dropdown-ci.
+        !target.closest?.("[data-anchored-dropdown]")
       )
         onClose();
     }
@@ -100,16 +120,24 @@ function DesktopDropdown({
   return createPortal(
     <div
       ref={containerRef}
+      // Marqueur générique : permet aux popups englobants (ex: InlineFormulaPopup,
+      // useExpandPanel) de reconnaître qu'un clic/focus part réellement d'ICI —
+      // ce portail atterrit sous <body>, donc hors de leur sous-arbre DOM réel
+      // (containment / bubbling natif cassés par le portail, cf. mémoire
+      // contextmenu-selection pour un piège apparenté).
+      data-anchored-dropdown=""
       style={{
         position: "fixed",
         top: openUpward ? undefined : pos.top,
         bottom: openUpward ? window.innerHeight - pos.top : undefined,
         left: pos.left,
         minWidth: Math.max(pos.width, 220),
-        // Sous le NoteHeader sticky (z-20) : quand l'ancre défile sous le
-        // header, la popover doit disparaître avec elle, pas rester flottante
-        // par-dessus (comme le reste du contenu scrollé).
-        zIndex: 15,
+        // Par défaut (frontmatter) : sous le NoteHeader sticky (z-20), pour
+        // que la popover disparaisse avec son ancre quand celle-ci défile
+        // sous le header, plutôt que de rester flottante par-dessus. Un
+        // appelant dans un calque déjà au-dessus (ex: InlineFormulaPopup,
+        // z-50) surclasse via `zIndex` — cf. AnchoredDropdownProps.
+        zIndex,
       }}
       className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden whitespace-normal ${className}`}
     >

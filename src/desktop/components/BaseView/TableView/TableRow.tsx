@@ -95,6 +95,7 @@ export function TableRow({
           value={(note.frontmatter[col.key] as string) ?? ""}
           isImposed={col.isImposed}
           enumConstraint={col.enumConstraint}
+          numberFormatConstraint={col.numberFormatConstraint}
           width={col.width}
           frontmatter={note.frontmatter}
           noteResolver={noteResolver}

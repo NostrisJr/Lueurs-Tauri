@@ -171,7 +171,16 @@ export function useValueEditor(
     enumConstraint
   );
 
-  function commitDraft() {
+  /**
+   * Sérialise le brouillon courant vers la valeur à committer — null si rien
+   * à committer (héritier contraint par un ENUM : la valeur se choisit
+   * directement sur la ligne via EnumValueSelector, jamais ce panneau, sous
+   * peine d'écraser la valeur littérale de l'héritier par la formule
+   * $$ENUM(...)$$ elle-même). Pure : ni onTextChange ni onTextBlur ici, pour
+   * être réutilisable aussi bien par le commit live (useEffect ci-dessous)
+   * que par la fermeture explicite (commitDraft).
+   */
+  function computeCommittedValue(): string | null {
     // decimals/unit ne sont jamais pris du brouillon quand un template les
     // impose : la valeur locale du champ (désactivé côté UI) ne fait pas foi.
     const draftForCommit = numberFormatConstraint
@@ -185,26 +194,15 @@ export function useValueEditor(
       : effectiveDraft;
 
     if (draftForCommit.type === "enum") {
-      // Héritier contraint : la valeur se choisit directement sur la ligne
-      // (EnumValueSelector, jamais ce panneau) — rien à committer ici, sous
-      // peine d'écraser la valeur littérale de l'héritier par la formule
-      // $$ENUM(...)$$ elle-même.
-      if (enumConstraint) {
-        onTextBlur();
-        return;
-      }
+      if (enumConstraint) return null;
       // Options vides tapées en cours d'édition : elles n'ont rien à
       // contraindre, autant ne pas les faire survivre à la sérialisation.
       const options = draftForCommit.enumDef.options.filter(
         (o) => o.value.trim() !== ""
       );
-      const newValue =
-        options.length === 0
-          ? ""
-          : serializeEnum({ ...draftForCommit.enumDef, options });
-      if (newValue !== strValue) onTextChange(newValue);
-      onTextBlur();
-      return;
+      return options.length === 0
+        ? ""
+        : serializeEnum({ ...draftForCommit.enumDef, options });
     }
 
     // Une expression vide n'a rien à calculer : committer $$NUMBER()$$
@@ -212,15 +210,35 @@ export function useValueEditor(
     // texte vide — SAUF si decimals/unit est défini, auquel cas c'est une
     // contrainte de format seule (cf. isFormatOnlyNumber), à préserver.
     const emptyExpr = draftForCommit.numberDef.expr.trim() === "";
-    const newValue =
-      draftForCommit.type === "text"
-        ? draftForCommit.text
-        : emptyExpr && !isFormatOnlyNumber(draftForCommit.numberDef)
-          ? ""
-          : serializeNumber(draftForCommit.numberDef);
-    if (newValue !== strValue) onTextChange(newValue);
+    return draftForCommit.type === "text"
+      ? draftForCommit.text
+      : emptyExpr && !isFormatOnlyNumber(draftForCommit.numberDef)
+        ? ""
+        : serializeNumber(draftForCommit.numberDef);
+  }
+
+  function commitDraft() {
+    const newValue = computeCommittedValue();
+    if (newValue !== null && newValue !== strValue) onTextChange(newValue);
     onTextBlur();
   }
+
+  // Commit en live (debounce habituel de l'app — cf. FrontmatterEditor.commit
+  // → onChange, même pipeline que n'importe quel autre champ) à chaque
+  // modification du brouillon, pas seulement à la fermeture du panneau :
+  // sinon naviguer vers une autre note sans passer par Entrée/Échap/roue
+  // perdait silencieusement l'édition en cours (jamais commit ne serait
+  // appelé). Volontairement SANS onTextBlur() : pas de flush immédiat, pas de
+  // fermeture du panneau — la fermeture reste déclenchée UNIQUEMENT par
+  // Entrée/Échap/roue (cf. useExpandPanel), pour ne pas réintroduire la
+  // course de focus avec les sélecteurs ref()/self[ imbriqués que ce choix
+  // avait corrigée.
+  useEffect(() => {
+    if (!expanded || draft === null) return;
+    const newValue = computeCommittedValue();
+    if (newValue !== null && newValue !== strValue) onTextChange(newValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à une vraie modification du brouillon, pas à chaque render (cf. computeCommittedValue, qui referme déjà sur les props courantes)
+  }, [draft]);
 
   const { mounted, visible, handleFieldDone, containerProps, commitAndClose } =
     useExpandPanel(expanded, () => setSettingsKey(null), commitDraft);

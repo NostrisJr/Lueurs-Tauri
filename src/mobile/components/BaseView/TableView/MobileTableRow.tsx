@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { useTable } from "../../../../shared/hooks/useTable";
 import { notesByIdAtom } from "../../../../shared/lib/atoms";
@@ -27,6 +27,8 @@ export function MobileTableRow({
   const titleRef = useRef<HTMLInputElement>(null);
   const notesById = useAtomValue(notesByIdAtom);
   const noteResolver = (path: string) => notesById.get(path);
+  // Nécessaire pour l'autocomplétion ref() dans NumberCellSelector (cf. TableRow desktop)
+  const allNotes = useMemo(() => [...notesById.values()], [notesById]);
 
   function startTitleEdit() {
     setTitleDraft(note.name);
@@ -90,11 +92,14 @@ export function MobileTableRow({
       {columns.map((col) => (
         <MobileTableCell
           key={col.key}
+          fieldKey={col.key}
           value={(note.frontmatter[col.key] as string) ?? ""}
           isImposed={col.isImposed}
           enumConstraint={col.enumConstraint}
+          numberFormatConstraint={col.numberFormatConstraint}
           frontmatter={note.frontmatter}
           noteResolver={noteResolver}
+          allNotes={allNotes}
           onCommit={(val) => onCellCommit(col.key, val)}
         />
       ))}

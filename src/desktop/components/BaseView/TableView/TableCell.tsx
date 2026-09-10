@@ -1,11 +1,16 @@
 import { useCallback, useRef, useState } from "react";
 import { FormulaEditField } from "../../../../shared/components/FormulaField/FormulaEditField";
 import { EnumValueSelector } from "../../../../shared/components/FrontmatterPicker/EnumValueSelector";
+import { NumberCellSelector } from "../../../../shared/components/FrontmatterPicker/NumberCellSelector";
 import type {
   Frontmatter,
   NoteFile,
 } from "../../../../shared/hooks/useFileTree";
 import type { EnumDef } from "../../../../shared/lib/FrontmatterPicker/enumProperty";
+import {
+  type NumberDef,
+  isNumberFormula,
+} from "../../../../shared/lib/FrontmatterPicker/numberProperty";
 import {
   computeFormula,
   humanizeFormula,
@@ -20,6 +25,7 @@ interface Props {
   value: string;
   isImposed: boolean;
   enumConstraint?: EnumDef;
+  numberFormatConstraint?: NumberDef;
   width: number;
   frontmatter: Frontmatter;
   noteResolver?: (path: string) => NoteFile | undefined;
@@ -32,6 +38,7 @@ export function TableCell({
   value,
   isImposed,
   enumConstraint,
+  numberFormatConstraint,
   width,
   frontmatter,
   noteResolver,
@@ -114,6 +121,27 @@ export function TableCell({
           value={value}
           constraint={enumConstraint}
           onChange={onCommit}
+        />
+      </div>
+    );
+  }
+
+  // ── Colonne NUMBER (format imposé par un template, ou valeur déjà NUMBER) :
+  // popup expr + décimales/unité, plutôt que la formule brute éditée à la main.
+  if (!isImposed && (numberFormatConstraint || isNumberFormula(value))) {
+    return (
+      <div
+        style={{ width }}
+        className="shrink-0 border-r border-gray-100 px-3 flex items-center last:border-none"
+      >
+        <NumberCellSelector
+          fieldKey={fieldKey}
+          value={value}
+          numberFormatConstraint={numberFormatConstraint}
+          frontmatter={frontmatter}
+          noteResolver={noteResolver ?? (() => undefined)}
+          allNotes={allNotes ?? []}
+          onCommit={onCommit}
         />
       </div>
     );

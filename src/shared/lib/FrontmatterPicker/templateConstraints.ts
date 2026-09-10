@@ -1,16 +1,12 @@
-import type { Frontmatter } from "../../../shared/hooks/useFileTree";
-import {
-  type EnumDef,
-  isEnumFormula,
-  parseEnum,
-} from "../../../shared/lib/FrontmatterPicker/enumProperty";
+import type { Frontmatter } from "../../hooks/useFileTree";
+import { isSystemField } from "../fileTreeHelpers";
+import { type EnumDef, isEnumFormula, parseEnum } from "./enumProperty";
 import {
   type NumberDef,
   isFormatOnlyNumber,
   isNumberFormula,
   parseNumber,
-} from "../../../shared/lib/FrontmatterPicker/numberProperty";
-import { isSystemField } from "../../../shared/lib/fileTreeHelpers";
+} from "./numberProperty";
 
 export interface TemplateConstraints {
   /** Clés provenant d'un template — non renommables, non supprimables. */

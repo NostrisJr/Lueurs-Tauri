@@ -1,11 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import {
-  type EnumDef,
-  isEnumFormula,
-  parseEnum,
-} from "../lib/FrontmatterPicker/enumProperty";
-import {
   type AggregationOp,
   type TableAggregations,
   parseTableAggregations,
@@ -16,28 +11,19 @@ import {
   parseTableColumns,
   serializeTableColumns,
 } from "../lib/atoms";
-import { isSystemField } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { SystemField } from "../lib/noteTypes";
+import { computeTableColumns } from "./lib/tableColumns";
 import type { Frontmatter, NoteFile } from "./useFileTree";
 import { usePersistNote } from "./usePersistNote";
+
+export type { TableColumn } from "./lib/tableColumns";
 
 const log = createLogger("useTable");
 
 const DEFAULT_COL_WIDTH = 180;
 const MIN_COL_WIDTH = 80;
 const TITLE_COL_WIDTH = 200;
-
-export interface TableColumn {
-  key: string;
-  width: number;
-  // Propriété contraignante (valeur libre dans le template) vs imposée (valeur forcée)
-  isImposed: boolean;
-  // Contrainte ENUM : valeur choisie via dropdown parmi des options
-  enumConstraint?: EnumDef;
-  // Templates qui définissent cette propriété — pour le renommage
-  templatePaths: string[];
-}
 
 interface UseTableProps {
   base: NoteFile;
@@ -60,40 +46,11 @@ export function useTable({ base, onBaseChange }: UseTableProps) {
     .map((p) => notesById.get(p))
     .filter((n): n is NoteFile => !!n);
 
-  // Union de toutes les props non-système des templates — premier template gagne
-  const seenKeys = new Set<string>();
-  const columns: TableColumn[] = [];
-
-  for (const template of templates) {
-    for (const [key, value] of Object.entries(template.frontmatter)) {
-      if (isSystemField(key)) continue;
-      if (seenKeys.has(key)) {
-        // Ajouter ce template aux sources même si la clé est déjà vue
-        const col = columns.find((c) => c.key === key);
-        if (col && !col.templatePaths.includes(template.id)) {
-          col.templatePaths.push(template.id);
-        }
-        continue;
-      }
-      seenKeys.add(key);
-      const enumConstraint = isEnumFormula(value)
-        ? (parseEnum(value as string) ?? undefined)
-        : undefined;
-      // Une contrainte ENUM n'est jamais imposée (valeur éditable via dropdown)
-      const isImposed =
-        !enumConstraint &&
-        value !== "" &&
-        value !== null &&
-        value !== undefined;
-      columns.push({
-        key,
-        isImposed,
-        enumConstraint,
-        width: savedWidths[key] ?? DEFAULT_COL_WIDTH,
-        templatePaths: [template.id],
-      });
-    }
-  }
+  // Union de toutes les props non-système des templates — premier template
+  // gagne pour l'ordre. Contraintes ENUM/NUMBER calculées via
+  // computeTemplateConstraints, partagée avec le panneau frontmatter (cf.
+  // useTemplateConstraints) — pas dupliquée ici.
+  const columns = computeTableColumns(templates, savedWidths);
 
   // Notes enfant
   const childrenPaths = base.frontmatter[SystemField.CHILDREN];

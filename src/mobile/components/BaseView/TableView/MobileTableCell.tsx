@@ -1,26 +1,37 @@
 import { useState } from "react";
 import { EnumValueSelector } from "../../../../shared/components/FrontmatterPicker/EnumValueSelector";
+import { NumberCellSelector } from "../../../../shared/components/FrontmatterPicker/NumberCellSelector";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { EnumDef } from "../../../../shared/lib/FrontmatterPicker/enumProperty";
+import {
+  type NumberDef,
+  isNumberFormula,
+} from "../../../../shared/lib/FrontmatterPicker/numberProperty";
 import { computeFormula, isFormula } from "../../../../shared/lib/formulas";
 
 interface Props {
+  fieldKey: string;
   value: string;
   isImposed: boolean;
   enumConstraint?: EnumDef;
+  numberFormatConstraint?: NumberDef;
   frontmatter: Record<string, unknown>;
   noteResolver: (path: string) => NoteFile | undefined;
+  allNotes: NoteFile[];
   onCommit: (value: string) => void;
 }
 
 const CELL_WIDTH = 140;
 
 export function MobileTableCell({
+  fieldKey,
   value,
   isImposed,
   enumConstraint,
+  numberFormatConstraint,
   frontmatter,
   noteResolver,
+  allNotes,
   onCommit,
 }: Props) {
   const [editing, setEditing] = useState(false);
@@ -47,6 +58,26 @@ export function MobileTableCell({
           value={value}
           constraint={enumConstraint}
           onChange={onCommit}
+        />
+      </div>
+    );
+  }
+
+  // ── Colonne NUMBER : popup expr + décimales/unité (cf. TableCell desktop) ─
+  if (!isImposed && (numberFormatConstraint || isNumberFormula(value))) {
+    return (
+      <div
+        className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none flex items-center"
+        style={{ width: CELL_WIDTH }}
+      >
+        <NumberCellSelector
+          fieldKey={fieldKey}
+          value={value}
+          numberFormatConstraint={numberFormatConstraint}
+          frontmatter={frontmatter}
+          noteResolver={noteResolver}
+          allNotes={allNotes}
+          onCommit={onCommit}
         />
       </div>
     );
