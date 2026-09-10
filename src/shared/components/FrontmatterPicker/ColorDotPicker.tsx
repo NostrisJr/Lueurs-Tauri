@@ -18,8 +18,8 @@ interface Props {
 
 /**
  * Pastille cliquable ouvrant la palette de surlignage (même mécanisme que le
- * highlight md). Utilisée pour recolorer une option BUTTON, dans le frontmatter
- * (ButtonOptionsEditor) comme dans les colonnes Kanban.
+ * highlight md). Utilisée pour recolorer une option BUTTON dans le panneau de
+ * réglages du frontmatter (ButtonOptionsFields) comme dans les colonnes Kanban.
  * Le dropdown étant positionné en fixed via le ref, aucun parent relatif requis.
  */
 export function ColorDotPicker({ color, onColor, className, title }: Props) {

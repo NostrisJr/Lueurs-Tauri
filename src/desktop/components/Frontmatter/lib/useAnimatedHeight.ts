@@ -10,9 +10,11 @@ import { useLayoutEffect, useRef, useState } from "react";
  * `height` vers une valeur en px connue n'a pas ce problème, dans les deux
  * sens.
  *
- * Le contenu mesuré ici est statique (switcher Texte/Nombre, décimales/
- * unité), donc mesurer une fois par ouverture suffit — pas besoin de
- * ResizeObserver.
+ * Le contenu mesuré ici est le plus souvent statique (switcher Texte/Nombre,
+ * décimales/unité), donc mesurer une fois par ouverture suffit — pas besoin
+ * de ResizeObserver. Pour un contenu qui grandit/rétrécit pendant que le
+ * panneau reste ouvert (ex: liste d'options Bouton), passer `watch` : une
+ * nouvelle valeur redéclenche la mesure sans attendre une fermeture/réouverture.
  *
  * `height` est remise à 0 à la fermeture (pas seulement mesurée à
  * l'ouverture) : sinon, à partir de la 2e ouverture, la valeur mesurée est
@@ -22,10 +24,11 @@ import { useLayoutEffect, useRef, useState } from "react";
  * render/paint en plus pour enregistrer le "0" de départ ; sans lui, la
  * transition saute directement à la taille finale au lieu d'animer.
  */
-export function useAnimatedHeight(active: boolean) {
+export function useAnimatedHeight(active: boolean, watch?: unknown) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `watch` est un déclencheur de re-mesure volontairement opaque (ex: nombre d'options) — sa valeur elle-même n'est pas utilisée dans l'effet.
   useLayoutEffect(() => {
     if (!active) {
       setHeight(0);
@@ -33,7 +36,7 @@ export function useAnimatedHeight(active: boolean) {
     }
     const content = contentRef.current;
     if (content) setHeight(content.scrollHeight);
-  }, [active]);
+  }, [active, watch]);
 
   return { contentRef, height };
 }

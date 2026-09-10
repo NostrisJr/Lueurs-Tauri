@@ -117,6 +117,48 @@ export function optionColor(value: string, def: ButtonDef): string | undefined {
   return def.options.find((o) => o.value === value)?.color;
 }
 
+// ── Édition structurée (panneau de réglages) ────────────────────────────────
+// Mutations pures d'un ButtonDef en cours d'édition (avant sérialisation),
+// utilisées par le panneau d'ajout/retrait/renommage d'options du frontmatter.
+
+export function createEmptyButtonDef(): ButtonDef {
+  return { options: [], default: "" };
+}
+
+/** Ajoute une option vierge en fin de liste. */
+export function addOption(def: ButtonDef): ButtonDef {
+  return { ...def, options: [...def.options, { value: "" }] };
+}
+
+/**
+ * Retire l'option à `index`. Si elle portait le default, celui-ci retombe sur
+ * la première option restante (ou "" s'il n'en reste aucune).
+ */
+export function removeOption(def: ButtonDef, index: number): ButtonDef {
+  const removed = def.options[index];
+  const options = def.options.filter((_, i) => i !== index);
+  const nextDefault =
+    removed?.value === def.default ? (options[0]?.value ?? "") : def.default;
+  return { options, default: nextDefault };
+}
+
+/**
+ * Renomme l'option à `index`. Si elle portait le default, celui-ci suit le
+ * renommage (pas de retour au placeholder pendant la frappe).
+ */
+export function updateOptionValue(
+  def: ButtonDef,
+  index: number,
+  value: string
+): ButtonDef {
+  const previous = def.options[index];
+  const options = def.options.map((o, i) =>
+    i === index ? { ...o, value } : o
+  );
+  const nextDefault = previous?.value === def.default ? value : def.default;
+  return { options, default: nextDefault };
+}
+
 /**
  * État d'une valeur d'héritier vis-à-vis de sa contrainte.
  * - valid       : valeur présente dans les options

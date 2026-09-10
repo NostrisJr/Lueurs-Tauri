@@ -1,8 +1,16 @@
 import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
-import { isButtonFormula } from "../../../../shared/lib/FrontmatterPicker/buttonProperty";
+import {
+  type ButtonDef,
+  createEmptyButtonDef,
+  isButtonFormula,
+  parseButton,
+  serializeButton,
+} from "../../../../shared/lib/FrontmatterPicker/buttonProperty";
 import {
   type NumberDef,
+  applyFormatConstraint,
+  isFormatOnlyNumber,
   isNumberFormula,
   parseNumber,
   serializeNumber,
@@ -11,12 +19,13 @@ import { isFormula } from "../../../../shared/lib/formulas";
 import { settingsKeyAtom } from "./frontMatterAtoms";
 import { useExpandPanel } from "./useExpandPanel";
 
-export type PropertyType = "text" | "number";
+export type PropertyType = "text" | "number" | "button";
 
 export interface EditorDraft {
   type: PropertyType;
   text: string;
   numberDef: NumberDef;
+  buttonDef: ButtonDef;
 }
 
 // Boolean simple (pas un type predicate) : appeler ces guards "value is string"
@@ -26,8 +35,11 @@ export interface EditorDraft {
 function isNumberFormulaValue(raw: string): boolean {
   return isNumberFormula(raw);
 }
+function isButtonFormulaValue(raw: string): boolean {
+  return isButtonFormula(raw);
+}
 function isBareFormula(raw: string): boolean {
-  return isFormula(raw) && !isButtonFormula(raw);
+  return isFormula(raw) && !isButtonFormulaValue(raw);
 }
 
 /**
@@ -41,16 +53,81 @@ function isBareFormula(raw: string): boolean {
 function makeInitialDraft(raw: string): EditorDraft {
   if (isNumberFormulaValue(raw)) {
     const def = parseNumber(raw) ?? { expr: "0" };
-    return { type: "number", text: def.expr, numberDef: def };
+    return {
+      type: "number",
+      text: def.expr,
+      numberDef: def,
+      buttonDef: createEmptyButtonDef(),
+    };
+  }
+  if (isButtonFormulaValue(raw)) {
+    const def = parseButton(raw) ?? createEmptyButtonDef();
+    return {
+      type: "button",
+      text: "",
+      numberDef: { expr: "" },
+      buttonDef: def,
+    };
   }
   if (isBareFormula(raw)) {
     // Formule brute héritée (tapée à la main) : traitée comme Nombre à l'édition.
     const inner = raw.replace(/^\$\$/, "").replace(/\$\$$/, "");
-    return { type: "number", text: inner, numberDef: { expr: inner } };
+    return {
+      type: "number",
+      text: inner,
+      numberDef: { expr: inner },
+      buttonDef: createEmptyButtonDef(),
+    };
   }
   // numberDef.expr : simple graine si on bascule vers Nombre depuis l'onglet
   // (cf. handleTypeChange, qui reprend le texte tel quel).
-  return { type: "text", text: raw, numberDef: { expr: raw } };
+  return {
+    type: "text",
+    text: raw,
+    numberDef: { expr: raw },
+    buttonDef: createEmptyButtonDef(),
+  };
+}
+
+/**
+ * Impose une contrainte de format template (decimals/unit) au brouillon
+ * initial : toujours Nombre (le texte n'a pas de sens si le parent impose un
+ * format), decimals/unit remplacés par ceux du template — seul l'expr reste
+ * celui déjà présent. Filet de sécurité pour l'état transitoire où la valeur
+ * stockée n'est pas encore réconciliée (cf. computeTemplateProps) : sans ça,
+ * une valeur encore "texte libre" laisserait le panneau s'ouvrir en mode
+ * Texte, libre de tout choisir.
+ */
+function withFormatConstraint(
+  base: EditorDraft,
+  constraint: NumberDef | undefined
+): EditorDraft {
+  if (!constraint) return base;
+  const expr = base.type === "number" ? base.numberDef.expr : base.text;
+  return {
+    ...base,
+    type: "number",
+    text: expr,
+    numberDef: applyFormatConstraint({ expr }, constraint),
+  };
+}
+
+/**
+ * Impose une contrainte BUTTON de template (options/couleurs) au brouillon :
+ * toujours Bouton, options remplacées par celles du template — même logique
+ * que withFormatConstraint pour Nombre. En pratique le panneau de réglages
+ * n'est jamais accessible pour une propriété contrainte par un BUTTON (la
+ * valeur se choisit directement sur la ligne, cf. EnumValueSelector dans
+ * FrontmatterValue) ; ce filet de sécurité évite malgré tout qu'un héritier
+ * puisse changer de type ou réécrire les options si ce panneau s'ouvrait un
+ * jour par un autre chemin.
+ */
+function withEnumConstraint(
+  base: EditorDraft,
+  constraint: ButtonDef | undefined
+): EditorDraft {
+  if (!constraint) return base;
+  return { ...base, type: "button", buttonDef: constraint };
 }
 
 /**
@@ -64,55 +141,100 @@ export function useValueEditor(
   fieldKey: string,
   strValue: string,
   onTextChange: (value: string) => void,
-  onTextBlur: () => void
+  onTextBlur: () => void,
+  /**
+   * Contrainte de format NUMBER imposée par un template (decimals/unit) —
+   * cf. useTemplateConstraints.numberFormatConstraints. undefined = propriété
+   * libre, comportement inchangé.
+   */
+  numberFormatConstraint?: NumberDef,
+  /**
+   * Contrainte BUTTON imposée par un template (options/couleurs) —
+   * cf. useTemplateConstraints.enumConstraints. undefined = propriété libre,
+   * comportement inchangé.
+   */
+  enumConstraint?: ButtonDef
 ) {
   const [settingsKey, setSettingsKey] = useAtom(settingsKeyAtom);
   const expanded = settingsKey === fieldKey;
   const [draft, setDraft] = useState<EditorDraft | null>(null);
-  const [rawButtonDraft, setRawButtonDraft] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!expanded) {
-      setDraft(null);
-      setRawButtonDraft(null);
-    }
+    if (!expanded) setDraft(null);
   }, [expanded]);
 
-  const isCurrentlyButton = isButtonFormula(strValue);
-  const effectiveDraft = draft ?? makeInitialDraft(strValue);
+  const effectiveDraft = withEnumConstraint(
+    withFormatConstraint(
+      draft ?? makeInitialDraft(strValue),
+      numberFormatConstraint
+    ),
+    enumConstraint
+  );
 
-  function commitTypedDraft() {
+  function commitDraft() {
+    // decimals/unit ne sont jamais pris du brouillon quand un template les
+    // impose : la valeur locale du champ (désactivé côté UI) ne fait pas foi.
+    const draftForCommit = numberFormatConstraint
+      ? {
+          ...effectiveDraft,
+          numberDef: applyFormatConstraint(
+            effectiveDraft.numberDef,
+            numberFormatConstraint
+          ),
+        }
+      : effectiveDraft;
+
+    if (draftForCommit.type === "button") {
+      // Héritier contraint : la valeur se choisit directement sur la ligne
+      // (EnumValueSelector, jamais ce panneau) — rien à committer ici, sous
+      // peine d'écraser la valeur littérale de l'héritier par la formule
+      // $$BUTTON(...)$$ elle-même.
+      if (enumConstraint) {
+        onTextBlur();
+        return;
+      }
+      // Options vides tapées en cours d'édition : elles n'ont rien à
+      // contraindre, autant ne pas les faire survivre à la sérialisation.
+      const options = draftForCommit.buttonDef.options.filter(
+        (o) => o.value.trim() !== ""
+      );
+      const newValue =
+        options.length === 0
+          ? ""
+          : serializeButton({ ...draftForCommit.buttonDef, options });
+      if (newValue !== strValue) onTextChange(newValue);
+      onTextBlur();
+      return;
+    }
+
     // Une expression vide n'a rien à calculer : committer $$NUMBER()$$
     // produirait une formule invalide affichée telle quelle. Retombe sur du
-    // texte vide.
+    // texte vide — SAUF si decimals/unit est défini, auquel cas c'est une
+    // contrainte de format seule (cf. isFormatOnlyNumber), à préserver.
+    const emptyExpr = draftForCommit.numberDef.expr.trim() === "";
     const newValue =
-      effectiveDraft.type === "text"
-        ? effectiveDraft.text
-        : effectiveDraft.numberDef.expr.trim() === ""
+      draftForCommit.type === "text"
+        ? draftForCommit.text
+        : emptyExpr && !isFormatOnlyNumber(draftForCommit.numberDef)
           ? ""
-          : serializeNumber(effectiveDraft.numberDef);
-    if (newValue !== strValue) onTextChange(newValue);
-    onTextBlur();
-  }
-
-  function commitButtonDraft() {
-    const newValue = rawButtonDraft ?? strValue;
+          : serializeNumber(draftForCommit.numberDef);
     if (newValue !== strValue) onTextChange(newValue);
     onTextBlur();
   }
 
   const { mounted, visible, handleFieldDone, containerProps, commitAndClose } =
-    useExpandPanel(
-      expanded,
-      () => setSettingsKey(null),
-      isCurrentlyButton ? commitButtonDraft : commitTypedDraft
-    );
+    useExpandPanel(expanded, () => setSettingsKey(null), commitDraft);
 
   // Toujours une expression vierge : le texte déjà tapé n'est pas repris
   // (il n'y a aucune raison qu'il forme une expression valide une fois
   // entouré de $$, ex. du texte libre).
   function openFormulaEditor() {
-    setDraft({ type: "number", text: "", numberDef: { expr: "" } });
+    setDraft({
+      type: "number",
+      text: "",
+      numberDef: { expr: "" },
+      buttonDef: createEmptyButtonDef(),
+    });
     setSettingsKey(fieldKey);
   }
 
@@ -133,19 +255,34 @@ export function useValueEditor(
   // Changer de type ne doit jamais faire perdre ce qui a été tapé : le
   // contenu actif passe tel quel dans l'autre champ (juste entouré de $$ côté
   // Nombre) — à l'utilisateur de corriger si le résultat n'a pas de sens.
+  // Bouton fait exception (liste de valeurs, pas une expression) : on ne
+  // reprend rien en entrant, et on repart du premier libellé en sortant.
   function handleTypeChange(next: PropertyType) {
     if (next === effectiveDraft.type) return;
+    // Texte/Bouton désactivés quand le template impose un format NUMBER, et
+    // Texte/Nombre désactivés quand il impose un BUTTON : dans les deux cas
+    // ce serait perdre la contrainte de template pour un autre type.
+    if (numberFormatConstraint && next !== "number") return;
+    if (enumConstraint && next !== "button") return;
     if (next === "number") {
       setDraft({
         ...effectiveDraft,
         type: next,
-        numberDef: { ...effectiveDraft.numberDef, expr: effectiveDraft.text },
+        numberDef: {
+          ...effectiveDraft.numberDef,
+          expr: effectiveDraft.type === "button" ? "" : effectiveDraft.text,
+        },
       });
+    } else if (next === "button") {
+      setDraft({ ...effectiveDraft, type: next });
     } else {
       setDraft({
         ...effectiveDraft,
         type: next,
-        text: effectiveDraft.numberDef.expr,
+        text:
+          effectiveDraft.type === "button"
+            ? effectiveDraft.buttonDef.default
+            : effectiveDraft.numberDef.expr,
       });
     }
   }
@@ -154,12 +291,12 @@ export function useValueEditor(
     expanded,
     // Reste vrai pendant l'animation de fermeture — cf. useExpandPanel.
     visible,
-    isCurrentlyButton,
     draft: effectiveDraft,
     setDraft,
     handleTypeChange,
-    rawButtonDraft,
-    setRawButtonDraft,
+    // decimals/unit imposés par un template : Texte désactivé, champs
+    // décimales/unité en lecture seule dans le panneau (cf. FrontmatterRow).
+    numberFormatLocked: !!numberFormatConstraint,
     mounted,
     handleFieldDone,
     containerProps,

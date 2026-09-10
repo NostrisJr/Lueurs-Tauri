@@ -19,6 +19,7 @@ import {
   getFieldDef,
 } from "../../../shared/lib/noteTypes";
 import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
+import { ButtonOptionsFields } from "./ButtonOptionsFields";
 import { FolderSelector } from "./FolderSelector";
 import { FrontmatterValue } from "./FrontmatterValue";
 import { NoteSelector } from "./NoteSelector";
@@ -48,6 +49,7 @@ interface Props {
 const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: "text", label: "Texte" },
   { value: "number", label: "Nombre" },
+  { value: "button", label: "Bouton" },
 ];
 
 const SELECTOR_PLACEHOLDERS: Partial<Record<string, string>> = {
@@ -85,11 +87,12 @@ export function FrontmatterRow({
   const switcherWrapperRef = useRef<HTMLDivElement>(null);
 
   const rows = useAtomValue(rowsAtom);
-  const { lockedKeys, lockedValues, enumConstraints } =
+  const { lockedKeys, lockedValues, enumConstraints, numberFormatConstraints } =
     useTemplateConstraints();
   const isKeyLocked = lockedKeys.has(row.key);
   const isValueLocked = lockedValues.has(row.key);
   const enumConstraint = enumConstraints.get(row.key);
+  const numberFormatConstraint = numberFormatConstraints.get(row.key);
 
   const editingKey = useAtomValue(editingKeyAtom);
   const setEditingKey = useSetAtom(editingKeyAtom);
@@ -106,7 +109,8 @@ export function FrontmatterRow({
   const isKeyUnchanged = trimmedKeyDraft === row.key;
   const isKeyDuplicate =
     !isKeyUnchanged && rows.some((r) => r.key === trimmedKeyDraft);
-  const canSaveKey = trimmedKeyDraft !== "" && !isKeyUnchanged && !isKeyDuplicate;
+  const canSaveKey =
+    trimmedKeyDraft !== "" && !isKeyUnchanged && !isKeyDuplicate;
 
   function startKeyEdit() {
     setKeyDraft(row.key);
@@ -223,8 +227,12 @@ export function FrontmatterRow({
   // Sur le template lui-même, les props sont toujours renommables.
   // Sur les enfants, isKeyLocked bloque le renommage.
   const canRename = !locked && !row.isSystem && (isTemplate || !isKeyLocked);
-  // Réglages (type/décimales/unité) : propriétés personnalisées non verrouillées.
-  const canConfigure = !locked && !row.isSystem && !isValueLocked;
+  // Réglages (type/décimales/unité/options Bouton) : propriétés personnalisées
+  // non verrouillées. Un héritier contraint par un BUTTON (enumConstraint)
+  // n'a rien à régler ici — choix et couleurs imposés par le template, valeur
+  // choisie directement sur la ligne via EnumValueSelector (jamais ce panneau).
+  const canConfigure =
+    !locked && !row.isSystem && !isValueLocked && !enumConstraint;
 
   const noteResolver = (path: string) => notesById.get(path);
 
@@ -246,19 +254,60 @@ export function FrontmatterRow({
   );
 
   const strValue = typeof row.value === "string" ? row.value : "";
-  const editor = useValueEditor(row.key, strValue, updateText, handleTextBlur);
+  const editor = useValueEditor(
+    row.key,
+    strValue,
+    updateText,
+    handleTextBlur,
+    numberFormatConstraint,
+    enumConstraint
+  );
 
-  // Tab switcher au-dessus / décimales+unité en dessous de la ligne
-  // icônes+champ (jamais dans la même cellule qu'elle) : le champ ne bouge
-  // jamais de place à l'écran, qu'on soit déplié ou non — cf. useValueEditor.
-  const showTypePanel =
-    editor.visible && !isValueLocked && !locked && !editor.isCurrentlyButton;
+  // Texte/Bouton désactivés quand le template impose un format NUMBER, et
+  // Texte/Nombre désactivés quand il impose un BUTTON — cf.
+  // useValueEditor.handleTypeChange. En pratique ce switcher n'est jamais
+  // affiché pour un héritier BUTTON (canConfigure l'exclut, cf. plus bas) ;
+  // gardé par cohérence avec le cas NUMBER si ce panneau devait s'ouvrir.
+  const typeOptions = numberFormatConstraint
+    ? TYPE_OPTIONS.map((o) =>
+        o.value !== "number"
+          ? {
+              ...o,
+              disabled: true,
+              title: "Format imposé par le template : doit rester un nombre",
+            }
+          : o
+      )
+    : enumConstraint
+      ? TYPE_OPTIONS.map((o) =>
+          o.value !== "button"
+            ? {
+                ...o,
+                disabled: true,
+                title:
+                  "Options imposées par le template : doit rester un bouton",
+              }
+            : o
+        )
+      : TYPE_OPTIONS;
+
+  // Tab switcher au-dessus / décimales+unité (ou options Bouton) en dessous
+  // de la ligne icônes+champ (jamais dans la même cellule qu'elle) : le champ
+  // ne bouge jamais de place à l'écran, qu'on soit déplié ou non — cf.
+  // useValueEditor.
+  const showTypePanel = editor.visible && !isValueLocked && !locked;
   const showDecimals = showTypePanel && editor.draft.type === "number";
+  const showButtonOptions = showTypePanel && editor.draft.type === "button";
 
   const { contentRef: switcherContentRef, height: switcherHeight } =
     useAnimatedHeight(showTypePanel);
   const { contentRef: decimalsContentRef, height: decimalsHeight } =
     useAnimatedHeight(showDecimals);
+  const { contentRef: buttonOptionsContentRef, height: buttonOptionsHeight } =
+    useAnimatedHeight(
+      showButtonOptions,
+      editor.draft.type === "button" ? editor.draft.buttonDef.options.length : 0
+    );
 
   // Le switcher grandit au-dessus de la ligne icônes+champ : sans ça le champ
   // (et la suite du frontmatter) est repoussé vers le bas à l'ouverture.
@@ -291,10 +340,8 @@ export function FrontmatterRow({
   const switcherRow = showTypePanel ? rowCursor++ : null;
   const mainRow = rowCursor++;
   const decimalsRow = showDecimals ? rowCursor++ : null;
+  const buttonOptionsRow = showButtonOptions ? rowCursor++ : null;
   const keyMessageRow = keyEditMessage ? rowCursor++ : null;
-  // Vrai aussi pour l'édition brute d'un BUTTON (pas de switcher/décimales,
-  // mais le champ formule a besoin des mêmes handlers blur/Entrée/Échap).
-  const panelActive = editor.visible && !isValueLocked && !locked;
 
   // Transition `height` (0 ↔ hauteur mesurée par useAnimatedHeight) plutôt que
   // grid-template-rows 0fr↔1fr : sous WebKit (webview Tauri), cette dernière
@@ -315,7 +362,7 @@ export function FrontmatterRow({
       }}
       className={`grid gap-x-2 gap-y-1 group transition duration-300 select-none ${isMobile ? "text-sm min-h-10" : "text-xs min-h-5"}`}
       style={{ gridTemplateColumns: "auto 1fr" }}
-      {...(panelActive ? containerHandlers : {})}
+      {...(showTypePanel ? containerHandlers : {})}
     >
       {showTypePanel && (
         <div
@@ -329,7 +376,7 @@ export function FrontmatterRow({
         >
           <div ref={switcherContentRef}>
             <SegmentedControl
-              options={TYPE_OPTIONS}
+              options={typeOptions}
               value={editor.draft.type}
               onChange={editor.handleTypeChange}
               variant="pill"
@@ -489,6 +536,27 @@ export function FrontmatterRow({
               numberDef={editor.draft.numberDef}
               onChange={(next) =>
                 editor.setDraft({ ...editor.draft, numberDef: next })
+              }
+              disabled={editor.numberFormatLocked}
+            />
+          </div>
+        </div>
+      )}
+
+      {showButtonOptions && (
+        <div
+          className={nestedTransitionClass}
+          style={{
+            height: editor.mounted ? buttonOptionsHeight : 0,
+            gridRow: buttonOptionsRow ?? undefined,
+            gridColumn: 2,
+          }}
+        >
+          <div ref={buttonOptionsContentRef}>
+            <ButtonOptionsFields
+              buttonDef={editor.draft.buttonDef}
+              onChange={(next) =>
+                editor.setDraft({ ...editor.draft, buttonDef: next })
               }
             />
           </div>

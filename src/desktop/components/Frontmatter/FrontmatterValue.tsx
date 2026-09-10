@@ -1,14 +1,12 @@
 import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue } from "jotai";
-import { useEffect, useRef, useState } from "react";
-import { FormulaEditField } from "../../../shared/components/FormulaField/FormulaEditField";
-import { ButtonOptionsEditor } from "../../../shared/components/FrontmatterPicker/ButtonOptionsEditor";
+import { useRef, useState } from "react";
 import { EnumValueSelector } from "../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
 import {
   type ButtonDef,
-  isButtonFormula,
   parseButton,
+  serializeButton,
 } from "../../../shared/lib/FrontmatterPicker/buttonProperty";
 import {
   allFoldersAtom,
@@ -24,8 +22,10 @@ import {
 import { type NoteTypeValue, SystemField } from "../../../shared/lib/noteTypes";
 import { NoteChip } from "./NoteChip";
 import { NoteSelector } from "./NoteSelector";
+import { NumberExprField } from "./NumberExprField";
 import { TypeSelector } from "./TypeSelector";
 import { toPropertyOptions } from "./lib/frontmatterUtils";
+import type { useValueEditor } from "./lib/useValueEditor";
 
 interface Props {
   fieldKey: string;
@@ -42,6 +42,8 @@ interface Props {
   onTextBlur: () => void;
   onRemoveNote: (path: string) => void;
   noteName: (path: string) => string;
+  /** État/logique du panneau (type, brouillon, ouverture) — possédé par FrontmatterRow. */
+  editor: ReturnType<typeof useValueEditor>;
 }
 
 export function FrontmatterValue({
@@ -59,35 +61,18 @@ export function FrontmatterValue({
   onTextBlur,
   onRemoveNote,
   noteName,
+  editor,
 }: Props) {
   const isMobile = platform() === "ios";
   const folderPath = useAtomValue(folderPathAtom);
   const allFolders = useAtomValue(allFoldersAtom);
   const vaultConfig = useAtomValue(vaultConfigAtom);
-  const [editingFormula, setEditingFormula] = useState(false);
-  // Brouillon local le temps de l'édition — même modèle que le popup inline.
-  // Sans lui, chaque caractère tapé déclenche commit() : réécriture de toutes
-  // les lignes, re-render de chacune et un computeFormula par formule (avec
-  // agg() sur tous les enfants d'une base). Latence de saisie très visible.
-  const [formulaDraft, setFormulaDraft] = useState<string | null>(null);
   const [refSelectorOpen, setRefSelectorOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectorOpenRef = useRef(false);
   const triggerCursorRef = useRef(0);
 
-  // Filet du brouillon : les sorties d'édition normales (Entrée, Échap, clic
-  // ailleurs) passent par onDone, mais un démontage direct — changement de note
-  // au clavier, rechargement par le watcher — perdrait la saisie en cours.
-  const draftRef = useRef<string | null>(null);
-  draftRef.current = formulaDraft;
-  const onTextChangeRef = useRef(onTextChange);
-  onTextChangeRef.current = onTextChange;
-  useEffect(
-    () => () => {
-      if (draftRef.current !== null) onTextChangeRef.current(draftRef.current);
-    },
-    []
-  );
+  const strValue = typeof value === "string" ? value : "";
 
   function toDisplay(raw: string): string {
     return noteResolver ? humanizeFormula(raw, noteResolver) : raw;
@@ -151,6 +136,40 @@ export function FrontmatterValue({
         />
       </div>
     );
+  }
+
+  // ── Propriété BUTTON non contrainte (template définissant ou note normale) ─
+  // Toujours le même pill + dropdown que pour un héritier contraint : le clic
+  // choisit la valeur "courante" (= default) parmi les options — que le
+  // panneau de réglages soit ouvert (options en cours d'édition, brouillon) ou
+  // fermé (valeur committée). Éditer la LISTE d'options/couleurs passe
+  // exclusivement par les réglages (roue crantée) — jamais par ce dropdown.
+  const isEditingButton = editor.visible && editor.draft.type === "button";
+  const committedButtonDef = isEditingButton ? null : parseButton(strValue);
+  if (isEditingButton || committedButtonDef) {
+    const def = isEditingButton ? editor.draft.buttonDef : committedButtonDef;
+    if (def) {
+      return (
+        <div className="flex-1 mt-0.5">
+          <EnumValueSelector
+            value={def.default}
+            constraint={def}
+            disabled={isValueLocked}
+            onChange={(v) => {
+              if (isEditingButton) {
+                editor.setDraft({
+                  ...editor.draft,
+                  buttonDef: { ...def, default: v },
+                });
+              } else {
+                onTextChange(serializeButton({ ...def, default: v }));
+                onTextBlur();
+              }
+            }}
+          />
+        </div>
+      );
+    }
   }
 
   // ── Dossier par défaut : choix unique via le sélecteur, jamais au clavier ──
@@ -226,37 +245,57 @@ export function FrontmatterValue({
     );
   }
 
-  const strValue = value as string;
+  // ── Champ déroulé (type/formule) ──────────────────────────────────────────
+  // Le tab switcher et décimales/unité sont rendus par FrontmatterRow, au-dessus
+  // et en dessous de la ligne icônes+champ : le champ ne bouge jamais de place
+  // visuellement, qu'on soit déplié ou non (cf. useValueEditor).
+  if (editor.visible && !isValueLocked) {
+    const inputClassName =
+      "w-full mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-400 transition-colors";
 
-  // ── Propriété calculée ────────────────────────────────────────────────────
-  // `editingFormula` est inclus dans la condition (pas seulement isFormula) :
-  // pendant la frappe juste après l'auto-pair "$$", la valeur committée peut
-  // transitoirement ne pas matcher isFormula (ex. "$$$$" vide) ; sans ce OR,
-  // le composant retomberait sur l'input texte standard le temps d'un render.
-  if (isFormula(strValue) || editingFormula) {
-    if (editingFormula && !isValueLocked) {
+    const { draft } = editor;
+    if (draft.type === "text") {
       return (
-        <FormulaEditField
-          rawValue={formulaDraft ?? strValue}
-          onChange={setFormulaDraft}
-          onDone={() => {
-            if (formulaDraft !== null && formulaDraft !== strValue) {
-              onTextChange(formulaDraft);
-            }
-            setFormulaDraft(null);
-            setEditingFormula(false);
-          }}
-          allNotes={allNotes ?? []}
-          noteResolver={noteResolver ?? (() => undefined)}
-          selfProperties={toPropertyOptions(
-            Object.keys(formulaVars ?? {}),
-            fieldKey
-          )}
+        <input
+          type="text"
+          value={draft.text}
+          // biome-ignore lint/a11y/noAutofocus: ouverture intentionnelle du champ en édition
+          autoFocus
+          onChange={(e) => editor.setDraft({ ...draft, text: e.target.value })}
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="valeur"
+          style={isMobile ? { fontSize: 14 } : undefined}
+          className={`flex-1 ${inputClassName}`}
         />
       );
     }
 
-    // Après la branche d'édition : inutile d'évaluer la formule à chaque frappe.
+    return (
+      <NumberExprField
+        expr={draft.numberDef.expr}
+        onChange={(expr) =>
+          editor.setDraft({
+            ...draft,
+            numberDef: { ...draft.numberDef, expr },
+          })
+        }
+        allNotes={allNotes ?? []}
+        noteResolver={noteResolver ?? (() => undefined)}
+        selfProperties={toPropertyOptions(
+          Object.keys(formulaVars ?? {}),
+          fieldKey
+        )}
+        inputClassName={`flex-1 ${inputClassName}`}
+        autoFocus
+        onFieldDone={editor.handleFieldDone}
+      />
+    );
+  }
+
+  // ── Propriété calculée (affichage compact) ────────────────────────────────
+  if (isFormula(strValue)) {
     const computed = computeFormula(
       strValue,
       formulaVars ?? {},
@@ -265,21 +304,8 @@ export function FrontmatterValue({
     );
     const isError = isFormulaError(computed);
 
-    // Vue compactée d'un BUTTON : valeurs surlignées + dot pour rechoisir la couleur
-    const buttonDef = isButtonFormula(strValue) ? parseButton(strValue) : null;
-    if (buttonDef && !isValueLocked) {
-      return (
-        <ButtonOptionsEditor
-          def={buttonDef}
-          onChange={(formula) => {
-            onTextChange(formula);
-            onTextBlur();
-          }}
-          onEditRaw={() => setEditingFormula(true)}
-        />
-      );
-    }
-
+    // BUTTON n'arrive jamais ici : intercepté plus haut (pill + dropdown),
+    // qu'il soit committé ou en cours d'édition — cf. bloc ci-dessus.
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
       <span
@@ -291,7 +317,7 @@ export function FrontmatterValue({
             ? toDisplay(strValue)
             : `${toDisplay(strValue)} — Cliquer pour éditer`
         }
-        onClick={() => !isValueLocked && setEditingFormula(true)}
+        onClick={() => !isValueLocked && editor.open()}
       >
         <span className="text-gray-300 font-mono text-[10px] leading-none">
           ƒ
@@ -316,13 +342,11 @@ export function FrontmatterValue({
           const toCursor = newVal.slice(0, cursorPos);
           const afterCursor = newVal.slice(cursorPos);
 
-          // Auto-pair : $$ → $$|$$, bascule immédiate en édition de formule
-          // (synchrone, pas via un effect) pour éviter tout render intermédiaire
-          // où la valeur committée serait évaluée comme formule invalide.
+          // Auto-pair : $$ → déroule le champ en place, préréglé sur Nombre
+          // + formule vierge (au lieu de committer un "$$$$" transitoire dans
+          // la valeur, ou d'entourer de $$ le texte déjà tapé).
           if (toCursor.endsWith("$$") && !afterCursor.startsWith("$$")) {
-            const paired = `${toCursor}$$${afterCursor}`;
-            onTextChange(paired);
-            setEditingFormula(true);
+            editor.openFormulaEditor();
             return;
           }
 

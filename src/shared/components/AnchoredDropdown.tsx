@@ -3,6 +3,7 @@
  * ou BottomSheet clavier-aware (mobile).
  */
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BottomSheet } from "../../mobile/components/BottomSheet/BottomSheet";
 import { isMobile } from "../lib/platform";
 
@@ -50,17 +51,29 @@ function DesktopDropdown({
   const containerRef = useRef<HTMLDivElement>(null);
   const DROPDOWN_HEIGHT = 240;
 
+  // Recalculée au scroll (capture : un ancêtre scrollable ne bubble pas son
+  // scroll) et au resize — sinon la popover, en position fixed, reste figée
+  // à l'écran pendant que son ancre défile sous elle.
   useEffect(() => {
-    if (!anchorRef.current) return;
-    const rect = anchorRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const up = spaceBelow < DROPDOWN_HEIGHT && rect.top > DROPDOWN_HEIGHT;
-    setOpenUpward(up);
-    setPos({
-      top: up ? rect.top : rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
-    });
+    function updatePos() {
+      if (!anchorRef.current) return;
+      const rect = anchorRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const up = spaceBelow < DROPDOWN_HEIGHT && rect.top > DROPDOWN_HEIGHT;
+      setOpenUpward(up);
+      setPos({
+        top: up ? rect.top : rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
   }, [anchorRef]);
 
   useEffect(() => {
@@ -78,7 +91,13 @@ function DesktopDropdown({
 
   if (!pos) return null;
 
-  return (
+  // Portail vers document.body : sous WebKit (webview Tauri), un ancêtre
+  // `overflow: hidden` (ex: le panneau de réglages animé en hauteur du
+  // frontmatter) peut rogner un descendant `position: fixed` alors que ça ne
+  // devrait pas arriver sans containing block (transform/filter) — bug connu
+  // de ce moteur. Rendre la popover directement sous <body> lui évite tout
+  // ancêtre qui pourrait la clipper ou désynchroniser sa zone cliquable.
+  return createPortal(
     <div
       ref={containerRef}
       style={{
@@ -87,11 +106,15 @@ function DesktopDropdown({
         bottom: openUpward ? window.innerHeight - pos.top : undefined,
         left: pos.left,
         minWidth: Math.max(pos.width, 220),
-        zIndex: 9999,
+        // Sous le NoteHeader sticky (z-20) : quand l'ancre défile sous le
+        // header, la popover doit disparaître avec elle, pas rester flottante
+        // par-dessus (comme le reste du contenu scrollé).
+        zIndex: 15,
       }}
       className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden whitespace-normal ${className}`}
     >
       {children}
-    </div>
+    </div>,
+    document.body
   );
 }
