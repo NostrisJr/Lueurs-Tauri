@@ -46,7 +46,7 @@ Lueurs distingue trois types de propriétés dans le frontmatter d'une note :
 - **Propriété libre** — définie directement sur la note, sans lien avec un template. Elle peut être renommée et supprimée librement.
 - **Propriété contraignante** — issue d'un template, mais dont la valeur est laissée libre : la note peut renseigner sa propre valeur. La clé est non renommable et non supprimable depuis la note.
 - **Propriété imposée** — issue d'un template avec une valeur fixée : cette valeur est automatiquement copiée sur toutes les notes héritières et ne peut pas être modifiée depuis la note. La clé et la valeur sont toutes deux verrouillées.
-- **Propriété à valeurs contraintes (bouton)** — issue d'un template qui définit une liste de valeurs autorisées. La clé est verrouillée mais la note héritière choisit librement sa valeur dans la liste, via un menu déroulant. Voir [Propriétés à valeurs contraintes (boutons)](#propriétés-à-valeurs-contraintes-boutons).
+- **Propriété à valeurs contraintes (bouton)** — définit une liste de valeurs autorisées, choisies via un menu déroulant plutôt que tapées au clavier. Un bouton peut venir d'un template (la clé est alors verrouillée, mais la note héritière reste libre de choisir sa valeur dans la liste), ou être défini directement sur une note libre, sans aucun template. Voir [Propriétés à valeurs contraintes (boutons)](#propriétés-à-valeurs-contraintes-boutons).
 
 Dans l'interface, les propriétés contraignantes et imposées sont affichées avec leur clé en ambre. Les valeurs imposées sont grisées.
 
@@ -60,7 +60,7 @@ Array de chemins vers des notes de type `__template__`. Les propriétés défini
 
 - Si une propriété du template a une valeur vide, elle est ajoutée à la note comme propriété contraignante — la note peut renseigner sa propre valeur.
 - Si une propriété du template a une valeur non vide, elle est ajoutée comme propriété imposée — la valeur est forcée et ne peut pas être modifiée depuis la note.
-- Si une propriété du template a pour valeur un bouton `$$BUTTON([...],défaut)$$`, elle devient une propriété à valeurs contraintes — la note héritière choisit une valeur dans la liste via un menu déroulant. Voir [Propriétés à valeurs contraintes (boutons)](#propriétés-à-valeurs-contraintes-boutons).
+- Si une propriété du template a pour valeur un bouton `$$ENUM([...],défaut)$$`, elle devient une propriété à valeurs contraintes — la note héritière choisit une valeur dans la liste via un menu déroulant. Voir [Propriétés à valeurs contraintes (boutons)](#propriétés-à-valeurs-contraintes-boutons).
 
 Dans l'interface, les clés issues d'un template sont non renommables et non supprimables depuis la note. Les valeurs imposées sont grisées.
 
@@ -112,18 +112,22 @@ __TableColumns__: '{"Status":180,"Date de fin":220}'
 
 ## Propriétés à valeurs contraintes (boutons)
 
-Un template peut restreindre une propriété à une liste de valeurs autorisées, parmi lesquelles chaque note héritière choisit via un menu déroulant.
+Une propriété peut être restreinte à une liste de valeurs autorisées, parmi lesquelles on choisit via un menu déroulant plutôt qu'en tapant du texte. Cette contrainte peut venir d'un template (chaque note héritière choisit sa valeur dans la liste imposée), ou être définie directement sur une note libre, sans aucun template.
 
-**Déclaration (dans le template).** La valeur de la propriété prend la forme d'un bouton, en réutilisant la syntaxe des formules :
+**Déclaration.** La valeur de la propriété prend la forme d'un bouton, en réutilisant la syntaxe des formules :
 
 ```yaml
-Statut: $$BUTTON([À faire;En cours;Fait],À faire)$$
+Statut: $$ENUM([À faire;En cours;Fait],À faire)$$
 ```
 
 - Les valeurs possibles sont listées entre crochets, séparées par des points-virgules `;`.
-- Le second paramètre (après la virgule) est la **valeur par défaut** attribuée aux héritiers tant qu'aucun choix n'est fait. Elle peut être l'une des valeurs de la liste, ou une valeur hors-liste servant de placeholder « non choisi ». Si elle est omise (`$$BUTTON([À faire;En cours;Fait])$$`), la première valeur de la liste est utilisée.
+- Le second paramètre (après la virgule) est la **valeur par défaut** attribuée tant qu'aucun choix n'est fait (ou aux héritiers, si la propriété vient d'un template). Elle peut être l'une des valeurs de la liste, ou une valeur hors-liste servant de placeholder « non choisi ». Si elle est omise (`$$ENUM([À faire;En cours;Fait])$$`), la première valeur de la liste est utilisée.
 
-**Comportement sur les héritiers.** La propriété est contraignante (clé verrouillée, non renommable ni supprimable) mais sa valeur reste éditable : elle s'affiche comme une pill avec un menu déroulant listant les valeurs autorisées. La valeur choisie est stockée littéralement dans le frontmatter de la note. La pill et son menu apparaissent aussi bien dans le frontmatter de la note que dans les vues de base (tableau).
+**Créer un bouton sans écrire la formule à la main.** Sur une propriété libre (frontmatter d'une note, ou cellule d'un tableau de base), taper `$$` ouvre un panneau de réglages **Texte / Nombre / Bouton** plutôt que de basculer directement en édition de formule brute. Choisir **Bouton** donne accès à une liste d'options éditable (ajout, suppression, libellé, couleur, valeur par défaut) sans jamais taper `$$ENUM(...)$$` soi-même. Ce même panneau est accessible à tout moment via l'icône de réglages (roue crantée) qui apparaît au survol d'une propriété libre — dans le frontmatter comme dans une cellule de tableau — pour rebasculer entre Texte, Nombre et Bouton, ou éditer les options d'un bouton existant.
+
+**Comportement sur les héritiers d'un template.** La propriété est contraignante (clé verrouillée, non renommable ni supprimable) mais sa valeur reste éditable : elle s'affiche comme une pill avec un menu déroulant listant les valeurs autorisées. La valeur choisie est stockée littéralement dans le frontmatter de la note.
+
+**Affichage uniforme.** Qu'il vienne d'un template ou soit défini directement sur la note, un bouton s'affiche toujours comme une pill colorée avec menu déroulant — jamais comme du texte de formule brut — aussi bien dans le frontmatter de la note que dans les vues de base (tableau).
 
 **Valeur non permise.** Si une note détient une valeur qui n'est plus autorisée (option retirée du template, ou valeur saisie manuellement hors-liste), elle est automatiquement réécrite avec la valeur par défaut.
 
@@ -132,7 +136,7 @@ Statut: $$BUTTON([À faire;En cours;Fait],À faire)$$
 **Couleurs.** Chaque valeur peut être colorée en réutilisant la syntaxe du surlignage :
 
 ```yaml
-Statut: $$BUTTON([=={red}Bloqué==;=={orange}En cours==;=={green}Fait==],En cours)$$
+Statut: $$ENUM([=={red}Bloqué==;=={orange}En cours==;=={green}Fait==],En cours)$$
 ```
 
 - `=={color}valeur==` applique la couleur indiquée — mêmes identifiants que le surlignage (`yellow`, `green`, `blue`, `red`, `orange`, `purple`, `gray`).
@@ -155,6 +159,8 @@ Les colonnes affichées sont l'union dédupliquée de toutes les propriétés no
 
 **Colonnes.** Chaque colonne correspond à une propriété contraignante ou imposée. Les valeurs contraignantes sont éditables directement dans la cellule (double-clic). Les valeurs imposées sont affichées en grisé et ne peuvent pas être modifiées. Un ring apparaît au focus pour indiquer l'état d'édition. Les colonnes sont redimensionnables par glisser-déposer sur leur bord droit ; les largeurs sont persistées dans `__TableColumns__`. Le renommage d'une colonne (double-clic sur le header) renomme la propriété dans tous les templates qui la définissent, et propage le changement à toutes les notes héritières.
 
+Sur une cellule contraignante (non imposée), une icône de réglages (roue crantée) apparaît au survol, en haut à droite : elle ouvre le même panneau Texte/Nombre/Bouton que dans le frontmatter, pour changer le type de la propriété ou éditer les options d'un bouton. Voir [Propriétés à valeurs contraintes (boutons)](#propriétés-à-valeurs-contraintes-boutons).
+
 **Titre.** La première colonne affiche le titre de chaque note enfant, éditable par double-clic. Le renommage met à jour le fichier et le chemin dans `__Children__` de la base.
 
 **Agrégations.** Une ligne de pied de tableau permet de calculer une agrégation par colonne. Cliquer sur une cellule du pied ouvre un sélecteur avec les opérations disponibles : Comptage, Somme, Moyenne, Min, Max. Le résultat est recalculé en temps réel à partir des valeurs des notes enfant. L'agrégation active est persistée dans `__TableAggregations__` et expose son résultat comme propriété de la base via une formule automatique (`__Agg_<col>_<op>__`). Le renommage d'une colonne met à jour les agrégations associées.
@@ -169,7 +175,7 @@ Les colonnes affichées sont l'union dédupliquée de toutes les propriétés no
 
 Exemples : `$$round(self.recettes - self.charges, 2)$$`, `$$agg(montant, sum)$$`, `$$ref("Budget").revenu * 0.2$$`.
 
-**Saisie des formules.** Taper `$$` dans un champ texte insère automatiquement la paire fermante (`$$`) et bascule en mode édition de formule, curseur à l'intérieur. En mode édition :
+**Saisie des formules.** Taper `$$` dans une cellule texte libre ouvre le panneau de réglages Texte/Nombre/Bouton (préréglé sur Nombre, expression vide) plutôt que de basculer directement en édition de formule brute — voir [Propriétés à valeurs contraintes (boutons)](#propriétés-à-valeurs-contraintes-boutons). Depuis l'onglet Nombre de ce panneau, taper à nouveau `$$` dans le champ d'expression bascule celui-ci en édition de formule complète, curseur à l'intérieur. En mode édition :
 
 - `ref(` ouvre un sélecteur de notes — sélectionner une note insère `ref("NomNote")` et positionne le curseur après. Taper ensuite `.` ouvre un sélecteur de propriétés pour compléter la référence.
 - `self.` ouvre un sélecteur listant les propriétés de la note courante (la propriété en cours d'édition est exclue : une propriété ne se référence pas elle-même).
