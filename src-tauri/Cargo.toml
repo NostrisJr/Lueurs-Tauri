@@ -1,6 +1,6 @@
 [package]
 name = "lueurs-tauri"
-version = "1.0.1"
+version = "1.0.3"
 description = "Note taking app with local storage and advanced functionnalities"
 authors = ["Theophile Donato"]
 edition = "2021"
@@ -35,7 +35,7 @@ tauri-plugin-audio-recorder = { git = "https://github.com/NostrisJr/tauri-plugin
 tauri-plugin-native-audio = "1"
 tauri-plugin-haptics = "2"
 # Feuille de partage native (UIActivityViewController / Intent.ACTION_SEND) — pour
-# le bouton "Partager" (bundle .lueurs-note). navigator.share() de la WKWebView ne
+# le bouton "Partager" (bundle .lueurs). navigator.share() de la WKWebView ne
 # partage pas de vrai fichier joint. Enregistré partout comme haptics/native-audio
 # (mobile-only à l'usage, mais compile cross-plateforme).
 tauri-plugin-share = "2"

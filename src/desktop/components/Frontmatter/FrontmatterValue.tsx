@@ -217,7 +217,7 @@ export function FrontmatterValue({
     const spaceNames = new Set((vaultConfig?.spaces ?? []).map((s) => s.name));
     return (
       <div
-        className={`flex flex-wrap gap-1 flex-1 ${scrollable ? "max-h-18 overflow-y-auto" : ""}`}
+        className={`flex flex-wrap gap-1 flex-1 mt-0.5 ${scrollable ? "max-h-18 overflow-y-auto" : ""}`}
       >
         {paths.map((path) =>
           isSpaceField ? (
@@ -311,7 +311,7 @@ export function FrontmatterValue({
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
       <span
-        className={`flex items-center gap-1 flex-1 mt-0.5 text-xs select-none ${
+        className={`flex items-baseline gap-1 flex-1 mt-0.5 text-xs select-none ${
           isValueLocked ? "cursor-default" : "cursor-pointer"
         }`}
         title={

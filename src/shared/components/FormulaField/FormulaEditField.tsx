@@ -29,6 +29,13 @@ interface Props {
    * relatif au vault dans le corps de note (cf. plugins/inline-formula/refPaths.ts).
    */
   refPathOf?: (note: NoteFile) => string;
+  /**
+   * Z-index des sélecteurs ref()/self[] — cf. AnchoredDropdownProps.zIndex.
+   * Nécessaire quand ce champ est rendu à l'intérieur d'un popup déjà empilé
+   * (ex: InlineFormulaPopup, z-50) : sans ça, les sélecteurs s'affichent (et
+   * surtout reçoivent les clics) DERRIÈRE ce popup.
+   */
+  dropdownZIndex?: number;
 }
 
 // Identité stable : en défaut de paramètre, la fonction serait recréée à chaque
@@ -55,6 +62,7 @@ export function FormulaEditField({
   inputClassName,
   selfProperties,
   refPathOf = noteIdPath,
+  dropdownZIndex,
 }: Props) {
   const isMobile = platform() === "ios";
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -115,7 +123,16 @@ export function FormulaEditField({
     selectorOpenRef.current = false;
     setRefSelectorOpen(false);
     setPropOptions(null);
-    setTimeout(() => inputRef.current?.focus(), 0);
+    // rAF (pas setTimeout) : le blur généré par le démontage du sélecteur
+    // (portalé hors de ce sous-arbre, cf. AnchoredDropdown) programme lui aussi
+    // une vérification via requestAnimationFrame (cf. useExpandPanel). Les deux
+    // callbacks s'exécutent alors dans la même frame, DANS L'ORDRE de
+    // programmation — celui-ci (programmé ici, avant le démontage) passe donc
+    // toujours avant la vérification, qui retrouve le focus déjà revenu sur ce
+    // champ. Avec setTimeout(0), la vérification pouvait s'exécuter en premier
+    // (file macrottask distincte, non garantie après une rAF déjà en attente)
+    // et refermait le panneau juste après la sélection.
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   function resetSelectors() {
@@ -183,9 +200,14 @@ export function FormulaEditField({
           checkTriggers(displayed, cursorPos);
           onChange(toRaw(displayed));
         }}
-        onBlur={() => {
-          if (!selectorOpenRef.current) onDone();
-        }}
+        // Pas de onDone au blur : un blur peut venir d'ailleurs que d'une vraie
+        // fin d'édition (ex: le sélecteur ref()/self[ qui s'ouvre ou se ferme,
+        // porté par un portail hors de ce sous-arbre — cf. AnchoredDropdown),
+        // et la fenêtre entre "le focus part" et "il revient" est trop
+        // instable pour distinguer fiablement les deux. Seuls Entrée/Échap
+        // (ci-dessous) ou le bouton réglages du panneau englobant terminent
+        // l'édition — cf. mémoire project-contextmenu-selection pour un piège
+        // apparenté (perte de focus par un élément hors du sous-arbre React).
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             // Échap ferme le sélecteur s'il est ouvert, sinon VALIDE la formule
@@ -235,6 +257,7 @@ export function FormulaEditField({
           onClose={closeSelectors}
           anchorRef={inputRef}
           placeholder="Référencer une note..."
+          zIndex={dropdownZIndex}
         />
       )}
 
@@ -261,6 +284,7 @@ export function FormulaEditField({
           }}
           onClose={closeSelectors}
           anchorRef={inputRef}
+          zIndex={dropdownZIndex}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-// Écoute l'ouverture de fichiers .lueurs-note via association native (double-clic
+// Écoute l'ouverture de fichiers .lueurs via association native (double-clic
 // Finder, "Ouvrir avec" iOS…) — cold start (commande `opened_files`, buffer côté
 // Rust) et app déjà lancée (event "opened-files"). Importe dans la boîte aux
 // lettres configurée (Réglages > Vault) puis recharge l'arbre.

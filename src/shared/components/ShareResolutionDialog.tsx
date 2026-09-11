@@ -1,4 +1,4 @@
-// Dialogue affiché avant un partage (.lueurs-note) quand le bundle référence
+// Dialogue affiché avant un partage (.lueurs) quand le bundle référence
 // des notes hors de sa sélection (wikilinks, ref() de formules) — voir
 // shareResolutionAtom / bundleShare.ts. Partagé desktop + mobile (overlay
 // centré, sans dépendance de plateforme).

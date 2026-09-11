@@ -1,4 +1,4 @@
-// Construction d'un bundle .lueurs-note (zip) à partir d'un nœud de l'arbre
+// Construction d'un bundle .lueurs (zip) à partir d'un nœud de l'arbre
 // (note, dossier ou média) — partage simple avec ressources embarquées.
 // Cf. Documentation-technique.md pour le format, et pour le traitement des
 // références inter-notes (wikilinks, ref() de formules) hors du bundle.

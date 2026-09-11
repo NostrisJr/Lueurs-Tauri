@@ -15,10 +15,12 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.1</string>
+	<string>1.0.3</string>
 	<key>CFBundleVersion</key>
-	<string>1.0.2</string>
+	<string>1.0.3</string>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSBonjourServices</key>
 	<array>
@@ -61,6 +63,45 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.theophiledonato.lueurs.note</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>lueurs</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/x-lueurs</string>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>lueurs</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.theophiledonato.lueurs.note</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>Note Lueurs</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+		</dict>
 	</array>
 </dict>
 </plist>

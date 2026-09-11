@@ -102,7 +102,7 @@ export function EspacesTab() {
       </label>
       <p className="text-xs text-gray-400">
         Taguez vos notes avec{" "}
-        <code className="font-mono bg-gray-100 px-1 rounded">__space__</code>{" "}
+        <code className="font-mono bg-gray-100 px-1 rounded">__Space__</code>{" "}
         pour les associer à un espace.
       </p>
     </div>

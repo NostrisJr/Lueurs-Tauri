@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
+import { SegmentedControl } from "../../../../shared/components/SegmentedControl";
 import {
   SPELLCHECK_ENGINES,
   defaultDisplayModeAtom,
@@ -16,43 +17,6 @@ import {
 } from "../../../../shared/lib/pageMetrics";
 import { HIGHLIGHT_COLORS } from "../../../../shared/plugins/highlight/colors";
 import { IgnoredWordsView } from "./IgnoredWordsView";
-
-interface SegmentedOption<T extends string> {
-  value: T;
-  label: string;
-  Icon?: React.FC<{ className?: string }>;
-}
-
-// Sélecteur à choix exclusif (pills), réutilisé pour mode de lecture / correcteur / format de page.
-function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: SegmentedOption<T>[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-      {options.map(({ value: v, label, Icon }) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChange(v)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-all cursor-default ${
-            value === v
-              ? "bg-white shadow-sm text-gray-800 font-medium"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          {Icon && <Icon className="size-3.5" aria-hidden="true" />}
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export function EditeurTab() {
   const [defaultDisplayMode, setDefaultDisplayMode] = useAtom(

@@ -14,6 +14,7 @@ import {
   activeNoteAtom,
   dictaphoneOpenAtom,
   folderPathAtom,
+  noteContentRootAtom,
   notesByIdAtom,
   pendingAudioInsertAtom,
   pendingDisplayModeAtom,
@@ -65,6 +66,11 @@ export function NoteEditor({
   const [pendingAudioInsert, setPendingAudioInsert] = useAtom(
     pendingAudioInsertAtom
   );
+  // Racine translatée par useScrollCompensation (cf. noteContentRootAtom) —
+  // callback ref (pas useRef+useEffect) : le montage peut survenir après le
+  // premier rendu (activeNote passe de null à défini), même raison que
+  // setScrollContainer dans DesktopApp/MobileEditor.
+  const setNoteContentRoot = useSetAtom(noteContentRootAtom);
 
   // Ref interne pour la toolbar desktop
   const internalEditorRef = useRef<Editor | null>(null);
@@ -134,7 +140,7 @@ export function NoteEditor({
   }
 
   return (
-    <div className="min-h-full w-full">
+    <div ref={setNoteContentRoot} className="min-h-full w-full">
       {activeNote && folderPath && (
         <div className="flex flex-col h-full justify-center">
           <NoteHeader

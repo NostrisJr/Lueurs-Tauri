@@ -22,6 +22,8 @@ import {
   extractTags,
   extractTitle,
   flattenTree,
+  hasLegacySpaceKey,
+  migrateLegacySpaceKey,
   parseFrontmatter,
   serializeFrontmatter,
   sortNodes,
@@ -325,7 +327,7 @@ export function noteFromRaw(
 
   const { frontmatter: rawFrontmatter, body } = parseFrontmatter(rawContent);
   const baseFrontmatter = ensureType(
-    rawFrontmatter,
+    migrateLegacySpaceKey(rawFrontmatter),
     noteName,
     parentFolderName
   );
@@ -408,8 +410,9 @@ export async function loadTree(
         const rawContent = await vaultIO.readFile(fullPath);
         const note = noteFromRaw(fullPath, entry.name, rawContent, vaultPath);
 
-        // Persister __Type__ si absent
-        if (!parseFrontmatter(rawContent).frontmatter.__Type__) {
+        // Persister __Type__ si absent, ou la migration __space__ → __Space__
+        const rawFrontmatter = parseFrontmatter(rawContent).frontmatter;
+        if (!rawFrontmatter.__Type__ || hasLegacySpaceKey(rawFrontmatter)) {
           const diskFrontmatter = vaultPath
             ? relativizePathFields(note.frontmatter, vaultPath)
             : note.frontmatter;
@@ -417,7 +420,10 @@ export async function loadTree(
           vaultIO
             .writeFile(fullPath, raw)
             .catch((err) =>
-              log.error("échec persistance __Type__", { path: fullPath, err })
+              log.error("échec persistance __Type__/__Space__", {
+                path: fullPath,
+                err,
+              })
             );
         }
 

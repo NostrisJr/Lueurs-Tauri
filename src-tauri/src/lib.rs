@@ -45,6 +45,15 @@ enum TemplateChange {
         key: String,
         value: String,
     },
+    // NUMBER format seul (expr vide dans le template) : ne patche que
+    // decimals/unit chez les héritiers, préserve leur propre expr — reflet
+    // Rust de forceNumberFormat (useTemplateSync.ts), jamais une valeur
+    // imposée en bloc comme ForceValue.
+    ForceNumberFormat {
+        key: String,
+        decimals: Option<i64>,
+        unit: Option<String>,
+    },
     // Renommage d'une valeur permise dans un BUTTON : met à jour les héritiers
     // dont la propriété vaut exactement old_value.
     RenameEnumValue {
@@ -72,7 +81,7 @@ struct NotePatch {
     raw_content: String,
 }
 
-// ── Association de fichier (.lueurs-note) ───────────────────────────────────
+// ── Association de fichier (.lueurs) ───────────────────────────────────
 //
 // RunEvent::Opened peut se déclencher avant que le frontend soit prêt à écouter
 // (cold start) : on bufferise les chemins ici, `opened_files` les vide au premier
@@ -149,7 +158,7 @@ async fn open_import_picker() -> Result<Vec<String>, String> {
     Ok(vec![])
 }
 
-/// Vide et retourne les chemins de fichiers ouverts via association (.lueurs-note)
+/// Vide et retourne les chemins de fichiers ouverts via association (.lueurs)
 /// reçus avant que le frontend soit prêt à écouter (cold start). Le frontend
 /// appelle cette commande une fois monté ; les ouvertures suivantes (app déjà
 /// lancée) arrivent via l'event "opened-files".
@@ -555,6 +564,15 @@ fn clone_change(change: &TemplateChange) -> TemplateChange {
             key: key.clone(),
             value: value.clone(),
         },
+        TemplateChange::ForceNumberFormat {
+            key,
+            decimals,
+            unit,
+        } => TemplateChange::ForceNumberFormat {
+            key: key.clone(),
+            decimals: *decimals,
+            unit: unit.clone(),
+        },
         TemplateChange::RenameEnumValue {
             key,
             old_value,
@@ -682,6 +700,24 @@ fn apply_change(
                     fm.insert(key.clone(), new_val);
                     true
                 }
+            }
+        }
+        TemplateChange::ForceNumberFormat {
+            key,
+            decimals,
+            unit,
+        } => {
+            let current = match fm.get(key.as_str()) {
+                Some(serde_yaml::Value::String(s)) => s.as_str(),
+                _ => "",
+            };
+            let reconciled =
+                reconcile_number_format(current, *decimals, unit.as_deref());
+            if reconciled != current {
+                fm.insert(key.clone(), serde_yaml::Value::String(reconciled));
+                true
+            } else {
+                false
             }
         }
         TemplateChange::RenameEnumValue {
@@ -819,6 +855,179 @@ fn update_formula_refs(formula: &str, old_key: &str, new_key: &str) -> String {
     let s = replace_with_boundary(formula, &self_old, &self_new);
     // agg(old_key, : la virgule est déjà un délimiteur, pas de faux positif possible
     s.replace(&agg_old, &agg_new)
+}
+
+// ── Propriété NUMBER ─────────────────────────────────────────────────────
+//
+// Reflet minimal, côté Rust, de numberProperty.ts (parseNumber/serializeNumber/
+// isPlainNumberExpr) — utilisé uniquement par ForceNumberFormat pour préserver
+// l'expr de l'héritier lors d'une réconciliation de format (jamais pour
+// évaluer une formule : ça reste le rôle exclusif du frontend). Pas de crate
+// regex dans ce projet (cf. update_formula_refs ci-dessus) : parsing manuel,
+// ancré depuis la fin de la chaîne comme les regex `$` de la version TS.
+
+/// Extrait `expr` d'une valeur `$$NUMBER(<expr>, decimals=N, unit="U")$$` —
+/// None si la chaîne n'est pas une formule NUMBER reconnaissable (l'appelant
+/// retombe alors sur un littéral simple ou "0", jamais une erreur bloquante).
+fn extract_number_expr(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    let inner = trimmed.strip_prefix("$$")?.strip_suffix("$$")?.trim();
+    let inner = inner.strip_prefix("NUMBER")?.trim_start();
+    let inner = inner.strip_prefix('(')?.strip_suffix(')')?;
+
+    let mut rest = inner;
+    // Retire la queue `, unit="..."` si présente (ancrée en fin de chaîne).
+    if let Some(idx) = rest.rfind(", unit=\"") {
+        if rest.ends_with('"') {
+            rest = &rest[..idx];
+        }
+    }
+    // Retire la queue `, decimals=N` si présente.
+    if let Some(idx) = rest.rfind(", decimals=") {
+        let tail = &rest[idx + ", decimals=".len()..];
+        if !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()) {
+            rest = &rest[..idx];
+        }
+    }
+
+    let expr = rest.trim();
+    if expr.is_empty() {
+        // "$$NUMBER()$$" ou équivalent totalement vide : rien à préserver
+        // (reflet du null de parseNumber quand expr/decimals/unit sont tous absents).
+        None
+    } else {
+        Some(expr.to_string())
+    }
+}
+
+/// Reconstruit `$$NUMBER(<expr>, decimals=N, unit="U")$$` (reflet de serializeNumber).
+fn serialize_number_value(expr: &str, decimals: Option<i64>, unit: Option<&str>) -> String {
+    let mut inner = expr.to_string();
+    if let Some(d) = decimals {
+        inner.push_str(&format!(", decimals={}", d));
+    }
+    if let Some(u) = unit {
+        if !u.is_empty() {
+            inner.push_str(&format!(", unit=\"{}\"", u));
+        }
+    }
+    format!("$$NUMBER({})$$", inner)
+}
+
+/// Littéral numérique simple (reflet de isPlainNumberExpr).
+fn is_plain_number_expr(expr: &str) -> bool {
+    let t = expr.trim();
+    let t = t.strip_prefix('-').unwrap_or(t);
+    if t.is_empty() {
+        return false;
+    }
+    let mut parts = t.splitn(2, '.');
+    let int_part = parts.next().unwrap_or("");
+    if int_part.is_empty() || !int_part.chars().all(|c| c.is_ascii_digit()) {
+        return false;
+    }
+    match parts.next() {
+        Some(frac) => !frac.is_empty() && frac.chars().all(|c| c.is_ascii_digit()),
+        None => true,
+    }
+}
+
+/// Réconcilie le format (decimals/unit) d'une valeur NUMBER existante avec une
+/// contrainte de format imposée par un template, en préservant l'expr actuel
+/// — reflet de reconcileNumberFormat (numberProperty.ts).
+fn reconcile_number_format(current: &str, decimals: Option<i64>, unit: Option<&str>) -> String {
+    let expr = match extract_number_expr(current) {
+        Some(e) => e,
+        None if is_plain_number_expr(current) => current.trim().to_string(),
+        None => "0".to_string(),
+    };
+    serialize_number_value(&expr, decimals, unit)
+}
+
+#[cfg(test)]
+mod number_property_tests {
+    use super::*;
+
+    #[test]
+    fn reconcile_preserves_expr_replaces_format() {
+        assert_eq!(
+            reconcile_number_format(
+                "$$NUMBER(42, decimals=2, unit=\"g\")$$",
+                Some(1),
+                Some("kg")
+            ),
+            "$$NUMBER(42, decimals=1, unit=\"kg\")$$"
+        );
+    }
+
+    #[test]
+    fn reconcile_adopts_plain_literal_as_expr() {
+        assert_eq!(
+            reconcile_number_format("17", Some(0), Some("kg")),
+            "$$NUMBER(17, decimals=0, unit=\"kg\")$$"
+        );
+    }
+
+    #[test]
+    fn reconcile_seeds_zero_when_unparseable() {
+        assert_eq!(
+            reconcile_number_format("", None, Some("km")),
+            "$$NUMBER(0, unit=\"km\")$$"
+        );
+        assert_eq!(
+            reconcile_number_format("texte libre", Some(2), None),
+            "$$NUMBER(0, decimals=2)$$"
+        );
+    }
+
+    #[test]
+    fn reconcile_preserves_formula_expr_with_internal_commas() {
+        assert_eq!(
+            reconcile_number_format(
+                "$$NUMBER(round(self[\"a\"], 2), unit=\"g\")$$",
+                None,
+                Some("kg")
+            ),
+            "$$NUMBER(round(self[\"a\"], 2), unit=\"kg\")$$"
+        );
+    }
+
+    #[test]
+    fn apply_change_force_number_format_updates_only_format() {
+        let mut fm: indexmap::IndexMap<String, serde_yaml::Value> = indexmap::IndexMap::new();
+        fm.insert(
+            "poids".to_string(),
+            serde_yaml::Value::String("$$NUMBER(42, decimals=2, unit=\"g\")$$".to_string()),
+        );
+        let change = TemplateChange::ForceNumberFormat {
+            key: "poids".to_string(),
+            decimals: Some(1),
+            unit: Some("kg".to_string()),
+        };
+        let modified = apply_change(&mut fm, &change);
+        assert!(modified);
+        assert_eq!(
+            fm.get("poids"),
+            Some(&serde_yaml::Value::String(
+                "$$NUMBER(42, decimals=1, unit=\"kg\")$$".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn apply_change_force_number_format_noop_when_already_reconciled() {
+        let mut fm: indexmap::IndexMap<String, serde_yaml::Value> = indexmap::IndexMap::new();
+        fm.insert(
+            "poids".to_string(),
+            serde_yaml::Value::String("$$NUMBER(42, decimals=1, unit=\"kg\")$$".to_string()),
+        );
+        let change = TemplateChange::ForceNumberFormat {
+            key: "poids".to_string(),
+            decimals: Some(1),
+            unit: Some("kg".to_string()),
+        };
+        assert!(!apply_change(&mut fm, &change));
+    }
 }
 
 // ── iCloud macOS ──────────────────────────────────────────────────────────

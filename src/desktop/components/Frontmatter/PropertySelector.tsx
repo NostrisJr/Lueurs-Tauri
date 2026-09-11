@@ -10,6 +10,8 @@ interface Props {
   onSelect: (key: string) => void;
   onClose: () => void;
   anchorRef: { current: HTMLElement | null };
+  /** cf. AnchoredDropdownProps.zIndex — à surclasser si rendu dans un popup déjà empilé. */
+  zIndex?: number;
 }
 
 export function PropertySelector({
@@ -17,6 +19,7 @@ export function PropertySelector({
   onSelect,
   onClose,
   anchorRef,
+  zIndex,
 }: Props) {
   const [query, setQuery] = useState("");
   const isMobile = platform() === "ios";
@@ -26,7 +29,7 @@ export function PropertySelector({
   );
 
   return (
-    <AnchoredDropdown anchorRef={anchorRef} onClose={onClose}>
+    <AnchoredDropdown anchorRef={anchorRef} onClose={onClose} zIndex={zIndex}>
       <div className="px-2 py-1.5 border-b border-gray-100">
         <input
           ref={(el) => el?.focus()}

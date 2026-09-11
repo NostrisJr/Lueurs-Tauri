@@ -198,7 +198,7 @@ export function TableCell({
   return (
     <div
       style={{ width }}
-      className={`shrink-0 border-r border-gray-100 px-3 text-xs truncate last:border-none relative ${
+      className={`shrink-0 border-r border-gray-100 px-3 text-xs last:border-none relative flex items-center min-h-8 ${
         !isImposed ? "group" : ""
       } ${
         isImposed
@@ -211,20 +211,22 @@ export function TableCell({
     >
       {editing ? (
         isFormula(draft) ? (
-          <FormulaEditField
-            rawValue={draft}
-            onChange={setDraft}
-            onDone={() => commit(draft)}
-            allNotes={allNotes ?? []}
-            noteResolver={noteResolver ?? (() => undefined)}
-            selfProperties={toPropertyOptions(
-              Object.keys(frontmatter),
-              fieldKey
-            )}
-            inputClassName="w-full bg-transparent outline-none text-gray-700 font-mono rounded px-1 -mx-1"
-          />
+          <div className="relative w-full min-w-0">
+            <FormulaEditField
+              rawValue={draft}
+              onChange={setDraft}
+              onDone={() => commit(draft)}
+              allNotes={allNotes ?? []}
+              noteResolver={noteResolver ?? (() => undefined)}
+              selfProperties={toPropertyOptions(
+                Object.keys(frontmatter),
+                fieldKey
+              )}
+              inputClassName="w-full bg-transparent outline-none text-gray-700 font-mono rounded px-1 -mx-1"
+            />
+          </div>
         ) : (
-          <div className="relative">
+          <div className="relative w-full min-w-0">
             <input
               ref={editInputRef}
               // biome-ignore lint/a11y/noAutofocus: focus intentionnel à l'ouverture de l'édition
@@ -299,18 +301,20 @@ export function TableCell({
         )
       ) : formula ? (
         <span
-          className="flex items-center gap-1 text-gray-400"
+          className="flex items-baseline gap-1 min-w-0 truncate"
           title={toDisplay(value)}
         >
-          <span className="text-gray-300 font-mono text-[10px] leading-none">
+          <span className="text-gray-300 font-mono text-[10px] leading-none shrink-0">
             ƒ
           </span>
-          <span className={isError ? "text-red-400" : undefined}>
+          <span
+            className={`truncate ${isError ? "text-red-400" : "text-gray-700"}`}
+          >
             {displayValue || "—"}
           </span>
         </span>
       ) : (
-        <span>{value || "—"}</span>
+        <span className="truncate block w-full">{value || "—"}</span>
       )}
       {!isImposed && !editing && (
         <PropertyCellSettingsPopup

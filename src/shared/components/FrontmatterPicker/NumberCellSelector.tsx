@@ -115,8 +115,8 @@ export function NumberCellSelector({
         type="button"
         onClick={() => (open ? commitAndClose() : openPopup())}
         className={`w-full min-w-0 truncate text-left bg-transparent ${
-          formula ? "flex items-center gap-1 text-gray-400" : "text-gray-700"
-        } ${isMobile ? "text-base" : "text-xs"}`}
+          formula ? "flex items-baseline gap-1" : ""
+        } text-gray-700 ${isMobile ? "text-base" : "text-xs"}`}
       >
         {formula && (
           <span className="text-gray-300 font-mono text-[10px] leading-none shrink-0">

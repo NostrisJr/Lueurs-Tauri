@@ -1,4 +1,4 @@
-// Couleur highlight → classes Tailwind pour les pills BUTTON (fond 300, texte 700).
+// Couleur highlight → classes Tailwind pour les pills ENUM (fond 300, texte 700).
 // Classes littérales : indispensables pour que le JIT Tailwind les détecte.
 
 const COLOR_CLASSES: Record<string, string> = {

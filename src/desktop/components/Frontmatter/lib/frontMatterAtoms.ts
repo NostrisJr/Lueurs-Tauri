@@ -50,3 +50,4 @@ export const rowsAtom = atom(
 
 export const editingKeyAtom = atom<string | null>(null);
 export const selectorOpenAtom = atom<string | null>(null);
+export const settingsKeyAtom = atom<string | null>(null);

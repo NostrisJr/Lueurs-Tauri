@@ -56,7 +56,7 @@ function AggregationCell({
     <div
       ref={anchorRef}
       style={{ width }}
-      className="relative flex border-r border-gray-100 last:border-none px-3 py-1.5 cursor-pointer select-none group justify-end"
+      className="relative flex shrink-0 border-r border-gray-100 last:border-none px-3 py-1.5 cursor-pointer select-none group justify-end"
       onClick={() => setOpen((v) => !v)}
       title="Choisir une agrégation"
     >

@@ -106,7 +106,7 @@ export function BaseView({ base, onBaseChange }: Props) {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-center gap-3 px-4 py-2 sticky top-12 bg-white z-0">
+      <div className="flex items-center gap-3 px-4 py-2 bg-white">
         <ViewSelector
           currentView={currentView}
           kanbanAvailable={availableKeys.length > 0}

@@ -55,7 +55,7 @@ export function TableRow({
   }
 
   return (
-    <div className="flex items-center border-b min-h-8 border-gray-100 hover:bg-gray-50/50 transition-colors group">
+    <div className="flex items-center border-b min-h-8 border-gray-100 hover:bg-gray-50/50 transition-colors">
       {/* Colonne titre */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: édition inline */}
       <div

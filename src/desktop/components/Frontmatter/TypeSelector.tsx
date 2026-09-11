@@ -24,7 +24,7 @@ export function TypeSelector({ value, onChange }: Props) {
     TYPE_LABELS[value as NoteTypeValue] ?? value.replace(/^__|__$/g, "");
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 mt-0.5">
       <button
         ref={buttonRef}
         type="button"

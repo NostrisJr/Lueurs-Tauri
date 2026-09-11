@@ -8,6 +8,7 @@ import {
   IconTextformat,
   IconXmark,
 } from "../../../shared/components/PlatformIcon";
+import { SegmentedControl } from "../../../shared/components/SegmentedControl";
 import { settingsOpenAtom } from "../../../shared/lib/atoms";
 import { AuteurTab } from "./tabs/AuteurTab";
 import { EditeurTab } from "./tabs/EditeurTab";
@@ -18,15 +19,15 @@ import { VaultTab } from "./tabs/VaultTab";
 type Tab = "editeur" | "navigateur" | "espaces" | "vault" | "auteur";
 
 const TABS: {
-  id: Tab;
+  value: Tab;
   label: string;
   Icon: React.FC<{ className?: string }>;
 }[] = [
-  { id: "editeur", label: "Éditeur", Icon: IconTextformat },
-  { id: "navigateur", label: "Navigateur", Icon: IconListBullet },
-  { id: "espaces", label: "Espaces", Icon: IconRectangleStack },
-  { id: "vault", label: "Vault", Icon: IconFolder },
-  { id: "auteur", label: "Auteur", Icon: IconTextDocument },
+  { value: "editeur", label: "Éditeur", Icon: IconTextformat },
+  { value: "navigateur", label: "Navigateur", Icon: IconListBullet },
+  { value: "espaces", label: "Espaces", Icon: IconRectangleStack },
+  { value: "vault", label: "Vault", Icon: IconFolder },
+  { value: "auteur", label: "Auteur", Icon: IconTextDocument },
 ];
 
 export function SettingsModal() {
@@ -72,22 +73,13 @@ export function SettingsModal() {
         </div>
 
         {/* Barre de tabs — même style que la TabBar des onglets */}
-        <div className="flex gap-1 bg-gray-100 inset-shadow-xs rounded-full p-0.75 mx-6 mt-3 mb-3 shrink-0">
-          {TABS.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-default ${
-                activeTab === id
-                  ? "bg-white text-black shadow-sm shadow-gray-400/40 ring-1 ring-white ring-inset inset-shadow-sm inset-shadow-white"
-                  : "text-gray-400 hover:bg-gray-200"
-              }`}
-            >
-              <Icon className="size-3.5 shrink-0" />
-              <span className="text-xs font-medium select-none">{label}</span>
-            </button>
-          ))}
+        <div className="mx-6 mt-3 mb-3 shrink-0">
+          <SegmentedControl
+            options={TABS}
+            value={activeTab}
+            onChange={setActiveTab}
+            variant="pill"
+          />
         </div>
 
         <div className="h-px bg-gray-100 shrink-0 mx-1" />

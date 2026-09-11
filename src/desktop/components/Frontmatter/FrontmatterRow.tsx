@@ -470,7 +470,11 @@ export function FrontmatterRow({
         )}
 
         <IconArrowRight
-          className={`shrink-0 mt-0.5 text-gray-300 select-none ${isMobile ? "size-4" : "size-3"}`}
+          // mt-1.5 (pas mt-0.5 comme les autres icônes) : le glyphe SF Symbol
+          // "arrow.right" n'est pas centré verticalement dans son propre
+          // viewBox comme xmark.circle/gearshape (métriques SF Symbols par
+          // glyphe) — décalage compensé empiriquement ici.
+          className={`shrink-0 mt-[0.3rem] text-gray-300 select-none ${isMobile ? "size-4" : "size-3"}`}
           aria-hidden="true"
         />
 

@@ -280,7 +280,7 @@ export function MobileEspacesSection() {
       </div>
       <p className="mt-2 text-xs text-gray-400 px-1">
         Taguez vos notes avec{" "}
-        <code className="font-mono bg-gray-100 px-1 rounded">__space__</code>{" "}
+        <code className="font-mono bg-gray-100 px-1 rounded">__Space__</code>{" "}
         pour les associer à un espace.
       </p>
     </>

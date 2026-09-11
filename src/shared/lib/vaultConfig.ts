@@ -41,7 +41,7 @@ export const ALL_SPACE_ID = "__all__";
 export interface VaultSpace {
   // Identifiant stable pour React (non utilisé comme clé métier — le nom est la clé métier)
   id: string;
-  // Identifiant unique ET label d'affichage (utilisé dans __space__ du frontmatter)
+  // Identifiant unique ET label d'affichage (utilisé dans __Space__ du frontmatter)
   name: string;
   icon?: string;
   // Couleur accent de la sidebar (hex, ex. "#6366f1")

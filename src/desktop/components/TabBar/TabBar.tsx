@@ -75,7 +75,7 @@ export function TabBar() {
   const draggingNote = draggingId ? tabNodeById(draggingId) : null;
 
   if (openTabIds.length <= 1) {
-    return <div className=" w-full h-11" />;
+    return <div className="w-full h-11 bg-white z-20" />;
   }
   return (
     <DndContext

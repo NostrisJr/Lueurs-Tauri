@@ -32,7 +32,7 @@ export function useSpacesEditor() {
   const setTree = useSetAtom(treeAtom);
   const [activeSpace, setActiveSpace] = useAtom(activeSpaceAtom);
   // Nom de l'espace au moment où l'édition a commencé (avant frappe), pour pouvoir
-  // retagger les notes __space__ à la fin du renommage. Clé = space.id.
+  // retagger les notes __Space__ à la fin du renommage. Clé = space.id.
   const renameOriginalRef = useRef<Record<string, string>>({});
 
   const spaces = vaultConfig?.spaces ?? [];
@@ -110,7 +110,7 @@ export function useSpacesEditor() {
     updateSpaces(next);
   }
 
-  // Applique `transform` au tableau __space__ de chaque note référençant
+  // Applique `transform` au tableau __Space__ de chaque note référençant
   // spaceName, et persiste. Partagé entre le renommage (retag) et la
   // suppression (retrait) d'un espace.
   async function updateAffectedNotesSpace(
@@ -135,7 +135,7 @@ export function useSpacesEditor() {
     );
   }
 
-  // Retague __space__ dans toutes les notes qui référençaient l'ancien nom.
+  // Retague __Space__ dans toutes les notes qui référençaient l'ancien nom.
   async function migrateNotesSpaceName(oldName: string, newName: string) {
     if (oldName === newName) return;
     await updateAffectedNotesSpace(oldName, (current) => [
@@ -207,7 +207,7 @@ export function useSpacesEditor() {
     );
     if (!confirmed) return;
 
-    // Nettoyer __space__ dans toutes les notes qui référencent cet espace
+    // Nettoyer __Space__ dans toutes les notes qui référencent cet espace
     await updateAffectedNotesSpace(space.name, (current) => {
       const remaining = current.filter((s) => s !== space.name);
       return remaining.length > 0 ? remaining : undefined;

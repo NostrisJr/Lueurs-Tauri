@@ -243,7 +243,7 @@ export function VaultTab() {
         )}
         <p className="text-xs text-gray-400">
           Destination des notes, dossiers et médias reçus par bundle partagé
-          (.lueurs-note), en local comme via l'association de fichier.
+          (.lueurs), en local comme via l'association de fichier.
         </p>
       </div>
     </div>

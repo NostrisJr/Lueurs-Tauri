@@ -223,12 +223,12 @@ describe("tagSpace", () => {
     expect(tagSpace(fm, undefined)).toBe(fm);
   });
 
-  it("ajoute l'espace à un frontmatter sans __space__", () => {
+  it("ajoute l'espace à un frontmatter sans __Space__", () => {
     const fm = tagSpace({}, "Perso");
     expect(fm[SystemField.SPACE]).toEqual(["Perso"]);
   });
 
-  it("ajoute l'espace à une liste __space__ existante", () => {
+  it("ajoute l'espace à une liste __Space__ existante", () => {
     const fm = tagSpace({ [SystemField.SPACE]: ["Travail"] }, "Perso");
     expect(fm[SystemField.SPACE]).toEqual(["Travail", "Perso"]);
   });

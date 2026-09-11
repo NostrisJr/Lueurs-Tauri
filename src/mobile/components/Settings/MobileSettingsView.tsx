@@ -479,7 +479,7 @@ export function MobileSettingsView() {
               )}
               <p className="text-xs text-gray-400 mt-1.5">
                 Destination des notes, dossiers et médias reçus par bundle
-                partagé (.lueurs-note).
+                partagé (.lueurs).
               </p>
             </div>
           </Squircle>

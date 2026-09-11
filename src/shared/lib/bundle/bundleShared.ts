@@ -1,4 +1,4 @@
-// Helpers partagés export/import de bundle (.lueurs-note) : détection et
+// Helpers partagés export/import de bundle (.lueurs) : détection et
 // réécriture des références resources/ dans le corps markdown, nommage sans
 // collision, et reconstruction d'arbre. Cf. Documentation-technique.md pour
 // le format du bundle.
@@ -90,7 +90,7 @@ export interface BundleManifest {
 }
 
 export const MANIFEST_ENTRY = "manifest.json";
-export const BUNDLE_EXTENSION = "lueurs-note";
+export const BUNDLE_EXTENSION = "lueurs";
 
 /** Rattache l'import à l'espace actif (même logique que importUtils.tagSpace). */
 export function tagSpace(fm: Frontmatter, space?: string | null): Frontmatter {

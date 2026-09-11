@@ -9,6 +9,8 @@ interface NoteSelectorProps {
   onClose: () => void;
   anchorRef: { current: HTMLElement | HTMLButtonElement | null };
   placeholder?: string;
+  /** cf. AnchoredDropdownProps.zIndex — à surclasser si rendu dans un popup déjà empilé. */
+  zIndex?: number;
 }
 
 export function NoteSelector({
@@ -17,6 +19,7 @@ export function NoteSelector({
   onClose,
   anchorRef,
   placeholder = "Rechercher une note...",
+  zIndex,
 }: NoteSelectorProps) {
   const [query, setQuery] = useState("");
   const isMobile = platform() === "ios";
@@ -30,6 +33,7 @@ export function NoteSelector({
       anchorRef={anchorRef}
       onClose={onClose}
       className="max-w-130"
+      zIndex={zIndex}
     >
       <div className="px-2 py-1.5 border-b border-gray-100">
         <input

@@ -1,4 +1,4 @@
-// Import d'un bundle .lueurs-note (zip) dans le vault, à l'emplacement boîte
+// Import d'un bundle .lueurs (zip) dans le vault, à l'emplacement boîte
 // aux lettres choisi par l'utilisateur (Réglages > Vault). Reconstruction
 // récursive de l'arbre + copie des ressources et des notes référencées
 // (bucket refs/, mode "recursive" ou __Children__ inclus à l'export) avec

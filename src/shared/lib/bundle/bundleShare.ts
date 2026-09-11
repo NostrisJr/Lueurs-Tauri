@@ -1,7 +1,7 @@
 // Point d'entrée commun au bouton "Partager" (mobile) et à l'item de menu
 // desktop : scanne les références hors bundle (wikilinks, ref() de formules),
 // ouvre ShareResolutionDialog si besoin (voir shareResolutionAtom), puis
-// construit et écrit le bundle .lueurs-note dans un fichier temp prêt à être
+// construit et écrit le bundle .lueurs dans un fichier temp prêt à être
 // remis à la feuille de partage native.
 
 import { mkdir, writeFile } from "@tauri-apps/plugin-fs";
@@ -103,7 +103,7 @@ async function writeToTmp(
   return tmpPath;
 }
 
-export const BUNDLE_MIME = "application/x-lueurs-note";
+export const BUNDLE_MIME = "application/x-lueurs";
 
 /** Résout + construit + écrit dans un fichier temp. Renvoie null si l'utilisateur annule. */
 export async function writeShareableBundle(

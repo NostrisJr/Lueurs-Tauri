@@ -24,7 +24,7 @@ const log = createLogger("importUtils");
 // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
 export const BASE_NULL = { baseDir: null } as any;
 
-// Rattache l'import à l'espace actif en ajoutant son nom au champ __space__.
+// Rattache l'import à l'espace actif en ajoutant son nom au champ __Space__.
 function tagSpace(fm: Frontmatter, space?: string | null): Frontmatter {
   if (!space) return fm;
   const existing = toArray(fm[SystemField.SPACE]);

@@ -119,6 +119,7 @@ Variable names, comments, and UI strings are in French throughout the codebase.
 
 ## Collaboration Guidelines
 
+- **Vérifier l'existant avant toute nouvelle fonctionnalité** — avant de proposer une approche ou d'écrire du code, chercher s'il existe déjà du code réutilisable (hooks, composants, utilitaires) qui couvre tout ou partie du besoin. Ex : demande de scroll automatique → vérifier s'il existe déjà des hooks de scroll ; demande d'une UI particulière → vérifier si un composant équivalent existe déjà. But : maximiser la réutilisation et éviter du code redondant qui entre en conflit avec l'existant.
 - **Valider avant de coder** — pour toute tâche non triviale, proposer l'approche technique et attendre validation avant d'écrire du code.
 - **Tests avant le code** — pour toute nouvelle fonctionnalité, ou toute fonctionnalité existante sur laquelle on retombe et qui n'a pas encore de tests, commencer par mettre en place ses tests avant de coder/modifier le comportement. Objectif : ne plus coder à l'aveugle sans filet de régression.
 - **Pas de patch sur patch** — quand une solution ne fonctionne pas, retirer le code ajouté avant d'essayer autre chose. Ne jamais empiler des correctifs.
