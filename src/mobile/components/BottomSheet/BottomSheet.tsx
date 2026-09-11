@@ -259,6 +259,19 @@ export function BottomSheet({
           </div>
         </Squircle>
       </div>
+      {/* iOS 26 : le clavier système a des coins hauts arrondis qui laissent
+          voir la WebView en dessous (pas une couleur système fixe) — sans ce
+          calque, l'ombre du sheet (ou le fond assombri) débordait dans ces
+          coins et y créait une tache grise sur le clavier noir. On peint du
+          blanc (couleur du Squircle) sur toute la hauteur du clavier : invisible
+          partout où le clavier est opaque, visible seulement dans ses coins
+          découpés — pas besoin de connaître leur rayon exact. Placé après (donc
+          au-dessus de) l'ombre et l'overlay d'assombrissement pour rester
+          blanc pur. keyboardHeight = 0 clavier fermé → calque nul. */}
+      <div
+        className="fixed left-0 right-0 bottom-0 bg-white pointer-events-none"
+        style={{ height: keyboardHeight }}
+      />
     </div>
   );
 
