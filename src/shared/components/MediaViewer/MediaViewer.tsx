@@ -1,12 +1,49 @@
 // Visionneuse de fichiers médias (image, vidéo, PDF, audio).
 
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { useId } from "react";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { useEffect, useId, useState } from "react";
 import type { MediaFile } from "../../hooks/useFileTree";
 import { useNote } from "../../hooks/useNote";
-import { isIOS, isMobile } from "../../lib/platform";
+import { createLogger } from "../../lib/logger";
+import { isAndroid, isIOS, isMobile } from "../../lib/platform";
 import { NoteHeader } from "../NoteEditor/NoteHeader";
 import { StandaloneAudioPlayer } from "./StandaloneAudioPlayer";
+
+const log = createLogger("MediaViewer");
+
+/** Résout l'URL affichable d'un média : asset:// (desktop/iOS) ou blob:
+ * depuis une lecture SAF (Android, `media.id` y est une URI content://
+ * que convertFileSrc ne sait pas interpréter). */
+function useMediaAssetUrl(id: string): string | null {
+  const [url, setUrl] = useState<string | null>(() =>
+    isAndroid ? null : convertFileSrc(id)
+  );
+
+  useEffect(() => {
+    if (!isAndroid) {
+      setUrl(convertFileSrc(id));
+      return;
+    }
+    let cancelled = false;
+    let blobUrl: string | null = null;
+    setUrl(null);
+    invoke<ArrayBuffer>("vault_read_bytes", { uri: id })
+      .then((buf) => {
+        if (cancelled) return;
+        blobUrl = URL.createObjectURL(new Blob([buf]));
+        setUrl(blobUrl);
+      })
+      .catch((err) => {
+        log.error("lecture média Android échouée", { id, err });
+      });
+    return () => {
+      cancelled = true;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [id]);
+
+  return url;
+}
 
 export function MediaViewer({ media }: { media: MediaFile }) {
   const { handleRenameMedia } = useNote();
@@ -16,7 +53,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
     await handleRenameMedia(media.id, newName);
   }
 
-  const assetUrl = convertFileSrc(media.id);
+  const assetUrl = useMediaAssetUrl(media.id);
   const isPdf = media.mediaType === "pdf";
 
   // Sur mobile avec PDF : layout plein écran flex pour que l'iframe occupe
@@ -34,11 +71,13 @@ export function MediaViewer({ media }: { media: MediaFile }) {
         {/* Conteneur flex-1 avec position relative : l'iframe absolute inset-0
             est le seul moyen fiable de lui donner une hauteur sur WKWebView. */}
         <div className="flex-1 relative overflow-hidden">
-          <iframe
-            src={assetUrl}
-            title={media.name}
-            className="absolute inset-0 w-full h-full border-0"
-          />
+          {assetUrl && (
+            <iframe
+              src={assetUrl}
+              title={media.name}
+              className="absolute inset-0 w-full h-full border-0"
+            />
+          )}
         </div>
       </div>
     );
@@ -58,7 +97,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
           {media.fileName.split(".").pop()?.toUpperCase()}
         </p>
 
-        {media.mediaType === "image" && (
+        {media.mediaType === "image" && assetUrl && (
           <img
             src={assetUrl}
             alt={media.name}
@@ -73,7 +112,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
           </div>
         )}
 
-        {media.mediaType === "video" && (
+        {media.mediaType === "video" && assetUrl && (
           // biome-ignore lint/a11y/useMediaCaption: fichiers locaux sans piste subtitle
           <video
             src={assetUrl}
@@ -83,7 +122,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
           />
         )}
 
-        {isPdf && (
+        {isPdf && assetUrl && (
           <iframe
             src={assetUrl}
             title={media.name}

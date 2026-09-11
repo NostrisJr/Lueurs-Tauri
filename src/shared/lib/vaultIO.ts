@@ -7,7 +7,6 @@ import { invoke } from "@tauri-apps/api/core";
  * Sur les autres plateformes : @tauri-apps/plugin-fs directement.
  */
 import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { platform } from "@tauri-apps/plugin-os";
 import type {
   MediaFile,
   MediaType,
@@ -266,7 +265,12 @@ export function absolutifyPathFields(
   }
   for (const field of SCALAR_PATH_FIELDS) {
     const val = result[field];
-    if (typeof val !== "string" || !val || val.startsWith("[") || isFormula(val))
+    if (
+      typeof val !== "string" ||
+      !val ||
+      val.startsWith("[") ||
+      isFormula(val)
+    )
       continue;
     result[field] = toAbsolute(val, vaultPath);
   }
@@ -417,14 +421,12 @@ export async function loadTree(
             ? relativizePathFields(note.frontmatter, vaultPath)
             : note.frontmatter;
           const raw = serializeFrontmatter(diskFrontmatter, note.body);
-          vaultIO
-            .writeFile(fullPath, raw)
-            .catch((err) =>
-              log.error("échec persistance __Type__/__Space__", {
-                path: fullPath,
-                err,
-              })
-            );
+          vaultIO.writeFile(fullPath, raw).catch((err) =>
+            log.error("échec persistance __Type__/__Space__", {
+              path: fullPath,
+              err,
+            })
+          );
         }
 
         nodes.push(note);
@@ -608,10 +610,13 @@ export async function resolveDestName(
 // ── Scope Tauri ────────────────────────────────────────────────────────────────
 
 export async function allowVaultScope(vaultPath: string): Promise<void> {
-  // FS scope = mécanisme desktop uniquement
-  // iOS : le sandbox accorde déjà l'accès au container iCloud
-  // Android : les permissions SAF sont gérées par vault_pick_dir (persist_uri_permission)
-  if (platform() === "ios" || isAndroid) return;
+  // Android : les permissions SAF sont gérées par vault_pick_dir (persist_uri_permission),
+  // et vaultPath n'est pas un chemin disque classique (allow_directory n'aurait pas de sens).
+  // iOS : le sandbox accorde déjà l'accès fichier au container iCloud, mais le scope
+  // interne asset_protocol_scope() de Tauri (distinct du sandbox OS) doit quand même être
+  // peuplé ici — sinon convertFileSrc()/asset:// est rejeté par Tauri avant même d'atteindre
+  // le disque (images cassées en corps de note et en média seul sur iOS).
+  if (isAndroid) return;
   log.info("autorisation scope vault", { vaultPath });
   try {
     await invoke("allow_vault_path", { vaultPath });

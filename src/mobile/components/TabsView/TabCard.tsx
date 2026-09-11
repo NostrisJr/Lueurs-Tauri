@@ -77,6 +77,7 @@ export function TabCard({
           (blocks.length > 0 ? (
             <MarkdownPreview
               blocks={blocks}
+              respectLineBreaks
               className="flex-1 min-h-0 overflow-hidden text-xs text-gray-400 leading-snug"
             />
           ) : (

@@ -79,6 +79,7 @@ export function NodePreviewCard({ node, muted }: Props) {
         <MarkdownPreview
           blocks={blocks}
           spaced
+          respectLineBreaks
           className="text-base text-gray-500 leading-snug"
         />
       ) : (

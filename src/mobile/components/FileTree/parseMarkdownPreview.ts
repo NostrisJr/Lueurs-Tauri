@@ -7,6 +7,10 @@
 
 const AUDIO_EXT_RE = /\.(mp3|wav|ogg|m4a|flac|aac|opus|weba|webm)(\?|#|$)/i;
 
+// Les badges renvoient un "kind" plutôt qu'un glyphe en dur : ce module reste
+// un parseur pur (pas d'import React/icônes), le rendu choisit l'icône par kind.
+export type BadgeKind = "image" | "code" | "table" | "formula" | "audio";
+
 export type InlineSegment =
   | { type: "text"; value: string }
   | { type: "bold"; value: string }
@@ -15,38 +19,46 @@ export type InlineSegment =
   | { type: "code"; value: string }
   | { type: "didascalie"; value: string }
   | { type: "highlight"; value: string; color: string }
-  | { type: "badge"; icon: string; label: string };
+  | { type: "badge"; kind: BadgeKind; label: string }
+  | { type: "linebreak" };
 
 export type PreviewBlock =
   | { type: "heading"; level: number; segments: InlineSegment[] }
   | { type: "paragraph"; segments: InlineSegment[] }
   | { type: "item"; checked?: boolean; segments: InlineSegment[] }
   | { type: "quote"; segments: InlineSegment[] }
-  | { type: "badge"; icon: string; label: string };
+  | { type: "badge"; kind: BadgeKind; label: string };
 
 // Ordre important seulement entre alternatives partageant le même délimiteur
 // de départ (ex: ** avant * pour que le gras l'emporte sur l'italique).
 const INLINE_RE =
-  /!\[(?<imgAlt>[^\]]*)\]\([^)]+\)|\$\$(?<formula>[^\n$]+?)\$\$|\[(?<linkText>[^\]]+)\]\([^)]+\)|`(?<code>[^`]+)`|==(?:\{(?<hlColor>[a-z]+)\})?(?<hl>[^=]+)==|\|\|(?<dida>[^|]+)\|\||\*\*(?<bold1>[^*]+)\*\*|__(?<bold2>[^_]+)__|~~(?<strike>[^~]+)~~|\*(?<italic1>[^*]+)\*|_(?<italic2>[^_]+)_/g;
+  /!\[(?<imgAlt>[^\]]*)\]\([^)]+\)|\$\$(?<formula>[^\n$]+?)\$\$|<br\s*\/?>(?<br>)|\[(?<linkText>[^\]]+)\]\([^)]+\)|`(?<code>[^`]+)`|==(?:\{(?<hlColor>[a-z]+)\})?(?<hl>[^=]+)==|\|\|(?<dida>[^|]+)\|\||\*\*(?<bold1>[^*]+)\*\*|__(?<bold2>[^_]+)__|~~(?<strike>[^~]+)~~|\*(?<italic1>[^*]+)\*|_(?<italic2>[^_]+)_/g;
 
 function parseInline(rawText: string): InlineSegment[] {
-  // <br/> littéral (sauts de vers en poésie) : un espace, pas un segment à
-  // part — la troncature visuelle se charge déjà de recomposer le flux.
-  const text = rawText.replace(/<br\s*\/?>/gi, " ");
   const segments: InlineSegment[] = [];
   let lastIndex = 0;
   INLINE_RE.lastIndex = 0;
-  let match: RegExpExecArray | null = INLINE_RE.exec(text);
+  let match: RegExpExecArray | null = INLINE_RE.exec(rawText);
   while (match) {
     if (match.index > lastIndex) {
-      const value = text.slice(lastIndex, match.index);
+      const value = rawText.slice(lastIndex, match.index);
       if (value) segments.push({ type: "text", value });
     }
     const g = match.groups as Record<string, string | undefined>;
     if (g.imgAlt !== undefined) {
-      segments.push({ type: "badge", icon: "🖼", label: g.imgAlt || "Image" });
+      segments.push({
+        type: "badge",
+        kind: "image",
+        label: g.imgAlt || "Image",
+      });
     } else if (g.formula !== undefined) {
-      segments.push({ type: "badge", icon: "ƒ", label: "" });
+      // Résultat non calculable hors éditeur : ƒ + [...] = "texte en construction".
+      segments.push({ type: "badge", kind: "formula", label: "[...]" });
+    } else if (g.br !== undefined) {
+      // Saut de vers (poésie) : segment à part — c'est au rendu (via
+      // `respectLineBreaks`) de décider de l'afficher comme <br/> ou de le
+      // réduire à un espace (aperçus tronqués en line-clamp).
+      segments.push({ type: "linebreak" });
     } else if (g.linkText !== undefined) {
       segments.push({ type: "text", value: g.linkText });
     } else if (g.code !== undefined) {
@@ -70,10 +82,10 @@ function parseInline(rawText: string): InlineSegment[] {
       });
     }
     lastIndex = match.index + match[0].length;
-    match = INLINE_RE.exec(text);
+    match = INLINE_RE.exec(rawText);
   }
-  if (lastIndex < text.length) {
-    const value = text.slice(lastIndex);
+  if (lastIndex < rawText.length) {
+    const value = rawText.slice(lastIndex);
     if (value) segments.push({ type: "text", value });
   }
   return segments;
@@ -119,7 +131,7 @@ export function parsePreviewBlocks(
 
     if (FENCE_RE.test(line)) {
       flushParagraph();
-      blocks.push({ type: "badge", icon: "🖥", label: "Bloc de code" });
+      blocks.push({ type: "badge", kind: "code", label: "Bloc de code" });
       i++;
       while (i < rawLines.length && !FENCE_RE.test(rawLines[i].trim())) i++;
       continue;
@@ -127,7 +139,7 @@ export function parsePreviewBlocks(
 
     if (TABLE_ROW_RE.test(line)) {
       flushParagraph();
-      blocks.push({ type: "badge", icon: "📊", label: "Tableau" });
+      blocks.push({ type: "badge", kind: "table", label: "Tableau" });
       while (
         i + 1 < rawLines.length &&
         TABLE_ROW_RE.test(rawLines[i + 1].trim())
@@ -163,7 +175,7 @@ export function parsePreviewBlocks(
       flushParagraph();
       blocks.push({
         type: "badge",
-        icon: "🎵",
+        kind: "audio",
         label: standaloneLink[1] || "Audio",
       });
       continue;
@@ -174,7 +186,7 @@ export function parsePreviewBlocks(
       flushParagraph();
       blocks.push({
         type: "badge",
-        icon: "🖼",
+        kind: "image",
         label: standaloneImage[1] || "Image",
       });
       continue;

@@ -1,13 +1,9 @@
 // Lecteur audio autonome (sans couplage ProseMirror), design identique à AudioBlockComponent.
 // Utilisé par MediaViewer pour afficher les fichiers .mp3/.wav/.m4a/.ogg/.aac du vault.
 
+import { invoke } from "@tauri-apps/api/core";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { useEffect, useRef, useState } from "react";
-import {
-  IconPauseFill,
-  IconPlayFill,
-  IconWaveform,
-} from "../PlatformIcon";
 import { createLogger } from "../../lib/logger";
 import {
   nativeIsActive,
@@ -17,10 +13,25 @@ import {
   nativeSeek,
   nativeSubscribe,
 } from "../../lib/nativeAudioPlayer";
-import { isMobile } from "../../lib/platform";
+import { isAndroid, isMobile } from "../../lib/platform";
 import { drawWaveform } from "../../plugins/audio-block/waveform";
+import { IconPauseFill, IconPlayFill, IconWaveform } from "../PlatformIcon";
 
 const log = createLogger("standalone-audio-player");
+
+/** Lit les octets du fichier : `filePath` (= `media.id`) est déjà une URI SAF
+ * content:// sur Android — lecture via Rust, pas via le plugin-fs (qui ne
+ * comprend que des chemins disque). Desktop/iOS : chemin absolu classique. */
+async function readAudioBytes(filePath: string): Promise<Uint8Array> {
+  if (isAndroid) {
+    const buf = await invoke<ArrayBuffer>("vault_read_bytes", {
+      uri: filePath,
+    });
+    return new Uint8Array(buf);
+  }
+  // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
+  return readFile(filePath, { baseDir: null } as any);
+}
 
 let _globalDesktopStop: (() => void) | null = null;
 
@@ -69,9 +80,6 @@ export function StandaloneAudioPlayer({
   const isActiveRef = useRef(false);
   const nativeDurationRef = useRef(0);
 
-  // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
-  const BASE_NULL = { baseDir: null } as any;
-
   useEffect(() => {
     setWaveformStatus("loading");
     waveformReadyRef.current = false;
@@ -91,7 +99,7 @@ export function StandaloneAudioPlayer({
 
     let cancelled = false;
 
-    readFile(filePath, BASE_NULL)
+    readAudioBytes(filePath)
       .then((data) => {
         if (cancelled || !canvasRef.current) return;
 
