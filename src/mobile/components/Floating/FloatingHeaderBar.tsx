@@ -54,11 +54,16 @@ export const PILL_SCALE_START = 0.82;
 
 function Slot({
   flex,
+  auto,
   collapseProgress,
   withPillBackground = true,
   children,
 }: {
   flex?: boolean;
+  /** true pour un slot dont le contenu est plus large qu'une icône seule (ex:
+   * icône + libellé) — largeur au contenu plutôt que le carré size-13 par
+   * défaut, toujours shrink-0 (pas de croissance dans l'espace du centre). */
+  auto?: boolean;
   collapseProgress: number;
   /** false pour un slot dont le contenu dessine sa propre pill (ex: le morph
    * du titre, dont la largeur ne correspond pas à celle du slot). */
@@ -69,7 +74,7 @@ function Slot({
     <div
       className={clsx(
         "relative flex items-center justify-center h-13",
-        flex ? "flex-1 min-w-0" : "shrink-0 size-13"
+        flex ? "flex-1 min-w-0" : auto ? "shrink-0 w-auto" : "shrink-0 size-13"
       )}
     >
       {withPillBackground && (
@@ -101,6 +106,9 @@ interface FloatingHeaderBarProps {
    * Défaut true. */
   leftPill?: boolean;
   rightPill?: boolean;
+  /** true si le slot droit est plus large qu'une icône seule (ex: icône +
+   * libellé) — cf. `Slot`'s `auto`. Défaut false (carré size-13). */
+  rightAuto?: boolean;
 }
 
 export function FloatingHeaderBar({
@@ -110,6 +118,7 @@ export function FloatingHeaderBar({
   right,
   leftPill = true,
   rightPill = true,
+  rightAuto = false,
 }: FloatingHeaderBarProps) {
   return (
     <div
@@ -128,6 +137,7 @@ export function FloatingHeaderBar({
         </Slot>
         <Slot
           collapseProgress={collapseProgress}
+          auto={rightAuto}
           withPillBackground={rightPill}
         >
           {right}

@@ -216,11 +216,15 @@ export function BottomSheet({
           onTouchMove={(e: React.TouchEvent) => {
             if (!swipeAllowedRef.current) return;
             const dy = e.touches[0].clientY - startYRef.current;
-            if (dy > 0) {
+            // Seuil 10px avant tout effet : en dessous, on considère que le
+            // doigt tape (pas de swipe). Sous ce seuil, même un setSwipe(dy)
+            // anodin redessine le sheet (translateY change) pendant le tap et
+            // peut faire annuler par iOS le click synthétisé sous le doigt —
+            // d'où le besoin d'un appui plus ferme/long pour valider un tap
+            // (ex: sélection d'emoji) avant ce fix.
+            if (dy > 10) {
               setSwipe(dy);
-              // Seuil 10px avant preventDefault : en dessous, iOS interprète comme
-              // un tap et synthétise un click ; preventDefault trop tôt le tue.
-              if (dy > 10) e.preventDefault();
+              e.preventDefault();
             }
           }}
           onTouchEnd={() => {

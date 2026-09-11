@@ -167,6 +167,8 @@ export function SpaceRow({
           onChange={(e) => onNameChange(index, e.target.value)}
           onFocus={() => onNameFocus(index)}
           onBlur={() => onNameBlur(index)}
+          autoCorrect="off"
+          autoCapitalize="off"
           className="flex-1 text-sm border border-gray-200 rounded-md px-2.5 py-1.5 outline-none focus:border-gray-400"
           placeholder="Nom de l'espace"
           aria-label="Nom de l'espace"

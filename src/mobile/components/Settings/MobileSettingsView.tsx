@@ -22,6 +22,7 @@ import {
   mailboxModeAtom,
   mobileGoBackAtom,
   mobileNavigateAtom,
+  mobilePrevViewAtom,
   mobileSettingsScrollTargetAtom,
   showResourcesAtom,
   spellcheckEngineAtom,
@@ -71,6 +72,11 @@ export function MobileSettingsView() {
   const allFolders = useAtomValue(allFoldersAtom);
   const goBack = useSetAtom(mobileGoBackAtom);
   const navigate = useSetAtom(mobileNavigateAtom);
+  const prevView = useAtomValue(mobilePrevViewAtom);
+  // Réglages est accessible depuis le file tree ET depuis l'éditeur (menu
+  // "..." de la note) : le libellé du bouton retour reflète l'écran réel vers
+  // lequel `goBack()` va revenir, plutôt qu'un "Notes" figé.
+  const backLabel = prevView === "editor" ? "Note" : "Notes";
   const folderPath = useAtomValue(folderPathAtom);
   const tree = useAtomValue(treeAtom);
   const { pickFolder, reload } = useFileTree();
@@ -139,7 +145,7 @@ export function MobileSettingsView() {
           className={`flex-1 justify-start fixed left-1 items-center gap-1 px-2 py-1.5 rounded-lg ${iconAccentClass} active:bg-gray-100 transition-colors z-10`}
         >
           <IconChevronLeft className="size-4" />
-          <span className="text-base">Notes</span>
+          <span className="text-base">{backLabel}</span>
         </button>
         <h1 className="justify-center text-2xl font-semibold text-gray-900">
           Réglages

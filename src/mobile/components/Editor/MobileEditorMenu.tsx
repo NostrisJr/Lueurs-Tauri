@@ -17,9 +17,9 @@ import {
   IconArrowUturnBackward,
   IconArrowUturnForward,
   IconEllipsis,
+  IconGearshape,
   IconMagnifyingglass,
   IconRecordAudio,
-  IconRectangleStack,
 } from "../../../shared/components/PlatformIcon";
 import type { DisplayMode } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
@@ -34,10 +34,9 @@ interface Props {
   isBase: boolean;
   isReadOnly: boolean;
   displayMode: DisplayMode;
-  openTabsCount: number;
   onDisplayModeChange: (mode: DisplayMode) => void;
   onRecord: () => void;
-  onOpenTabs: () => void;
+  onOpenSettings: () => void;
 }
 
 export function MobileEditorMenu({
@@ -45,10 +44,9 @@ export function MobileEditorMenu({
   isBase,
   isReadOnly,
   displayMode,
-  openTabsCount,
   onDisplayModeChange,
   onRecord,
-  onOpenTabs,
+  onOpenSettings,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [rendered, setRendered] = useState(false);
@@ -163,19 +161,19 @@ export function MobileEditorMenu({
               )}
               <button
                 type="button"
-                onClick={() => runAndClose(onOpenTabs)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
-              >
-                <IconRectangleStack className="size-4 text-gray-500" />
-                Onglets{openTabsCount > 1 ? ` (${openTabsCount})` : ""}
-              </button>
-              <button
-                type="button"
                 onClick={() => runAndClose(openSearchBar)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
               >
                 <IconMagnifyingglass className="size-4 text-gray-500" />
                 Rechercher et remplacer
+              </button>
+              <button
+                type="button"
+                onClick={() => runAndClose(onOpenSettings)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+              >
+                <IconGearshape className="size-4 text-gray-500" />
+                Réglages
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 import {
   IconRectangleStack,
@@ -8,8 +8,14 @@ import { Squircle } from "../../../shared/components/Squircle";
 import type { MediaFile, NoteFile } from "../../../shared/hooks/useFileTree";
 import { useLongPress } from "../../hooks/useLongPress";
 import { hapticImpact } from "../../lib/haptics";
+import { MarkdownPreview } from "../FileTree/MarkdownPreview";
+import { parsePreviewBlocks } from "../FileTree/parseMarkdownPreview";
 import { NodePreviewCard } from "../Row";
 import { RowContextMenu } from "../Row/RowContextMenu";
+
+// Plafond de blocs affichés dans la carte : elle est petite (grille 2
+// colonnes), pas besoin d'en parser plus que ce qui peut tenir visuellement.
+const TAB_CARD_PREVIEW_MAX_BLOCKS = 6;
 
 interface Props {
   node: NoteFile | MediaFile;
@@ -43,17 +49,39 @@ export function TabCard({
 
   const longPress = useLongPress(handleLongPress, onSelect);
 
+  const blocks = useMemo(
+    () =>
+      node.kind === "file"
+        ? parsePreviewBlocks(node.body, TAB_CARD_PREVIEW_MAX_BLOCKS)
+        : [],
+    [node]
+  );
+
   return (
     <div ref={cardRef} className="relative">
       <Squircle
         radius={20}
-        className="aspect-square w-full bg-white active:scale-[0.98] transition-transform flex flex-col items-center justify-center gap-2 p-3"
+        className="aspect-square w-full bg-white active:scale-[0.98] transition-transform overflow-hidden flex flex-col gap-1 p-3"
         {...longPress}
       >
-        <NodeIconProvider node={node} className="text-gray-400 size-7" />
-        <p className="text-sm font-semibold text-gray-900 text-center line-clamp-2 break-words">
-          {node.name}
-        </p>
+        <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+          <NodeIconProvider
+            node={node}
+            className="text-gray-400 shrink-0 size-4"
+          />
+          <p className="text-sm font-semibold text-gray-900 truncate">
+            {node.name}
+          </p>
+        </div>
+        {node.kind === "file" &&
+          (blocks.length > 0 ? (
+            <MarkdownPreview
+              blocks={blocks}
+              className="flex-1 min-h-0 overflow-hidden text-xs text-gray-400 leading-snug"
+            />
+          ) : (
+            <p className="text-xs text-gray-400 italic">Note vide</p>
+          ))}
       </Squircle>
 
       <button

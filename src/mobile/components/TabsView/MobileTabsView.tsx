@@ -91,6 +91,7 @@ export function MobileTabsView() {
       <FloatingHeaderBar
         collapseProgress={titleCollapseProgress}
         rightPill={openTabIds.length > 0}
+        rightAuto={openTabIds.length > 0}
         left={
           <button
             type="button"
@@ -118,11 +119,12 @@ export function MobileTabsView() {
                 handleCloseAllTabs();
                 resetNav();
               }}
-              className="flex items-center justify-center w-8 h-8 rounded-full text-red-500 active:bg-black/5 transition-colors"
+              className="flex items-center gap-1 px-2 h-8 rounded-full text-red-500 active:bg-black/5 transition-colors"
               aria-label="Tout fermer"
               title="Tout fermer"
             >
               <IconTrash className="size-4.5" />
+              <span className="text-sm font-medium">Tout fermer</span>
             </button>
           ) : (
             <div className="w-8 h-8" />

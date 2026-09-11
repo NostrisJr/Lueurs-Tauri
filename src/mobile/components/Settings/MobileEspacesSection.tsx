@@ -150,6 +150,8 @@ function SpaceRow({
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
         }}
+        autoCorrect="off"
+        autoCapitalize="off"
         className="flex-1 min-w-0 text-base border border-gray-200 rounded-lg px-2.5 py-2 outline-none focus:border-gray-400"
         placeholder="Nom de l'espace"
         aria-label="Nom de l'espace"

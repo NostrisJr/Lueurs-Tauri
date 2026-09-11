@@ -23,9 +23,9 @@ import {
   folderPathAtom,
   mobileNavigateAtom,
   mobileResetNavAtom,
+  mobileSettingsScrollTargetAtom,
   noteBackStackAtom,
   noteScrollContainerAtom,
-  openTabIdsAtom,
   pendingAudioInsertAtom,
   pendingDisplayModeAtom,
 } from "../../../shared/lib/atoms";
@@ -47,9 +47,9 @@ import { MobileSpellMenu } from "./MobileSpellMenu";
 
 export function MobileEditor() {
   const activeNote = useAtomValue(activeNoteAtom);
-  const openTabIds = useAtomValue(openTabIdsAtom);
   const navigate = useSetAtom(mobileNavigateAtom);
   const resetNav = useSetAtom(mobileResetNavAtom);
+  const setSettingsScrollTarget = useSetAtom(mobileSettingsScrollTargetAtom);
   const setNoteBackStack = useSetAtom(noteBackStackAtom);
   const setDictaphoneMode = useSetAtom(dictaphoneModeAtom);
   const [pendingAudioInsert, setPendingAudioInsert] = useAtom(
@@ -210,10 +210,12 @@ export function MobileEditor() {
       isBase={isBase}
       isReadOnly={isReadOnly}
       displayMode={displayMode}
-      openTabsCount={openTabIds.length}
       onDisplayModeChange={(mode: DisplayMode) => setPendingDisplayMode(mode)}
       onRecord={() => setDictaphoneMode("insert")}
-      onOpenTabs={() => navigate("tabs")}
+      onOpenSettings={() => {
+        setSettingsScrollTarget(null);
+        navigate("settings");
+      }}
     />
   );
 
