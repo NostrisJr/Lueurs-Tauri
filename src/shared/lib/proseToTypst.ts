@@ -12,7 +12,14 @@ export interface InfosAuteur {
   adresse: string;
 }
 
-export type NumerotationTitres = "none" | "1." | "1.1." | "I." | "i." | "A." | "a.";
+export type NumerotationTitres =
+  | "none"
+  | "1."
+  | "1.1."
+  | "I."
+  | "i."
+  | "A."
+  | "a.";
 
 export interface OptionsExport {
   format: "A4" | "A5" | "Letter" | "Legal";
@@ -144,9 +151,7 @@ export function construireEnteteTypst(opts: OptionsExport): string {
   // Gestion de la migration depuis l'ancien type boolean
   const rawNum = opts.numerotationTitres as unknown;
   const typstNumbering =
-    !rawNum || rawNum === "none" || rawNum === false
-      ? "none"
-      : `"${rawNum}"`;
+    !rawNum || rawNum === "none" || rawNum === false ? "none" : `"${rawNum}"`;
 
   // Numéros de page : actifs d'emblée sauf si on attend le sommaire
   const initAffNums =
@@ -180,7 +185,7 @@ export function construireEnteteTypst(opts: OptionsExport): string {
 #set par(leading: ${leading}, spacing: ${spacing}, justify: ${justif})
 ${ligneIndent}#set heading(numbering: ${typstNumbering})
 #let _numTitre(it) = if it.numbering != none [#counter(heading).display(it.numbering) ]
-#set list(marker: ${opts.police === "inter" ? '([•], [◦], [–])' : '([–], [·], [·])'})
+#set list(marker: ${opts.police === "inter" ? "([•], [◦], [–])" : "([–], [·], [·])"})
 
 #show heading.where(level: 1): it => {
   v(1.6em)
@@ -475,7 +480,10 @@ function convertirBloc(
       node.forEach((child) => {
         if (child.type.name === "paragraph") {
           const texte = convertirInlines(child);
-          const contenuReel = texte.replace(/\\/g, "").replace(/\n/g, "").trim();
+          const contenuReel = texte
+            .replace(/\\/g, "")
+            .replace(/\n/g, "")
+            .trim();
           if (contenuReel) {
             items.push({ type: "vers", texte: texte.trimEnd() });
           } else {
@@ -586,7 +594,13 @@ export function convertirDocContenu(
   let prevNode: Node | null = null;
   // biome-ignore lint/complexity/noForEach: ProseMirror Node.forEach, pas Array.forEach
   doc.forEach((child) => {
-    const bloc = convertirBloc(child, vaultPath, prevNode, nvPage, headingOffset);
+    const bloc = convertirBloc(
+      child,
+      vaultPath,
+      prevNode,
+      nvPage,
+      headingOffset
+    );
     if (bloc.trim()) {
       blocs.push(bloc);
       prevNode = child;
@@ -643,7 +657,12 @@ export function proseMirrorDocVersTypst(
   let prevNode: Node | null = null;
   // biome-ignore lint/complexity/noForEach: ProseMirror Node.forEach, pas Array.forEach
   doc.forEach((child) => {
-    const bloc = convertirBloc(child, vaultPath, prevNode, opts.niveauNouvellePage);
+    const bloc = convertirBloc(
+      child,
+      vaultPath,
+      prevNode,
+      opts.niveauNouvellePage
+    );
     if (bloc.trim()) {
       blocs.push(bloc);
       prevNode = child;

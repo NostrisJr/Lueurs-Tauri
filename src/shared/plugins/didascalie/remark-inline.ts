@@ -81,7 +81,12 @@ function remarkDidascalieInline(this: AnyNode) {
     data.toMarkdownExtensions || (data.toMarkdownExtensions = []);
   toMarkdownExtensions.push({
     handlers: {
-      didascalie_inline(node: AnyNode, _parent: AnyNode, state: AnyNode, info: AnyNode) {
+      didascalie_inline(
+        node: AnyNode,
+        _parent: AnyNode,
+        state: AnyNode,
+        info: AnyNode
+      ) {
         const exit = state.enter("didascalie_inline");
         const value = state.containerPhrasing(node, {
           ...info,

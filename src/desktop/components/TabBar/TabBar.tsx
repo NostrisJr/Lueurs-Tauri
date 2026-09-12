@@ -11,6 +11,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { clsx } from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
 import type { MediaFile, NoteFile } from "../../../shared/hooks/useFileTree";
@@ -23,7 +24,6 @@ import {
 } from "../../../shared/lib/atoms";
 import { createLogger } from "../../../shared/lib/logger";
 import { TabItem, TabOverlay } from "./TabItem.tsx";
-import { clsx } from "clsx";
 
 const log = createLogger("TabBar");
 

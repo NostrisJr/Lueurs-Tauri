@@ -1,7 +1,7 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useRef, useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import type { getAddableFields } from "../../../shared/lib/noteTypes";
+import { isMobile } from "../../../shared/lib/platform";
 
 interface Props {
   addableFields: ReturnType<typeof getAddableFields>;
@@ -14,7 +14,6 @@ export function AddPropertyDropdown({
   onAddSystem,
   onAddUser,
 }: Props) {
-  const isMobile = platform() === "ios";
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 

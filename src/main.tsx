@@ -2,9 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./App.css";
+import { platform } from "@tauri-apps/plugin-os";
 import { TitleBar } from "./desktop/components/TitleBar";
 import { createLogger } from "./shared/lib/logger";
-import { platform } from "@tauri-apps/plugin-os";
 
 const log = createLogger("main");
 
@@ -17,7 +17,8 @@ function showCrashOverlay(title: string, detail: string) {
   h.style.cssText = "font-size:16px;font-weight:bold;color:#f87171;margin:0";
   h.textContent = title;
   const p = document.createElement("p");
-  p.style.cssText = "white-space:pre-wrap;word-break:break-all;margin:0;color:#d1d5db";
+  p.style.cssText =
+    "white-space:pre-wrap;word-break:break-all;margin:0;color:#d1d5db";
   p.textContent = detail;
   const btn = document.createElement("button");
   btn.textContent = "Fermer";
@@ -46,14 +47,19 @@ window.addEventListener("error", (e) => {
     lineno: e.lineno,
     stack: e.error?.stack,
   });
-  if (isIOS) showCrashOverlay("Erreur JS", `${e.message}\n\n${e.error?.stack ?? ""}`);
+  if (isIOS)
+    showCrashOverlay("Erreur JS", `${e.message}\n\n${e.error?.stack ?? ""}`);
 });
 window.addEventListener("unhandledrejection", (e) => {
   log.error("promesse rejetée non gérée", {
     reason: String(e.reason),
     stack: e.reason?.stack,
   });
-  if (isIOS) showCrashOverlay("Promesse rejetée", `${e.reason}\n\n${e.reason?.stack ?? ""}`);
+  if (isIOS)
+    showCrashOverlay(
+      "Promesse rejetée",
+      `${e.reason}\n\n${e.reason?.stack ?? ""}`
+    );
 });
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

@@ -13,6 +13,7 @@
  * Monté dans un Portal (document.body) pour échapper aux overflow:hidden parents.
  * Swipe vers le bas pour fermer.
  */
+import { useSetAtom } from "jotai";
 import {
   type ReactNode,
   useEffect,
@@ -22,6 +23,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Squircle } from "../../../shared/components/Squircle";
+import { mobileOpenSheetCountAtom } from "../../../shared/lib/atoms";
 import { useKeyboard } from "../../hooks/useKeyboard";
 
 // Durée de l'animation de sortie (doit matcher la transition transform ci-dessous)
@@ -147,14 +149,31 @@ export function BottomSheet({
     closeTimeoutRef.current = window.setTimeout(onClose, EXIT_DURATION_MS);
   }
 
+  // Compte cette sheet dans mobileOpenSheetCountAtom tant qu'elle est montée
+  // — MobileApp désactive le swipe-back/-avant tant que ce compte est non nul
+  // (cf. commentaire sur l'atome), plutôt que de tenter de la refermer au
+  // geste.
+  const setOpenSheetCount = useSetAtom(mobileOpenSheetCountAtom);
+  useEffect(() => {
+    setOpenSheetCount((n) => n + 1);
+    return () => setOpenSheetCount((n) => n - 1);
+  }, [setOpenSheetCount]);
+
   // Hauteur disponible au-dessus du clavier (ou de l'écran entier)
   const visibleH = window.innerHeight - keyboardHeight;
+  // heightFraction reste calculé sur la hauteur PLEINE (pas visibleH) même
+  // clavier ouvert — juste clampé pour ne jamais dépasser l'espace visible
+  // au-dessus du clavier : l'ancien palier fixe à 85% de visibleH ignorait la
+  // préférence de l'appelant (ex: InlineFormulaPopup, heightFraction=0.4,
+  // pensé compact) et faisait bondir la sheet à une hauteur bien plus grande
+  // que son contenu dès que le clavier s'ouvrait.
   const sheetH =
     autoHeight && measuredContentHeight != null
       ? Math.min(measuredContentHeight + DRAG_HANDLE_HEIGHT, visibleH - 40)
-      : isKeyboardOpen
-        ? Math.min(Math.round(visibleH * 0.85), visibleH - 40)
-        : Math.round(window.innerHeight * heightFraction);
+      : Math.min(
+          Math.round(window.innerHeight * heightFraction),
+          visibleH - 40
+        );
   const translateY = closing || !entered ? "100%" : `${swipe}px`;
 
   useEffect(() => {
@@ -206,14 +225,21 @@ export function BottomSheet({
           className="absolute inset-0 bg-white flex flex-col"
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
           onTouchStart={(e: React.TouchEvent) => {
+            // Empêche un geste démarré dans UNE sheet imbriquée (ex: le
+            // sélecteur de couleur ouvert depuis les options Bouton) de
+            // remonter (bubbling fiber, à travers le portail) jusqu'aux
+            // handlers tactiles d'une sheet ANCÊTRE — sans ça, un seul swipe
+            // sur la sheet enfant était aussi interprété comme un swipe-to-
+            // close par la sheet parente, fermant les deux à la fois.
+            e.stopPropagation();
             startYRef.current = e.touches[0].clientY;
             // Le swipe-to-close ne doit s'engager que si le contenu est déjà
             // scrollé en haut, sinon il vole le geste de scroll interne (ex:
             // remonter dans la liste d'emojis) et referme la sheet par erreur.
-            swipeAllowedRef.current =
-              (contentRef.current?.scrollTop ?? 0) <= 0;
+            swipeAllowedRef.current = (contentRef.current?.scrollTop ?? 0) <= 0;
           }}
           onTouchMove={(e: React.TouchEvent) => {
+            e.stopPropagation();
             if (!swipeAllowedRef.current) return;
             const dy = e.touches[0].clientY - startYRef.current;
             // Seuil 10px avant tout effet : en dessous, on considère que le
@@ -227,7 +253,8 @@ export function BottomSheet({
               e.preventDefault();
             }
           }}
-          onTouchEnd={() => {
+          onTouchEnd={(e: React.TouchEvent) => {
+            e.stopPropagation();
             if (swipe > 60) {
               setSwipe(0);
               requestClose();

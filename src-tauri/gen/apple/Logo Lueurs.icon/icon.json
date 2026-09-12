@@ -1,0 +1,75 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.99216,0.53725,0.39216,1.00000",
+      "display-p3:0.92549,0.26667,0.32549,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 0
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.7
+      }
+    }
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "display-p3:1.00000,0.99216,0.95686,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.99216,0.53725,0.39216,1.00000",
+                  "display-p3:0.88247,0.24353,0.26355,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.5587621228448276,
+                    "y" : 0.026962356187810982
+                  },
+                  "stop" : {
+                    "x" : 0.27387526939655166,
+                    "y" : 0.9210879197761196
+                  }
+                }
+              }
+            }
+          ],
+          "image-name" : "Logo Lueurs.svg",
+          "name" : "Logo Lueurs",
+          "position" : {
+            "scale" : 0.2,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

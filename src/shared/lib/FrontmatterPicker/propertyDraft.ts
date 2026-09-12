@@ -130,9 +130,13 @@ export function withFormatConstraint(
 /**
  * Change de type en conservant ce qui a été tapé : le contenu actif passe tel
  * quel dans l'autre champ (juste entouré de $$ côté Nombre) — à l'utilisateur
- * de corriger si le résultat n'a pas de sens. Bouton fait exception (liste de
- * valeurs, pas une expression) : rien n'est repris en y entrant, et on
- * repart du premier libellé en sortant.
+ * de corriger si le résultat n'a pas de sens. Bouton amorce toujours au moins
+ * une première option (avec ce même contenu si non vide, sinon une option
+ * vide) plutôt que de repartir d'une liste vide — sinon le panneau s'ouvre
+ * sans rien à éditer ni à focus. Seulement si aucune option n'existe déjà :
+ * un va-et-vient Bouton→Nombre→Bouton ne doit pas écraser des options déjà
+ * saisies par un contenu Nombre entre-temps vidé (cf. Bouton→Nombre juste
+ * au-dessus, qui repart bien d'une expression vide sans toucher enumDef).
  */
 export function changeDraftType(
   draft: EditorDraft,
@@ -150,7 +154,15 @@ export function changeDraftType(
     };
   }
   if (next === "enum") {
-    return { ...draft, type: next };
+    if (draft.enumDef.options.length > 0) return { ...draft, type: next };
+    const seed = (
+      draft.type === "number" ? draft.numberDef.expr : draft.text
+    ).trim();
+    return {
+      ...draft,
+      type: next,
+      enumDef: { options: [{ value: seed }], default: seed },
+    };
   }
   return {
     ...draft,

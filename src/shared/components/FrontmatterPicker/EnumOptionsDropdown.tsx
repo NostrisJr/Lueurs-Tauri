@@ -1,6 +1,6 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { pillClasses } from "../../lib/FrontmatterPicker/enumPillColors";
 import type { EnumDef } from "../../lib/FrontmatterPicker/enumProperty";
+import { isMobile } from "../../lib/platform";
 import { AnchoredDropdown } from "../AnchoredDropdown";
 
 interface Props {
@@ -27,8 +27,6 @@ export function EnumOptionsDropdown({
   className = "w-40",
   zIndex,
 }: Props) {
-  const isMobile = platform() === "ios";
-
   return (
     <AnchoredDropdown
       anchorRef={anchorRef}

@@ -29,7 +29,9 @@ export function SpaceSwitcher() {
   const [noteBackStack, setNoteBackStack] = useAtom(noteBackStackAtom);
 
   const spaces = vaultConfig?.spaces ?? [];
-  const orderedSpaces = vaultConfig ? buildOrderedSpaces(spaces, vaultConfig) : [];
+  const orderedSpaces = vaultConfig
+    ? buildOrderedSpaces(spaces, vaultConfig)
+    : [];
 
   // Purge la valeur obsolète uniquement quand la config vault est réellement chargée
   useEffect(() => {
@@ -42,7 +44,8 @@ export function SpaceSwitcher() {
   // Premier lancement (clé absente de localStorage) : sélectionner le premier espace de la liste
   const initDoneRef = useRef(false);
   useEffect(() => {
-    if (initDoneRef.current || !vaultConfig || orderedSpaces.length === 0) return;
+    if (initDoneRef.current || !vaultConfig || orderedSpaces.length === 0)
+      return;
     initDoneRef.current = true;
     const stored = localStorage.getItem(ACTIVE_SPACE_STORAGE_KEY);
     if (stored !== null) return; // déjà persisté

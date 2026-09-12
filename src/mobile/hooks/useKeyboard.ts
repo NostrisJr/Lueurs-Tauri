@@ -18,12 +18,32 @@ const KEYBOARD_THRESHOLD_PX = 150;
  * - Android avec insets natifs (MainActivity.kt) : le WebView se redimensionne,
  *   `visualViewport` ne voit plus le clavier → `isAndroidOpen` via `innerHeight`.
  */
-export function useKeyboard(): KeyboardState {
-  const [state, setState] = useState<KeyboardState>({
-    height: 0,
-    isOpen: false,
+// État initial lu directement au montage (pas figé à "clavier fermé") : si le
+// clavier était DÉJÀ ouvert avant que ce hook ne monte (ex: une nouvelle
+// BottomSheet ouverte pendant qu'on tapait déjà dans un autre champ), aucun
+// resize/scroll de visualViewport ne se reproduit puisque rien ne change
+// côté clavier — un state initialisé à { height: 0, isOpen: false } restait
+// alors faux indéfiniment, laissant la sheet se positionner comme si de rien
+// n'était (et donc se faire recouvrir par le clavier déjà là).
+function readKeyboardState(): KeyboardState {
+  const vv = window.visualViewport;
+  const height = vv
+    ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+    : 0;
+  return {
+    height,
+    isOpen: height > 50,
+    // Non détectable sans historique (comparé à un maxHeight observé au fil
+    // du temps, cf. l'effet plus bas) : reste à false tant que ce premier
+    // resize n'est pas encore passé — cas Android avec insets IME natifs
+    // uniquement, pas le bug rapporté (iOS/Android sans insets, via height/
+    // isOpen ci-dessus, corrigés par ce montage synchrone).
     isAndroidOpen: false,
-  });
+  };
+}
+
+export function useKeyboard(): KeyboardState {
+  const [state, setState] = useState<KeyboardState>(readKeyboardState);
 
   // iOS / Android sans insets — visualViewport
   useEffect(() => {

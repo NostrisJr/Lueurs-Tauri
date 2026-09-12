@@ -194,7 +194,9 @@ export async function readVaultConfig(
       parsed.iconOnly = true;
     }
     // biome-ignore lint/suspicious/noExplicitAny: nettoyage champ obsolète
-    parsed.spaces = (parsed.spaces as any[]).map(({ iconOnly: _, ...rest }) => rest) as VaultSpace[];
+    parsed.spaces = (parsed.spaces as any[]).map(
+      ({ iconOnly: _, ...rest }) => rest
+    ) as VaultSpace[];
     return parsed;
   } catch {
     return null;
@@ -293,13 +295,18 @@ export async function ensureVaultConfig(
   const filePath = configFilePath(vaultRoot);
   const check = await pathExistsWithError(filePath);
   if (check.found) {
-    log.warn("config présente mais illisible, nouvelle tentative", { vaultRoot });
+    log.warn("config présente mais illisible, nouvelle tentative", {
+      vaultRoot,
+    });
     await new Promise((resolve) => setTimeout(resolve, ICLOUD_RETRY_DELAY_MS));
     const retried = await readVaultConfig(vaultRoot);
     if (retried) return retried;
-    log.error("config toujours illisible après nouvelle tentative — pas d'écrasement", {
-      vaultRoot,
-    });
+    log.error(
+      "config toujours illisible après nouvelle tentative — pas d'écrasement",
+      {
+        vaultRoot,
+      }
+    );
     await showVaultConfigDialog(
       `Le fichier .lueurs/config.json existe dans ${vaultRoot} mais reste illisible après une nouvelle tentative — aucune donnée n'est écrasée, les espaces resteront vides jusqu'au prochain démarrage.`
     );

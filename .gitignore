@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Rapport JSON de vitest (généré à chaque lancement des tests)
+.vitest/

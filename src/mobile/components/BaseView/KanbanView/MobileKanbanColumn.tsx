@@ -75,7 +75,7 @@ export function MobileKanbanColumn({
           <ColorDotPicker
             color={column.color}
             onColor={(c) => onSetColor(column.id, c)}
-            className={`size-3 rounded-full shrink-0 ${
+            className={`size-5 rounded-full shrink-0 ${
               column.color ? "" : "opacity-40"
             }`}
           />

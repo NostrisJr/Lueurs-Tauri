@@ -1,8 +1,8 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import { vaultConfigAtom } from "../../../shared/lib/atoms";
+import { isMobile } from "../../../shared/lib/platform";
 
 interface SpaceSelectorProps {
   currentSpaces: string[];
@@ -18,7 +18,6 @@ export function SpaceSelector({
   anchorRef,
 }: SpaceSelectorProps) {
   const [query, setQuery] = useState("");
-  const isMobile = platform() === "ios";
   const vaultConfig = useAtomValue(vaultConfigAtom);
   const spaces = vaultConfig?.spaces ?? [];
 
@@ -27,7 +26,11 @@ export function SpaceSelector({
     .filter((s) => s.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <AnchoredDropdown anchorRef={anchorRef} onClose={onClose} className="max-w-130">
+    <AnchoredDropdown
+      anchorRef={anchorRef}
+      onClose={onClose}
+      className="max-w-130"
+    >
       <div className="px-2 py-1.5 border-b border-gray-100">
         <input
           ref={(el) => el?.focus()}

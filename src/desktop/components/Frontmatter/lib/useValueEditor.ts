@@ -164,5 +164,9 @@ export function useValueEditor(
     openFormulaEditor,
     open,
     toggleOpen,
+    // Commit + fermeture explicite — exposé pour un conteneur qui gère lui-même
+    // son propre déclencheur de fermeture (ex: BottomSheet.onClose sur mobile,
+    // cf. MobilePropertySheet) plutôt que via containerProps/toggleOpen.
+    commitAndClose,
   };
 }

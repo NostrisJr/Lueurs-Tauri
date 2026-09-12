@@ -3,6 +3,7 @@ import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import {
+  IconDocument,
   IconFolder,
   IconLock,
   IconLockOpen,
@@ -58,7 +59,14 @@ export function useNodeMenuActions() {
   // Pas de mémoïsation : les actions capturent le nœud, qui change à chaque
   // rechargement de l'arbre — une closure figée agirait sur un chemin périmé.
   return (
-    node: TreeNode
+    node: TreeNode,
+    /**
+     * Action "Ouvrir" ajoutée en tête de `primary` si fournie — omis pour un
+     * nœud pour lequel "ouvrir" n'a pas de sens (ex: le dossier déjà affiché
+     * dans FileTreeTitle). Les appelants qui ont déjà une notion d'ouverture
+     * (tap sur l'aperçu soulevé, cf. onActivate) passent la même fonction ici.
+     */
+    onOpen?: () => void
   ): { primary: RowMenuAction[]; items: RowMenuAction[] } => {
     const isFolder = node.kind === "folder";
     const target = { id: node.id, name: node.name, isFolder };
@@ -77,6 +85,16 @@ export function useNodeMenuActions() {
     const readOnlyLocked = isNoteReadOnly(readOnlyTarget?.frontmatter);
 
     const primary: RowMenuAction[] = [
+      ...(onOpen
+        ? [
+            {
+              id: "open",
+              label: "Ouvrir",
+              icon: IconDocument,
+              onPress: onOpen,
+            },
+          ]
+        : []),
       ...(readOnlyLocked
         ? []
         : [

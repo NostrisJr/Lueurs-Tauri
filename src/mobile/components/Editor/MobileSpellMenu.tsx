@@ -1,9 +1,12 @@
 import { editorViewCtx, schemaCtx } from "@milkdown/kit/core";
 import { useAtom, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
-import { mobileSpellPopupAtom, updateIgnoredWordsAtom } from "../../../shared/lib/atoms";
-import { createLogger } from "../../../shared/lib/logger";
 import { activeEditorRef } from "../../../shared/components/NoteEditor/lib/activeEditorRef";
+import {
+  mobileSpellPopupAtom,
+  updateIgnoredWordsAtom,
+} from "../../../shared/lib/atoms";
+import { createLogger } from "../../../shared/lib/logger";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { BottomSheet } from "../BottomSheet/BottomSheet";
 
@@ -63,13 +66,16 @@ export function MobileSpellMenu() {
     const w = popup.word.trim().toLowerCase();
     if (!w) return;
     updateIgnoredWords((prev) =>
-      prev.some((x) => x.toLowerCase() === w) ? prev : [...prev, popup.word.trim()]
+      prev.some((x) => x.toLowerCase() === w)
+        ? prev
+        : [...prev, popup.word.trim()]
     );
     log.info("mot ignoré", { word: w });
     close();
   }
 
-  const title = popup.category === "spelling" ? `« ${popup.word} »` : popup.word;
+  const title =
+    popup.category === "spelling" ? `« ${popup.word} »` : popup.word;
 
   return (
     <BottomSheet onClose={close} title={title} heightFraction={0.5}>

@@ -1,9 +1,9 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { DesktopApp } from "./desktop/DesktopApp";
 import { MobileApp } from "./mobile/MobileApp";
+import { isMobile } from "./shared/lib/platform";
 
 export default function App() {
-  if (platform() === "ios" || platform() === "android")
+  if (isMobile)
     return (
       <div className="w-screen h-screen">
         <MobileApp />

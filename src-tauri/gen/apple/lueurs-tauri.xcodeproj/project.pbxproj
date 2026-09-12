@@ -11,6 +11,7 @@
 		169D60E0889078E57B0D6F20 /* LueursCCWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5A8CC4D29BCC23BB3307D346 /* LueursCCWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		31EC5816069C3A943E40FFCC /* LueursCCControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3804B45462E3361200420387 /* LueursCCControl.swift */; };
 		3FC96F572C41EFDB71CA3FBF /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFED8D9C07914E45FB100DCD /* QuartzCore.framework */; };
+		3FF89C9730554ECE00D6D978 /* Logo Lueurs.icon in Resources */ = {isa = PBXBuildFile; fileRef = 3FF89C9630554ECE00D6D978 /* Logo Lueurs.icon */; };
 		453DA1A8B7D137DAB5508B89 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8563AA36E3B064406E23A477 /* main.mm */; };
 		5B18F556208E84F326BDD0FF /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E9FEE720313BAE34BC9F4F5 /* Metal.framework */; };
 		67BC2DB6539565CD73B9AC18 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD4A9066B521CD93414E631A /* WebKit.framework */; };
@@ -59,6 +60,7 @@
 		2469553325AE9DEE2B1B68D9 /* lib.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = lib.rs; sourceTree = "<group>"; };
 		3804B45462E3361200420387 /* LueursCCControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LueursCCControl.swift; sourceTree = "<group>"; };
 		3CA8F9BF2063540D8F4D2E97 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3FF89C9630554ECE00D6D978 /* Logo Lueurs.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Logo Lueurs.icon"; sourceTree = "<group>"; };
 		572472EF93F0B9CA150F0020 /* lueurs-tauri_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "lueurs-tauri_iOS.entitlements"; sourceTree = "<group>"; };
 		5A8CC4D29BCC23BB3307D346 /* LueursCCWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LueursCCWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D25857CEE97C24BCAFEF981 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -143,6 +145,7 @@
 				063C4D7A836BCABCE51DC176 /* src */,
 				B42DD57DC5F018E23DC9C26B /* Frameworks */,
 				CA59F6DE3FA4F235DBE1EC94 /* Products */,
+				3FF89C9630554ECE00D6D978 /* Logo Lueurs.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -294,6 +297,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3FF89C9730554ECE00D6D978 /* Logo Lueurs.icon in Resources */,
 				11E867C59FD0550B127011A3 /* Assets.xcassets in Resources */,
 				A675BCE9A2EEBA1E6B2B6DFE /* LaunchScreen.storyboard in Resources */,
 				9D38E8F50AF0112D477D3727 /* assets in Resources */,
@@ -403,7 +407,9 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ARCHS = arm64;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Logo Lueurs";
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				ASSETCATALOG_OTHER_FLAGS = "--enable-icon-stack-fallback-generation=disabled";
 				CODE_SIGN_ENTITLEMENTS = "lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "TBX8DPCBL9";
@@ -565,7 +571,9 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ARCHS = arm64;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Logo Lueurs";
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				ASSETCATALOG_OTHER_FLAGS = "--enable-icon-stack-fallback-generation=disabled";
 				CODE_SIGN_ENTITLEMENTS = "lueurs-tauri_iOS/lueurs-tauri_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "TBX8DPCBL9";

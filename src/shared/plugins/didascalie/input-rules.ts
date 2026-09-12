@@ -1,6 +1,6 @@
 import { schemaCtx } from "@milkdown/kit/core";
-import { InputRule, inputRules } from "@milkdown/kit/prose/inputrules";
 import { markRule } from "@milkdown/kit/prose";
+import { InputRule, inputRules } from "@milkdown/kit/prose/inputrules";
 import { TextSelection } from "@milkdown/kit/prose/state";
 import { $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../../lib/logger";

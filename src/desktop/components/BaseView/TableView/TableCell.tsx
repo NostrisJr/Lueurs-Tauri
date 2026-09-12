@@ -54,10 +54,14 @@ export function TableCell({
   const [draft, setDraft] = useState(value);
   const [editing, setEditing] = useState(false);
   const [refSelectorOpen, setRefSelectorOpen] = useState(false);
-  // Réglages Texte/Nombre/Bouton (roue crantée) : cf. TableCell plus bas,
-  // atteignable seulement hors enumConstraint/numberFormatConstraint de
-  // template (déjà couverts par EnumValueSelector/NumberCellSelector).
-  const cellSettings = usePropertyCellSettings(value);
+  // Réglages Texte/Nombre/Bouton — instancié UNE fois pour toute la cellule
+  // (partagé par NumberCellSelector et PropertyCellSettingsPopup ci-dessous,
+  // seul l'un des deux est monté à la fois selon la branche courante).
+  const cellSettings = usePropertyCellSettings(
+    value,
+    onCommit,
+    numberFormatConstraint
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   // Ref stable → assigne inputRef et sélectionne le texte au montage de l'input d'édition uniquement
   const editInputRef = useCallback((el: HTMLInputElement | null) => {
@@ -144,7 +148,7 @@ export function TableCell({
           frontmatter={frontmatter}
           noteResolver={noteResolver ?? (() => undefined)}
           allNotes={allNotes ?? []}
-          onCommit={onCommit}
+          settings={cellSettings}
         />
       </div>
     );
@@ -189,7 +193,6 @@ export function TableCell({
           frontmatter={frontmatter}
           noteResolver={noteResolver ?? (() => undefined)}
           allNotes={allNotes ?? []}
-          onCommit={onCommit}
         />
       </div>
     );
@@ -323,7 +326,6 @@ export function TableCell({
           frontmatter={frontmatter}
           noteResolver={noteResolver ?? (() => undefined)}
           allNotes={allNotes ?? []}
-          onCommit={onCommit}
         />
       )}
     </div>

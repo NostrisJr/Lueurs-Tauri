@@ -14,6 +14,9 @@ import {
   isNumberFormula,
 } from "../../../../shared/lib/FrontmatterPicker/numberProperty";
 import { computeFormula, isFormula } from "../../../../shared/lib/formulas";
+import { useLongPress, useLongPressCapture } from "../../../hooks/useLongPress";
+import { hapticImpact } from "../../../lib/haptics";
+import { CELL_WIDTH } from "./constants";
 
 interface Props {
   fieldKey: string;
@@ -26,8 +29,6 @@ interface Props {
   allNotes: NoteFile[];
   onCommit: (value: string) => void;
 }
-
-const CELL_WIDTH = 140;
 
 export function MobileTableCell({
   fieldKey,
@@ -43,10 +44,16 @@ export function MobileTableCell({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const formula = isFormula(value);
-  // Réglages Texte/Nombre/Bouton (roue crantée) : cf. TableCell desktop,
-  // atteignable seulement hors enumConstraint/numberFormatConstraint de
-  // template (déjà couverts par EnumValueSelector/NumberCellSelector).
-  const cellSettings = usePropertyCellSettings(value);
+  // Réglages Texte/Nombre/Bouton — instancié UNE fois pour toute la cellule
+  // (partagé par NumberCellSelector et PropertyCellSettingsPopup ci-dessous).
+  // Déclenché par appui long sur la cellule (cf. useLongPress/useLongPressCapture
+  // plus bas) plutôt que par la roue crantée, invisible au tactile (hover-only) —
+  // PropertyCellSettingsPopup ne monte d'ailleurs plus son bouton roue sur mobile.
+  const cellSettings = usePropertyCellSettings(
+    value,
+    onCommit,
+    numberFormatConstraint
+  );
 
   const displayValue = formula
     ? computeFormula(value, frontmatter, undefined, noteResolver)
@@ -56,6 +63,26 @@ export function MobileTableCell({
     setEditing(false);
     onCommit(draft);
   }
+
+  function openSettings() {
+    if (isImposed) return;
+    hapticImpact("medium");
+    cellSettings.openPopup();
+  }
+
+  // Enum/Nombre enveloppent un enfant déjà cliquable (EnumValueSelector,
+  // NumberCellSelector) : le clic fantôme d'un appui long doit être intercepté
+  // en phase de capture, avant qu'il n'atteigne cet enfant (cf.
+  // useLongPressCapture).
+  const settingsLongPressCapture = useLongPressCapture(openSettings);
+  // Branche générique (texte/formule) : la cellule elle-même porte le clic
+  // court (édition inline), pas d'enfant à protéger — variante bubble standard.
+  const cellLongPress = useLongPress(openSettings, () => {
+    if (!isImposed && !formula) {
+      setDraft(value);
+      setEditing(true);
+    }
+  });
 
   // ── Contrainte ENUM : dropdown ──────────────────────────────────────────
   if (enumConstraint) {
@@ -79,6 +106,7 @@ export function MobileTableCell({
       <div
         className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none flex items-center"
         style={{ width: CELL_WIDTH }}
+        {...settingsLongPressCapture}
       >
         <NumberCellSelector
           fieldKey={fieldKey}
@@ -87,7 +115,7 @@ export function MobileTableCell({
           frontmatter={frontmatter}
           noteResolver={noteResolver}
           allNotes={allNotes}
-          onCommit={onCommit}
+          settings={cellSettings}
         />
       </div>
     );
@@ -111,6 +139,7 @@ export function MobileTableCell({
       <div
         className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none flex items-center relative group"
         style={{ width: CELL_WIDTH }}
+        {...settingsLongPressCapture}
       >
         <EnumValueSelector
           value={activeEnumDef.default}
@@ -132,23 +161,16 @@ export function MobileTableCell({
           frontmatter={frontmatter}
           noteResolver={noteResolver}
           allNotes={allNotes}
-          onCommit={onCommit}
         />
       </div>
     );
   }
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
     <div
       className={`shrink-0 px-3 py-2 border-r border-gray-100 last:border-none relative ${!isImposed ? "group" : ""}`}
       style={{ width: CELL_WIDTH }}
-      onClick={() => {
-        if (!isImposed && !formula) {
-          setDraft(value);
-          setEditing(true);
-        }
-      }}
+      {...cellLongPress}
     >
       {editing ? (
         <input
@@ -207,7 +229,6 @@ export function MobileTableCell({
           frontmatter={frontmatter}
           noteResolver={noteResolver}
           allNotes={allNotes}
-          onCommit={onCommit}
         />
       )}
     </div>

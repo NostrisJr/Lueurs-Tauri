@@ -1,4 +1,3 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue } from "jotai";
 import { useRef, useState } from "react";
 import { EnumValueSelector } from "../../../shared/components/FrontmatterPicker/EnumValueSelector";
@@ -20,6 +19,7 @@ import {
   isFormulaError,
 } from "../../../shared/lib/formulas";
 import { type NoteTypeValue, SystemField } from "../../../shared/lib/noteTypes";
+import { isMobile } from "../../../shared/lib/platform";
 import { NoteChip } from "./NoteChip";
 import { NoteSelector } from "./NoteSelector";
 import { NumberExprField } from "./NumberExprField";
@@ -44,6 +44,12 @@ interface Props {
   noteName: (path: string) => string;
   /** État/logique du panneau (type, brouillon, ouverture) — possédé par FrontmatterRow. */
   editor: ReturnType<typeof useValueEditor>;
+  /**
+   * Mobile uniquement : la valeur texte simple n'est plus éditable en ligne
+   * (cf. commentaire plus bas) — tap pour ouvrir MobilePropertySheet, mais
+   * seulement s'il y a quelque chose à y faire (renommer/configurer/supprimer).
+   */
+  canOpenSheet?: boolean;
 }
 
 export function FrontmatterValue({
@@ -62,8 +68,8 @@ export function FrontmatterValue({
   onRemoveNote,
   noteName,
   editor,
+  canOpenSheet,
 }: Props) {
-  const isMobile = platform() === "ios";
   const folderPath = useAtomValue(folderPathAtom);
   const allFolders = useAtomValue(allFoldersAtom);
   const vaultConfig = useAtomValue(vaultConfigAtom);
@@ -201,6 +207,7 @@ export function FrontmatterValue({
           broken={!isRoot && !folderNode}
           openOnClick
           readOnly={isValueLocked}
+          hideRemoveButton={isMobile}
           onRemove={() => {
             onTextChange("");
             onTextBlur();
@@ -226,6 +233,7 @@ export function FrontmatterValue({
               name={path}
               broken={!spaceNames.has(path)}
               readOnly={isValueLocked}
+              hideRemoveButton={isMobile}
               onRemove={() => onRemoveNote(path)}
             />
           ) : (
@@ -234,6 +242,7 @@ export function FrontmatterValue({
               name={noteName(path)}
               noteId={path}
               readOnly={isValueLocked}
+              hideRemoveButton={isMobile}
               onRemove={() => onRemoveNote(path)}
             />
           )
@@ -250,8 +259,13 @@ export function FrontmatterValue({
   // ── Champ déroulé (type/formule) ──────────────────────────────────────────
   // Le tab switcher et décimales/unité sont rendus par FrontmatterRow, au-dessus
   // et en dessous de la ligne icônes+champ : le champ ne bouge jamais de place
-  // visuellement, qu'on soit déplié ou non (cf. useValueEditor).
-  if (editor.visible && !isValueLocked) {
+  // visuellement, qu'on soit déplié ou non (cf. useValueEditor). Desktop
+  // uniquement : sur mobile, la VALEUR s'édite dans MobilePropertySheet (la
+  // ligne peut se retrouver masquée sous cette sheet une fois ouverte), donc
+  // cette branche n'est jamais atteinte — les branches suivantes (aperçu
+  // formule compacte, texte) affichent déjà la frappe en cours grâce au
+  // commit live de useValueEditor.
+  if (!isMobile && editor.visible && !isValueLocked) {
     const inputClassName =
       "w-full mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-400 transition-colors";
 
@@ -331,7 +345,27 @@ export function FrontmatterValue({
     );
   }
 
-  // ── Valeur texte standard ─────────────────────────────────────────────────
+  // ── Valeur texte standard, mobile ─────────────────────────────────────────
+  // Aperçu non interactif (pas d'input) : la saisie se fait dans
+  // MobilePropertySheet, cf. commentaire sur la branche "champ déroulé" plus
+  // haut — un input ici serait soit redondant avec la sheet quand elle est
+  // ouverte, soit masqué sous elle et donc inatteignable au clavier virtuel
+  // (zoom iOS en prime, en dessous de 16px).
+  if (isMobile) {
+    return (
+      // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
+      <span
+        className={`flex-1 mt-0.5 truncate text-sm
+          ${isSystem ? "font-bold" : ""}
+          ${isValueLocked ? "text-gray-300" : strValue ? "text-gray-600" : "text-gray-300"}`}
+        onClick={() => canOpenSheet && !isValueLocked && editor.open()}
+      >
+        {strValue || "valeur"}
+      </span>
+    );
+  }
+
+  // ── Valeur texte standard, desktop ────────────────────────────────────────
   return (
     <div className="flex-1 relative">
       <input

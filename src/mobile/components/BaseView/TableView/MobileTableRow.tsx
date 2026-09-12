@@ -3,9 +3,8 @@ import { useMemo, useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { useTable } from "../../../../shared/hooks/useTable";
 import { notesByIdAtom } from "../../../../shared/lib/atoms";
+import { TITLE_WIDTH } from "./constants";
 import { MobileTableCell } from "./MobileTableCell";
-
-const TITLE_WIDTH = 160;
 
 interface Props {
   note: NoteFile;

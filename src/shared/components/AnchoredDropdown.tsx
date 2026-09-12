@@ -32,7 +32,18 @@ export function AnchoredDropdown({
   zIndex = DEFAULT_Z_INDEX,
 }: AnchoredDropdownProps) {
   if (isMobile) {
-    return <BottomSheet onClose={onClose}>{children}</BottomSheet>;
+    // `className` (desktop) porte souvent des classes de largeur/positionnement
+    // qui n'ont pas de sens dans une sheet pleine largeur (ex: "w-48 p-3") —
+    // on ne le reprend donc pas tel quel, juste un padding horizontal par
+    // défaut : sans lui, TOUT contenu routé ici (rename, couleur, réglages
+    // Nombre/Bouton, sélecteurs note/espace/dossier...) se retrouvait collé
+    // aux bords de la sheet, BottomSheet ne posant elle-même aucun padding
+    // horizontal sur son contenu.
+    return (
+      <BottomSheet onClose={onClose}>
+        <div className="px-4 pb-4">{children}</div>
+      </BottomSheet>
+    );
   }
   return (
     <DesktopDropdown

@@ -2,10 +2,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconXmark } from "../../../shared/components/PlatformIcon";
 import { flattenTree } from "../../../shared/hooks/useFileTree";
-import {
-  mobileGoBackAtom,
-  treeAtom,
-} from "../../../shared/lib/atoms";
+import { mobileGoBackAtom, treeAtom } from "../../../shared/lib/atoms";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { MobileContextMenu } from "../BottomSheet/MobileContextMenu";
@@ -62,11 +59,7 @@ export function SearchView() {
           ) : (
             <div className="flex flex-col gap-2">
               {results.map((note) => (
-                <FileRow
-                  key={note.id}
-                  node={note}
-                  onDrillIn={() => {}}
-                />
+                <FileRow key={note.id} node={note} onDrillIn={() => {}} />
               ))}
             </div>
           )}

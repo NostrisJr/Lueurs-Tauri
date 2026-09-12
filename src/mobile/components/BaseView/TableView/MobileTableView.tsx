@@ -1,25 +1,22 @@
 import { useSetAtom } from "jotai";
-import type {
-  Frontmatter,
-  NoteFile,
-} from "../../../../shared/hooks/useFileTree";
+import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
-import { useTable } from "../../../../shared/hooks/useTable";
+import type { useTable } from "../../../../shared/hooks/useTable";
 import { navigateToNoteAtom } from "../../../../shared/lib/atoms";
+import { MobileTableFooter } from "./MobileTableFooter";
 import { MobileTableRow } from "./MobileTableRow";
 
-const TITLE_WIDTH = 160;
-const CELL_WIDTH = 140;
-
 interface Props {
-  base: NoteFile;
-  onBaseChange: (frontmatter: Frontmatter) => void;
+  /** État du tableau, remonté dans MobileBaseView qui rend aussi l'en-tête. */
+  table: ReturnType<typeof useTable>;
+  /** Recopie le scrollLeft des lignes vers l'en-tête (cf. MobileTableHeader). */
+  onBodyScroll: (scrollLeft: number) => void;
 }
 
-export function MobileTableView({ base, onBaseChange }: Props) {
+export function MobileTableView({ table, onBodyScroll }: Props) {
   const { handleRename } = useNote();
   const navigateToNote = useSetAtom(navigateToNoteAtom);
-  const { columns, childNotes, editCell } = useTable({ base, onBaseChange });
+  const { columns, childNotes, aggregations, setAggregation, editCell } = table;
 
   async function renameNote(note: NoteFile, newName: string) {
     const trimmed = newName.trim();
@@ -38,32 +35,11 @@ export function MobileTableView({ base, onBaseChange }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto w-full scrollbar-none">
-      <div className="inline-block min-w-full">
-        {/* Header */}
-        <div className="flex border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
-          <div
-            className="shrink-0 sticky left-0 z-20 bg-gray-50 px-3 py-2.5 border-r border-gray-200"
-            style={{ width: TITLE_WIDTH }}
-          >
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Titre
-            </span>
-          </div>
-          {columns.map((col) => (
-            <div
-              key={col.key}
-              className="shrink-0 px-3 py-2.5 border-r border-gray-200 last:border-none"
-              style={{ width: CELL_WIDTH }}
-            >
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide truncate block">
-                {col.key}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Rows */}
+    <div
+      className="overflow-x-auto w-full scrollbar-none"
+      onScroll={(e) => onBodyScroll(e.currentTarget.scrollLeft)}
+    >
+      <div className="w-max min-w-full">
         {childNotes.map((note) => (
           <MobileTableRow
             key={note.id}
@@ -74,6 +50,13 @@ export function MobileTableView({ base, onBaseChange }: Props) {
             onNavigate={() => navigateToNote(note.id)}
           />
         ))}
+
+        <MobileTableFooter
+          columns={columns}
+          childNotes={childNotes}
+          aggregations={aggregations}
+          onAggregationChange={setAggregation}
+        />
       </div>
     </div>
   );

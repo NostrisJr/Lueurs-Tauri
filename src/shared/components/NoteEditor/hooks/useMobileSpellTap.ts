@@ -2,10 +2,10 @@ import { editorViewCtx } from "@milkdown/kit/core";
 import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 import type { RefObject } from "react";
-import type { Editor } from "../MarkdownEditor";
 import { mobileSpellPopupAtom } from "../../../lib/atoms";
 import { isMobile } from "../../../lib/platform";
 import { getSpellSuggestionAtPos } from "../../../plugins/spellcheck/spellcheckPlugin";
+import type { Editor } from "../MarkdownEditor";
 
 const MOVE_THRESHOLD = 8;
 

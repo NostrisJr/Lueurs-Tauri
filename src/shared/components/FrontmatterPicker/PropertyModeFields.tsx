@@ -88,7 +88,6 @@ export function PropertyModeFields({
           placeholder="valeur"
           // biome-ignore lint/a11y/noAutofocus: ouverture intentionnelle du champ en édition
           autoFocus={autoFocus}
-          style={isMobile ? { fontSize: 14 } : undefined}
           className={fieldClassName}
         />
       ) : mode === "number" ? (
@@ -116,6 +115,7 @@ export function PropertyModeFields({
           enumDef={enumDef}
           onChange={onEnumDefChange}
           dropdownZIndex={dropdownZIndex}
+          autoFocus={autoFocus}
         />
       )}
 

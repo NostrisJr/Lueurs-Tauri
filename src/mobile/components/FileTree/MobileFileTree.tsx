@@ -132,7 +132,13 @@ function NodeList({
     <div className="flex flex-col gap-2 w-full">
       {nodes.map((node) => {
         const isFolder = node.kind === "folder";
-        const { primary, items } = buildMenuActions(node);
+        // Réutilisée à la fois pour le tap sur l'aperçu soulevé du menu
+        // (onActivate) et pour son entrée "Ouvrir" (onOpen) — même action.
+        function handleActivate() {
+          if (node.kind === "folder") onDrillIn(node);
+          else selectNote(node);
+        }
+        const { primary, items } = buildMenuActions(node, handleActivate);
         // Comportement unifié notes/dossiers : swipe (suppression) et appui long
         // (menu + déplacement, avec toute l'arborescence pour un dossier —
         // moveNode déplace le dossier entier, cf. fileTreeMutations.ts) sont
@@ -152,10 +158,7 @@ function NodeList({
               primary,
               items,
             }}
-            onActivate={() => {
-              if (node.kind === "folder") onDrillIn(node);
-              else selectNote(node);
-            }}
+            onActivate={handleActivate}
             dragEnabled={DRAG_TO_MOVE_ENABLED && !!onNodeDragStart}
             onDragStart={() => onNodeDragStart?.(node.id, node.name)}
             onDragMove={onNodeDragMove}

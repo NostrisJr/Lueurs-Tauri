@@ -1,8 +1,8 @@
-import type React from "react";
 import EmojiPicker, {
   type EmojiClickData,
   EmojiStyle,
 } from "emoji-picker-react";
+import type React from "react";
 import { isMobile } from "../lib/platform";
 
 interface Props {

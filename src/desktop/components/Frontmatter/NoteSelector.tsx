@@ -1,7 +1,7 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
+import { isMobile } from "../../../shared/lib/platform";
 
 interface NoteSelectorProps {
   notes: NoteFile[];
@@ -22,7 +22,6 @@ export function NoteSelector({
   zIndex,
 }: NoteSelectorProps) {
   const [query, setQuery] = useState("");
-  const isMobile = platform() === "ios";
 
   const filtered = notes.filter((n) =>
     n.name.toLowerCase().includes(query.toLowerCase())

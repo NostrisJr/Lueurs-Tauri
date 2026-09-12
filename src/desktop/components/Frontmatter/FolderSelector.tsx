@@ -1,9 +1,9 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import type { FolderNode } from "../../../shared/hooks/useFileTree";
 import { allFoldersAtom, folderPathAtom } from "../../../shared/lib/atoms";
+import { isMobile } from "../../../shared/lib/platform";
 
 interface FolderSelectorProps {
   onSelect: (absolutePath: string) => void;
@@ -17,7 +17,6 @@ export function FolderSelector({
   anchorRef,
 }: FolderSelectorProps) {
   const [query, setQuery] = useState("");
-  const isMobile = platform() === "ios";
   const folderPath = useAtomValue(folderPathAtom);
   const allFolders = useAtomValue(allFoldersAtom);
 

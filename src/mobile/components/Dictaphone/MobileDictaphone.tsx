@@ -6,11 +6,12 @@ import { createPortal } from "react-dom";
 import { WaveformDisplay } from "../../../shared/components/Dictaphone/WaveformDisplay";
 import {
   IconChevronDown,
-  IconRecordAudio,
   IconPauseFill,
   IconPlayFill,
+  IconRecordAudio,
   IconStopFill,
 } from "../../../shared/components/PlatformIcon";
+import { Squircle } from "../../../shared/components/Squircle";
 import { useAudioRecorder } from "../../../shared/hooks/useAudioRecorder";
 import { useFileTree } from "../../../shared/hooks/useFileTree";
 import { useNote } from "../../../shared/hooks/useNote";
@@ -30,7 +31,6 @@ import { iconAccentClass } from "../../../shared/lib/platform";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingComponent } from "../Floating/FloatingComponent";
-import { Squircle } from "../../../shared/components/Squircle";
 
 const log = createLogger("MobileDictaphone");
 
@@ -98,7 +98,8 @@ export function MobileDictaphone() {
   // l'await de startRecording — un guard sur `status` ne suffit pas à éviter le double appel.
   const autoStartedRef = useRef(false);
   useEffect(() => {
-    if (dictaphoneMode !== "new-note-autostart" || autoStartedRef.current) return;
+    if (dictaphoneMode !== "new-note-autostart" || autoStartedRef.current)
+      return;
     autoStartedRef.current = true;
     handleRecord();
   }, [dictaphoneMode, handleRecord]);

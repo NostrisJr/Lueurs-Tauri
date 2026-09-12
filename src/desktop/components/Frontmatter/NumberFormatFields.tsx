@@ -1,5 +1,5 @@
-import { platform } from "@tauri-apps/plugin-os";
 import type { NumberDef } from "../../../shared/lib/FrontmatterPicker/numberProperty";
+import { isMobile } from "../../../shared/lib/platform";
 
 interface Props {
   numberDef: NumberDef;
@@ -10,9 +10,8 @@ interface Props {
 
 /** Décimales + unité d'une propriété Nombre — rendu sous la ligne icônes+champ. */
 export function NumberFormatFields({ numberDef, onChange, disabled }: Props) {
-  const isMobile = platform() === "ios";
   const labelClass = `text-gray-400 uppercase tracking-wide ${isMobile ? "text-base" : "text-[10px]"}`;
-  const inputClass = `w-full border rounded outline-none transition-colors
+  const inputClass = `w-full border outline-none transition-colors ${isMobile ? "rounded-lg" : "rounded"}
     ${isMobile ? "px-3 py-2 text-base" : "px-2 py-1 text-xs"}
     ${
       disabled
@@ -22,8 +21,10 @@ export function NumberFormatFields({ numberDef, onChange, disabled }: Props) {
   const title = disabled ? "Imposé par le template" : undefined;
 
   return (
-    <div className="flex gap-2">
-      <label className="flex flex-col gap-1 w-20 shrink-0">
+    <div className={`flex ${isMobile ? "gap-4" : "gap-2"}`}>
+      <label
+        className={`flex flex-col gap-1 shrink-0 ${isMobile ? "w-24" : "w-20"}`}
+      >
         <span className={labelClass}>Décimales</span>
         <input
           type="number"

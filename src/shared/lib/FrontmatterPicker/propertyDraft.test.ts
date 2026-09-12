@@ -95,11 +95,36 @@ describe("changeDraftType", () => {
     expect(next.text).toBe("1+1");
   });
 
-  it("→ Bouton ne reprend rien (liste de valeurs, pas une expression)", () => {
+  it("Texte → Bouton amorce une première option avec le texte tapé", () => {
     const draft = makeInitialDraft("bonjour");
     const next = changeDraftType(draft, "enum");
     expect(next.type).toBe("enum");
-    expect(next.enumDef).toEqual(draft.enumDef);
+    expect(next.enumDef).toEqual({
+      options: [{ value: "bonjour" }],
+      default: "bonjour",
+    });
+  });
+
+  it("Nombre → Bouton amorce une première option avec l'expression", () => {
+    const draft = changeDraftType(makeInitialDraft("42"), "number");
+    const next = changeDraftType(draft, "enum");
+    expect(next.enumDef).toEqual({
+      options: [{ value: "42" }],
+      default: "42",
+    });
+  });
+
+  it("→ Bouton crée quand même une première option (vide) si le contenu précédent est vide — pour toujours avoir quelque chose à focus", () => {
+    const draft = makeInitialDraft("");
+    const next = changeDraftType(draft, "enum");
+    expect(next.enumDef).toEqual({ options: [{ value: "" }], default: "" });
+  });
+
+  it("→ Bouton garde les options déjà présentes (va-et-vient Bouton→Nombre→Bouton)", () => {
+    const enumDraft = makeInitialDraft("$$ENUM([a;b],a)$$");
+    const numberDraft = changeDraftType(enumDraft, "number");
+    const backToEnum = changeDraftType(numberDraft, "enum");
+    expect(backToEnum.enumDef).toEqual(enumDraft.enumDef);
   });
 
   it("Bouton → Nombre repart d'une expression vide", () => {
@@ -152,7 +177,7 @@ describe("serializeDraft", () => {
   });
 
   it("Bouton sans options → texte vide", () => {
-    const draft = changeDraftType(makeInitialDraft("bonjour"), "enum");
+    const draft = changeDraftType(makeInitialDraft(""), "enum");
     expect(serializeDraft(draft)).toBe("");
   });
 

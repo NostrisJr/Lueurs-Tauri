@@ -193,6 +193,32 @@ function InlineFormulaEditPopup({
     close();
   }, [close]);
 
+  // Commit en live (sans fermer, et sans jamais supprimer le nœud même si le
+  // brouillon est momentanément vide en cours de frappe — seule la fermeture
+  // explicite via commit() traite un brouillon vide comme une suppression) :
+  // même filet de sécurité que useValueEditor côté frontmatter panel (cf.
+  // commit 876a3b3) — sans lui, démonter ce popup sans passer par
+  // Entrée/Échap/clic extérieur (ex: navigation vers une autre note) perdait
+  // le brouillon en cours sans jamais l'écrire dans le document. Comparé à
+  // node.attrs.raw (l'état réel du document), pas à request.raw (figé à
+  // l'ouverture, jamais mis à jour par ces écritures live) — sinon chaque
+  // frappe redéclencherait un dispatch même à valeur inchangée.
+  useEffect(() => {
+    const req = getInlineFormulaEdit();
+    const editor = activeEditorRef.current;
+    if (!req || !editor) return;
+    const value = serializeInlineFormulaDraft(draft);
+    if (value === "$$$$") return;
+    editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx);
+      const node = view.state.doc.nodeAt(req.pos);
+      if (!node || node.type.name !== "inline_formula") return;
+      if (node.attrs.raw === value) return;
+      view.dispatch(view.state.tr.setNodeAttribute(req.pos, "raw", value));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à une vraie modification du brouillon, pas à chaque render
+  }, [draft]);
+
   // Contexte d'évaluation (hors React) : figé le temps d'une ouverture du popup.
   const ctx = inlineFormulaBridge.current;
   const vaultPath = ctx?.vaultPath;

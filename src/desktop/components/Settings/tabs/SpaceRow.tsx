@@ -1,10 +1,19 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ALL_SPACE_ID, type VaultSpace } from "../../../../shared/lib/vaultConfig";
+import {
+  ALL_SPACE_ID,
+  type VaultSpace,
+} from "../../../../shared/lib/vaultConfig";
 import { EmojiPicker } from "../EmojiPicker";
 
 const DRAG_HANDLE_SVG = (
-  <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+  <svg
+    width="10"
+    height="16"
+    viewBox="0 0 10 16"
+    fill="currentColor"
+    aria-hidden="true"
+  >
     <circle cx="2.5" cy="3" r="1.3" />
     <circle cx="7.5" cy="3" r="1.3" />
     <circle cx="2.5" cy="8" r="1.3" />

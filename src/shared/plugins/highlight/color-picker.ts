@@ -6,8 +6,8 @@ import { $prose } from "@milkdown/kit/utils";
 import { createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { createLogger } from "../../lib/logger";
-import { HighlightColorPicker, type PickerState } from "./HighlightColorPicker";
 import { isMobile } from "../../lib/platform";
+import { HighlightColorPicker, type PickerState } from "./HighlightColorPicker";
 
 const log = createLogger("highlight-color-picker");
 

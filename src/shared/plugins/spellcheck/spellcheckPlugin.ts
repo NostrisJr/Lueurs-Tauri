@@ -6,10 +6,7 @@ import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
 import { $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../../lib/logger";
 import { type HugoSuggestion, categoryOf, checkText } from "./hugoApi";
-import {
-  ignoredWordsRef,
-  spellcheckEnabledRef,
-} from "./spellcheckState";
+import { ignoredWordsRef, spellcheckEnabledRef } from "./spellcheckState";
 
 const log = createLogger("Spellcheck");
 
@@ -57,17 +54,44 @@ function utf8Len(codePoint: number): number {
 }
 
 /**
- * Construit les décorations de soulignage pour un textblock : envoie son texte
- * à Hugo et mappe les offsets d'octets UTF-8 vers des positions ProseMirror.
+ * Espace réservé pour un nœud atome (formule inline) dans le texte envoyé à
+ * Hugo. U+FFFC (object replacement character) : un jeton de ponctuation pour
+ * le tokenizer Hugo, donc jamais vérifié en orthographe (mots seulement) ni
+ * fusionné avec les espaces qui l'entourent (contrairement à un simple « rien »,
+ * qui collerait les espaces avant/après en une seule suite → flag « espaces
+ * surnuméraires »).
  */
-async function decorateBlock(
+const ATOM_PLACEHOLDER = "￼";
+const ATOM_PLACEHOLDER_BYTE_LEN = utf8Len(ATOM_PLACEHOLDER.codePointAt(0) ?? 0);
+
+interface ByteRange {
+  start: number;
+  end: number;
+}
+
+interface BlockText {
+  /** Texte du bloc à envoyer à Hugo (formules remplacées par un espace réservé). */
+  text: string;
+  /** Table octet→position PM, indexée par offset d'octet UTF-8 dans `text`. */
+  byteToPos: number[];
+  /** Table octet→index de caractère (UTF-16) dans `text`. */
+  byteToChar: number[];
+  /** Plages (octets) des espaces réservés de formule, à exclure des suggestions. */
+  atomByteRanges: ByteRange[];
+}
+
+/**
+ * Aplatit un textblock en texte à plat pour Hugo, en construisant dans le même
+ * parcours les tables de correspondance octet UTF-8 → position ProseMirror.
+ * Fonction pure (aucun appel réseau/IPC) pour rester testable isolément.
+ */
+export function buildBlockText(
   block: ProsemirrorNode,
   blockPos: number
-): Promise<Decoration[]> {
-  // Tables octet→position PM et octet→index char `text`, construites dans le
-  // même parcours que le texte envoyé.
+): BlockText {
   const byteToPos: number[] = [];
   const byteToChar: number[] = [];
+  const atomByteRanges: ByteRange[] = [];
   let byteLen = 0;
   let charLen = 0;
   let text = "";
@@ -95,15 +119,49 @@ async function decorateBlock(
       charLen += 1;
       text += "\n";
       lastPmPos = pmPos + 1;
+    } else if (node.type.name === "inline_formula") {
+      const pmPos = blockPos + 1 + relPos;
+      byteToPos[byteLen] = pmPos;
+      byteToChar[byteLen] = charLen;
+      atomByteRanges.push({
+        start: byteLen,
+        end: byteLen + ATOM_PLACEHOLDER_BYTE_LEN,
+      });
+      byteLen += ATOM_PLACEHOLDER_BYTE_LEN;
+      charLen += ATOM_PLACEHOLDER.length;
+      text += ATOM_PLACEHOLDER;
+      lastPmPos = pmPos + node.nodeSize;
     }
     return true;
   });
   byteToPos[byteLen] = lastPmPos; // sentinelle = fin du dernier caractère
   byteToChar[byteLen] = charLen;
 
+  return { text, byteToPos, byteToChar, atomByteRanges };
+}
+
+/**
+ * Construit les décorations de soulignage pour un textblock : envoie son texte
+ * à Hugo et mappe les offsets d'octets UTF-8 vers des positions ProseMirror.
+ */
+async function decorateBlock(
+  block: ProsemirrorNode,
+  blockPos: number
+): Promise<Decoration[]> {
+  const { text, byteToPos, byteToChar, atomByteRanges } = buildBlockText(
+    block,
+    blockPos
+  );
+
   if (text.trim().length === 0) return [];
 
-  const suggestions = await checkText(text);
+  const rawSuggestions = await checkText(text);
+  // Jamais de soulignage sur/autour d'une formule (déjà exclue de la vérif
+  // grammaticale/orthographique par son espace réservé, cf. ATOM_PLACEHOLDER) :
+  // une suggestion qui la recouvrirait rendrait le nœud atome non cliquable.
+  const suggestions = rawSuggestions.filter(
+    (s) => !atomByteRanges.some((r) => s.start < r.end && s.end > r.start)
+  );
   const decos: Decoration[] = [];
   for (const s of suggestions) {
     const from = byteToPos[s.start];

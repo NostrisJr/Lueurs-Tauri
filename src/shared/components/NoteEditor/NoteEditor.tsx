@@ -14,6 +14,7 @@ import {
   activeNoteAtom,
   dictaphoneOpenAtom,
   folderPathAtom,
+  navigateToNoteAtom,
   noteContentRootAtom,
   notesByIdAtom,
   pendingAudioInsertAtom,
@@ -60,6 +61,7 @@ export function NoteEditor({
   const folderPath = useAtomValue(folderPathAtom);
   const notesById = useAtomValue(notesByIdAtom);
   const mobileSelectNote = useMobileSelectNote();
+  const navigateToNote = useSetAtom(navigateToNoteAtom);
   const pendingDisplayMode = useAtomValue(pendingDisplayModeAtom);
   const setPendingDisplayMode = useSetAtom(pendingDisplayModeAtom);
   const setDictaphoneOpen = useSetAtom(dictaphoneOpenAtom);
@@ -108,10 +110,19 @@ export function NoteEditor({
     (noteId: string, newTab: boolean) => {
       const target = notesById.get(noteId);
       if (!target) return;
-      if (isMobile) mobileSelectNote(target);
-      else handleSelectNote(target, newTab);
+      if (isMobile) {
+        // Navigation chaînée (reste dans le même onglet, empile la note
+        // courante dans noteBackStackAtom — cf. popNoteBackAtom, consommé par
+        // le swipe-back) plutôt que mobileSelectNote (nouvel onglet + reset de
+        // l'historique) : un tap sur un wikilink n'est pas une "ouverture
+        // fraîche" depuis le file tree, c'est une navigation depuis la note
+        // courante. newTab (ouverture explicite dans un nouvel onglet) garde
+        // le comportement actuel.
+        if (newTab) mobileSelectNote(target);
+        else navigateToNote(noteId);
+      } else handleSelectNote(target, newTab);
     },
-    [notesById, mobileSelectNote, handleSelectNote]
+    [notesById, mobileSelectNote, navigateToNote, handleSelectNote]
   );
 
   function handleFrontmatterChange(updated: Frontmatter) {

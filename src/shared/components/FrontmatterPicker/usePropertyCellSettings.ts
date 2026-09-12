@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { NumberDef } from "../../lib/FrontmatterPicker/numberProperty";
 import {
   type EditorDraft,
@@ -22,6 +22,7 @@ import {
  */
 export function usePropertyCellSettings(
   strValue: string,
+  onCommit: (value: string) => void,
   numberFormatConstraint?: NumberDef
 ) {
   const [open, setOpen] = useState(false);
@@ -51,7 +52,19 @@ export function usePropertyCellSettings(
     setDraft(changeDraftType(draft, next));
   }
 
-  function commitAndClose(onCommit: (value: string) => void) {
+  // Commit en live à chaque modification du brouillon tant que le panneau est
+  // ouvert — même filet de sécurité que useValueEditor côté frontmatter panel
+  // (cf. commit 876a3b3) : sans ça, un démontage silencieux de la cellule
+  // (tri/filtre/suppression de ligne pendant l'édition) perdait le brouillon
+  // sans jamais appeler onCommit.
+  useEffect(() => {
+    if (!open || draft === null) return;
+    const newValue = serializeDraft(draft, numberFormatConstraint);
+    if (newValue !== strValue) onCommit(newValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à une vraie modification du brouillon, pas à chaque render
+  }, [draft]);
+
+  function commitAndClose() {
     if (draft) {
       const newValue = serializeDraft(draft, numberFormatConstraint);
       if (newValue !== strValue) onCommit(newValue);

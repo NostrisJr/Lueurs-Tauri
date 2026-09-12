@@ -1,4 +1,4 @@
-import { platform } from "@tauri-apps/plugin-os";
+import { isMobile } from "../lib/platform";
 
 interface SegmentedOption<T extends string> {
   value: T;
@@ -31,7 +31,6 @@ export function SegmentedControl<T extends string>({
   const isPill = variant === "pill";
   // 16px minimum sur mobile (lisibilité) — text-xs/text-sm ne conviennent
   // qu'au desktop, plus dense.
-  const isMobile = platform() === "ios";
 
   return (
     <div

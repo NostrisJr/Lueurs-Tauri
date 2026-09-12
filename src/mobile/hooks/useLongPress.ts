@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { type MouseEvent, useCallback, useRef } from "react";
 
 /**
  * Cœur du long-press de 600ms, partagé entre useLongPress (un bouton) et
@@ -68,4 +68,53 @@ export function useLongPress(onLongPress: () => void, onClick: () => void) {
  */
 export function useLongPressBind(onLongPress: () => void) {
   return useLongPressCore(onLongPress);
+}
+
+/**
+ * Variante « capture » : l'appui long est posé sur un conteneur qui enveloppe
+ * un enfant DÉJÀ cliquable qu'on ne veut pas modifier (ex: une cellule de
+ * tableau mobile enveloppant un pill EnumValueSelector). useLongPress/
+ * useLongPressBind suppriment le clic fantôme via un onClick en bubble,
+ * appliqué directement sur l'élément interactif — mais posé sur un
+ * conteneur, ce onClick se déclencherait APRÈS le onClick propre de l'enfant
+ * (bubble : cible d'abord, ancêtres ensuite), trop tard pour l'empêcher.
+ * onClickCapture redescend avant la phase de bubble, donc intercepte le clic
+ * fantôme avant qu'il n'atteigne l'enfant.
+ */
+export function useLongPressCapture(onLongPress: () => void) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressNextClickRef = useRef(false);
+
+  const handleTouchStart = useCallback(() => {
+    suppressNextClickRef.current = false;
+    timerRef.current = setTimeout(() => {
+      suppressNextClickRef.current = true;
+      timerRef.current = null;
+      onLongPress();
+    }, 600);
+  }, [onLongPress]);
+
+  const cancel = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      suppressNextClickRef.current = false;
+    }
+  }, []);
+
+  const handleClickCapture = useCallback((e: MouseEvent) => {
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, []);
+
+  return {
+    onTouchStart: handleTouchStart,
+    onTouchEnd: cancel,
+    onTouchMove: cancel,
+    onTouchCancel: cancel,
+    onClickCapture: handleClickCapture,
+  };
 }

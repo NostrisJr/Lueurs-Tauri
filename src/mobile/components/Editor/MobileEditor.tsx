@@ -34,6 +34,7 @@ import { iconAccentClass, isAndroid } from "../../../shared/lib/platform";
 
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
+import { BASE_STICKY_TOP } from "../BaseView/constants";
 import {
   FLOATING_HEADER_SCROLL_OFFSET,
   FloatingHeaderBar,
@@ -245,9 +246,20 @@ export function MobileEditor() {
   // contenu sous la zone de fondu reste, lui, toujours pleinement visible).
   const headerFadeTopAlpha = 1 - titleCollapseProgress;
   const headerFadeMidAlpha = 1 - titleCollapseProgress * 0.96;
-  const headerFadeMask = `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeMidAlpha}) ${
-    headerFadeZoneHeight * 0.8
-  }px, black ${headerFadeZoneHeight}px)`;
+  // Une base a un bandeau collant (barre de vue + en-tête de colonnes) dont le
+  // bord haut est à FLOATING_HEADER_SCROLL_OFFSET + BASE_STICKY_TOP. Le masque
+  // s'applique à TOUT le contenu du scroller, bandeau compris : si le dégradé
+  // se termine plus bas que ce bord, il traverse le haut du bandeau, dont le
+  // fond blanc devient translucide et laisse voir les lignes défiler derrière.
+  // D'où une coupure franche (deux stops au même px) pile à ce bord plutôt
+  // qu'un dégradé : au-dessus du bandeau, les lignes doivent disparaître, pas
+  // s'estomper — c'est le comportement attendu d'un en-tête de tableau.
+  const baseStickyEdge = FLOATING_HEADER_SCROLL_OFFSET + BASE_STICKY_TOP;
+  const headerFadeMask = isBase
+    ? `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeTopAlpha}) ${baseStickyEdge}px, black ${baseStickyEdge}px)`
+    : `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeMidAlpha}) ${
+        headerFadeZoneHeight * 0.8
+      }px, black ${headerFadeZoneHeight}px)`;
 
   // Sur Android, le WebView est déjà au-dessus du clavier (insets natifs), donc
   // on compense uniquement la hauteur de la formatting bar quand elle est visible.

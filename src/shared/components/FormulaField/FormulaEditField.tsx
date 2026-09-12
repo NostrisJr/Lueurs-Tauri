@@ -1,4 +1,3 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NoteSelector } from "../../../desktop/components/Frontmatter/NoteSelector";
 import { PropertySelector } from "../../../desktop/components/Frontmatter/PropertySelector";
@@ -10,6 +9,7 @@ import {
 } from "../../../desktop/components/Frontmatter/lib/frontmatterUtils";
 import type { NoteFile } from "../../hooks/useFileTree";
 import { dehumanizeFormula, humanizeFormula } from "../../lib/formulas";
+import { isMobile } from "../../lib/platform";
 
 interface Props {
   /** Formule brute `$$…$$` avec chemins absolus dans ref(). */
@@ -64,7 +64,6 @@ export function FormulaEditField({
   refPathOf = noteIdPath,
   dropdownZIndex,
 }: Props) {
-  const isMobile = platform() === "ios";
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize : ajuste la hauteur au contenu, plafonné à ~4 lignes.

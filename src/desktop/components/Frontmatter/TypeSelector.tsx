@@ -1,7 +1,7 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useRef, useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import { NoteType, type NoteTypeValue } from "../../../shared/lib/noteTypes";
+import { isMobile } from "../../../shared/lib/platform";
 
 const TYPE_LABELS: Record<NoteTypeValue, string> = {
   [NoteType.NOTE]: "note",
@@ -16,7 +16,6 @@ interface Props {
 }
 
 export function TypeSelector({ value, onChange }: Props) {
-  const isMobile = platform() === "ios";
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 

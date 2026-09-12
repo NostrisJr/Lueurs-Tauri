@@ -11,7 +11,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useSpacesEditor } from "../../../../shared/hooks/useSpacesEditor";
-import { ALL_SPACE_ID, type VaultSpace } from "../../../../shared/lib/vaultConfig";
+import {
+  ALL_SPACE_ID,
+  type VaultSpace,
+} from "../../../../shared/lib/vaultConfig";
 import { SpaceRow, ToutSpaceRow } from "./SpaceRow";
 
 export function EspacesTab() {
@@ -98,7 +101,9 @@ export function EspacesTab() {
           onChange={(e) => setIconOnly(e.target.checked)}
           className="rounded accent-gray-800 cursor-pointer"
         />
-        <span className="text-xs text-gray-500">Afficher les icônes uniquement</span>
+        <span className="text-xs text-gray-500">
+          Afficher les icônes uniquement
+        </span>
       </label>
       <p className="text-xs text-gray-400">
         Taguez vos notes avec{" "}

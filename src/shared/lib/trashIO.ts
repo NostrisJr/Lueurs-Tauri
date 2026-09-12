@@ -135,7 +135,10 @@ export async function restoreFromTrash(
 // Vide entièrement la corbeille : suppression définitive et irréversible de tout son contenu.
 export async function emptyTrash(vaultPath: string): Promise<void> {
   // biome-ignore lint/suspicious/noExplicitAny: baseDir Tauri
-  await remove(trashDirPath(vaultPath), { baseDir: null, recursive: true } as any);
+  await remove(trashDirPath(vaultPath), {
+    baseDir: null,
+    recursive: true,
+  } as any);
   log.info("corbeille vidée");
 }
 

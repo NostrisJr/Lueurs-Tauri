@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { isMobile } from "../../lib/platform";
 import {
   HIGHLIGHT_COLORS,
   getHighlightSolid,
@@ -47,6 +48,12 @@ export function ColorDotPicker({
         ref={dotRef}
         type="button"
         title={title ?? "Changer la couleur"}
+        // Empêche de voler le focus au champ actif (ex: le libellé d'une
+        // option Bouton en cours de frappe) — sans ça, ouvrir cette palette
+        // blurait l'input et fermait le clavier pour rien, alors qu'il peut
+        // rester ouvert le temps de choisir une couleur (cf. le même pattern
+        // sur la roue crantée, FrontmatterRow.tsx).
+        onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => {
           e.stopPropagation();
           setOpen((o) => !o);
@@ -62,7 +69,7 @@ export function ColorDotPicker({
         >
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: palette de couleurs */}
           <div
-            className="flex flex-wrap gap-1.5 p-2 w-[120px]"
+            className={`flex flex-wrap p-2 ${isMobile ? "gap-3 w-[180px]" : "gap-1.5 w-[120px]"}`}
             onClick={(e) => e.stopPropagation()}
           >
             {HIGHLIGHT_COLORS.map((c) => (
@@ -70,12 +77,13 @@ export function ColorDotPicker({
                 key={c.id}
                 type="button"
                 title={c.label}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={(e) => {
                   e.stopPropagation();
                   onColor(c.id);
                   setOpen(false);
                 }}
-                className="size-5 rounded-full border-2 transition-transform hover:scale-110"
+                className={`${isMobile ? "size-9" : "size-5"} rounded-full border-2 transition-transform hover:scale-110`}
                 style={{
                   background: c.solid,
                   borderColor: color === c.id ? "#374151" : "transparent",
@@ -85,12 +93,13 @@ export function ColorDotPicker({
             <button
               type="button"
               title="Aucune couleur"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
                 e.stopPropagation();
                 onColor(undefined);
                 setOpen(false);
               }}
-              className="size-5 rounded-full border border-gray-200 bg-white text-gray-400 text-[11px] flex items-center justify-center hover:bg-red-50 hover:text-red-400"
+              className={`${isMobile ? "size-9 text-sm" : "size-5 text-[11px]"} rounded-full border border-gray-200 bg-white text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-400`}
             >
               ✕
             </button>

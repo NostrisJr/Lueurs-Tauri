@@ -81,6 +81,7 @@ targets:
     settings:
       base:
         ENABLE_BITCODE: false
+        ASSETCATALOG_OTHER_FLAGS: --enable-icon-stack-fallback-generation=disabled
         ARCHS: [arm64]
         VALID_ARCHS: arm64 
         LIBRARY_SEARCH_PATHS[arch=x86_64]: $(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)

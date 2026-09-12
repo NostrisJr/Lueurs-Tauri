@@ -1,7 +1,9 @@
 import { useDrag } from "@use-gesture/react";
+import { useSetAtom } from "jotai";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Squircle } from "../../../shared/components/Squircle";
+import { mobileOpenSheetCountAtom } from "../../../shared/lib/atoms";
 import { hapticImpact } from "../../lib/haptics";
 import type { RowMenuAction, RowMenuConfig } from "./types";
 
@@ -169,6 +171,15 @@ export function RowContextMenu({
     exitTimerRef.current = window.setTimeout(onDismiss, EXIT_MS);
   }
 
+  // Compte ce menu dans mobileOpenSheetCountAtom tant qu'il est monté — même
+  // raison que BottomSheet (MobileApp désactive le swipe tant qu'un overlay
+  // est ouvert plutôt que de tenter de le refermer au geste).
+  const setOpenSheetCount = useSetAtom(mobileOpenSheetCountAtom);
+  useEffect(() => {
+    setOpenSheetCount((n) => n + 1);
+    return () => setOpenSheetCount((n) => n - 1);
+  }, [setOpenSheetCount]);
+
   // L'action s'exécute une fois le menu effacé : sinon une action qui ouvre une
   // bottom sheet (Renommer, Espaces) la fait apparaître par-dessus le menu
   // encore en train de disparaître.
@@ -213,7 +224,26 @@ export function RowContextMenu({
   // Un seul arbre pour les trois phases : passer par un rendu alternatif en
   // phase "dragging" recréerait le nœud de l'aperçu en plein geste, et le
   // pointer capture du doigt serait perdu au moment même où le drag démarre.
-  const originX = rect.width / 2;
+  //
+  // Largeur de l'aperçu (et du menu, cf. MENU_MAX_WIDTH plus bas) indépendante
+  // de rect.width : rect vient de l'élément source, qui peut être une rangée
+  // pleine largeur du file tree (rect.width déjà proche de previewWidth) OU
+  // une NoteChip bien plus étroite (cf. NoteChip.tsx) — dans ce cas l'aperçu
+  // gardait la largeur de la chip elle-même sans ce plancher. Centré sur le
+  // point de départ réel (rect), pas sur le bord gauche, pour rester ancré
+  // visuellement sur l'élément pressé plutôt que de partir vers la droite.
+  const previewWidth = Math.max(
+    rect.width,
+    Math.min(MENU_MAX_WIDTH, window.innerWidth - 40)
+  );
+  const previewLeft = Math.min(
+    Math.max(rect.left + rect.width / 2 - previewWidth / 2, 20),
+    window.innerWidth - previewWidth - 20
+  );
+  // Origine de l'agrandissement initial : le point réellement pressé (rect),
+  // reprojeté dans les coordonnées de la boîte élargie (previewLeft) — sinon
+  // l'animation d'ouverture semble partir d'un point décalé du doigt.
+  const originX = rect.left + rect.width / 2 - previewLeft;
   const originY = layout ? rect.top - layout.top + rect.height / 2 : 0;
 
   const groupStyle: React.CSSProperties =
@@ -236,9 +266,9 @@ export function RowContextMenu({
         }
       : {
           position: "fixed",
-          left: rect.left,
+          left: previewLeft,
           top: layout?.top ?? rect.top,
-          width: rect.width,
+          width: previewWidth,
           transformOrigin: `${originX}px ${originY}px`,
           transform: visible ? "scale(1)" : "scale(0.9)",
           opacity: visible ? 1 : 0,
@@ -311,7 +341,7 @@ export function RowContextMenu({
           ref={menuRef}
           style={{
             marginTop: GAP,
-            width: Math.min(rect.width, MENU_MAX_WIDTH),
+            width: Math.min(previewWidth, MENU_MAX_WIDTH),
             marginInline: "auto",
             opacity: isDragging ? 0 : 1,
             transition: `opacity ${EXIT_MS}ms ease-out`,

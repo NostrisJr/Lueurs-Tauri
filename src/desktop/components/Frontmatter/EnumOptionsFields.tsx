@@ -1,4 +1,3 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useEffect, useRef } from "react";
 import { ColorDotPicker } from "../../../shared/components/FrontmatterPicker/ColorDotPicker";
 import { IconPlus, IconXCircle } from "../../../shared/components/PlatformIcon";
@@ -8,12 +7,15 @@ import {
   removeOption,
   updateOptionValue,
 } from "../../../shared/lib/FrontmatterPicker/enumProperty";
+import { isMobile } from "../../../shared/lib/platform";
 
 interface Props {
   enumDef: EnumDef;
   onChange: (next: EnumDef) => void;
   /** Cf. ColorDotPicker.zIndex — nécessaire si ce champ est rendu dans un popup déjà empilé. */
   dropdownZIndex?: number;
+  /** Focus la première option au montage (pas seulement à l'ajout, cf. l'effet ci-dessous). */
+  autoFocus?: boolean;
 }
 
 /**
@@ -25,8 +27,8 @@ export function EnumOptionsFields({
   enumDef,
   onChange,
   dropdownZIndex,
+  autoFocus,
 }: Props) {
-  const isMobile = platform() === "ios";
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const prevLength = useRef(enumDef.options.length);
 
@@ -38,9 +40,18 @@ export function EnumOptionsFields({
     prevLength.current = enumDef.options.length;
   }, [enumDef.options.length]);
 
-  const inputClass = `flex-1 min-w-0 border rounded outline-none transition-colors border-gray-200 focus:border-gray-400
+  // Focus la première option au montage (ouverture de la sheet) — sans ça,
+  // Texte/Nombre recevaient le focus automatique à l'ouverture (donc le
+  // clavier) mais pas Bouton, provoquant un aller-retour de hauteur au tap
+  // suivant sur un champ.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: une seule fois au montage, pas à chaque changement de autoFocus
+  useEffect(() => {
+    if (autoFocus) inputRefs.current[0]?.focus();
+  }, []);
+
+  const inputClass = `flex-1 min-w-0 border outline-none transition-colors border-gray-200 focus:border-gray-400 ${isMobile ? "rounded-lg" : "rounded"}
     ${isMobile ? "px-3 py-2 text-base" : "px-2 py-1 text-xs"}`;
-  const iconButtonClass = `shrink-0 p-0 bg-transparent border-0 cursor-pointer transition-colors ${isMobile ? "size-4" : "size-3"}`;
+  const iconButtonClass = `shrink-0 flex items-center justify-center p-0 bg-transparent border-0 cursor-pointer transition-colors ${isMobile ? "size-4" : "size-3"}`;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -82,13 +93,19 @@ export function EnumOptionsFields({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onChange({ ...enumDef, default: opt.value })}
             title="Valeur par défaut des héritiers"
-            className={`shrink-0 text-[10px] leading-none transition-colors cursor-pointer ${
+            className={`shrink-0 flex items-center justify-center transition-colors cursor-pointer ${isMobile ? "size-5" : "size-3"} ${
               opt.value === enumDef.default
                 ? "text-amber-500"
                 : "text-gray-200 hover:text-gray-400"
             }`}
           >
-            ●
+            <span
+              className={
+                isMobile ? "text-base leading-none" : "text-[10px] leading-none"
+              }
+            >
+              ●
+            </span>
           </button>
           <button
             type="button"

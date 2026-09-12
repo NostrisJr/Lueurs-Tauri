@@ -1,13 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { remove } from "@tauri-apps/plugin-fs";
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { WaveformDisplay } from "../../../shared/components/Dictaphone/WaveformDisplay";
+import { Squircle } from "../../../shared/components/Squircle";
 import { useAudioRecorder } from "../../../shared/hooks/useAudioRecorder";
 import { folderPathAtom } from "../../../shared/lib/atoms";
 import { createLogger } from "../../../shared/lib/logger";
-import { Squircle } from "../../../shared/components/Squircle";
-import clsx from "clsx";
 
 const log = createLogger("DesktopDictaphone");
 

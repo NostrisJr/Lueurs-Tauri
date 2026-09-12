@@ -1,5 +1,4 @@
 import { ask } from "@tauri-apps/plugin-dialog";
-import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { Frontmatter } from "../../../shared/hooks/useFileTree";
 import { activeNoteAtom, skipPropagationAtom } from "../../../shared/lib/atoms";
@@ -13,6 +12,7 @@ import {
   isFunctionalBaseField,
   isNoteReadOnly,
 } from "../../../shared/lib/noteTypes";
+import { isMobile } from "../../../shared/lib/platform";
 import { useTemplateSync } from "../../hooks/useTemplateSync";
 import { AddPropertyDropdown } from "./AddPropertyDropdown";
 import { FrontmatterRow } from "./FrontmatterRow";
@@ -30,7 +30,6 @@ interface Props {
 }
 
 export function FrontmatterEditor({ onChange, collapsed = false }: Props) {
-  const isMobile = platform() === "ios";
   const rows = useAtomValue(rowsAtom);
   const setRows = useSetAtom(rowsAtom);
   const setEditingKey = useSetAtom(editingKeyAtom);

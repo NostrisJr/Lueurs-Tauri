@@ -248,7 +248,8 @@ export async function buildBundle(
     body = rewriteFormulaRefPaths(body, refsMapping);
     for (const key of Object.keys(fm)) {
       const val = fm[key];
-      if (typeof val === "string") fm[key] = rewriteFormulaRefPaths(val, refsMapping);
+      if (typeof val === "string")
+        fm[key] = rewriteFormulaRefPaths(val, refsMapping);
     }
 
     if (options.mode === "bake") {

@@ -7,6 +7,7 @@
  */
 import type { Editor } from "@milkdown/kit/core";
 import { commandsCtx, editorViewCtx, schemaCtx } from "@milkdown/kit/core";
+import type { CmdKey } from "@milkdown/kit/core";
 import {
   toggleInlineCodeCommand,
   turnIntoTextCommand,
@@ -14,8 +15,8 @@ import {
 import { toggleMark } from "@milkdown/kit/prose/commands";
 import { TextSelection } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
-import { liftListItem, sinkListItem } from "prosemirror-schema-list";
 import { redo, undo } from "prosemirror-history";
+import { liftListItem, sinkListItem } from "prosemirror-schema-list";
 import {
   toggleBlockquoteCommand,
   toggleBulletListCommand,
@@ -27,7 +28,6 @@ import {
   toggleTaskListCommand,
 } from "../../../plugins/customKeymap";
 import { setInlineFormulaEdit } from "../../../plugins/inline-formula/inlineFormulaState";
-import type { CmdKey } from "@milkdown/kit/core";
 
 export type EditorRef = { current: Editor | null };
 

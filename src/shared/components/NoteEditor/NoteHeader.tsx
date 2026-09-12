@@ -6,7 +6,7 @@ import { isMobile } from "../../lib/platform";
 import { EditableText } from "../EditableText.tsx";
 import { IconRecordAudio } from "../PlatformIcon.tsx";
 import { DisplayModeSelector } from "./DisplayModeSelector.tsx";
-import { editorFocusAtStart, type EditorRef } from "./lib/editorCommands";
+import { type EditorRef, editorFocusAtStart } from "./lib/editorCommands";
 
 interface Props {
   onRename: (newName: string) => Promise<void>;

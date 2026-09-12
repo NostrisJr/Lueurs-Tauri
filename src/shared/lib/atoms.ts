@@ -299,6 +299,15 @@ export const tabHistoryAtom = atom<string[]>([]);
 // Pile de navigation intra-éditeur (ex. base → enfant via tableau/kanban)
 export const noteBackStackAtom = atom<string[]>([]);
 
+// Nombre de BottomSheet/RowContextMenu actuellement montés (mobile) — chaque
+// instance s'incrémente/décrémente à son montage/démontage. Consommé par
+// MobileApp pour désactiver purement et simplement le swipe-back/-avant tant
+// qu'une sheet est ouverte, plutôt que de tenter de la refermer au geste :
+// l'animation de swipe se joue de toute façon en entier avant que le
+// callback de complétion ne soit appelé (cf. useMobileSwipeGesture.complete),
+// donc "fermer au lieu de naviguer" laissait un aller-retour visuel raté.
+export const mobileOpenSheetCountAtom = atom(0);
+
 // ── Espaces ───────────────────────────────────────────────────────────────
 
 // Config vault chargée au démarrage (null = non chargée ou Android)
@@ -521,6 +530,19 @@ export const navigateToNoteAtom = atom(null, (get, set, noteId: string) => {
     set(noteBackStackAtom, (prev) => [...prev, currentId]);
   }
   set(activeNoteIdAtom, noteId);
+});
+
+// Action : dépile noteBackStackAtom et y revient — symétrique de
+// navigateToNoteAtom, consommé par le swipe-back mobile (cf. MobileApp) pour
+// enchaîner un retour note par note sur une chaîne de navigation arbitraire,
+// sans toucher à mobileNavStackAtom/openTabIdsAtom (reste dans le même
+// onglet). Retourne false si la pile est vide (rien à faire).
+export const popNoteBackAtom = atom(null, (get, set): boolean => {
+  const stack = get(noteBackStackAtom);
+  if (stack.length === 0) return false;
+  set(noteBackStackAtom, stack.slice(0, -1));
+  set(activeNoteIdAtom, stack[stack.length - 1]);
+  return true;
 });
 
 // Index id → NoteFile, recalculé une fois par changement de treeAtom et partagé

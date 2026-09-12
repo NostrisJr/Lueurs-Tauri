@@ -38,7 +38,6 @@ async function writeTmp(file: File, fileName: string): Promise<string> {
   return tmpPath;
 }
 
-
 interface Params {
   wrapperRef: React.RefObject<HTMLDivElement | null>;
   vaultPath: string;
@@ -65,7 +64,11 @@ export function useDropHandler({
         if (isAudioPath(srcPath)) {
           log.info("drop audio détecté", { srcPath });
           try {
-            const destPath = await vaultIO.copyResourceToVault(srcPath, vaultPath, "audio");
+            const destPath = await vaultIO.copyResourceToVault(
+              srcPath,
+              vaultPath,
+              "audio"
+            );
             insertAudioBlock(destPath, title);
             log.info("audio déposé", { destPath });
           } catch (err) {
@@ -74,7 +77,11 @@ export function useDropHandler({
         } else if (isImagePath(srcPath)) {
           log.info("drop image détecté", { srcPath });
           try {
-            const destPath = await vaultIO.copyResourceToVault(srcPath, vaultPath, "images");
+            const destPath = await vaultIO.copyResourceToVault(
+              srcPath,
+              vaultPath,
+              "images"
+            );
             insertImageBlock(destPath, title);
             log.info("image déposée", { destPath });
           } catch (err) {
@@ -118,7 +125,11 @@ export function useDropHandler({
           const ext = file.name.match(/\.[^.]+$/)?.[0] ?? ".mp3";
           const uniqueName = `audio_${Date.now()}_${i}${ext}`;
           const tmpPath = await writeTmp(file, uniqueName);
-          const destPath = await vaultIO.copyResourceToVault(tmpPath, vaultPath, "audio");
+          const destPath = await vaultIO.copyResourceToVault(
+            tmpPath,
+            vaultPath,
+            "audio"
+          );
           insertAudioBlock(destPath, file.name.replace(/\.[^.]+$/, ""));
           log.info("audio collé", { destPath });
         } catch (err) {
@@ -132,7 +143,11 @@ export function useDropHandler({
           // Nom unique basé sur timestamp+index — file.name vaut toujours "image.png" depuis le presse-papiers
           const uniqueName = `image_${Date.now()}_${i}${extFromMime(file.type)}`;
           const tmpPath = await writeTmp(file, uniqueName);
-          const destPath = await vaultIO.copyResourceToVault(tmpPath, vaultPath, "images");
+          const destPath = await vaultIO.copyResourceToVault(
+            tmpPath,
+            vaultPath,
+            "images"
+          );
           insertImageBlock(destPath, uniqueName.replace(/\.[^.]+$/, ""));
           log.info("image collée", { destPath });
         } catch (err) {

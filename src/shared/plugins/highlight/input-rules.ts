@@ -1,6 +1,6 @@
 import { schemaCtx } from "@milkdown/kit/core";
-import { inputRules } from "@milkdown/kit/prose/inputrules";
 import { markRule } from "@milkdown/kit/prose";
+import { inputRules } from "@milkdown/kit/prose/inputrules";
 import { $prose } from "@milkdown/kit/utils";
 import { createLogger } from "../../lib/logger";
 import { defaultHighlightColorRef } from "./defaultColorRef";

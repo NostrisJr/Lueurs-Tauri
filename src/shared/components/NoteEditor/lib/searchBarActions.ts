@@ -31,7 +31,6 @@ export function runAndScroll(
   withActiveView((v) => {
     action(v);
     const pos = getActiveMatchFrom(v);
-    if (pos !== null)
-      scrollPosIntoViewLikeEditing(v, pos, bottomInsetOverride);
+    if (pos !== null) scrollPosIntoViewLikeEditing(v, pos, bottomInsetOverride);
   });
 }

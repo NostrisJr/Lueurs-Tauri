@@ -12,6 +12,29 @@ export interface Row {
   isNoteArray: boolean;
 }
 
+// ── Propriétés de relation (FrontmatterRow, MobileRelationSheet) ───────────
+
+export const SELECTOR_PLACEHOLDERS: Partial<Record<string, string>> = {
+  [SystemField.BASE]: "Rechercher une base...",
+  [SystemField.TEMPLATE]: "Rechercher un template...",
+};
+
+export function hasNoteSelector(key: string) {
+  return (
+    key === SystemField.BASE ||
+    key === SystemField.CHILDREN ||
+    key === SystemField.TEMPLATE
+  );
+}
+
+export function hasSpaceSelector(key: string) {
+  return key === SystemField.SPACE;
+}
+
+export function hasFolderSelector(key: string) {
+  return key === SystemField.DEFAULT_FOLDER;
+}
+
 // ── Helpers partagés (FrontmatterValue, TableCell) ─────────────────────────
 
 export interface PropertyOption {

@@ -81,7 +81,12 @@ function remarkHighlight(this: AnyNode) {
     data.toMarkdownExtensions || (data.toMarkdownExtensions = []);
   toMarkdownExtensions.push({
     handlers: {
-      highlight(node: AnyNode, _parent: AnyNode, state: AnyNode, info: AnyNode) {
+      highlight(
+        node: AnyNode,
+        _parent: AnyNode,
+        state: AnyNode,
+        info: AnyNode
+      ) {
         const color = node.color ?? "yellow";
         const exit = state.enter("highlight");
         const value = state.containerPhrasing(node, {

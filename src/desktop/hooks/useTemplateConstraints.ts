@@ -1,13 +1,13 @@
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { activeNoteAtom, notesByIdAtom } from "../../shared/lib/atoms";
-import { toArray } from "../../shared/lib/fileTreeHelpers";
-import { NoteType } from "../../shared/lib/noteTypes";
 import {
   type TemplateConstraints,
   computeTemplateConstraints,
   emptyTemplateConstraints,
 } from "../../shared/lib/FrontmatterPicker/templateConstraints";
+import { activeNoteAtom, notesByIdAtom } from "../../shared/lib/atoms";
+import { toArray } from "../../shared/lib/fileTreeHelpers";
+import { NoteType } from "../../shared/lib/noteTypes";
 
 export type { TemplateConstraints };
 

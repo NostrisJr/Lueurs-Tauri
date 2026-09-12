@@ -1000,6 +1000,14 @@ Hugo renvoie des offsets en **octets UTF-8**. `decorateBlock` parcourt le textbl
 
 `utf8Len(codePoint)` donne la taille en octets d'un point de code ; `ch.length` (UTF-16) est la taille côté PM/JS. Une sentinelle en fin de table couvre la position du dernier caractère.
 
+Cette construction est extraite dans **`buildBlockText`** (fonction pure, testée dans `spellcheckPlugin.test.ts` avec un schéma ProseMirror minimal — sans dépendre de Tauri) ; `decorateBlock` s'en sert puis appelle `checkText`.
+
+### Formules inline exclues de la vérification
+
+Le nœud `inline_formula` (atome, cf. [Formules inline](#formules-inline-corps-de-note--srcsharedpluginsinline-formula)) n'a pas de texte : sans traitement particulier, `block.descendants` le saute silencieusement et les deux espaces qui l'entourent dans le document (`"avant "` + formule + `" après"`) se retrouvent **collées l'une à l'autre** dans le texte envoyé à Hugo. La règle de typographie `typo_space` (Hugo) les lit alors comme une seule suite de deux espaces et les flague « surnuméraires » — en pratique, tout ce qui entoure une formule était signalé, et le soulignage produit chevauchait le nœud atome lui-même (plus moyen de cliquer dessus).
+
+Fix : `buildBlockText` insère à la position de chaque `inline_formula` un espace réservé, `ATOM_PLACEHOLDER` (U+FFFC, *object replacement character*). Pour le tokenizer Hugo, ce caractère est un jeton de ponctuation isolé — jamais vérifié en orthographe (qui ne porte que sur les mots) et jamais fusionné avec les espaces adjacentes (qui restent deux jetons `Whitespace` d'une seule espace chacun, donc légitimes). Par prudence, toute suggestion dont la plage (en octets) chevauche un espace réservé est aussi filtrée après coup (`atomByteRanges`) — au cas où une règle grammaticale future réagirait quand même à ce jeton.
+
 ### Scan à l'ouverture (et non « à la frappe »)
 
 Le plugin marque **tout le document `dirty` dans son `init`**, mais le déclenchement du worker se fait depuis `view().update()` — **or ProseMirror n'appelle pas `update()` pour l'état initial**, uniquement sur les transactions suivantes. Sans correctif, le scan ne démarrait donc qu'à la première frappe. Le scan initial est amorcé dans **le corps de `view(editorView)`** (appelé une fois à la création de la vue). Comme `<MilkdownProvider key={activeNote.id}>` remonte l'éditeur à chaque note, l'`init` + cet amorçage rejouent à chaque ouverture.

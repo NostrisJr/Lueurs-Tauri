@@ -17,14 +17,19 @@ import {
   mobileGoBackAtom,
   mobileNavStackAtom,
   mobileNavigateAtom,
+  mobileOpenSheetCountAtom,
   mobilePrevViewAtom,
   mobileViewAtom,
+  noteBackStackAtom,
+  notesByIdAtom,
+  popNoteBackAtom,
   treeAtom,
 } from "../shared/lib/atoms";
 import { iconAccentClass, isAndroid, isIOS } from "../shared/lib/platform";
 import { MobileDictaphone } from "./components/Dictaphone/MobileDictaphone";
 import { MobileEditor } from "./components/Editor/MobileEditor";
 import { MobileFileTree } from "./components/FileTree";
+import { NodePreviewCard } from "./components/Row";
 import { SearchView } from "./components/Search/SearchView";
 import { MobileSettingsView } from "./components/Settings/MobileSettingsView";
 import { MobileTabsView } from "./components/TabsView/MobileTabsView";
@@ -194,11 +199,49 @@ export function MobileApp() {
   // (Pas de garde croisée avec le swipe avant vers les onglets ci-dessous :
   // les deux bords sont physiquement disjoints, un seul doigt ne peut jamais
   // armer les deux à la fois.)
+  const popNoteBack = useSetAtom(popNoteBackAtom);
+  const openSheetCount = useAtomValue(mobileOpenSheetCountAtom);
+  // Swipe back/avant désactivés tant qu'une BottomSheet/un RowContextMenu est
+  // monté (cf. mobileOpenSheetCountAtom) — plutôt que de tenter de la
+  // refermer au geste : l'animation de swipe se joue de toute façon en
+  // entier AVANT que le callback de complétion ne soit appelé (cf.
+  // useMobileSwipeGesture.complete()), donc fermer-au-lieu-de-naviguer
+  // laissait un aller-retour visuel raté (écran révélé puis re-claqué). Pour
+  // fermer une sheet ouverte, on utilise son propre geste de fermeture
+  // (swipe interne, tap extérieur).
+  //
+  // popNoteBack (chaîne de navigation note→note, cf. NoteChip/wikilinks)
+  // reste dans l'éditeur (même onglet, note précédente) ; sinon retour de vue
+  // normal.
+  function handleSwipeBack() {
+    if (popNoteBack()) return;
+    goBack();
+  }
   const { swipeProgress, isAnimating, touchHandlers } = useMobileSwipeGesture(
-    goBack,
-    { enabled: navStack.length > 1 && !isPushing }
+    handleSwipeBack,
+    { enabled: navStack.length > 1 && !isPushing && openSheetCount === 0 }
   );
   const isSwipingBack = swipeProgress > 0 || isAnimating;
+
+  // Note vers laquelle une chaîne de navigation (NoteChip "Ouvrir", wikilink)
+  // reviendrait — cf. popNoteBack ci-dessus. mobileNavStackAtom ne porte que
+  // des VUES, pas des notes (navigateToNoteAtom ne le touche jamais), donc
+  // bgView (mobilePrevViewAtom) reste "filetree" tout du long d'une chaîne :
+  // sans ce calque dédié, un swipe-back révélait le file tree au doigt puis
+  // "sautait" sur la vraie note précédente seulement à la complétion du
+  // geste. Aperçu léger (titre + début du corps, pas l'éditeur Milkdown
+  // lui-même) : un deuxième éditeur temporaire pour la durée du geste
+  // coûterait exactement la réinitialisation que l'éditeur singleton
+  // (cf. commentaire plus bas) est conçu pour éviter.
+  const noteBackStack = useAtomValue(noteBackStackAtom);
+  const notesById = useAtomValue(notesByIdAtom);
+  const peekBackNoteId =
+    isSwipingBack && currentView === "editor"
+      ? (noteBackStack[noteBackStack.length - 1] ?? null)
+      : null;
+  const peekBackNode = peekBackNoteId
+    ? notesById.get(peekBackNoteId)
+    : undefined;
 
   // ── Animation swipe avant vers les onglets ────────────────────
   // Symétrique du swipe retour : la vue "onglets" est révélée en direct sous
@@ -217,7 +260,11 @@ export function MobileApp() {
     },
     {
       edge: "right",
-      enabled: currentView !== "tabs" && !isPushing && !isSwipingBack,
+      enabled:
+        currentView !== "tabs" &&
+        !isPushing &&
+        !isSwipingBack &&
+        openSheetCount === 0,
       excludeSelector: "[data-mobile-space-switcher]",
     }
   );
@@ -338,8 +385,17 @@ export function MobileApp() {
       onTouchMove={handleRootTouchMove}
       onTouchEnd={handleRootTouchEnd}
     >
-      {/* Couche de fond — vues non-éditeur seulement */}
-      {showBg && bgView && bgView !== "editor" && (
+      {/* Couche de fond — note précédente d'une chaîne de navigation (cf.
+          peekBackNode ci-dessus), sinon vue précédente non-éditeur. */}
+      {showBg && peekBackNode && (
+        <div
+          className="absolute inset-0 pointer-events-none bg-white overflow-hidden"
+          style={{ ...bgStyle, zIndex: 1 }}
+        >
+          <NodePreviewCard node={peekBackNode} />
+        </div>
+      )}
+      {showBg && !peekBackNode && bgView && bgView !== "editor" && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{ ...bgStyle, zIndex: 1 }}

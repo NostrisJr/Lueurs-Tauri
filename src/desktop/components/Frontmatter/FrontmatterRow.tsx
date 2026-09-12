@@ -1,4 +1,3 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -18,20 +17,28 @@ import {
   SystemField,
   getFieldDef,
 } from "../../../shared/lib/noteTypes";
+import { isMobile } from "../../../shared/lib/platform";
 import { useTemplateConstraints } from "../../hooks/useTemplateConstraints";
 import { EnumOptionsFields } from "./EnumOptionsFields";
 import { FolderSelector } from "./FolderSelector";
 import { FrontmatterValue } from "./FrontmatterValue";
+import { MobilePropertySheet } from "./MobilePropertySheet";
+import { MobileRelationSheet } from "./MobileRelationSheet";
 import { NoteSelector } from "./NoteSelector";
 import { NumberFormatFields } from "./NumberFormatFields";
-import { PropertyEditModal } from "./PropertyEditModal";
 import { SpaceSelector } from "./SpaceSelector";
 import {
   editingKeyAtom,
   rowsAtom,
   selectorOpenAtom,
 } from "./lib/frontMatterAtoms";
-import type { Row } from "./lib/frontmatterUtils";
+import {
+  type Row,
+  SELECTOR_PLACEHOLDERS,
+  hasFolderSelector,
+  hasNoteSelector,
+  hasSpaceSelector,
+} from "./lib/frontmatterUtils";
 import { useAnimatedHeight } from "./lib/useAnimatedHeight";
 import { useScrollCompensation } from "./lib/useScrollCompensation";
 import { type PropertyType, useValueEditor } from "./lib/useValueEditor";
@@ -52,27 +59,6 @@ const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: "enum", label: "Bouton" },
 ];
 
-const SELECTOR_PLACEHOLDERS: Partial<Record<string, string>> = {
-  [SystemField.BASE]: "Rechercher une base...",
-  [SystemField.TEMPLATE]: "Rechercher un template...",
-};
-
-function hasNoteSelector(key: string) {
-  return (
-    key === SystemField.BASE ||
-    key === SystemField.CHILDREN ||
-    key === SystemField.TEMPLATE
-  );
-}
-
-function hasSpaceSelector(key: string) {
-  return key === SystemField.SPACE;
-}
-
-function hasFolderSelector(key: string) {
-  return key === SystemField.DEFAULT_FOLDER;
-}
-
 export function FrontmatterRow({
   row,
   index,
@@ -81,8 +67,6 @@ export function FrontmatterRow({
   onRenameTemplateKey,
   locked = false,
 }: Props) {
-  const isMobile = platform() === "ios";
-  const rowRef = useRef<HTMLDivElement>(null);
   const selectorAnchorRef = useRef<HTMLButtonElement>(null);
   const switcherWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -102,8 +86,8 @@ export function FrontmatterRow({
   const isEditing = editingKey === row.key;
   const isSelectorOpen = selectorOpen === row.key;
 
-  // Édition inline du nom de propriété (desktop uniquement — le mobile garde
-  // la modale PropertyEditModal, cf. rendu plus bas).
+  // Édition inline du nom de propriété (desktop uniquement — le mobile passe
+  // par MobilePropertySheet, cf. rendu plus bas).
   const [keyDraft, setKeyDraft] = useState(row.key);
   const trimmedKeyDraft = keyDraft.trim();
   const isKeyUnchanged = trimmedKeyDraft === row.key;
@@ -233,6 +217,14 @@ export function FrontmatterRow({
   // choisie directement sur la ligne via EnumValueSelector (jamais ce panneau).
   const canConfigure =
     !locked && !row.isSystem && !isValueLocked && !enumConstraint;
+  // Propriété de relation (choix parmi des notes/espaces/un dossier) : sur
+  // mobile, tap sur la ligne ouvre MobileRelationSheet plutôt que le panneau
+  // Texte/Nombre/Bouton — jamais renommable (clé système), cf. plus bas.
+  const isRelationRow =
+    hasNoteSelector(row.key) ||
+    hasSpaceSelector(row.key) ||
+    hasFolderSelector(row.key);
+  const [relationSheetOpen, setRelationSheetOpen] = useState(false);
 
   const noteResolver = (path: string) => notesById.get(path);
 
@@ -294,8 +286,12 @@ export function FrontmatterRow({
   // Tab switcher au-dessus / décimales+unité (ou options Bouton) en dessous
   // de la ligne icônes+champ (jamais dans la même cellule qu'elle) : le champ
   // ne bouge jamais de place à l'écran, qu'on soit déplié ou non — cf.
-  // useValueEditor.
-  const showTypePanel = editor.visible && !isValueLocked && !locked;
+  // useValueEditor. Desktop uniquement : sur mobile ce panneau est remplacé
+  // par MobilePropertySheet (bottom sheet), cf. plus bas — un panneau qui se
+  // déplie en place dans la grille est le genre de mécanisme identifié fragile
+  // sous WebKit (cf. mémoire projet sur les quirks d'animation).
+  const showTypePanel =
+    !isMobile && editor.visible && !isValueLocked && !locked;
   const showDecimals = showTypePanel && editor.draft.type === "number";
   const showEnumOptions = showTypePanel && editor.draft.type === "enum";
 
@@ -356,10 +352,7 @@ export function FrontmatterRow({
 
   return (
     <div
-      ref={(node) => {
-        rowRef.current = node;
-        panelRefSetter.current = node;
-      }}
+      ref={panelRefSetter}
       className={`grid gap-x-2 gap-y-1 group transition duration-300 select-none ${isMobile ? "text-sm min-h-10" : "text-xs min-h-5"}`}
       style={{ gridTemplateColumns: "auto 1fr" }}
       {...(showTypePanel ? containerHandlers : {})}
@@ -389,23 +382,26 @@ export function FrontmatterRow({
         className="flex items-start gap-2"
         style={{ gridRow: mainRow, gridColumn: 1 }}
       >
-        {row.key !== SystemField.TYPE ? (
-          <button
-            type="button"
-            onClick={canDelete ? removeRow : undefined}
-            title={canDelete ? "Supprimer la propriété" : undefined}
-            className={`shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 ${isMobile ? "size-4" : "size-3"}
-              ${
-                canDelete
-                  ? "text-transparent hover:text-red-400 group-hover:text-gray-300 cursor-pointer"
-                  : "text-transparent cursor-default"
-              }`}
-          >
-            <IconXCircle className="size-full" />
-          </button>
-        ) : (
-          <span className={`shrink-0 mt-0.5 ${isMobile ? "w-4" : "w-3"}`} />
-        )}
+        {/* Suppression : sur mobile, ni icône ni espaceur — repliée dans le
+            bouton "Supprimer" de MobilePropertySheet, cf. plus bas. */}
+        {!isMobile &&
+          (row.key !== SystemField.TYPE ? (
+            <button
+              type="button"
+              onClick={canDelete ? removeRow : undefined}
+              title={canDelete ? "Supprimer la propriété" : undefined}
+              className={`shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 size-3
+                ${
+                  canDelete
+                    ? "text-transparent hover:text-red-400 group-hover:text-gray-300 cursor-pointer"
+                    : "text-transparent cursor-default"
+                }`}
+            >
+              <IconXCircle className="size-full" />
+            </button>
+          ) : (
+            <span className="shrink-0 mt-0.5 w-3" />
+          ))}
 
         {!isMobile && isEditing ? (
           <input
@@ -433,7 +429,14 @@ export function FrontmatterRow({
               ${!row.isSystem && canRename ? "text-gray-500 cursor-pointer hover:text-gray-700" : ""}
               ${isKeyLocked && !isTemplate ? "text-amber-500/70 select-none" : ""}`}
             onDoubleClick={() => !isMobile && canRename && startKeyEdit()}
-            onClick={() => isMobile && canRename && setEditingKey(row.key)}
+            onClick={() => {
+              if (!isMobile) return;
+              if (isRelationRow) {
+                if (!locked) setRelationSheetOpen(true);
+                return;
+              }
+              if (canRename || canConfigure || canDelete) editor.open();
+            }}
             title={
               isKeyLocked && !isTemplate
                 ? isValueLocked
@@ -446,28 +449,30 @@ export function FrontmatterRow({
           </span>
         )}
 
-        {canConfigure ? (
-          <button
-            type="button"
-            // Bascule déterministe (toggleOpen) : ferme immédiatement (avec
-            // commit) si déjà ouvert, sinon ouvre — cf. commentaire dans
-            // useValueEditor.toggleOpen sur la course avec le blur différé.
-            onClick={editor.toggleOpen}
-            // Empêche de voler le focus au champ actif du panneau (même
-            // pattern que SegmentedControl) : sans ça, cliquer la roue blur
-            // d'abord le champ, ce qui programme une fermeture différée qui
-            // vient courser avec toggleOpen ci-dessus.
-            onMouseDown={(e) => e.preventDefault()}
-            title="Réglages de la propriété"
-            className={`shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 cursor-pointer
-              ${isMobile ? "size-4" : "size-3"}
-              ${editor.visible ? "text-gray-500" : "text-transparent group-hover:text-gray-300 hover:text-gray-500"}`}
-          >
-            <IconGearshape className="size-full" />
-          </button>
-        ) : (
-          <span className={`shrink-0 mt-0.5 ${isMobile ? "w-4" : "w-3"}`} />
-        )}
+        {/* Réglages : sur mobile, ni icône ni espaceur — la ligne entière
+            (tap sur le libellé) ouvre MobilePropertySheet, cf. plus bas. */}
+        {!isMobile &&
+          (canConfigure ? (
+            <button
+              type="button"
+              // Bascule déterministe (toggleOpen) : ferme immédiatement (avec
+              // commit) si déjà ouvert, sinon ouvre — cf. commentaire dans
+              // useValueEditor.toggleOpen sur la course avec le blur différé.
+              onClick={editor.toggleOpen}
+              // Empêche de voler le focus au champ actif du panneau (même
+              // pattern que SegmentedControl) : sans ça, cliquer la roue blur
+              // d'abord le champ, ce qui programme une fermeture différée qui
+              // vient courser avec toggleOpen ci-dessus.
+              onMouseDown={(e) => e.preventDefault()}
+              title="Réglages de la propriété"
+              className={`shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 cursor-pointer size-3
+                ${editor.visible ? "text-gray-500" : "text-transparent group-hover:text-gray-300 hover:text-gray-500"}`}
+            >
+              <IconGearshape className="size-full" />
+            </button>
+          ) : (
+            <span className="shrink-0 mt-0.5 w-3" />
+          ))}
 
         <IconArrowRight
           // mt-1.5 (pas mt-0.5 comme les autres icônes) : le glyphe SF Symbol
@@ -478,29 +483,32 @@ export function FrontmatterRow({
           aria-hidden="true"
         />
 
-        {!locked &&
-        (hasNoteSelector(row.key) ||
-          hasSpaceSelector(row.key) ||
-          hasFolderSelector(row.key)) ? (
-          <span ref={selectorAnchorRef} className="mt-0.5">
-            <button
-              type="button"
-              title={
-                hasSpaceSelector(row.key)
-                  ? "Ajouter un espace"
-                  : hasFolderSelector(row.key)
-                    ? "Choisir un dossier"
-                    : "Ajouter une note"
-              }
-              onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
-              className={`p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer ${isMobile ? "size-4" : "size-3"}`}
-            >
-              <IconPlusCircle className="size-full" />
-            </button>
-          </span>
-        ) : (
-          <span className={`shrink-0 mt-0.5 ${isMobile ? "w-4" : "w-3"}`} />
-        )}
+        {/* Sur mobile, ni bouton ni espaceur — MobileRelationSheet (tap sur le
+            libellé de la clé) remplace ce déclencheur, cf. plus bas. */}
+        {!isMobile &&
+          (!locked &&
+          (hasNoteSelector(row.key) ||
+            hasSpaceSelector(row.key) ||
+            hasFolderSelector(row.key)) ? (
+            <span ref={selectorAnchorRef} className="mt-0.5">
+              <button
+                type="button"
+                title={
+                  hasSpaceSelector(row.key)
+                    ? "Ajouter un espace"
+                    : hasFolderSelector(row.key)
+                      ? "Choisir un dossier"
+                      : "Ajouter une note"
+                }
+                onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
+                className="p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer size-3"
+              >
+                <IconPlusCircle className="size-full" />
+              </button>
+            </span>
+          ) : (
+            <span className="shrink-0 mt-0.5 w-3" />
+          ))}
       </div>
 
       <div
@@ -523,6 +531,7 @@ export function FrontmatterRow({
           onRemoveNote={removeNote}
           noteName={noteName}
           editor={editor}
+          canOpenSheet={canRename || canConfigure || canDelete}
         />
       </div>
 
@@ -576,18 +585,25 @@ export function FrontmatterRow({
         </p>
       )}
 
-      {isMobile && isEditing && (
-        <PropertyEditModal
-          propKey={row.key}
+      {isMobile && editor.expanded && (
+        <MobilePropertySheet
+          row={row}
+          rows={rows}
           isTemplate={isTemplate}
-          existingKeys={rows.map((r) => r.key)}
-          anchorRef={rowRef}
-          onClose={() => setEditingKey(null)}
+          canRename={canRename}
+          canConfigure={canConfigure}
+          canDelete={canDelete}
+          typeOptions={typeOptions}
+          editor={editor}
+          allNotes={allNotes}
+          noteResolver={noteResolver}
+          formulaVars={formulaVars}
           onRename={handleRename}
+          onDelete={removeRow}
         />
       )}
 
-      {isSelectorOpen && hasNoteSelector(row.key) && (
+      {!isMobile && isSelectorOpen && hasNoteSelector(row.key) && (
         <NoteSelector
           notes={getCandidates()}
           onSelect={(note) => addNote(note.id)}
@@ -599,7 +615,7 @@ export function FrontmatterRow({
         />
       )}
 
-      {isSelectorOpen && hasSpaceSelector(row.key) && (
+      {!isMobile && isSelectorOpen && hasSpaceSelector(row.key) && (
         <SpaceSelector
           currentSpaces={row.value as string[]}
           onSelect={(spaceName) => addNote(spaceName)}
@@ -608,11 +624,25 @@ export function FrontmatterRow({
         />
       )}
 
-      {isSelectorOpen && hasFolderSelector(row.key) && (
+      {!isMobile && isSelectorOpen && hasFolderSelector(row.key) && (
         <FolderSelector
           onSelect={selectFolder}
           onClose={() => setSelectorOpen(null)}
           anchorRef={selectorAnchorRef}
+        />
+      )}
+
+      {isMobile && relationSheetOpen && (
+        <MobileRelationSheet
+          row={row}
+          canDelete={canDelete}
+          noteName={noteName}
+          getCandidates={getCandidates}
+          addNote={addNote}
+          removeNote={removeNote}
+          selectFolder={selectFolder}
+          onDelete={removeRow}
+          onClose={() => setRelationSheetOpen(false)}
         />
       )}
     </div>

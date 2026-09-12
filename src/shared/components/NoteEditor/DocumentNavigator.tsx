@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   scrollToPosAtom,
 } from "../../lib/atoms";
 import { BLOCK_TYPE_COLORS } from "../../lib/documentMapConfig";
-import clsx from "clsx";
 
 const DOT_TYPES = new Set(["image", "audio_block"]);
 

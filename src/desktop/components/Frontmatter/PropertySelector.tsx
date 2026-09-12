@@ -1,6 +1,6 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
+import { isMobile } from "../../../shared/lib/platform";
 import type { PropertyOption } from "./lib/frontmatterUtils";
 
 export type { PropertyOption };
@@ -22,7 +22,6 @@ export function PropertySelector({
   zIndex,
 }: Props) {
   const [query, setQuery] = useState("");
-  const isMobile = platform() === "ios";
 
   const filtered = options.filter((o) =>
     o.displayName.toLowerCase().includes(query.toLowerCase())
