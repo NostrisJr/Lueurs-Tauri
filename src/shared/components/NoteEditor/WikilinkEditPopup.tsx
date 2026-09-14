@@ -1,3 +1,4 @@
+import clsx from "clsx";
 /**
  * WikilinkEditPopup.tsx
  *
@@ -169,7 +170,10 @@ export function WikilinkEditPopup({ vaultPath }: Props) {
     // Overlay pour fermer au clic extérieur
     <div className="fixed inset-0 z-50" onMouseDown={close}>
       <div
-        className="absolute w-80 rounded-lg border border-gray-200 bg-white p-2 shadow-xl"
+        className={clsx(
+          "absolute w-80 rounded-lg border p-2 shadow-xl",
+          "border-line-2 bg-surface"
+        )}
         style={{ left: pos.left, top: pos.top }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -182,18 +186,24 @@ export function WikilinkEditPopup({ vaultPath }: Props) {
           }}
           onKeyDown={onKeyDown}
           placeholder="Note ou URL…"
-          className="mb-1 w-full rounded border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-amber-400"
+          className={clsx(
+            "mb-1 w-full rounded border px-2 py-1.5 text-sm outline-none",
+            "border-line-2 focus:border-accent-2"
+          )}
         />
         <input
           value={alias}
           onChange={(e) => setAlias(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Texte affiché (optionnel)"
-          className="mb-1 w-full rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-600 outline-none focus:border-amber-400"
+          className={clsx(
+            "mb-1 w-full rounded border px-2 py-1.5 text-xs outline-none",
+            "border-line-2 text-ink-2 focus:border-accent-2"
+          )}
         />
         <div className="max-h-60 overflow-y-auto">
           {rows.length === 0 ? (
-            <p className="px-2 py-2 text-xs italic text-gray-400">
+            <p className="px-2 py-2 text-xs italic text-ink-4">
               Aucune note correspondante
             </p>
           ) : (
@@ -207,20 +217,20 @@ export function WikilinkEditPopup({ vaultPath }: Props) {
                 }}
                 onMouseEnter={() => setIndex(i)}
                 className={`flex w-full flex-col items-start rounded px-2 py-1.5 text-left text-sm transition-colors ${
-                  i === safeIndex ? "bg-amber-50" : "hover:bg-gray-50"
+                  i === safeIndex ? "bg-accent-soft" : "hover:bg-surface-2"
                 }`}
               >
                 {row.kind === "web" ? (
-                  <span className="font-medium text-sky-700">
+                  <span className="font-medium text-link">
                     🔗 Lien web : {row.label}
                   </span>
                 ) : (
                   <>
-                    <span className="font-medium text-gray-800">
+                    <span className="font-medium text-ink">
                       {row.candidate.name}
                     </span>
                     {row.candidate.relpath.includes("/") && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-ink-4">
                         {row.candidate.relpath}
                       </span>
                     )}

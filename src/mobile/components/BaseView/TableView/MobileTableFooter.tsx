@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { TableColumn } from "../../../../shared/hooks/useTable";
@@ -37,9 +38,12 @@ export function MobileTableFooter({
 
   return (
     <>
-      <div className="flex bg-gray-50/50 border-t border-gray-200">
+      <div className={clsx("flex border-t", "bg-surface-2/50 border-line-2")}>
         <div
-          className="shrink-0 sticky left-0 z-10 bg-gray-50/50 border-r border-gray-200"
+          className={clsx(
+            "shrink-0 sticky left-0 z-10 border-r",
+            "bg-surface-2/50 border-line-2"
+          )}
           style={{ width: TITLE_WIDTH }}
         />
 
@@ -67,20 +71,28 @@ export function MobileTableFooter({
                 hapticImpact("light");
                 setPickerKey(col.key);
               }}
-              className="shrink-0 flex flex-col items-end justify-center px-3 py-1.5 border-r border-gray-200 last:border-none text-right"
+              className={clsx(
+                "shrink-0 flex flex-col items-end justify-center px-3 py-1.5 border-r last:border-none text-right",
+                "border-line-2"
+              )}
               style={{ width: CELL_WIDTH }}
             >
               {op !== "none" ? (
                 <>
-                  <span className="text-[10px] text-gray-400 leading-tight">
+                  <span className="text-[10px] text-ink-4 leading-tight">
                     {AGG_LABELS[op]}
                   </span>
-                  <span className="text-xs text-gray-600 font-medium leading-tight truncate max-w-full">
+                  <span
+                    className={clsx(
+                      "text-xs font-medium leading-tight truncate max-w-full",
+                      "text-ink-2"
+                    )}
+                  >
                     {result}
                   </span>
                 </>
               ) : (
-                <span className="text-[10px] text-gray-400 leading-tight">
+                <span className="text-[10px] text-ink-4 leading-tight">
                   Calculer
                 </span>
               )}
@@ -95,7 +107,7 @@ export function MobileTableFooter({
           title={`Agrégation — ${pickerKey}`}
           autoHeight
         >
-          <div className="flex flex-col divide-y divide-gray-100">
+          <div className={clsx("flex flex-col divide-y", "divide-line")}>
             {AGG_OPS.map((op) => {
               const checked = (aggregations[pickerKey] ?? "none") === op;
               return (
@@ -106,15 +118,17 @@ export function MobileTableFooter({
                     onAggregationChange(pickerKey, op);
                     setPickerKey(null);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-4 text-left text-base text-gray-900 active:bg-gray-50 transition-colors"
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-4 text-left text-base transition-colors",
+                    "text-ink",
+                    "active:bg-surface-2"
+                  )}
                 >
                   <span className="flex-1 min-w-0 truncate">
                     {AGG_LABELS[op]}
                   </span>
                   {checked && (
-                    <span className="text-amber-500 text-lg leading-none">
-                      ✓
-                    </span>
+                    <span className="text-accent text-lg leading-none">✓</span>
                   )}
                 </button>
               );

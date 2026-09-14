@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Suspense, lazy, useCallback, useEffect, useRef } from "react";
 import { MediaViewer } from "../shared/components/MediaViewer/MediaViewer";
@@ -157,7 +158,7 @@ export function DesktopApp() {
   if (!folderPath) return <WelcomeScreen onPick={pickFolder} />;
 
   return (
-    <div className="h-screen flex text-gray-900 overflow-hidden text-sm">
+    <div className={clsx("h-screen flex overflow-hidden text-sm", "text-ink")}>
       <Suspense fallback={null}>
         <SettingsModal />
         <ExportDialog />
@@ -166,7 +167,12 @@ export function DesktopApp() {
       <ShareResolutionDialog />
       <SideBar />
 
-      <main className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">
+      <main
+        className={clsx(
+          "flex-1 min-w-0 flex flex-col overflow-hidden",
+          "bg-surface"
+        )}
+      >
         <TabBar />
 
         <div className="relative flex-1 overflow-hidden">
@@ -195,14 +201,18 @@ export function DesktopApp() {
               <MediaViewer key={activeMedia.id} media={activeMedia} />
             ) : (
               <div className="h-full flex flex-col items-center justify-center gap-3">
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-ink-4">
                   {loading ? "Chargement..." : "Sélectionne ou crée une note"}
                 </p>
                 {!loading && (
                   <button
                     type="button"
                     onClick={handleCreateNote}
-                    className="px-3 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 transition-colors cursor-pointer"
+                    className={clsx(
+                      "px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                      "bg-inverse text-on-inverse",
+                      "hover:bg-inverse-2"
+                    )}
                   >
                     Créer une note
                   </button>

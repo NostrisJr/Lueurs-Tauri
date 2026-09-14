@@ -1,10 +1,11 @@
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useMemo, useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import type { useTable } from "../../../../shared/hooks/useTable";
 import { notesByIdAtom } from "../../../../shared/lib/atoms";
-import { TITLE_WIDTH } from "./constants";
 import { MobileTableCell } from "./MobileTableCell";
+import { TITLE_WIDTH } from "./constants";
 
 interface Props {
   note: NoteFile;
@@ -43,9 +44,18 @@ export function MobileTableRow({
   }
 
   return (
-    <div className="flex border-b border-gray-100 hover:bg-gray-50/50 min-h-[48px] items-center">
+    <div
+      className={clsx(
+        "flex border-b min-h-[48px] items-center",
+        "border-line",
+        "hover:bg-surface-2/50"
+      )}
+    >
       <div
-        className="shrink-0 sticky left-0 z-10 bg-white border-r border-gray-100 flex items-center gap-1"
+        className={clsx(
+          "shrink-0 sticky left-0 z-10 border-r flex items-center gap-1",
+          "bg-surface border-line"
+        )}
         style={{ width: TITLE_WIDTH }}
       >
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: édition inline */}
@@ -66,11 +76,16 @@ export function MobileTableRow({
                 }
               }}
               style={{ fontSize: 16 }}
-              className="w-full bg-transparent outline-none text-gray-800 font-medium"
+              className={clsx(
+                "w-full bg-transparent outline-none font-medium",
+                "text-ink"
+              )}
             />
           ) : (
-            <span className="text-sm font-medium text-gray-800 truncate block">
-              {note.name || <span className="text-gray-300">Sans titre</span>}
+            <span
+              className={clsx("text-sm font-medium truncate block", "text-ink")}
+            >
+              {note.name || <span className="text-ink-5">Sans titre</span>}
             </span>
           )}
         </div>
@@ -81,7 +96,11 @@ export function MobileTableRow({
             e.stopPropagation();
             onNavigate();
           }}
-          className="shrink-0 pr-2 text-gray-300 active:text-blue-500 transition-colors"
+          className={clsx(
+            "shrink-0 pr-2 transition-colors",
+            "text-ink-5",
+            "active:text-info"
+          )}
           title="Ouvrir la note"
         >
           →

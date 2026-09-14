@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
 import { exportDialogOpenAtom } from "../../../shared/lib/atoms";
@@ -29,7 +30,10 @@ export function ExportDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/20"
+      className={clsx(
+        "fixed inset-0 z-9999 flex items-center justify-center",
+        "bg-overlay"
+      )}
       onClick={() => setOpen(false)}
       onKeyDown={(e) => {
         if (e.key === "Escape") setOpen(false);
@@ -37,7 +41,10 @@ export function ExportDialog() {
     >
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: clic extérieur ferme la modale */}
       <div
-        className="bg-white rounded-xl shadow-xl flex overflow-hidden"
+        className={clsx(
+          "rounded-xl shadow-xl flex overflow-hidden",
+          "bg-surface"
+        )}
         style={{ width: 900, height: 640 }}
         onClick={(e) => e.stopPropagation()}
       >

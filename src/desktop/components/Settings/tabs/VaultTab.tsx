@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import clsx from "clsx";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { useFileTree } from "../../../../shared/hooks/useFileTree";
@@ -89,9 +90,14 @@ export function VaultTab() {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <p className="text-xs text-gray-500">Dossier racine</p>
+        <p className="text-xs text-ink-3">Dossier racine</p>
         <div className="flex items-center gap-2">
-          <span className="flex-1 min-w-0 text-sm text-gray-700 font-mono bg-gray-50 rounded-md px-3 py-2 truncate">
+          <span
+            className={clsx(
+              "flex-1 min-w-0 text-sm font-mono rounded-md px-3 py-2 truncate",
+              "text-ink-2 bg-surface-2"
+            )}
+          >
             {folderPath ?? "–"}
           </span>
           <button
@@ -100,7 +106,11 @@ export function VaultTab() {
               pickFolder();
               setOpen(false);
             }}
-            className="px-3 py-2 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
+            className={clsx(
+              "px-3 py-2 text-xs font-medium rounded-md transition-colors cursor-pointer shrink-0",
+              "bg-inverse text-on-inverse",
+              "hover:bg-inverse-2"
+            )}
           >
             Changer
           </button>
@@ -116,9 +126,9 @@ export function VaultTab() {
               setShowResources((v) => !v);
               reload();
             }}
-            className="rounded accent-gray-800 cursor-pointer"
+            className="rounded accent-ink cursor-pointer"
           />
-          <span className="text-sm text-gray-700">
+          <span className="text-sm text-ink-2">
             Afficher les ressources dans le vault
           </span>
         </label>
@@ -127,14 +137,18 @@ export function VaultTab() {
             type="button"
             onClick={handleCleanResources}
             disabled={cleanStatus === "running" || !folderPath}
-            className="px-3 py-2 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-default transition-colors cursor-pointer"
+            className={clsx(
+              "px-3 py-2 text-xs font-medium rounded-md disabled:opacity-50 disabled:cursor-default transition-colors cursor-pointer",
+              "bg-surface-3 text-ink-2",
+              "hover:bg-surface-4"
+            )}
           >
             {cleanStatus === "running"
               ? "Nettoyage…"
               : "Nettoyer les ressources"}
           </button>
           {cleanStatus !== null && cleanStatus !== "running" && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-ink-3">
               {cleanStatus === "error"
                 ? "Erreur lors du nettoyage"
                 : cleanStatus.count === 0
@@ -147,31 +161,45 @@ export function VaultTab() {
 
       <div className="space-y-2">
         <p
-          className={`text-xs ${icloudAvailable ? "text-gray-500" : "text-gray-300"}`}
+          className={clsx(
+            "text-xs",
+            icloudAvailable ? "text-ink-3" : "text-ink-5"
+          )}
         >
           Vault iCloud (partagé avec l'app iOS)
         </p>
         {icloudAvailable ? (
           <div className="flex items-center gap-2">
-            <span className="flex-1 min-w-0 text-sm text-gray-500 font-mono bg-gray-50 rounded-md px-3 py-2 truncate">
+            <span
+              className={clsx(
+                "flex-1 min-w-0 text-sm font-mono rounded-md px-3 py-2 truncate",
+                "text-ink-3 bg-surface-2"
+              )}
+            >
               {icloudPath}
             </span>
             <button
               type="button"
               onClick={handleUseIcloud}
               disabled={icloudAlreadyActive}
-              className={`px-3 py-2 text-xs font-medium rounded-md shrink-0 transition-colors ${
+              className={clsx(
+                "px-3 py-2 text-xs font-medium rounded-md shrink-0 transition-colors",
                 icloudAlreadyActive
-                  ? "bg-gray-100 text-gray-400 cursor-default"
-                  : "bg-blue-600 text-white hover:bg-blue-500 cursor-pointer"
-              }`}
+                  ? "bg-surface-3 text-ink-4 cursor-default"
+                  : "bg-info text-on-inverse hover:bg-info cursor-pointer"
+              )}
             >
               {icloudAlreadyActive ? "Vault actif" : "Utiliser"}
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-md bg-gray-50 px-3 py-2">
-            <span className="flex-1 text-xs text-gray-400">
+          <div
+            className={clsx(
+              "flex items-center gap-2 rounded-md px-3 py-2",
+              "bg-surface-2"
+            )}
+          >
+            <span className="flex-1 text-xs text-ink-4">
               {icloudPath === undefined
                 ? "Vérification…"
                 : "Installez et lancez l'app iOS Lueurs pour activer cette option"}
@@ -199,8 +227,8 @@ export function VaultTab() {
       />
 
       <div className="space-y-2">
-        <p className="text-xs text-gray-500">Boîte aux lettres</p>
-        <div className="flex gap-1 bg-gray-100 rounded-full p-0.75">
+        <p className="text-xs text-ink-3">Boîte aux lettres</p>
+        <div className={clsx("flex gap-1 rounded-full p-0.75", "bg-surface-3")}>
           {(
             [
               ["recus", `Dossier "${MAILBOX_DEFAULT_FOLDER_NAME}"`],
@@ -212,11 +240,12 @@ export function VaultTab() {
               key={mode}
               type="button"
               onClick={() => setMailboxMode(mode)}
-              className={`flex-1 px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+              className={clsx(
+                "flex-1 px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer",
                 mailboxMode === mode
-                  ? "bg-white text-black shadow-sm"
-                  : "text-gray-400 hover:bg-gray-200"
-              }`}
+                  ? "bg-surface text-ink shadow-sm"
+                  : "text-ink-4 hover:bg-surface-4"
+              )}
             >
               {label}
             </button>
@@ -226,7 +255,11 @@ export function VaultTab() {
           <select
             value={mailboxCustomRelPath ?? ""}
             onChange={(e) => setMailboxCustomRelPath(e.target.value || null)}
-            className="w-full text-sm text-gray-700 bg-gray-50 rounded-md px-3 py-2 ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+            className={clsx(
+              "w-full text-sm rounded-md px-3 py-2 ring-1 focus:outline-none focus:ring-2 cursor-pointer",
+              "text-ink-2 bg-surface-2 ring-line-2",
+              "focus:ring-accent-2"
+            )}
           >
             <option value="">Racine du vault</option>
             {allFolders.map((folder) => {
@@ -241,7 +274,7 @@ export function VaultTab() {
             })}
           </select>
         )}
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-ink-4">
           Destination des notes, dossiers et médias reçus par bundle partagé
           (.lueurs), en local comme via l'association de fichier.
         </p>
@@ -267,11 +300,15 @@ function FolderPickerRow({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-ink-3">{label}</p>
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
-        className="w-full text-sm text-gray-700 bg-gray-50 rounded-md px-3 py-2 ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+        className={clsx(
+          "w-full text-sm rounded-md px-3 py-2 ring-1 focus:outline-none focus:ring-2 cursor-pointer",
+          "text-ink-2 bg-surface-2 ring-line-2",
+          "focus:ring-accent-2"
+        )}
       >
         <option value="">Racine du vault</option>
         {allFolders.map((folder) => {
@@ -285,7 +322,7 @@ function FolderPickerRow({
           );
         })}
       </select>
-      <p className="text-xs text-gray-400">{description}</p>
+      <p className="text-xs text-ink-4">{description}</p>
     </div>
   );
 }

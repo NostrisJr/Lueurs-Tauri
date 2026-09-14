@@ -75,7 +75,7 @@ export function TabBar() {
   const draggingNote = draggingId ? tabNodeById(draggingId) : null;
 
   if (openTabIds.length <= 1) {
-    return <div className="w-full h-11 bg-white z-20" />;
+    return <div className={clsx("w-full h-11 z-20", "bg-surface")} />;
   }
   return (
     <DndContext
@@ -85,7 +85,7 @@ export function TabBar() {
     >
       <div
         className={clsx(
-          "flex z-100 gap-1 h-8 bg-gray-100 inset-shadow-xs rounded-full p-0.75 mt-3 mx-4 overflow-x-auto shrink-0 scroll-hidden transition-[margin] duration-200",
+          "flex z-100 gap-1 h-8 bg-surface-3 inset-shadow-xs rounded-full p-0.75 mt-3 mx-4 overflow-x-auto shrink-0 scroll-hidden transition-[margin] duration-200",
           sideBarCollapsed && "ml-30"
         )}
       >

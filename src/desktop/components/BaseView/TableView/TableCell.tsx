@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useCallback, useRef, useState } from "react";
 import { FormulaEditField } from "../../../../shared/components/FormulaField/FormulaEditField";
 import { EnumValueSelector } from "../../../../shared/components/FrontmatterPicker/EnumValueSelector";
@@ -122,7 +123,10 @@ export function TableCell({
     return (
       <div
         style={{ width }}
-        className="shrink-0 border-r border-gray-100 px-3 flex items-center last:border-none"
+        className={clsx(
+          "shrink-0 border-r px-3 flex items-center last:border-none",
+          "border-line"
+        )}
       >
         <EnumValueSelector
           value={value}
@@ -139,7 +143,10 @@ export function TableCell({
     return (
       <div
         style={{ width }}
-        className="shrink-0 border-r border-gray-100 px-3 flex items-center last:border-none"
+        className={clsx(
+          "shrink-0 border-r px-3 flex items-center last:border-none",
+          "border-line"
+        )}
       >
         <NumberCellSelector
           fieldKey={fieldKey}
@@ -171,7 +178,10 @@ export function TableCell({
     return (
       <div
         style={{ width }}
-        className="shrink-0 border-r border-gray-100 px-3 flex items-center relative group last:border-none"
+        className={clsx(
+          "shrink-0 border-r px-3 flex items-center relative group last:border-none",
+          "border-line"
+        )}
       >
         <EnumValueSelector
           value={activeEnumDef.default}
@@ -201,15 +211,15 @@ export function TableCell({
   return (
     <div
       style={{ width }}
-      className={`shrink-0 border-r border-gray-100 px-3 text-xs last:border-none relative flex items-center min-h-8 ${
-        !isImposed ? "group" : ""
-      } ${
+      className={clsx(
+        "shrink-0 border-r border-line px-3 text-xs last:border-none relative flex items-center min-h-8",
+        !isImposed ? "group" : "",
         isImposed
-          ? "cursor-default text-gray-300"
+          ? "cursor-default text-ink-5"
           : value
-            ? "text-gray-700 cursor-text"
-            : "text-gray-300 cursor-text"
-      }`}
+            ? "text-ink-2 cursor-text"
+            : "text-ink-5 cursor-text"
+      )}
       onDoubleClick={startEdit}
     >
       {editing ? (
@@ -225,7 +235,7 @@ export function TableCell({
                 Object.keys(frontmatter),
                 fieldKey
               )}
-              inputClassName="w-full bg-transparent outline-none text-gray-700 font-mono rounded px-1 -mx-1"
+              inputClassName="w-full bg-transparent outline-none text-ink-2 font-mono rounded px-1 -mx-1"
             />
           </div>
         ) : (
@@ -274,7 +284,10 @@ export function TableCell({
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
-              className="w-full bg-transparent outline-none text-gray-700 font-body rounded px-1 -mx-1"
+              className={clsx(
+                "w-full bg-transparent outline-none font-body rounded px-1 -mx-1",
+                "text-ink-2"
+              )}
             />
             {refSelectorOpen && allNotes && (
               <NoteSelector
@@ -307,11 +320,19 @@ export function TableCell({
           className="flex items-baseline gap-1 min-w-0 truncate"
           title={toDisplay(value)}
         >
-          <span className="text-gray-300 font-mono text-[10px] leading-none shrink-0">
+          <span
+            className={clsx(
+              "font-mono text-[10px] leading-none shrink-0",
+              "text-ink-5"
+            )}
+          >
             ƒ
           </span>
           <span
-            className={`truncate ${isError ? "text-red-400" : "text-gray-700"}`}
+            className={clsx(
+              "truncate",
+              isError ? "text-danger-2" : "text-ink-2"
+            )}
           >
             {displayValue || "—"}
           </span>

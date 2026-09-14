@@ -3,6 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { ColorDotPicker } from "../../../../shared/components/FrontmatterPicker/ColorDotPicker";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
@@ -66,9 +67,10 @@ export function KanbanColumn({
           <ColorDotPicker
             color={column.color}
             onColor={(c) => onSetColor(column.id, c)}
-            className={`size-2.5 rounded-full shrink-0 cursor-pointer transition-opacity ${
+            className={clsx(
+              "size-2.5 rounded-full shrink-0 cursor-pointer transition-opacity",
               column.color ? "" : "opacity-0 group-hover/col:opacity-100"
-            }`}
+            )}
           />
         )}
         {!virtual && editing ? (
@@ -78,23 +80,27 @@ export function KanbanColumn({
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={handleKeyDown}
-            className="font-title text-sm font-semibold text-gray-700 bg-transparent border-b border-gray-400 outline-none w-full"
+            className={clsx(
+              "font-title text-sm font-semibold bg-transparent border-b outline-none w-full",
+              "text-ink-2 border-line-3"
+            )}
           />
         ) : (
           <button
             type="button"
             onClick={() => !virtual && setEditing(true)}
-            className={`font-title text-sm font-semibold text-left truncate ${
+            className={clsx(
+              "font-title text-sm font-semibold text-left truncate",
               virtual
-                ? "text-gray-400 italic cursor-default"
-                : "text-gray-700 hover:text-gray-900 cursor-text"
-            }`}
+                ? "text-ink-4 italic cursor-default"
+                : "text-ink-2 hover:text-ink cursor-text"
+            )}
             title={virtual ? undefined : "Renommer la colonne"}
           >
             {column.label}
           </button>
         )}
-        <span className="ml-auto text-xs text-gray-400 shrink-0">
+        <span className={clsx("ml-auto text-xs shrink-0", "text-ink-4")}>
           {notes.length}
         </span>
         {!virtual && (
@@ -102,7 +108,11 @@ export function KanbanColumn({
             type="button"
             onClick={() => onDelete(column.id)}
             title="Supprimer la colonne"
-            className="shrink-0 text-gray-300 hover:text-red-400 opacity-0 group-hover/col:opacity-100 transition-opacity cursor-pointer"
+            className={clsx(
+              "shrink-0 opacity-0 group-hover/col:opacity-100 transition-opacity cursor-pointer",
+              "text-ink-5",
+              "hover:text-danger-2"
+            )}
           >
             ✕
           </button>
@@ -112,9 +122,10 @@ export function KanbanColumn({
       {/* Drop zone */}
       <div
         ref={setNodeRef}
-        className={`flex flex-col gap-2 min-h-24 rounded-xl p-2 transition-colors ${
-          isOver ? "bg-gray-100" : "bg-gray-50"
-        }`}
+        className={clsx(
+          "flex flex-col gap-2 min-h-24 rounded-xl p-2 transition-colors",
+          isOver ? "bg-surface-3" : "bg-surface-2"
+        )}
       >
         <SortableContext
           items={notes.map((n) => n.id)}

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { isMobile } from "../lib/platform";
@@ -122,7 +123,10 @@ export function EditableText({
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         enterKeyHint="done"
-        className={`outline-none caret-amber-400 w-full truncate ${className} items-baseline px-1`}
+        className={clsx(
+          "outline-none w-full truncate items-baseline px-1 caret-accent-2",
+          className
+        )}
       />
     );
   }
@@ -136,7 +140,10 @@ export function EditableText({
         type="button"
         disabled={disabled}
         onClick={startEditing}
-        className={`truncate min-w-0 text-left bg-transparent ${className} px-1`}
+        className={clsx(
+          "truncate min-w-0 text-left bg-transparent px-1",
+          className
+        )}
       >
         {value}
       </button>
@@ -148,7 +155,11 @@ export function EditableText({
     <span
       onClick={!disabled && clickToEdit ? startEditing : undefined}
       onDoubleClick={!disabled && !clickToEdit ? startEditing : undefined}
-      className={`truncate ${className} items-baseline px-1 ${disabled ? "" : "cursor-pointer"}`}
+      className={clsx(
+        "truncate items-baseline px-1",
+        className,
+        !disabled && "cursor-pointer"
+      )}
       title={disabled ? undefined : "Cliquer pour renommer"}
     >
       {value}

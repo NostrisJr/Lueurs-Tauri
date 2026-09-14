@@ -1215,6 +1215,97 @@ L'export PDF utilise un `spawn_blocking` indépendant (latence acceptable pour u
 
 ---
 
+## Thème clair / sombre
+
+### Architecture : rôles sémantiques, pas de couleur dans les composants
+
+`src/theme.css` est la **seule** source de couleur de l'app. Les rôles sont déclarés dans
+`@theme static` (valeurs claires) puis redéfinis sous `:root[data-theme="dark"]`. Le
+sélecteur est `:root[data-theme]` et non `[data-theme]` seul : sa spécificité (0,2,0) passe
+au-dessus du `:root` (0,1,0) émis par `@theme`, quel que soit l'ordre de concaténation des
+feuilles.
+
+`@theme static` (et non `@theme`) parce que certaines variables ne sont consommées que par
+du CSS écrit à la main (`DefaultStyle.css`, `BookStyle.css`) que le scanner de classes de
+Tailwind ne voit pas : sans `static`, elles ne seraient pas émises.
+
+Le garde-fou est `src/shared/lib/themeTokens.test.ts` : il relit tous les `.ts/.tsx/.css`
+de `src/` et échoue sur toute couleur littérale (hex, `rgba(`, classe de la palette
+Tailwind par défaut, `var(--color-blue-500)`). Deux échappatoires, volontairement étroites :
+`EXEMPT` (export Typst, utilitaires de conversion, définitions de tokens) et le marqueur de
+ligne `theme-ok`, réservé aux couleurs qui sont des **données** et non du thème (valeur
+initiale d'un `<input type="color">`, qui n'accepte qu'un littéral). Le `BACKLOG` est un
+cliquet : le test échoue aussi sur une entrée périmée, il ne peut donc pas servir de placard.
+
+### Le sombre n'est pas une inversion
+
+Plusieurs rôles changent de *logique* et pas seulement de valeur. Les reprendre
+mécaniquement produit à chaque fois le même défaut : une zone qui **s'éclaircit** là où elle
+devrait s'enfoncer.
+
+| Rôle | Clair | Sombre | Pourquoi ce n'est pas la même valeur inversée |
+|---|---|---|---|
+| `--color-tint` | noir 5 % | **blanc** 6 % | Un voile noir est invisible sur fond sombre. |
+| `--color-overlay` | noir 20 % | noir 50 % | Reste noir, mais plus opaque : l'écart avec le fond est plus faible. |
+| `--color-selected` | `#111827` | `#4a463f` | `inverse` vaut `#ece9e2` en sombre : une pastille sélectionnée devenait un disque quasi blanc sur une pill de verre. |
+| `--bar-fade` / `-2` | surfaces 4-5 | noirs translucides | Un voile de barre flottante doit assombrir ce qui défile dessous ; reprendre `surface-5` l'éclaircit. |
+| `--glass-fill` | `rgba(250,251,253,.5)` | `rgba(24,23,20,.66)` | En sombre le verre doit **creuser** le fond, pas flotter au-dessus. |
+| `--glass-top` | blanc 70 % | blanc 7 % | Un rim light à 70 % donne un liseré fluorescent sur du charbon. |
+| surlignages | alpha .38 | alpha .26 | Un pastel à 38 % sur charbon vire au kaki et noie le texte. |
+| pastilles (`--color-pill-*`) | pastel + encre foncée | fond sourd + encre claire | Les pastels du clair donnent des pavés fluorescents. |
+
+Le sombre est un **charbon chaud** qui prolonge l'encre `#1a1918` et les crèmes du clair.
+Un gris bleuté (la palette `slate`/`zinc` par réflexe) trahit l'identité de l'app.
+
+### Liquid glass : les reflets sont des `box-shadow: inset`
+
+`.liquid-glass` / `.liquid-glass-shadow` (dans `App.css`) construisent le bezel iOS avec
+quatre ombres internes (`--glass-top`, `--glass-bottom`, `--glass-side`, et `--glass-rim`
+pour la variante non ombrée). Conséquence structurelle : **l'élément qui porte la classe
+doit avoir un `border-radius`**, une ombre interne suivant la boîte et non un `clip-path`.
+
+`FloatingComponent` n'avait que le `clip-path` de `Squircle` : les reflets dessinaient un
+rectangle que le clip tronquait aux coins, soit quatre traits droits qui ne se rejoignaient
+pas — visuellement une « sous-div » incrustée dans la pill. Invisible en clair (reflets
+blancs sur remplissage clair), flagrant dès que le remplissage sombre a été assombri. Le
+correctif est un `borderRadius: 9999` sur la Squircle, en plus du clip.
+
+Au passage : le `useEffect` de `FloatingComponent` calculait un `getSvgPath` écrit dans un
+ref jamais rendu (bordure SVG supprimée à un moment, calcul resté) — supprimé.
+
+Autre subtilité : `backdrop-filter` et `-webkit-backdrop-filter` sont tous deux déclarés,
+avec des valeurs différentes. WebKit comprend les deux, la déclaration préfixée arrivant en
+second l'emporte — c'est donc la version `blur(3px)` qui s'applique sur iOS, pas la
+`blur(20px)`. Volontaire (coût GPU sur mobile), mais à savoir avant de « corriger » l'une
+des deux.
+
+### Opacités : pas de modificateur Tailwind sur une couleur de thème
+
+`from-surface-5/90`, `bg-ink/5` & co. compilent en `color-mix(in oklab, …)` sous Tailwind v4,
+non supporté par certaines WebView Android — le fond disparaît purement et simplement. D'où
+des tokens qui portent **déjà** leur alpha (`--color-tint`, `--color-veil`, `--bar-fade`,
+`--glass-fill`), consommés en `style={{ … }}` quand aucune classe ne convient. C'est la
+raison du `bgColor?: string` de `FloatingComponent` et du dégradé inline de
+`FileTreeBottomBar`.
+
+### Masques de fondu : pas de couleur
+
+Les fondus de haut de scroll (`MobileEditor`, `MobileFileTree`, `MobileTabsView`) sont des
+`mask-image`, pas des dégradés colorés : ils **effacent** le contenu, laissant voir le fond
+de page. Seul l'alpha des paliers compte, d'où `maskStop(alpha)` (`src/shared/lib/theme.ts`)
+qui renvoie un noir marqué `theme-ok` et ne bascule pas avec le thème. Corollaire utile au
+diagnostic : un fondu de masque ne peut jamais être « trop clair » — si une bande paraît
+claire, c'est le fond derrière ou un élément posé dessus (typiquement les pills du header
+flottant) qu'il faut regarder.
+
+### Côté JS
+
+`themeColor(token, fallback)` (`src/shared/lib/theme.ts`) lit la valeur calculée d'un token
+pour les rendus que la cascade CSS n'atteint pas (canvas, pickers tiers configurés en JS).
+À **relire à chaque tracé** : la valeur change avec le thème.
+
+---
+
 ## Choix de conception
 
 **Stockage YAML plat.** Les propriétés système utilisent des clés avec doubles tirets bas (`__Type__`, `__Template__`, etc.) pour éviter les collisions avec les propriétés utilisateur tout en restant lisibles dans n'importe quel éditeur Markdown.

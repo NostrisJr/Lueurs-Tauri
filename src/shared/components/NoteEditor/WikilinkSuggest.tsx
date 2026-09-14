@@ -1,3 +1,4 @@
+import clsx from "clsx";
 /**
  * WikilinkSuggest.tsx
  *
@@ -117,7 +118,10 @@ export function WikilinkSuggest({ vaultPath }: Props) {
 
   return createPortal(
     <div
-      className="fixed z-50 max-h-72 w-72 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-lg"
+      className={clsx(
+        "fixed z-50 max-h-72 w-72 overflow-y-auto rounded-lg border py-1 text-sm shadow-lg",
+        "border-line-2 bg-surface"
+      )}
       style={{ left: pos.left, top: pos.top }}
     >
       {candidates.map((c, i) => (
@@ -130,13 +134,14 @@ export function WikilinkSuggest({ vaultPath }: Props) {
             apply(c);
           }}
           onMouseEnter={() => setIndex(i)}
-          className={`flex w-full flex-col items-start px-3 py-1.5 text-left transition-colors ${
-            i === safeIndex ? "bg-amber-50" : "hover:bg-gray-50"
-          }`}
+          className={clsx(
+            "flex w-full flex-col items-start px-3 py-1.5 text-left transition-colors",
+            i === safeIndex ? "bg-accent-soft" : "hover:bg-surface-2"
+          )}
         >
-          <span className="font-medium text-gray-800">{c.name}</span>
+          <span className="font-medium text-ink">{c.name}</span>
           {c.relpath.includes("/") && (
-            <span className="text-xs text-gray-400">{c.relpath}</span>
+            <span className="text-xs text-ink-4">{c.relpath}</span>
           )}
         </button>
       ))}

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useRef, useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import { NoteType, type NoteTypeValue } from "../../../shared/lib/noteTypes";
@@ -28,7 +29,11 @@ export function TypeSelector({ value, onChange }: Props) {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="font-bold text-gray-600 hover:text-gray-800 text-xs transition-colors cursor-pointer select-none"
+        className={clsx(
+          "font-bold text-xs transition-colors cursor-pointer select-none",
+          "text-ink-2",
+          "hover:text-ink"
+        )}
       >
         {label}
       </button>
@@ -47,9 +52,13 @@ export function TypeSelector({ value, onChange }: Props) {
                 onChange(type);
                 setOpen(false);
               }}
-              className={`w-full text-left transition-colors active:bg-gray-50
-                ${isMobile ? "px-4 py-3.5 text-base hover:bg-gray-50" : "px-3 py-1.5 text-xs hover:bg-gray-50"}
-                ${type === value ? "font-bold text-gray-700" : "text-gray-600"}`}
+              className={clsx(
+                "w-full text-left transition-colors active:bg-surface-2",
+                isMobile
+                  ? "px-4 py-3.5 text-base hover:bg-surface-2"
+                  : "px-3 py-1.5 text-xs hover:bg-surface-2",
+                type === value ? "font-bold text-ink-2" : "text-ink-2"
+              )}
             >
               {TYPE_LABELS[type]}
             </button>

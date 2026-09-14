@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useRef, useState } from "react";
 import { isMobile } from "../../lib/platform";
 import {
@@ -40,7 +41,7 @@ export function ColorDotPicker({
   // cf. enumPillColors.NEUTRAL_PILL), jamais la couleur jaune par défaut du
   // surlignage : la pastille doit prévisualiser le pill réel, pas suggérer
   // qu'une couleur est déjà active.
-  const dotColor = color ? getHighlightSolid(color) : "#d1d5db";
+  const dotColor = color ? getHighlightSolid(color) : "var(--color-pill-gray)";
 
   return (
     <>
@@ -69,7 +70,10 @@ export function ColorDotPicker({
         >
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: palette de couleurs */}
           <div
-            className={`flex flex-wrap p-2 ${isMobile ? "gap-3 w-[180px]" : "gap-1.5 w-[120px]"}`}
+            className={clsx(
+              "flex flex-wrap p-2",
+              isMobile ? "gap-3 w-[180px]" : "gap-1.5 w-[120px]"
+            )}
             onClick={(e) => e.stopPropagation()}
           >
             {HIGHLIGHT_COLORS.map((c) => (
@@ -83,10 +87,14 @@ export function ColorDotPicker({
                   onColor(c.id);
                   setOpen(false);
                 }}
-                className={`${isMobile ? "size-9" : "size-5"} rounded-full border-2 transition-transform hover:scale-110`}
+                className={clsx(
+                  "rounded-full border-2 transition-transform hover:scale-110",
+                  isMobile ? "size-9" : "size-5"
+                )}
                 style={{
-                  background: c.solid,
-                  borderColor: color === c.id ? "#374151" : "transparent",
+                  background: getHighlightSolid(c.id),
+                  borderColor:
+                    color === c.id ? "var(--color-ink-2)" : "transparent",
                 }}
               />
             ))}
@@ -99,7 +107,12 @@ export function ColorDotPicker({
                 onColor(undefined);
                 setOpen(false);
               }}
-              className={`${isMobile ? "size-9 text-sm" : "size-5 text-[11px]"} rounded-full border border-gray-200 bg-white text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-400`}
+              className={clsx(
+                "rounded-full border flex items-center justify-center",
+                "border-line-2 bg-surface text-ink-4",
+                "hover:bg-danger-soft hover:text-danger-2",
+                isMobile ? "size-9 text-sm" : "size-5 text-[11px]"
+              )}
             >
               ✕
             </button>

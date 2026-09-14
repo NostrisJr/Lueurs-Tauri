@@ -1,4 +1,5 @@
 import { useDrag } from "@use-gesture/react";
+import clsx from "clsx";
 import { useSetAtom } from "jotai";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -61,9 +62,10 @@ function ActionButton({
     <button
       type="button"
       onClick={() => onRun(action)}
-      className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 active:bg-black/5 transition-colors ${
-        action.destructive ? "text-red-500" : "text-gray-900"
-      }`}
+      className={clsx(
+        "flex-1 flex flex-col items-center justify-center gap-1.5 py-3 active:bg-tint transition-colors",
+        action.destructive ? "text-danger" : "text-ink"
+      )}
     >
       <Icon className="size-5" />
       <span className="text-xs font-medium">{action.label}</span>
@@ -83,9 +85,10 @@ function ActionRow({
     <button
       type="button"
       onClick={() => onRun(action)}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-black/5 transition-colors ${
-        action.destructive ? "text-red-500" : "text-gray-900"
-      }`}
+      className={clsx(
+        "w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-tint transition-colors",
+        action.destructive ? "text-danger" : "text-ink"
+      )}
     >
       <span className="flex-1 min-w-0 truncate text-base">{action.label}</span>
       <Icon className="size-4.5 shrink-0" />
@@ -298,7 +301,7 @@ export function RowContextMenu({
       {/* Fond flouté — tap pour fermer */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile */}
       <div
-        className="absolute inset-0 bg-black/20 backdrop-blur-md"
+        className={clsx("absolute inset-0 backdrop-blur-md", "bg-overlay")}
         style={{
           opacity: visible ? 1 : 0,
           transition: `opacity ${visible ? ENTER_MS : EXIT_MS}ms ease-out`,
@@ -325,7 +328,7 @@ export function RowContextMenu({
               retrouvait coupé net en bas. */}
           <Squircle
             radius={20}
-            className="w-full bg-white overflow-hidden"
+            className="w-full bg-surface overflow-hidden"
             style={{
               // L'aperçu se replie en vignette au démarrage du déplacement :
               // à pleine hauteur il masque les dossiers qu'on vise.
@@ -355,10 +358,18 @@ export function RowContextMenu({
         >
           <Squircle
             radius={14}
-            className="w-full bg-white/90 backdrop-blur-2xl overflow-hidden"
+            className={clsx(
+              "w-full backdrop-blur-2xl overflow-hidden",
+              "bg-surface/90"
+            )}
           >
             {primary.length > 0 && (
-              <div className="flex items-stretch divide-x divide-gray-200/70">
+              <div
+                className={clsx(
+                  "flex items-stretch divide-x",
+                  "divide-line-2/70"
+                )}
+              >
                 {primary.map((action) => (
                   <ActionButton
                     key={action.id}
@@ -369,10 +380,12 @@ export function RowContextMenu({
               </div>
             )}
             {primary.length > 0 && items.length > 0 && (
-              <div className="h-px bg-gray-200/70" />
+              <div className="h-px bg-surface-4/70" />
             )}
             {items.length > 0 && (
-              <div className="flex flex-col divide-y divide-gray-200/70">
+              <div
+                className={clsx("flex flex-col divide-y", "divide-line-2/70")}
+              >
                 {items.map((action) => (
                   <ActionRow
                     key={action.id}

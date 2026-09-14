@@ -1,4 +1,5 @@
 import { ask } from "@tauri-apps/plugin-dialog";
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { Frontmatter } from "../../../shared/hooks/useFileTree";
 import { activeNoteAtom, skipPropagationAtom } from "../../../shared/lib/atoms";
@@ -107,13 +108,16 @@ export function FrontmatterEditor({ onChange, collapsed = false }: Props) {
     <div
       className={
         isMobile
-          ? "border-b border-gray-100"
-          : "border-b border-gray-100 bg-gray-50/50"
+          ? "border-b border-line"
+          : "border-b border-line bg-surface-2/50"
       }
     >
       {!collapsed && (
         <div
-          className={`px-4 flex flex-col gap-1.5 ${isMobile ? "pt-0.5 pb-3" : "py-2"}`}
+          className={clsx(
+            "px-4 flex flex-col gap-1.5",
+            isMobile ? "pt-0.5 pb-3" : "py-2"
+          )}
         >
           {rows
             .map((row, realIndex) => ({ row, realIndex }))

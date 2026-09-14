@@ -119,7 +119,7 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
     <div className="absolute inset-x-0 top-14 z-30 flex justify-center pointer-events-none overflow-hidden pb-4 -mb-4">
       <Squircle
         className={clsx(
-          "justify-between w-5/6 liquid-glass bg-gray-200/70 px-4 py-3 flex items-center gap-4",
+          "justify-between w-5/6 liquid-glass bg-surface-4/70 px-4 py-3 flex items-center gap-4",
           "pointer-events-auto transition-all duration-200 ease-out",
           visible
             ? "translate-y-0 opacity-100"
@@ -143,10 +143,10 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
             className={clsx(
               "text-sm font-mono tabular-nums w-10 text-right",
               status === "recording"
-                ? "text-red-500"
+                ? "text-danger"
                 : status === "paused"
-                  ? "text-amber-400"
-                  : "text-gray-300"
+                  ? "text-accent-2"
+                  : "text-ink-5"
             )}
           >
             {formatTime(Math.floor(recorder.durationMs / 1000))}
@@ -158,14 +158,18 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
               <button
                 type="button"
                 onClick={handleRecord}
-                className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors"
+                className={clsx(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                  "bg-danger",
+                  "hover:bg-danger-strong"
+                )}
                 title="Démarrer l'enregistrement"
               >
                 <span className="sr-only">Enregistrer</span>
                 <svg
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="size-4 text-white"
+                  className="size-4 text-on-inverse"
                 >
                   <title>Enregistrer</title>
                   <circle cx="12" cy="12" r="6" />
@@ -177,14 +181,18 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
               <button
                 type="button"
                 onClick={handlePause}
-                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+                className={clsx(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                  "bg-surface-3",
+                  "hover:bg-surface-4"
+                )}
                 title="Pause"
               >
                 <span className="sr-only">Pause</span>
                 <svg
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="size-3.5 text-gray-700"
+                  className="size-3.5 text-ink-2"
                 >
                   <title>Pause</title>
                   <rect x="6" y="5" width="4" height="14" rx="1" />
@@ -197,14 +205,18 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
               <button
                 type="button"
                 onClick={handleResume}
-                className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center hover:bg-amber-200 transition-colors"
+                className={clsx(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                  "bg-accent-soft-2",
+                  "hover:bg-accent-2/40"
+                )}
                 title="Reprendre"
               >
                 <span className="sr-only">Reprendre</span>
                 <svg
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="size-3.5 text-amber-500"
+                  className="size-3.5 text-accent"
                 >
                   <title>Reprendre</title>
                   <path d="M8 5.14v14l11-7-11-7z" />
@@ -216,14 +228,18 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
               <button
                 type="button"
                 onClick={handleStop}
-                className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-900 transition-colors"
+                className={clsx(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                  "bg-inverse",
+                  "hover:bg-inverse"
+                )}
                 title="Arrêter et insérer"
               >
                 <span className="sr-only">Stop</span>
                 <svg
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="size-3.5 text-white"
+                  className="size-3.5 text-on-inverse"
                 >
                   <title>Stop</title>
                   <rect x="5" y="5" width="14" height="14" rx="1" />
@@ -233,13 +249,18 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
 
             {status === "processing" && (
               <div className="w-8 h-8 flex items-center justify-center">
-                <div className="w-4 h-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+                <div
+                  className={clsx(
+                    "w-4 h-4 rounded-full border-2 border-t-transparent animate-spin",
+                    "border-accent-2"
+                  )}
+                />
               </div>
             )}
 
             {status === "error" && (
               <span
-                className="text-xs text-red-500 max-w-32 truncate"
+                className={clsx("text-xs max-w-32 truncate", "text-danger")}
                 title={errorMsg}
               >
                 {errorMsg}
@@ -250,7 +271,11 @@ export function DesktopDictaphone({ onInsert, onClose }: Props) {
               type="button"
               onClick={handleCancel}
               disabled={status === "processing"}
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40 px-1"
+              className={clsx(
+                "text-xs transition-colors disabled:opacity-40 px-1",
+                "text-ink-4",
+                "hover:text-ink-2"
+              )}
               title="Annuler"
             >
               Annuler

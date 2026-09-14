@@ -1,3 +1,4 @@
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useStore } from "jotai";
 import { folderPathAtom, treeAtom } from "../lib/atoms";
 import type { FileKind } from "../lib/fileTreeHelpers";
@@ -430,5 +431,34 @@ export function useFileReferences() {
     await Promise.all(tasks);
   }
 
-  return { propagateRename, countReferences, cleanupReferences };
+  /**
+   * Étape de confirmation + nettoyage à jouer avant toute suppression : compte
+   * les références au chemin visé et, s'il y en a, demande confirmation (même
+   * pattern que la propagation de suppression de propriété de template, cf.
+   * FrontmatterEditor.tsx) avant de les nettoyer. Un refus laisse les
+   * références telles quelles (signalées cassées au rendu).
+   */
+  async function confirmAndCleanupReferences(
+    path: string,
+    kind: FileKind
+  ): Promise<void> {
+    const count = await countReferences(path, kind);
+    if (count === 0) return;
+    const label =
+      count === 1
+        ? "1 référence va être cassée."
+        : `${count} références vont être cassées.`;
+    const clean = await ask(`${label} Nettoyer automatiquement ?`, {
+      title: "Suppression",
+      kind: "warning",
+    });
+    if (clean) await cleanupReferences(path, kind);
+  }
+
+  return {
+    propagateRename,
+    countReferences,
+    cleanupReferences,
+    confirmAndCleanupReferences,
+  };
 }

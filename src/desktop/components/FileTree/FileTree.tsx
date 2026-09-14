@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { dragOverAtom, folderPathAtom } from "../../../shared/lib/atoms";
 import { useFileDrop } from "../../hooks/useFileDrop";
@@ -34,7 +35,10 @@ export function FileTree({ nodes, activeId }: FileTreeProps) {
     <FileDragCtx.Provider value={{ ...dnd, onContextMenu }}>
       <div
         data-dropzone={folderPath ?? undefined}
-        className={`px-2 py-1 min-h-full transition-colors ${isRootOver ? "bg-amber-100/30" : ""}`}
+        className={clsx(
+          "px-2 py-1 min-h-full transition-colors",
+          isRootOver ? "bg-accent-soft-2/30" : ""
+        )}
       >
         <TreeNodes nodes={nodes} activeId={activeId} depth={0} />
       </div>

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom, useAtomValue, useStore } from "jotai";
 import { useEffect, useState } from "react";
 import { useNote } from "../../../shared/hooks/useNote";
@@ -105,12 +106,20 @@ export function MobileContextMenu() {
             onKeyDown={(e) => {
               if (e.key === "Escape") close();
             }}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-base text-gray-900 bg-gray-50 focus:outline-none focus:border-amber-400"
+            className={clsx(
+              "w-full px-4 py-3 rounded-xl border text-base focus:outline-none",
+              "border-line-2 text-ink bg-surface-2",
+              "focus:border-accent-2"
+            )}
             placeholder={target.name}
           />
           <button
             type="submit"
-            className="w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-base active:bg-amber-600 transition-colors"
+            className={clsx(
+              "w-full py-3.5 rounded-xl font-semibold text-base transition-colors",
+              "bg-accent text-on-inverse",
+              "active:bg-accent-strong"
+            )}
           >
             Renommer
           </button>
@@ -121,7 +130,7 @@ export function MobileContextMenu() {
 
   return (
     <BottomSheet onClose={close} title="Espaces">
-      <div className="flex flex-col divide-y divide-gray-100">
+      <div className={clsx("flex flex-col divide-y", "divide-line")}>
         {spaces.map((space) => {
           const checked = currentSpaces.includes(space.name);
           return (
@@ -129,13 +138,17 @@ export function MobileContextMenu() {
               key={space.id}
               type="button"
               onClick={() => handleToggleSpace(space.name)}
-              className="w-full flex items-center gap-3 px-4 py-4 text-left text-base text-gray-900 active:bg-gray-50 transition-colors"
+              className={clsx(
+                "w-full flex items-center gap-3 px-4 py-4 text-left text-base transition-colors",
+                "text-ink",
+                "active:bg-surface-2"
+              )}
             >
               <span className="flex-1 min-w-0 truncate">
                 {space.icon ? `${space.icon}  ${space.name}` : space.name}
               </span>
               {checked && (
-                <span className={`${iconAccentClass} text-lg leading-none`}>
+                <span className={clsx(iconAccentClass, "text-lg leading-none")}>
                   ✓
                 </span>
               )}

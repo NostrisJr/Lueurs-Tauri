@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { Section, Toggle } from "./ExportControls";
 import { useExportOptions } from "./useExportOptions";
@@ -18,9 +19,12 @@ export function SectionTitresSommaire() {
         onChange={(v) => setOption("sommaire", v)}
       />
       <div className="flex flex-col gap-1">
-        <span className="text-xs text-gray-500">Numérotation des titres</span>
+        <span className="text-xs text-ink-3">Numérotation des titres</span>
         <select
-          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-900"
+          className={clsx(
+            "text-xs border rounded-lg px-2 py-1.5",
+            "border-line-2 bg-surface text-ink"
+          )}
           value={options.numerotationTitres}
           onChange={(e) =>
             setOption(

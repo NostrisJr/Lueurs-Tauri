@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { IconCheckmark } from "../../shared/components/PlatformIcon";
@@ -61,10 +62,18 @@ function SavingIndicator() {
 
   return (
     <div className="liquid-glass-shadow rounded-xl absolute bottom-2 right-4 px-2 flex justify-end">
-      <div className="flex items-center gap-3 px-4 h-8 text-xs text-gray-500">
+      <div
+        className={clsx(
+          "flex items-center gap-3 px-4 h-8 text-xs",
+          "text-ink-3"
+        )}
+      >
         {saveState !== "hidden" && (
           <span
-            className={`flex items-baseline gap-1.5 transition-opacity duration-300 ${saveOpaque ? "opacity-100" : "opacity-0"}`}
+            className={clsx(
+              "flex items-baseline gap-1.5 transition-opacity duration-300",
+              saveOpaque ? "opacity-100" : "opacity-0"
+            )}
           >
             <IconCheckmark className="size-3" aria-hidden="true" />
             {saveState === "saving" ? "Sauvegarde..." : "Sauvegardé"}

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 /**
  * InlineFormulaPopup.tsx
  *
@@ -299,7 +300,10 @@ function InlineFormulaEditPopup({
       }}
     >
       <div
-        className="absolute rounded-lg border border-gray-200 bg-white p-2 shadow-xl"
+        className={clsx(
+          "absolute rounded-lg border p-2 shadow-xl",
+          "border-line-2 bg-surface"
+        )}
         style={{ left: pos.left, top: pos.top, width: POPUP_WIDTH }}
         onMouseDown={(e) => e.stopPropagation()}
       >

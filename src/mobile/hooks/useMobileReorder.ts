@@ -214,7 +214,7 @@ export function useMobileReorder({ ids, onReorder }: Options): ReorderState {
           position: "relative",
           // Pas de `scale` : le conteneur est en overflow-hidden, l'élargissement
           // serait rogné à gauche et à droite. L'ombre seule suffit à soulever.
-          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          boxShadow: "0 8px 24px var(--color-shade-2)",
           borderRadius: 12,
           // La ligne est soulevée hors de la carte : son séparateur inférieur
           // n'a plus de sens et flotterait sous une carte arrondie.

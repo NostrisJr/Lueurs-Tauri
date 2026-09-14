@@ -31,21 +31,27 @@ export function FileTreeBackButton({
         "h-8 flex items-center rounded-full transition-all",
         dragActive && "px-2 gap-1 max-w-[45%] border border-dashed",
         dropOverParent
-          ? "bg-amber-100 border-amber-400"
+          ? "bg-accent-soft-2 border-accent-2"
           : dragActive
-            ? "bg-gray-50 border-gray-300"
+            ? "bg-surface-2 border-line-3"
             : "border-transparent"
       )}
     >
       <button
         type="button"
         onClick={onDrillOut}
-        className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
+        className={clsx(
+          "w-8 h-8 shrink-0 flex items-center justify-center rounded-full",
+          iconAccentClass,
+          "active:bg-tint transition-colors"
+        )}
       >
         <IconChevronLeft className="size-4" />
       </button>
       {dragActive && (
-        <span className="text-xs font-medium text-gray-600 truncate pr-1">
+        <span
+          className={clsx("text-xs font-medium truncate pr-1", "text-ink-2")}
+        >
           {parentName ?? rootName}
         </span>
       )}

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { readDir, remove } from "@tauri-apps/plugin-fs";
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -281,7 +282,7 @@ export function MobileDictaphone() {
       {!isMinimized && (
         // biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile
         <div
-          className="fixed inset-0 z-40 bg-gray-600/30"
+          className={clsx("fixed inset-0 z-40", "bg-overlay")}
           onClick={() => {
             if (isActive) setIsMinimized(true);
             else handleCancel();
@@ -309,7 +310,12 @@ export function MobileDictaphone() {
       >
         <FloatingComponent>
           {/* Dot d'enregistrement */}
-          <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 animate-pulse" />
+          <div
+            className={clsx(
+              "w-2.5 h-2.5 rounded-full shrink-0 animate-pulse",
+              "bg-danger"
+            )}
+          />
 
           {/* Forme d'onde — active uniquement quand la pill est visible */}
           <div className="flex-1 min-w-0 overflow-hidden">
@@ -330,9 +336,12 @@ export function MobileDictaphone() {
                 hapticImpact("medium");
                 handleStop();
               }}
-              className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+              className={clsx(
+                "w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform",
+                "bg-inverse"
+              )}
             >
-              <IconStopFill className="size-4 text-white" />
+              <IconStopFill className="size-4 text-on-inverse" />
             </button>
           </div>
         </FloatingComponent>
@@ -342,12 +351,15 @@ export function MobileDictaphone() {
           Toujours monté (display:none quand minimisé) pour le même motif. */}
       <Squircle
         topRadius={28}
-        className="fixed left-0 right-0 bottom-0 z-50 bg-white flex flex-col"
+        className={clsx(
+          "fixed left-0 right-0 bottom-0 z-50 flex flex-col",
+          "bg-surface"
+        )}
         style={{
           display: isMinimized ? "none" : "flex",
           transform: `translateY(${swipeDelta}px)`,
           transition: swipeDelta === 0 ? "transform 0.2s ease-out" : "none",
-          filter: "drop-shadow(0px -4px 24px rgba(0,0,0,0.08))",
+          filter: "drop-shadow(0px -4px 24px var(--color-shade))",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -358,7 +370,7 @@ export function MobileDictaphone() {
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
-          <div className="w-10 h-1 bg-gray-400 rounded-full" />
+          <div className={clsx("w-10 h-1 rounded-full", "bg-ink-4")} />
         </div>
 
         {/* Corps */}
@@ -372,7 +384,11 @@ export function MobileDictaphone() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Titre de la note"
               disabled={status === "processing"}
-              className="w-full text-center text-lg font-medium border-0 border-b-2 border-gray-200 focus:border-amber-400 outline-none py-2 text-gray-800 bg-transparent disabled:opacity-40"
+              className={clsx(
+                "w-full text-center text-lg font-medium border-0 border-b-2 outline-none py-2 bg-transparent disabled:opacity-40",
+                "border-line-2 text-ink",
+                "focus:border-accent-2"
+              )}
             />
           )}
 
@@ -389,20 +405,20 @@ export function MobileDictaphone() {
             className={[
               "text-3xl font-mono tabular-nums tracking-widest",
               status === "recording"
-                ? "text-red-500"
+                ? "text-danger"
                 : status === "paused"
-                  ? "text-amber-400"
-                  : "text-gray-300",
+                  ? "text-accent-2"
+                  : "text-ink-5",
             ].join(" ")}
           >
             {formatTime(Math.floor(recorder.durationMs / 1000))}
           </span>
 
           {status === "processing" && (
-            <span className="text-sm text-gray-400">Traitement en cours…</span>
+            <span className="text-sm text-ink-4">Traitement en cours…</span>
           )}
           {status === "error" && (
-            <span className="text-sm text-red-500">{errorMsg}</span>
+            <span className="text-sm text-danger">{errorMsg}</span>
           )}
 
           {/* Bouton démarrer (idle) */}
@@ -410,9 +426,12 @@ export function MobileDictaphone() {
             <button
               type="button"
               onClick={handleRecord}
-              className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+              className={clsx(
+                "w-20 h-20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform",
+                "bg-danger"
+              )}
             >
-              <IconRecordAudio className="size-9 text-white" />
+              <IconRecordAudio className="size-9 text-on-inverse" />
             </button>
           )}
 
@@ -423,42 +442,64 @@ export function MobileDictaphone() {
                 <button
                   type="button"
                   onClick={handlePause}
-                  className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center shadow active:scale-95 transition-transform"
+                  className={clsx(
+                    "w-14 h-14 rounded-full flex items-center justify-center shadow active:scale-95 transition-transform",
+                    "bg-surface-4"
+                  )}
                 >
-                  <IconPauseFill className="size-6 text-gray-700" />
+                  <IconPauseFill className="size-6 text-ink-2" />
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleResume}
-                  className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center shadow active:scale-95 transition-transform"
+                  className={clsx(
+                    "w-14 h-14 rounded-full flex items-center justify-center shadow active:scale-95 transition-transform",
+                    "bg-accent-soft-2"
+                  )}
                 >
-                  <IconPlayFill className={`size-6 ${iconAccentClass}`} />
+                  <IconPlayFill className={clsx("size-6", iconAccentClass)} />
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={handleStop}
-                className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                className={clsx(
+                  "w-20 h-20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform",
+                  "bg-inverse"
+                )}
               >
-                <IconStopFill className="size-9 text-white" />
+                <IconStopFill className="size-9 text-on-inverse" />
               </button>
 
               {/* Minimiser */}
               <button
                 type="button"
                 onClick={() => setIsMinimized(true)}
-                className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center shadow active:scale-95 transition-transform"
+                className={clsx(
+                  "w-14 h-14 rounded-full flex items-center justify-center shadow active:scale-95 transition-transform",
+                  "bg-surface-3"
+                )}
               >
-                <IconChevronDown className="size-6 text-gray-500" />
+                <IconChevronDown className="size-6 text-ink-3" />
               </button>
             </div>
           )}
 
           {status === "processing" && (
-            <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+            <div
+              className={clsx(
+                "w-20 h-20 rounded-full flex items-center justify-center",
+                "bg-surface-3"
+              )}
+            >
+              <div
+                className={clsx(
+                  "w-8 h-8 rounded-full border-2 border-t-transparent animate-spin",
+                  "border-accent-2"
+                )}
+              />
             </div>
           )}
 
@@ -466,7 +507,11 @@ export function MobileDictaphone() {
             <button
               type="button"
               onClick={() => setStatus("idle")}
-              className="px-6 py-3 rounded-xl bg-amber-500 text-white font-medium active:bg-amber-600 transition-colors"
+              className={clsx(
+                "px-6 py-3 rounded-xl font-medium transition-colors",
+                "bg-accent text-on-inverse",
+                "active:bg-accent-strong"
+              )}
             >
               Réessayer
             </button>
@@ -477,7 +522,7 @@ export function MobileDictaphone() {
             <button
               type="button"
               onClick={handleCancel}
-              className="text-amber-500 text-base"
+              className="text-accent text-base"
             >
               Annuler
             </button>

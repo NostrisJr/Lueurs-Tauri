@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom } from "jotai";
 import { Squircle } from "../../../shared/components/Squircle";
 import { useSpacesEditor } from "../../../shared/hooks/useSpacesEditor";
@@ -41,7 +42,7 @@ function DragHandle({
       type="button"
       {...reorder.handleProps(id)}
       aria-label="Réordonner l'espace"
-      className="shrink-0 text-gray-300 px-2 -mx-1 py-2 -my-2"
+      className={clsx("shrink-0 px-2 -mx-1 py-2 -my-2", "text-ink-5")}
     >
       {DRAG_HANDLE}
     </button>
@@ -64,15 +65,21 @@ function ToutRow({
     <div
       ref={(el) => reorder.registerRow(ALL_SPACE_ID, el)}
       style={reorder.rowStyle(ALL_SPACE_ID)}
-      className={`flex items-center gap-2 px-3 py-3 bg-white ${
-        isLast ? "" : "border-b border-gray-100"
-      }`}
+      className={clsx(
+        "flex items-center gap-2 px-3 py-3 bg-surface",
+        isLast ? "" : "border-b border-line"
+      )}
     >
       <DragHandle id={ALL_SPACE_ID} reorder={reorder} />
       <MobileEmojiField value={icon} onChange={onIconChange} />
       {/* Espacement équivalent au champ couleur */}
       <div className="w-9 shrink-0" />
-      <span className="flex-1 text-base text-gray-400 px-2.5 py-2 select-none">
+      <span
+        className={clsx(
+          "flex-1 text-base px-2.5 py-2 select-none",
+          "text-ink-4"
+        )}
+      >
         Tout
       </span>
       {/* Espacement équivalent au × */}
@@ -110,9 +117,10 @@ function SpaceRow({
     <div
       ref={(el) => reorder.registerRow(space.id, el)}
       style={reorder.rowStyle(space.id)}
-      className={`flex items-center gap-2 px-3 py-3 bg-white ${
-        isLast ? "" : "border-b border-gray-100"
-      }`}
+      className={clsx(
+        "flex items-center gap-2 px-3 py-3 bg-surface",
+        isLast ? "" : "border-b border-line"
+      )}
     >
       <DragHandle id={space.id} reorder={reorder} />
 
@@ -126,16 +134,22 @@ function SpaceRow({
         aria-label="Couleur de l'espace"
       >
         <span
-          className="block w-9 h-9 rounded-lg border-2 border-white shadow ring-1 ring-gray-200"
+          className={clsx(
+            "block w-9 h-9 rounded-lg border-2 shadow ring-1",
+            "border-surface ring-line-2"
+          )}
           style={{
             background: space.color
               ? `linear-gradient(135deg, ${space.color}, ${space.color}99)`
-              : "linear-gradient(135deg, #e5e7eb, #d1d5db)",
+              : "linear-gradient(135deg, var(--color-surface-4), var(--color-surface-5))",
           }}
         />
         <input
           type="color"
-          value={space.color ?? "#6366f1"}
+          // <input type="color"> n'accepte qu'un littéral #rrggbb, et cette
+          // valeur est une donnée choisie par l'utilisateur, pas une couleur
+          // de thème : elle ne doit pas basculer en sombre.
+          value={space.color ?? "#6366f1"} // theme-ok
           onChange={(e) => onColorChange(index, e.target.value)}
           className="absolute inset-0 opacity-0 w-full h-full"
         />
@@ -152,7 +166,11 @@ function SpaceRow({
         }}
         autoCorrect="off"
         autoCapitalize="off"
-        className="flex-1 min-w-0 text-base border border-gray-200 rounded-lg px-2.5 py-2 outline-none focus:border-gray-400"
+        className={clsx(
+          "flex-1 min-w-0 text-base border rounded-lg px-2.5 py-2 outline-none",
+          "border-line-2",
+          "focus:border-line-3"
+        )}
         placeholder="Nom de l'espace"
         aria-label="Nom de l'espace"
       />
@@ -163,7 +181,11 @@ function SpaceRow({
           hapticImpact("medium");
           onDelete(index);
         }}
-        className="shrink-0 text-gray-400 active:text-red-500 transition-colors text-2xl leading-none px-1"
+        className={clsx(
+          "shrink-0 transition-colors text-2xl leading-none px-1",
+          "text-ink-4",
+          "active:text-danger"
+        )}
         aria-label="Supprimer l'espace"
       >
         ×
@@ -200,13 +222,18 @@ export function MobileEspacesSection() {
 
   return (
     <>
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+      <p
+        className={clsx(
+          "text-xs font-medium uppercase tracking-wider mt-8 mb-3 px-1",
+          "text-ink-4"
+        )}
+      >
         Espaces
       </p>
-      <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+      <div style={{ filter: "var(--shadow-card)" }}>
         <Squircle
           radius={18}
-          className="overflow-hidden bg-white border border-gray-100"
+          className={clsx("overflow-hidden border", "bg-surface border-line")}
         >
           {/* `relative` : repère de mesure des lignes (useMobileReorder) et
               couche positionnée, pour que la ligne soulevée passe au-dessus du
@@ -250,22 +277,23 @@ export function MobileEspacesSection() {
               hapticImpact("light");
               addSpace();
             }}
-            className="w-full px-4 py-4 text-left text-base text-amber-500 active:bg-gray-50 transition-colors border-t border-gray-100"
+            className={clsx(
+              "w-full px-4 py-4 text-left text-base transition-colors border-t",
+              "text-accent border-line",
+              "active:bg-surface-2"
+            )}
           >
             + Ajouter un espace
           </button>
         </Squircle>
       </div>
-      <div
-        style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
-        className="mt-3"
-      >
+      <div style={{ filter: "var(--shadow-card)" }} className="mt-3">
         <Squircle
           radius={18}
-          className="overflow-hidden bg-white border border-gray-100"
+          className={clsx("overflow-hidden border", "bg-surface border-line")}
         >
           <label className="flex items-center justify-between px-4 py-3 cursor-pointer">
-            <span className="text-base text-gray-700">
+            <span className="text-base text-ink-2">
               Sélecteur d'espaces toujours visible
             </span>
             <input
@@ -275,14 +303,16 @@ export function MobileEspacesSection() {
                 hapticImpact("light");
                 setSwitcherAlwaysVisible(e.target.checked);
               }}
-              className="w-5 h-5 rounded accent-gray-800 cursor-pointer"
+              className={clsx("w-5 h-5 rounded cursor-pointer", "accent-ink")}
             />
           </label>
         </Squircle>
       </div>
-      <p className="mt-2 text-xs text-gray-400 px-1">
+      <p className={clsx("mt-2 text-xs px-1", "text-ink-4")}>
         Taguez vos notes avec{" "}
-        <code className="font-mono bg-gray-100 px-1 rounded">__Space__</code>{" "}
+        <code className={clsx("font-mono px-1 rounded", "bg-surface-3")}>
+          __Space__
+        </code>{" "}
         pour les associer à un espace.
       </p>
     </>

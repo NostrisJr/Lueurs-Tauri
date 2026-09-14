@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import { isMobile } from "../../../shared/lib/platform";
@@ -29,7 +30,7 @@ export function PropertySelector({
 
   return (
     <AnchoredDropdown anchorRef={anchorRef} onClose={onClose} zIndex={zIndex}>
-      <div className="px-2 py-1.5 border-b border-gray-100">
+      <div className={clsx("px-2 py-1.5 border-b", "border-line")}>
         <input
           ref={(el) => el?.focus()}
           type="text"
@@ -41,7 +42,11 @@ export function PropertySelector({
           autoCapitalize="none"
           spellCheck={false}
           style={isMobile ? { fontSize: 16 } : undefined}
-          className="w-full text-gray-700 outline-none placeholder:text-gray-400"
+          className={clsx(
+            "w-full outline-none",
+            "text-ink-2",
+            "placeholder:text-ink-4"
+          )}
         />
       </div>
       <div
@@ -50,7 +55,10 @@ export function PropertySelector({
       >
         {filtered.length === 0 ? (
           <p
-            className={`px-4 text-gray-400 ${isMobile ? "py-4 text-base" : "py-2 text-xs"}`}
+            className={clsx(
+              "px-4 text-ink-4",
+              isMobile ? "py-4 text-base" : "py-2 text-xs"
+            )}
           >
             Aucune propriété
           </p>
@@ -63,11 +71,12 @@ export function PropertySelector({
                 onSelect(opt.key);
                 onClose();
               }}
-              className={`w-full text-left text-gray-700 font-mono active:bg-gray-50 transition-colors border-b border-gray-50 last:border-none ${
+              className={clsx(
+                "w-full text-left text-ink-2 font-mono active:bg-surface-2 transition-colors border-b border-line last:border-none",
                 isMobile
                   ? "px-4 py-3.5 text-base"
-                  : "px-3 py-1.5 text-xs hover:bg-gray-50"
-              }`}
+                  : "px-3 py-1.5 text-xs hover:bg-surface-2"
+              )}
             >
               {opt.displayName}
             </button>

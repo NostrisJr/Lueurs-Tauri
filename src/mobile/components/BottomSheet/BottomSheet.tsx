@@ -1,3 +1,4 @@
+import clsx from "clsx";
 /**
  * BottomSheet — modal slide-up clavier-aware.
  *
@@ -185,7 +186,7 @@ export function BottomSheet({
     // vers un BottomSheet parent (ex: NoteSelector au-dessus du BottomSheet formule).
     // biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile
     <div
-      className={`fixed inset-0 z-50 ${dimBackground ? "bg-gray-600/30" : ""}`}
+      className={clsx("fixed inset-0 z-50", dimBackground && "bg-overlay")}
       onClick={(e) => {
         e.stopPropagation();
         requestClose();
@@ -216,13 +217,13 @@ export function BottomSheet({
           className="absolute inset-0 rounded-t-[28px] pointer-events-none"
           style={{
             boxShadow: dimBackground
-              ? "0px -4px 20px rgba(0,0,0,0.12)"
-              : "0px -8px 28px rgba(0,0,0,0.28)",
+              ? "0px -4px 20px var(--color-shade-2)"
+              : "0px -8px 28px var(--color-shade-2)",
           }}
         />
         <Squircle
           topRadius={28}
-          className="absolute inset-0 bg-white flex flex-col"
+          className={clsx("absolute inset-0 flex flex-col", "bg-surface")}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
           onTouchStart={(e: React.TouchEvent) => {
             // Empêche un geste démarré dans UNE sheet imbriquée (ex: le
@@ -264,9 +265,19 @@ export function BottomSheet({
           }}
         >
           {/* Drag handle */}
-          <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-2 shrink-0" />
+          <div
+            className={clsx(
+              "w-10 h-1 rounded-full mx-auto mt-3 mb-2 shrink-0",
+              "bg-surface-5"
+            )}
+          />
           {title && (
-            <p className="px-4 pb-2 text-sm text-gray-400 uppercase tracking-wide shrink-0">
+            <p
+              className={clsx(
+                "px-4 pb-2 text-sm uppercase tracking-wide shrink-0",
+                "text-ink-4"
+              )}
+            >
               {title}
             </p>
           )}
@@ -296,7 +307,10 @@ export function BottomSheet({
           au-dessus de) l'ombre et l'overlay d'assombrissement pour rester
           blanc pur. keyboardHeight = 0 clavier fermé → calque nul. */}
       <div
-        className="fixed left-0 right-0 bottom-0 bg-white pointer-events-none"
+        className={clsx(
+          "fixed left-0 right-0 bottom-0 pointer-events-none",
+          "bg-surface"
+        )}
         style={{ height: keyboardHeight }}
       />
     </div>

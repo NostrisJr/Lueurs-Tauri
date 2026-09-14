@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EmojiMartPicker } from "../../../shared/components/EmojiMartPicker";
@@ -68,14 +69,18 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
         ref={btnRef}
         type="button"
         onClick={() => (open ? setOpen(false) : openPicker())}
-        className="w-10 h-9 flex items-center justify-center border border-gray-200 rounded-md text-base hover:border-gray-400 transition-colors cursor-pointer"
+        className={clsx(
+          "w-10 h-9 flex items-center justify-center border rounded-md text-base transition-colors cursor-pointer",
+          "border-line-2",
+          "hover:border-line-3"
+        )}
         aria-label="Choisir une icône"
         title="Choisir une icône"
       >
         {value ? (
           <span>{value}</span>
         ) : (
-          <span className="text-gray-300 text-xs">+</span>
+          <span className="text-ink-5 text-xs">+</span>
         )}
       </button>
 
@@ -106,7 +111,11 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
                   onChange("");
                   setOpen(false);
                 }}
-                className="w-full mt-1 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 bg-white rounded-lg border border-gray-100 shadow transition-colors cursor-pointer"
+                className={clsx(
+                  "w-full mt-1 px-3 py-1.5 text-xs rounded-lg border shadow transition-colors cursor-pointer",
+                  "text-ink-4 bg-surface border-line",
+                  "hover:text-ink-2"
+                )}
               >
                 Supprimer l'icône
               </button>

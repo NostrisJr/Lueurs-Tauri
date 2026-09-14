@@ -94,8 +94,8 @@ export function DocumentNavigator() {
                 className={clsx(
                   `${HEADING_WIDTHS[lvl]}`,
                   HEADING_HEIGHT,
-                  "bg-gray-400/70 rounded-full shrink-0 transition-all",
-                  "group-hover:bg-gray-400/90 group-hover:scale-x-130 group-hover:scale-y-120 group-hover:translate-x-[-30%]"
+                  "bg-ink-4/70 rounded-full shrink-0 transition-all",
+                  "group-hover:bg-ink-4/90 group-hover:scale-x-130 group-hover:scale-y-120 group-hover:translate-x-[-30%]"
                 )}
               />
             );
@@ -105,7 +105,7 @@ export function DocumentNavigator() {
           else if (distinguishedTypes.includes(block.typeName)) {
             const color =
               (BLOCK_TYPE_COLORS as Record<string, string>)[block.typeName] ??
-              "#6b7280";
+              "var(--color-ink-3)";
 
             inner = DOT_TYPES.has(block.typeName) ? (
               <div
@@ -134,7 +134,7 @@ export function DocumentNavigator() {
             inner = (
               <div
                 className={clsx(
-                  "w-0.5 h-1.75 shrink-0 bg-gray-500/20 group-hover:bg-gray-500/30 transition-all",
+                  "w-0.5 h-1.75 shrink-0 bg-ink-3/20 group-hover:bg-ink-3/30 transition-all",
                   "group-hover:w-3 group-hover:-translate-x-0.5 group-hover:rounded-full"
                 )}
               />

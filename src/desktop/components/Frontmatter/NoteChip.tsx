@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { useNodeMenuActions } from "../../../mobile/components/FileTree/useNodeMenuActions";
@@ -110,18 +111,22 @@ export function NoteChip({
   return (
     <span
       ref={chipRef}
-      className={`inline-flex items-center gap-2 rounded-md font-medium group/chip ${
-        size === "lg" ? "px-3 py-1.5 text-sm" : "px-2 py-0.5 text-xs"
-      } ${broken ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}
+      className={clsx(
+        "inline-flex items-center gap-2 rounded-md font-medium group/chip",
+        size === "lg" ? "px-3 py-1.5 text-sm" : "px-2 py-0.5 text-xs",
+        broken ? "bg-danger-soft text-danger-strong" : "bg-surface-3 text-ink-2"
+      )}
     >
       <span
-        className={`truncate ${nameSizeClass} ${
+        className={clsx(
+          "truncate",
+          nameSizeClass,
           isMobile
             ? "cursor-default"
             : clickable
               ? "cursor-pointer"
               : "cursor-default"
-        }`}
+        )}
         title={broken ? `« ${name} » est introuvable` : undefined}
         {...(isMobile ? longPress : { onClick: handleClick })}
       >
@@ -135,7 +140,11 @@ export function NoteChip({
             onRemove();
           }}
           title={`Retirer ${name}`}
-          className="text-gray-400 hover:text-red-400 transition-all cursor-pointer bg-transparent border-0 p-0 flex items-center"
+          className={clsx(
+            "transition-all cursor-pointer bg-transparent border-0 p-0 flex items-center",
+            "text-ink-4",
+            "hover:text-danger-2"
+          )}
         >
           <IconXCircle
             className={size === "lg" ? "size-4" : "size-3"}

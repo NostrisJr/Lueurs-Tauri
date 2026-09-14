@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { Editor } from "../../../shared/components/NoteEditor/MarkdownEditor";
@@ -204,7 +205,10 @@ export function MobileFormattingBar({
 
   return (
     <div
-      className={`fixed left-3 right-3 z-50 flex items-center gap-2 transition-all duration-300 ease-in-out ${visible ? "translate-y-0 opacity-100" : "translate-y-16 opacity-0"}`}
+      className={clsx(
+        "fixed left-3 right-3 z-50 flex items-center gap-2 transition-all duration-300 ease-in-out",
+        visible ? "translate-y-0 opacity-100" : "translate-y-16 opacity-0"
+      )}
       style={{ bottom: keyboardHeight + 8 }}
     >
       <FloatingComponent
@@ -212,7 +216,10 @@ export function MobileFormattingBar({
         className="overflow-hidden px-0 py-0"
       >
         <div
-          className="flex items-center overflow-x-auto h-13 px-2 gap-1 bg-white/50"
+          className={clsx(
+            "flex items-center overflow-x-auto h-13 px-2 gap-1",
+            "bg-surface/50"
+          )}
           style={{ scrollbarWidth: "none" }}
         >
           {items.map((item, i) =>
@@ -220,7 +227,7 @@ export function MobileFormattingBar({
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: liste stable
                 key={i}
-                className="shrink-0 w-px h-5 bg-gray-300 mx-1.5"
+                className={clsx("shrink-0 w-px h-5 mx-1.5", "bg-surface-5")}
                 aria-hidden
               />
             ) : (
@@ -241,7 +248,10 @@ export function MobileFormattingBar({
                 onPointerUp={() => {
                   if (!dragRef.current.isDragging) item.action();
                 }}
-                className={`shrink-0 min-w-9 h-9 flex items-center justify-center px-2 rounded-full text-black hover:bg-white/20 active:bg-white/30 transition-colors select-none ${item.className ?? ""}`}
+                className={clsx(
+                  "shrink-0 min-w-9 h-9 flex items-center justify-center px-2 rounded-full text-ink hover:bg-surface/20 active:bg-surface/30 transition-colors select-none",
+                  item.className ?? ""
+                )}
               >
                 {item.Icon ? (
                   <item.Icon className="size-5" />
@@ -256,17 +266,21 @@ export function MobileFormattingBar({
       <FloatingComponent
         wrapperClassName="shrink-0"
         className="w-13 h-13 rounded-full! p-0! gap-0!"
-        bgColor="rgba(249, 250, 251, 0.75)"
+        bgColor="var(--glass-fill-2)"
       >
         <button
           type="button"
           title="Fermer le clavier"
           onPointerDown={(ev) => ev.preventDefault()}
           onPointerUp={() => (document.activeElement as HTMLElement)?.blur()}
-          className="w-full h-full flex items-center justify-center text-black active:bg-white/30 transition-colors rounded-full"
+          className={clsx(
+            "w-full h-full flex items-center justify-center transition-colors rounded-full",
+            "text-ink",
+            "active:bg-surface/30"
+          )}
         >
           <IconKeyboardChevronCompactDown
-            className={`size-5 ${iconAccentClass}`}
+            className={clsx("size-5", iconAccentClass)}
           />
         </button>
       </FloatingComponent>

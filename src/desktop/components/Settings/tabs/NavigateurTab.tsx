@@ -34,41 +34,39 @@ export function NavigateurTab() {
           type="checkbox"
           checked={showNavigator}
           onChange={() => setShowNavigator((v) => !v)}
-          className="rounded accent-gray-800 cursor-pointer"
+          className="rounded accent-ink cursor-pointer"
         />
-        <span className="text-sm text-gray-700">Afficher le navigateur</span>
+        <span className="text-sm text-ink-2">Afficher le navigateur</span>
       </label>
 
       {showNavigator && (
         <>
           <div className="space-y-2 pl-1">
-            <p className="text-xs text-gray-400">Contenu général</p>
+            <p className="text-xs text-ink-4">Contenu général</p>
             <div className="space-y-2">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={showLists}
                   onChange={() => setShowLists((v) => !v)}
-                  className="rounded accent-gray-800 cursor-pointer"
+                  className="rounded accent-ink cursor-pointer"
                 />
-                <span className="text-sm text-gray-700">
-                  Listes &amp; to-do
-                </span>
+                <span className="text-sm text-ink-2">Listes &amp; to-do</span>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={showText}
                   onChange={() => setShowText((v) => !v)}
-                  className="rounded accent-gray-800 cursor-pointer"
+                  className="rounded accent-ink cursor-pointer"
                 />
-                <span className="text-sm text-gray-700">Texte</span>
+                <span className="text-sm text-ink-2">Texte</span>
               </label>
             </div>
           </div>
 
           <div className="space-y-2 pl-1">
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-4">
               Blocs à distinguer (les autres comptent comme du texte)
             </p>
             <div className="space-y-2">
@@ -81,13 +79,13 @@ export function NavigateurTab() {
                     type="checkbox"
                     checked={distinguishedTypes.includes(type)}
                     onChange={() => toggleBlockType(type)}
-                    className="rounded accent-gray-800 cursor-pointer"
+                    className="rounded accent-ink cursor-pointer"
                   />
                   <span
                     className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ background: BLOCK_TYPE_COLORS[type] }}
                   />
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-ink-2">
                     {BLOCK_TYPE_LABELS[type]}
                   </span>
                 </label>

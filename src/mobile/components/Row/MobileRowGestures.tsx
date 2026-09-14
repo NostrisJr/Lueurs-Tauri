@@ -1,4 +1,5 @@
 import { useDrag } from "@use-gesture/react";
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { IconTrash } from "../../../shared/components/PlatformIcon";
 import { hapticImpact } from "../../lib/haptics";
@@ -460,9 +461,10 @@ export function MobileRowGestures({
           en même temps que le wrapper de la rangée ci-dessous et semblerait
           disparaître par le haut plutôt que par un fondu vers la gauche. */}
       <div
-        className={`absolute top-0 flex items-center overflow-hidden ${
+        className={clsx(
+          "absolute top-0 flex items-center overflow-hidden",
           !closing && overflowing ? "justify-center" : "justify-end"
-        }`}
+        )}
         style={{
           width: containerWidth,
           height: rowHeight,
@@ -477,11 +479,15 @@ export function MobileRowGestures({
         <button
           type="button"
           onClick={triggerClose}
-          className="shrink-0 h-10 rounded-full bg-red-500 flex items-center justify-center active:bg-red-600"
+          className={clsx(
+            "shrink-0 h-10 rounded-full flex items-center justify-center",
+            "bg-danger",
+            "active:bg-danger-strong"
+          )}
           style={{ width: buttonWidth, transition: revealTransition }}
           aria-label="Supprimer"
         >
-          <Icon className="size-4.5 text-white shrink-0" />
+          <Icon className="size-4.5 text-on-inverse shrink-0" />
         </button>
       </div>
 

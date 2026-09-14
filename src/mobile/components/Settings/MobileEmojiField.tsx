@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { EmojiMartPicker } from "../../../shared/components/EmojiMartPicker";
 import { hapticImpact } from "../../lib/haptics";
@@ -21,14 +22,14 @@ export function MobileEmojiField({ value, onChange }: Props) {
           hapticImpact("light");
           setOpen(true);
         }}
-        className="w-10 h-10 shrink-0 flex items-center justify-center text-xl bg-gray-50 border border-gray-200 rounded-lg active:bg-gray-100 transition-colors"
+        className={clsx(
+          "w-10 h-10 shrink-0 flex items-center justify-center text-xl border rounded-lg transition-colors",
+          "bg-surface-2 border-line-2",
+          "active:bg-surface-3"
+        )}
         aria-label="Choisir un emoji"
       >
-        {value ? (
-          <span>{value}</span>
-        ) : (
-          <span className="text-gray-300">+</span>
-        )}
+        {value ? <span>{value}</span> : <span className="text-ink-5">+</span>}
       </button>
 
       {open && (
@@ -46,7 +47,12 @@ export function MobileEmojiField({ value, onChange }: Props) {
                 setOpen(false);
               }}
             />
-            <div className="w-full left-0 justify-center bg-white px-4 pt-3">
+            <div
+              className={clsx(
+                "w-full left-0 justify-center px-4 pt-3",
+                "bg-surface"
+              )}
+            >
               {value && (
                 <button
                   type="button"
@@ -55,7 +61,10 @@ export function MobileEmojiField({ value, onChange }: Props) {
                     onChange("");
                     setOpen(false);
                   }}
-                  className="w-full py-3 text-sm text-red-500 active:opacity-60 transition-opacity"
+                  className={clsx(
+                    "w-full py-3 text-sm active:opacity-60 transition-opacity",
+                    "text-danger"
+                  )}
                 >
                   Supprimer l'emoji
                 </button>

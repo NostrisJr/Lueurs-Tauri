@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useRef, useState } from "react";
 import { AnchoredDropdown } from "../../../../shared/components/AnchoredDropdown";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
@@ -56,21 +57,39 @@ function AggregationCell({
     <div
       ref={anchorRef}
       style={{ width }}
-      className="relative flex shrink-0 border-r border-gray-100 last:border-none px-3 py-1.5 cursor-pointer select-none group justify-end"
+      className={clsx(
+        "relative flex shrink-0 border-r last:border-none px-3 py-1.5 cursor-pointer select-none group justify-end",
+        "border-line"
+      )}
       onClick={() => setOpen((v) => !v)}
       title="Choisir une agrégation"
     >
       {op !== "none" ? (
         <div className="flex flex-col">
-          <span className="text-[10px] text-gray-400 font-body leading-tight">
+          <span
+            className={clsx(
+              "text-[10px] font-body leading-tight",
+              "text-ink-4"
+            )}
+          >
             {AGG_LABELS[op]}
           </span>
-          <span className="text-xs text-gray-500 font-body font-medium leading-tight">
+          <span
+            className={clsx(
+              "text-xs font-body font-medium leading-tight",
+              "text-ink-3"
+            )}
+          >
             {result}
           </span>
         </div>
       ) : (
-        <span className="text-[10px] text-transparent group-hover:text-gray-400 transition-colors  transition-300 font-body">
+        <span
+          className={clsx(
+            "text-[10px] text-transparent transition-colors transition-300 font-body",
+            "group-hover:text-ink-4"
+          )}
+        >
           Calculer
         </span>
       )}
@@ -82,9 +101,10 @@ function AggregationCell({
               <button
                 key={aggOp}
                 type="button"
-                className={`w-full text-left px-3 py-1.5 text-xs font-body hover:bg-gray-100 transition-colors ${
-                  aggOp === op ? "text-amber-500 font-medium" : "text-gray-700"
-                }`}
+                className={clsx(
+                  "w-full text-left px-3 py-1.5 text-xs font-body hover:bg-surface-3 transition-colors",
+                  aggOp === op ? "text-accent font-medium" : "text-ink-2"
+                )}
                 onClick={(e) => {
                   e.stopPropagation();
                   onChange(aggOp);
@@ -109,11 +129,11 @@ export function TableFooter({
   onAggregationChange,
 }: Props) {
   return (
-    <div className="flex items-stretch bg-gray-50/50 rounded-b-lg">
+    <div className={clsx("flex items-stretch rounded-b-lg", "bg-surface-2/50")}>
       {/* Cellule titre — vide, non interactive */}
       <div
         style={{ width: titleColWidth }}
-        className="shrink-0 border-r border-gray-100 px-3 py-1.5"
+        className={clsx("shrink-0 border-r px-3 py-1.5", "border-line")}
       />
 
       {columns.map((col) => (

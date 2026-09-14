@@ -24,11 +24,15 @@ export function categoryOf(ruleId: string): SpellCategory {
   return ruleId === "spelling" ? "spelling" : "grammar";
 }
 
+/** Règles du catalogue Hugo neutralisées dans Lueurs (cf. `list_rules`). */
+const DISABLED_RULES = ["elision"];
+
 /** Vérifie `text` via le correcteur local Hugo. Renvoie [] en cas d'erreur. */
 export async function checkText(text: string): Promise<HugoSuggestion[]> {
   try {
     return await invoke<HugoSuggestion[]>("plugin:hugo-tauri|check_text", {
       text,
+      disabledRules: DISABLED_RULES,
     });
   } catch (err) {
     log.error("échec de l'appel check_text", err);

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useEffect, useRef } from "react";
 import { ColorDotPicker } from "../../../shared/components/FrontmatterPicker/ColorDotPicker";
 import { IconPlus, IconXCircle } from "../../../shared/components/PlatformIcon";
@@ -49,7 +50,7 @@ export function EnumOptionsFields({
     if (autoFocus) inputRefs.current[0]?.focus();
   }, []);
 
-  const inputClass = `flex-1 min-w-0 border outline-none transition-colors border-gray-200 focus:border-gray-400 ${isMobile ? "rounded-lg" : "rounded"}
+  const inputClass = `flex-1 min-w-0 border outline-none transition-colors border-line-2 focus:border-line-3 ${isMobile ? "rounded-lg" : "rounded"}
     ${isMobile ? "px-3 py-2 text-base" : "px-2 py-1 text-xs"}`;
   const iconButtonClass = `shrink-0 flex items-center justify-center p-0 bg-transparent border-0 cursor-pointer transition-colors ${isMobile ? "size-4" : "size-3"}`;
 
@@ -69,7 +70,10 @@ export function EnumOptionsFields({
               })
             }
             title="Couleur"
-            className={`shrink-0 rounded-full border-2 border-white shadow-sm cursor-pointer transition-transform hover:scale-110 ${isMobile ? "size-6" : "size-5"}`}
+            className={clsx(
+              "shrink-0 rounded-full border-2 border-surface shadow-sm cursor-pointer transition-transform hover:scale-110",
+              isMobile ? "size-6" : "size-5"
+            )}
             zIndex={dropdownZIndex}
           />
           <input
@@ -93,11 +97,13 @@ export function EnumOptionsFields({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onChange({ ...enumDef, default: opt.value })}
             title="Valeur par défaut des héritiers"
-            className={`shrink-0 flex items-center justify-center transition-colors cursor-pointer ${isMobile ? "size-5" : "size-3"} ${
+            className={clsx(
+              "shrink-0 flex items-center justify-center transition-colors cursor-pointer",
+              isMobile ? "size-5" : "size-3",
               opt.value === enumDef.default
-                ? "text-amber-500"
-                : "text-gray-200 hover:text-gray-400"
-            }`}
+                ? "text-accent"
+                : "text-ink-5/60 hover:text-ink-4"
+            )}
           >
             <span
               className={
@@ -112,7 +118,7 @@ export function EnumOptionsFields({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onChange(removeOption(enumDef, i))}
             title="Retirer l'option"
-            className={`${iconButtonClass} text-gray-300 hover:text-red-400`}
+            className={clsx(iconButtonClass, "text-ink-5 hover:text-danger-2")}
           >
             <IconXCircle className="size-full" />
           </button>
@@ -123,7 +129,10 @@ export function EnumOptionsFields({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => onChange(addOption(enumDef))}
-        className={`flex items-center gap-1 self-start text-gray-400 hover:text-gray-600 transition-colors cursor-pointer ${isMobile ? "text-base py-1" : "text-xs"}`}
+        className={clsx(
+          "flex items-center gap-1 self-start text-ink-4 hover:text-ink-2 transition-colors cursor-pointer",
+          isMobile ? "text-base py-1" : "text-xs"
+        )}
       >
         <IconPlus className={isMobile ? "size-4" : "size-3"} />
         ajouter une option

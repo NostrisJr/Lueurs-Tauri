@@ -6,6 +6,23 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Tauri + React + Typescript</title>
+  <!-- Thème posé avant le premier paint : sans ça, l'app flashe en clair le
+       temps que React monte. Doit rester synchrone et aligné sur theme.ts
+       (clé de stockage, valeur JSON, défaut « system »). -->
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem("lueurs_theme");
+        var pref = raw ? JSON.parse(raw) : "system";
+        if (pref !== "light" && pref !== "dark") pref = "system";
+        var theme = pref === "system"
+          ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+          : pref;
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      } catch (e) { /* localStorage indisponible : on reste en clair */ }
+    })();
+  </script>
 </head>
 
 <body>

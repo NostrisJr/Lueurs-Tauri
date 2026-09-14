@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { BottomSheet } from "../../../mobile/components/BottomSheet/BottomSheet";
 import { PropertyModeFields } from "../../../shared/components/FrontmatterPicker/PropertyModeFields";
@@ -85,16 +86,20 @@ export function MobilePropertySheet({
               autoCapitalize="none"
               spellCheck={false}
               style={{ fontSize: 16 }}
-              className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors font-semibold
-                ${isKeyDuplicate ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`}
+              className={clsx(
+                "w-full px-3 py-2 border rounded-lg outline-none transition-colors font-semibold",
+                isKeyDuplicate
+                  ? "border-danger-2 focus:border-danger-2"
+                  : "border-line-2 focus:border-line-3"
+              )}
             />
             {isKeyDuplicate && (
-              <p className="text-sm text-red-400 mt-1 px-1">
+              <p className={clsx("text-sm mt-1 px-1", "text-danger-2")}>
                 Ce nom est déjà utilisé.
               </p>
             )}
             {isTemplate && canSaveKey && (
-              <p className="text-sm text-amber-500 mt-1 px-1">
+              <p className={clsx("text-sm mt-1 px-1", "text-accent")}>
                 Sera propagé à toutes les notes héritières.
               </p>
             )}
@@ -135,7 +140,11 @@ export function MobilePropertySheet({
           <button
             type="button"
             onClick={onDelete}
-            className="w-full px-3 py-2.5 rounded-xl text-red-500 bg-red-50 active:bg-red-100 font-medium transition-colors"
+            className={clsx(
+              "w-full px-3 py-2.5 rounded-xl font-medium transition-colors",
+              "text-danger bg-danger-soft",
+              "active:bg-danger-soft-2"
+            )}
           >
             Supprimer la propriété
           </button>

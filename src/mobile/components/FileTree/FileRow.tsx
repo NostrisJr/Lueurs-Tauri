@@ -33,25 +33,25 @@ function NoteContent({ note }: { note: NoteFile }) {
       <div className="flex items-center gap-2.5 min-w-0">
         <NodeIconProvider
           node={note}
-          className={clsx(
-            "text-gray-400 shrink-0",
-            isIOS ? "size-4" : "size-5"
-          )}
+          className={clsx("text-ink-4 shrink-0", isIOS ? "size-4" : "size-5")}
         />
-        <p className="text-base font-semibold text-gray-900 truncate">
+        <p className={clsx("text-base font-semibold truncate", "text-ink")}>
           {note.name}
         </p>
         {isNoteReadOnly(note.frontmatter) && (
-          <IconLock className="text-gray-400 shrink-0 size-3.5" />
+          <IconLock className="text-ink-4 shrink-0 size-3.5" />
         )}
       </div>
       {blocks.length > 0 ? (
         <MarkdownPreview
           blocks={blocks}
-          className="mt-0.5 text-sm text-gray-400 leading-relaxed line-clamp-2"
+          className={clsx(
+            "mt-0.5 text-sm leading-relaxed line-clamp-2",
+            "text-ink-4"
+          )}
         />
       ) : (
-        <p className="text-sm text-gray-400 truncate mt-0.5 italic">
+        <p className={clsx("text-sm truncate mt-0.5 italic", "text-ink-4")}>
           Note vide
         </p>
       )}
@@ -63,19 +63,15 @@ function FolderContent({ folder }: { folder: FolderNode }) {
   return (
     <>
       <IconFolder
-        className={clsx(
-          "text-yellow-500 shrink-0",
-          isIOS ? "size-4" : "size-5"
-        )}
+        className={clsx("text-accent shrink-0", isIOS ? "size-4" : "size-5")}
       />
-      <span className="flex-1 text-base font-semibold text-gray-900 truncate">
+      <span
+        className={clsx("flex-1 text-base font-semibold truncate", "text-ink")}
+      >
         {folder.name}
       </span>
       <IconChevronRight
-        className={clsx(
-          "text-gray-300 shrink-0",
-          isIOS ? "size-3.5" : "size-5.5"
-        )}
+        className={clsx("text-ink-5 shrink-0", isIOS ? "size-3.5" : "size-5.5")}
       />
     </>
   );
@@ -86,13 +82,13 @@ function MediaContent({ media }: { media: MediaFile }) {
     <div className="flex items-center gap-2.5 min-w-0">
       <NodeIconProvider
         node={media}
-        className={clsx("text-gray-400 shrink-0", isIOS ? "size-4" : "size-5")}
+        className={clsx("text-ink-4 shrink-0", isIOS ? "size-4" : "size-5")}
       />
       <div className="min-w-0">
-        <p className="text-base font-semibold text-gray-900 truncate">
+        <p className={clsx("text-base font-semibold truncate", "text-ink")}>
           {media.name}
         </p>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-ink-4">
           {MEDIA_LABEL[media.mediaType] ?? media.mediaType} ·{" "}
           {media.fileName.split(".").pop()?.toUpperCase()}
         </p>
@@ -121,7 +117,10 @@ export function FileRow({ node, onDrillIn, onClick }: Props) {
   return (
     <Squircle
       radius={20}
-      className="w-full bg-white active:scale-[0.98] transition-transform"
+      className={clsx(
+        "w-full active:scale-[0.98] transition-transform",
+        "bg-surface"
+      )}
       onClick={handleClick}
     >
       <div className={rowContainerClass(node.kind)}>

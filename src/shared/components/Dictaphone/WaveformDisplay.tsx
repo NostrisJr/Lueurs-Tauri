@@ -175,11 +175,11 @@ export function WaveformDisplay({
   }, [isActive]);
 
   return (
-    <Squircle radius={22} className="bg-gray-200">
+    <Squircle radius={22} className="bg-surface-4">
       <canvas
         ref={canvasRef}
         style={{ width, height, display: "block" }}
-        className="px-4 rounded-4xl bg-gray-200"
+        className="px-4 rounded-4xl bg-surface-4"
       />
     </Squircle>
   );

@@ -5,6 +5,7 @@
 .mode-livre .milkdown .ProseMirror {
     font-family: 'EB Garamond', Garamond, Georgia, serif;
     font-size: 18px;
+    line-height: 1.5;
 }
 
 .mobile-prose .mode-livre .milkdown .ProseMirror {
@@ -53,8 +54,8 @@
 }
 
 /* Les listes imbriquées se placent dans la colonne contenu, sous le texte */
-.mode-livre .milkdown .ProseMirror ul li > ul,
-.mode-livre .milkdown .ProseMirror ul li > ol {
+.mode-livre .milkdown .ProseMirror ul li>ul,
+.mode-livre .milkdown .ProseMirror ul li>ol {
     grid-column: 2;
 }
 
@@ -62,10 +63,9 @@
     content: "–";
     flex-shrink: 0;
     margin-right: 0.45em;
-    color: var(--color-gray-600);
+    color: var(--color-prose-muted);
 }
 
 .mode-livre .milkdown .ProseMirror ul li.task-list-item::before {
     content: none;
 }
-

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { Component } from "react";
 import type { ReactNode } from "react";
 import { createLogger } from "../lib/logger";
@@ -36,14 +37,19 @@ export class EditorErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 gap-4">
-        <p className="text-red-500 font-semibold text-base">Erreur éditeur</p>
-        <p className="text-gray-600 text-sm text-center break-all">
+        <p className={clsx("font-semibold text-base", "text-danger")}>
+          Erreur éditeur
+        </p>
+        <p className={clsx("text-sm text-center break-all", "text-ink-2")}>
           {error.message}
         </p>
         <button
           type="button"
           onClick={() => this.setState({ error: null })}
-          className="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium"
+          className={clsx(
+            "px-4 py-2 rounded-lg text-sm font-medium",
+            "bg-accent text-on-inverse"
+          )}
         >
           Réessayer
         </button>

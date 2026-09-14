@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { KanbanKeySelector } from "../../../shared/components/KanbanKeySelector";
@@ -48,6 +49,7 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
     availableKeys,
     initKanban,
     moveCard,
+    deleteCard,
     addColumn,
     renameColumn,
     removeColumn,
@@ -111,11 +113,21 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
           dans un seul élément sticky — empiler deux sticky indépendants oblige
           à calculer un offset entre eux, et celui du tableau, enfermé dans le
           scroller horizontal des lignes, ne collerait de toute façon jamais.
-          bg-white opaque obligatoire : sans fond, les lignes passent au travers. */}
-      <div className="sticky z-30 bg-white" style={{ top: BASE_STICKY_TOP }}>
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+          bg-surface opaque obligatoire : sans fond, les lignes passent au travers. */}
+      <div className="sticky z-30 bg-surface" style={{ top: BASE_STICKY_TOP }}>
+        <div
+          className={clsx(
+            "flex items-center gap-3 px-4 py-3 border-b",
+            "border-line"
+          )}
+        >
           {/* View selector — boutons pill */}
-          <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl flex-1">
+          <div
+            className={clsx(
+              "flex items-center gap-1 p-1 rounded-xl flex-1",
+              "bg-surface-3"
+            )}
+          >
             {[BaseViewEnum.TABLE, BaseViewEnum.KANBAN].map((view) => {
               const disabled =
                 view === BaseViewEnum.KANBAN && availableKeys.length === 0;
@@ -126,13 +138,14 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
                   type="button"
                   disabled={disabled}
                   onClick={() => !disabled && handleViewChange(view)}
-                  className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={clsx(
+                    "flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors",
                     active
-                      ? "bg-white text-gray-800 shadow-sm"
+                      ? "bg-surface text-ink shadow-sm"
                       : disabled
-                        ? "text-gray-300 cursor-not-allowed"
-                        : "text-gray-500"
-                  }`}
+                        ? "text-ink-5 cursor-not-allowed"
+                        : "text-ink-3"
+                  )}
                 >
                   {view === BaseViewEnum.TABLE ? "Tableau" : "Kanban"}
                 </button>
@@ -144,7 +157,11 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
           <button
             type="button"
             onClick={handleCreateChild}
-            className="h-9 px-4 rounded-xl bg-blue-500 text-white text-sm font-medium active:bg-blue-600 transition-colors shrink-0"
+            className={clsx(
+              "h-9 px-4 rounded-xl text-sm font-medium transition-colors shrink-0",
+              "bg-info text-on-inverse",
+              "active:bg-info"
+            )}
           >
             + Note
           </button>
@@ -163,6 +180,7 @@ export function MobileBaseView({ base, onBaseChange }: Props) {
           columns={columns}
           cards={cards}
           onMoveCard={moveCard}
+          onDeleteCard={deleteCard}
           onRenameColumn={renameColumn}
           onAddColumn={addColumn}
           onDeleteColumn={removeColumn}

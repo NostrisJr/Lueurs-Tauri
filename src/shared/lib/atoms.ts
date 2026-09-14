@@ -32,6 +32,14 @@ import { createLogger } from "./logger";
 import { type KanbanColumn, NoteType, SystemField } from "./noteTypes";
 import type { PageFormat } from "./pageMetrics";
 import {
+  DEFAULT_THEME_PREFERENCE,
+  type ResolvedTheme,
+  THEME_STORAGE_KEY,
+  type ThemePreference,
+  getSystemTheme,
+  resolveTheme,
+} from "./theme";
+import {
   type VaultConfig,
   saveVaultConfigCache,
   writeVaultConfig,
@@ -112,6 +120,24 @@ export interface FileUndoEntry {
 }
 export const fileUndoStackAtom = atom<FileUndoEntry[]>([]);
 export const fileRedoStackAtom = atom<FileUndoEntry[]>([]);
+
+// ── Thème clair/sombre ─────────────────────────────────────────────────────
+// Choix de l'utilisateur ; "system" suit prefers-color-scheme.
+export const themePreferenceAtom = atomWithStorage<ThemePreference>(
+  THEME_STORAGE_KEY,
+  DEFAULT_THEME_PREFERENCE,
+  undefined,
+  { getOnInit: true }
+);
+
+// Thème rapporté par le système, tenu à jour par useTheme (écoute matchMedia).
+export const systemThemeAtom = atom<ResolvedTheme>(getSystemTheme());
+
+// Thème réellement appliqué — c'est celui que lisent les composants qui doivent
+// adapter autre chose que du CSS (canvas, pickers tiers, fenêtre Tauri).
+export const resolvedThemeAtom = atom<ResolvedTheme>((get) =>
+  resolveTheme(get(themePreferenceAtom), get(systemThemeAtom))
+);
 
 // Couleur de surlignage par défaut (appliquée via raccourci ou sans couleur explicite)
 export const defaultHighlightColorAtom = atomWithStorage<HighlightColorId>(
@@ -307,6 +333,13 @@ export const noteBackStackAtom = atom<string[]>([]);
 // callback de complétion ne soit appelé (cf. useMobileSwipeGesture.complete),
 // donc "fermer au lieu de naviguer" laissait un aller-retour visuel raté.
 export const mobileOpenSheetCountAtom = atom(0);
+
+// Drag d'une carte kanban en cours (mobile). Le geste part d'un appui long sur
+// la carte, qui peut se trouver à moins de 30px du bord — soit dans la zone qui
+// arme le swipe-back/-avant (cf. useMobileSwipeGesture.edgeWidth) : les deux
+// gestes horizontaux se déclenchaient alors ensemble. MobileApp désarme le
+// swipe tant que ce drapeau est levé.
+export const mobileCardDraggingAtom = atom(false);
 
 // ── Espaces ───────────────────────────────────────────────────────────────
 

@@ -27,7 +27,7 @@ export function MobileTableView({ table, onBodyScroll }: Props) {
   if (childNotes.length === 0) {
     return (
       <div className="flex items-center justify-center py-16 px-4">
-        <p className="text-sm text-gray-400 text-center">
+        <p className="text-sm text-ink-4 text-center">
           Aucune note dans cette base.
         </p>
       </div>

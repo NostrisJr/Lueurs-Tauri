@@ -1,9 +1,24 @@
 // Décodage et rendu waveform via Web Audio API.
 // Aucune dépendance React ni lecteur audio — utilisable partout.
 //
+// Les couleurs sont relues à CHAQUE tracé depuis les tokens : un canvas n'est
+// pas atteint par la cascade CSS, il garderait donc les couleurs du thème en
+// vigueur au moment du décodage. Les appelants doivent redessiner au
+// changement de thème (cf. leurs effets sur resolvedThemeAtom).
+//
 // L'AudioContext est fourni par le consommateur et N'EST PAS fermé ici :
 // le garder en vie maintient la session audio macOS initialisée, ce qui
 // évite le délai ~1s de réinitialisation au premier play.
+
+import { themeColor } from "../../lib/theme";
+
+/**
+ * Canvas porteur de son propre tracé. Appelé sans argument, drawBars redessine
+ * à la position courante — c'est ce dont a besoin un changement de thème.
+ */
+export interface WaveformCanvas extends HTMLCanvasElement {
+  _drawBars?: (progress?: number) => void;
+}
 
 export async function drawWaveform(
   canvas: HTMLCanvasElement,
@@ -43,21 +58,28 @@ export async function drawWaveform(
       resampled.push(peaks[idx] ?? 0);
     }
 
-    const drawBars = (color: string, progress = 0) => {
+    // Mémorisée pour qu'un appel sans argument redessine à la position
+    // courante — c'est ce dont a besoin un changement de thème.
+    let lastProgress = 0;
+
+    const drawBars = (progress = lastProgress) => {
+      lastProgress = progress;
+      const idle = themeColor("--color-wave");
+      const played = themeColor("--color-wave-played");
       c.clearRect(0, 0, W, H);
       resampled.forEach((amp, i) => {
         const x = i * step;
         const bh = Math.max(3, amp * (H - 4));
         const y = (H - bh) / 2;
-        c.fillStyle = x / W < progress ? "rgba(251,191,36,0.85)" : color;
+        c.fillStyle = x / W < progress ? played : idle;
         c.beginPath();
         c.roundRect(x, y, barW, bh, 1);
         c.fill();
       });
     };
 
-    drawBars("rgba(0,0,0,0.18)");
-    (canvas as any)._drawBars = drawBars;
+    drawBars();
+    (canvas as WaveformCanvas)._drawBars = drawBars;
 
     // L'AudioBuffer décodé est retourné pour la lecture directe (AudioBufferSourceNode)
     onDone(decoded);

@@ -9,6 +9,7 @@
  * l'habillage change.
  */
 
+import clsx from "clsx";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import {
   runAndScroll,
@@ -122,7 +123,7 @@ export function MobileSearchBar() {
         }}
       >
         <div className="flex items-center gap-2">
-          <IconMagnifyingglass className="size-4 text-gray-400 shrink-0" />
+          <IconMagnifyingglass className="size-4 text-ink-4 shrink-0" />
           <input
             ref={queryRef}
             value={state.query}
@@ -144,7 +145,11 @@ export function MobileSearchBar() {
             placeholder="Rechercher"
             enterKeyHint="search"
             // text-base (16px) : en dessous, Safari zoome la page au focus.
-            className="flex-1 min-w-0 outline-none text-base text-gray-800 placeholder:text-gray-400 py-2"
+            className={clsx(
+              "flex-1 min-w-0 outline-none text-base py-2",
+              "text-ink",
+              "placeholder:text-ink-4"
+            )}
           />
           <button
             type="button"
@@ -156,7 +161,11 @@ export function MobileSearchBar() {
               hapticImpact("light");
               handleClose();
             }}
-            className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-gray-500 active:bg-gray-100 transition-colors"
+            className={clsx(
+              "w-9 h-9 shrink-0 flex items-center justify-center rounded-full transition-colors",
+              "text-ink-3",
+              "active:bg-surface-3"
+            )}
             aria-label="Fermer la recherche"
           >
             <IconXmark className="size-4" />
@@ -173,16 +182,22 @@ export function MobileSearchBar() {
               setSearchCaseSensitive(next);
               scrollAware((v) => runSearch(v, state.query, next));
             }}
-            className={`h-9 px-3 shrink-0 flex items-center gap-1.5 rounded-full text-sm transition-colors ${
+            className={clsx(
+              "h-9 px-3 shrink-0 flex items-center gap-1.5 rounded-full text-sm transition-colors",
               state.caseSensitive
-                ? "text-amber-600 bg-amber-50"
-                : "text-gray-500 bg-gray-100 active:bg-gray-200"
-            }`}
+                ? "text-accent-strong bg-accent-soft"
+                : "text-ink-3 bg-surface-3 active:bg-surface-4"
+            )}
           >
             <IconTextformat className="size-4" />
             Casse
           </button>
-          <span className="text-sm text-gray-400 tabular-nums flex-1 text-center">
+          <span
+            className={clsx(
+              "text-sm tabular-nums flex-1 text-center",
+              "text-ink-4"
+            )}
+          >
             {counterLabel}
           </span>
           <div className="flex items-center gap-1 shrink-0">
@@ -194,7 +209,11 @@ export function MobileSearchBar() {
                 hapticImpact("light");
                 scrollAware((v) => searchStep(v, -1));
               }}
-              className="w-9 h-9 flex items-center justify-center rounded-full text-gray-600 bg-gray-100 active:bg-gray-200 disabled:opacity-30 disabled:active:bg-gray-100 transition-colors"
+              className={clsx(
+                "w-9 h-9 flex items-center justify-center rounded-full disabled:opacity-30 transition-colors",
+                "text-ink-2 bg-surface-3",
+                "active:bg-surface-4 disabled:active:bg-surface-3"
+              )}
               aria-label="Occurrence précédente"
             >
               <IconChevronLeft className="size-4" />
@@ -207,7 +226,11 @@ export function MobileSearchBar() {
                 hapticImpact("light");
                 scrollAware((v) => searchStep(v, 1));
               }}
-              className="w-9 h-9 flex items-center justify-center rounded-full text-gray-600 bg-gray-100 active:bg-gray-200 disabled:opacity-30 disabled:active:bg-gray-100 transition-colors"
+              className={clsx(
+                "w-9 h-9 flex items-center justify-center rounded-full disabled:opacity-30 transition-colors",
+                "text-ink-2 bg-surface-3",
+                "active:bg-surface-4 disabled:active:bg-surface-3"
+              )}
               aria-label="Occurrence suivante"
             >
               <IconChevronRight className="size-4" />
@@ -215,7 +238,12 @@ export function MobileSearchBar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+        <div
+          className={clsx(
+            "flex items-center gap-2 pt-1 border-t",
+            "border-line"
+          )}
+        >
           <input
             value={state.replacement}
             onChange={(e) => setSearchReplacement(e.target.value)}
@@ -228,7 +256,11 @@ export function MobileSearchBar() {
             }}
             placeholder="Remplacer par"
             enterKeyHint="done"
-            className="flex-1 min-w-0 outline-none text-base text-gray-800 placeholder:text-gray-400 py-2"
+            className={clsx(
+              "flex-1 min-w-0 outline-none text-base py-2",
+              "text-ink",
+              "placeholder:text-ink-4"
+            )}
           />
           <button
             type="button"
@@ -238,7 +270,11 @@ export function MobileSearchBar() {
               hapticImpact("light");
               scrollAware((v) => replaceCurrentMatch(v, state.replacement));
             }}
-            className="h-9 px-3 shrink-0 rounded-full text-sm bg-gray-100 active:bg-gray-200 disabled:opacity-40 transition-colors whitespace-nowrap"
+            className={clsx(
+              "h-9 px-3 shrink-0 rounded-full text-sm disabled:opacity-40 transition-colors whitespace-nowrap",
+              "bg-surface-3",
+              "active:bg-surface-4"
+            )}
           >
             Remplacer
           </button>
@@ -257,7 +293,11 @@ export function MobileSearchBar() {
                 )
               );
             }}
-            className="h-9 px-3 shrink-0 rounded-full text-sm bg-gray-100 active:bg-gray-200 disabled:opacity-40 transition-colors whitespace-nowrap"
+            className={clsx(
+              "h-9 px-3 shrink-0 rounded-full text-sm disabled:opacity-40 transition-colors whitespace-nowrap",
+              "bg-surface-3",
+              "active:bg-surface-4"
+            )}
           >
             Tout
           </button>

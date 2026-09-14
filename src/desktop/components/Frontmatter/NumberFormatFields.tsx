@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import type { NumberDef } from "../../../shared/lib/FrontmatterPicker/numberProperty";
 import { isMobile } from "../../../shared/lib/platform";
 
@@ -10,20 +11,23 @@ interface Props {
 
 /** Décimales + unité d'une propriété Nombre — rendu sous la ligne icônes+champ. */
 export function NumberFormatFields({ numberDef, onChange, disabled }: Props) {
-  const labelClass = `text-gray-400 uppercase tracking-wide ${isMobile ? "text-base" : "text-[10px]"}`;
+  const labelClass = `text-ink-4 uppercase tracking-wide ${isMobile ? "text-base" : "text-[10px]"}`;
   const inputClass = `w-full border outline-none transition-colors ${isMobile ? "rounded-lg" : "rounded"}
     ${isMobile ? "px-3 py-2 text-base" : "px-2 py-1 text-xs"}
     ${
       disabled
-        ? "border-gray-100 text-gray-400 bg-gray-50 cursor-not-allowed"
-        : "border-gray-200 focus:border-gray-400"
+        ? "border-line text-ink-4 bg-surface-2 cursor-not-allowed"
+        : "border-line-2 focus:border-line-3"
     }`;
   const title = disabled ? "Imposé par le template" : undefined;
 
   return (
-    <div className={`flex ${isMobile ? "gap-4" : "gap-2"}`}>
+    <div className={clsx("flex", isMobile ? "gap-4" : "gap-2")}>
       <label
-        className={`flex flex-col gap-1 shrink-0 ${isMobile ? "w-24" : "w-20"}`}
+        className={clsx(
+          "flex flex-col gap-1 shrink-0",
+          isMobile ? "w-24" : "w-20"
+        )}
       >
         <span className={labelClass}>Décimales</span>
         <input

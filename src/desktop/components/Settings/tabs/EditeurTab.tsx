@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
 import { SegmentedControl } from "../../../../shared/components/SegmentedControl";
@@ -9,13 +10,18 @@ import {
   pageFormatAtom,
   spellcheckEngineAtom,
   textJustificationAtom,
+  themePreferenceAtom,
 } from "../../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../../shared/lib/displayModes";
 import {
   PAGE_FORMATS,
   type PageFormat,
 } from "../../../../shared/lib/pageMetrics";
-import { HIGHLIGHT_COLORS } from "../../../../shared/plugins/highlight/colors";
+import { THEME_OPTIONS } from "../../../../shared/lib/theme";
+import {
+  HIGHLIGHT_COLORS,
+  getHighlightSolid,
+} from "../../../../shared/plugins/highlight/colors";
 import { IgnoredWordsView } from "./IgnoredWordsView";
 
 export function EditeurTab() {
@@ -30,6 +36,7 @@ export function EditeurTab() {
   );
   const [spellcheckEngine, setSpellcheckEngine] = useAtom(spellcheckEngineAtom);
   const [pageFormat, setPageFormat] = useAtom(pageFormatAtom);
+  const [themePreference, setThemePreference] = useAtom(themePreferenceAtom);
   const ignoredWords = useAtomValue(ignoredWordsAtom);
   const [showIgnored, setShowIgnored] = useState(false);
 
@@ -40,13 +47,25 @@ export function EditeurTab() {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <p className="text-xs text-gray-500">Mode de lecture par défaut</p>
+        <p className="text-xs text-ink-3">Apparence</p>
+        <SegmentedControl
+          options={THEME_OPTIONS}
+          value={themePreference}
+          onChange={setThemePreference}
+        />
+        <p className="text-xs text-ink-4">
+          « Système » suit le réglage clair/sombre de macOS.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-ink-3">Mode de lecture par défaut</p>
         <SegmentedControl
           options={DISPLAY_MODES}
           value={defaultDisplayMode}
           onChange={setDefaultDisplayMode}
         />
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-ink-4">
           Appliqué aux nouvelles notes et aux notes sans mode défini.
         </p>
       </div>
@@ -56,15 +75,15 @@ export function EditeurTab() {
           type="checkbox"
           checked={textJustification}
           onChange={() => setTextJustification((v) => !v)}
-          className="rounded accent-gray-800 cursor-pointer"
+          className="rounded accent-ink cursor-pointer"
         />
-        <span className="text-sm text-gray-700">
+        <span className="text-sm text-ink-2">
           Justifier le texte en mode livre
         </span>
       </label>
 
       <div className="space-y-2">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-3">
           Correcteur orthographique et grammatical
         </p>
         <SegmentedControl
@@ -78,15 +97,19 @@ export function EditeurTab() {
         <button
           type="button"
           onClick={() => setShowIgnored(true)}
-          className="flex w-fit items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-700 transition-colors cursor-default hover:bg-gray-50"
+          className={clsx(
+            "flex w-fit items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors cursor-default",
+            "border-line-2 text-ink-2",
+            "hover:bg-surface-2"
+          )}
         >
           Consulter les mots ignorés
-          <span className="text-xs text-gray-400">{ignoredWords.length}</span>
+          <span className="text-xs text-ink-4">{ignoredWords.length}</span>
         </button>
       )}
 
       <div className="space-y-2">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-3">
           Couleur de surlignage par défaut (raccourci ⌘⇧L)
         </p>
         <div className="flex gap-2 flex-wrap">
@@ -98,14 +121,21 @@ export function EditeurTab() {
               onClick={() => setDefaultHighlightColor(c.id)}
               className="relative w-6 h-6 rounded-full border-2 transition-all cursor-default"
               style={{
-                background: c.solid,
+                background: getHighlightSolid(c.id),
                 borderColor:
-                  defaultHighlightColor === c.id ? "#374151" : "transparent",
+                  defaultHighlightColor === c.id
+                    ? "var(--color-ink-2)"
+                    : "transparent",
                 transform: defaultHighlightColor === c.id ? "scale(1.15)" : "",
               }}
             >
               {defaultHighlightColor === c.id && (
-                <span className="absolute inset-0 flex items-center justify-center text-white text-[9px] font-bold">
+                <span
+                  className={clsx(
+                    "absolute inset-0 flex items-center justify-center text-[9px] font-bold",
+                    "text-on-inverse"
+                  )}
+                >
                   ✓
                 </span>
               )}
@@ -115,7 +145,7 @@ export function EditeurTab() {
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-3">
           Format de référence de l'indicateur de pages
         </p>
         <SegmentedControl

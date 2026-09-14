@@ -274,13 +274,10 @@ ${ligneIndent}#set heading(numbering: ${typstNumbering})
 )
 
 #let didascalie(c) = text(size: 0.875em, fill: rgb(156, 163, 175), style: "italic")[|~#c~|]
-#let hl(color, c) = highlight(fill: ${HIGHLIGHT_COLORS.map((col) => {
-    const m = col.bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-    if (!m) return "";
-    return `if color == "${col.id}" { rgb(${m[1]}, ${m[2]}, ${m[3]}).lighten(30%) }`;
-  })
-    .filter(Boolean)
-    .join(" else ")} else { rgb(229, 231, 235) }, c)
+#let hl(color, c) = highlight(fill: ${HIGHLIGHT_COLORS.map(
+    (col) =>
+      `if color == "${col.id}" { rgb(${col.print.join(", ")}).lighten(30%) }`
+  ).join(" else ")} else { rgb(229, 231, 235) }, c)
 
 `;
 }

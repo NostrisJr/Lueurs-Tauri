@@ -13,6 +13,7 @@ import {
   tabHistoryAtom,
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
+import { hexToRgba } from "../../../shared/lib/color";
 import {
   ALL_SPACE_ID,
   type VaultSpace,
@@ -81,7 +82,12 @@ export function SpaceSwitcher() {
   }
 
   return (
-    <div className="shrink-0 px-2 py-2 flex gap-1 items-center justify-start overflow-x-scroll border-t border-gray-100/60 scrollbar-none">
+    <div
+      className={clsx(
+        "shrink-0 px-2 py-2 flex gap-1 items-center justify-start overflow-x-scroll border-t scrollbar-none",
+        "border-line/60"
+      )}
+    >
       {orderedSpaces.map((entry) => {
         if (entry.id === ALL_SPACE_ID) {
           const isActive = activeSpace === null;
@@ -98,8 +104,8 @@ export function SpaceSwitcher() {
                   ? "size-7 shrink-0 rounded-full text-sm"
                   : "flex-1 gap-1 px-2.5 py-1 rounded-full text-xs whitespace-nowrap",
                 isActive
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  ? "bg-inverse text-on-inverse"
+                  : "text-ink-3 hover:bg-surface-3 hover:text-ink-2"
               )}
             >
               {showIconOnly ? (
@@ -130,14 +136,14 @@ export function SpaceSwitcher() {
                 : "flex-1 gap-1 px-2.5 py-1 rounded-full text-xs whitespace-nowrap",
               isActive
                 ? space.color
-                  ? "text-white"
-                  : "bg-gray-800 text-white"
-                : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                  ? "text-on-inverse"
+                  : "bg-inverse text-on-inverse"
+                : "text-ink-3 hover:bg-surface-3 hover:text-ink-2"
             )}
             style={
               isActive && space.color
                 ? {
-                    backgroundColor: `rgb(from ${space.color} r g b / 0.6)`,
+                    backgroundColor: hexToRgba(space.color, 0.6),
                   }
                 : undefined
             }

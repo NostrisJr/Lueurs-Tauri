@@ -1,23 +1,45 @@
 import {
+  type CollisionDetection,
   DndContext,
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
   PointerSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import clsx from "clsx";
 import { useCallback, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import {
   type KanbanCards,
   NO_VALUE_COLUMN_ID,
 } from "../../../../shared/lib/atoms";
+import {
+  KANBAN_TRASH_ID,
+  resolveKanbanDrop,
+} from "../../../../shared/lib/kanbanDrop";
 import { createLogger } from "../../../../shared/lib/logger";
 import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
 import { KanbanCard } from "./KanbanCard";
 import { KanbanColumn } from "./KanbanColumn";
+import { KanbanTrashZone } from "./KanbanTrashZone";
+
+// La corbeille flotte au-dessus des colonnes : par proximité pure elle gagnerait
+// ou perdrait au hasard des rects, on lui donne donc la priorité dès que le
+// pointeur est dedans, et on la retire du calcul de proximité le reste du temps.
+const collisionDetection: CollisionDetection = (args) => {
+  const trash = pointerWithin(args).find((c) => c.id === KANBAN_TRASH_ID);
+  if (trash) return [trash];
+  return closestCorners({
+    ...args,
+    droppableContainers: args.droppableContainers.filter(
+      (c) => c.id !== KANBAN_TRASH_ID
+    ),
+  });
+};
 
 const log = createLogger("KanbanView");
 
@@ -32,6 +54,7 @@ interface Props {
   onRenameColumn: (colId: string, newLabel: string) => Promise<void>;
   onAddColumn: (label: string) => void;
   onDeleteColumn: (colId: string) => void;
+  onDeleteCard: (noteId: string) => Promise<void>;
   // Défini uniquement pour une clé ENUM → pastille couleur cliquable
   onSetColumnColor?: (colId: string, color: string | undefined) => void;
 }
@@ -43,6 +66,7 @@ export function KanbanView({
   onRenameColumn,
   onAddColumn,
   onDeleteColumn,
+  onDeleteCard,
   onSetColumnColor,
 }: Props) {
   const [activeNote, setActiveNote] = useState<NoteFile | null>(null);
@@ -85,21 +109,24 @@ export function KanbanView({
       const fromColId = findColumnOfNote(noteId);
       if (!fromColId) return;
 
-      // over.id peut être un colId (persisté ou virtuel) ou un noteId — on résout la colonne cible
-      const allColIds = new Set([
-        ...columns.map((c) => c.id),
-        NO_VALUE_COLUMN_ID,
-      ]);
-      const toColId = allColIds.has(over.id as string)
-        ? (over.id as string)
-        : findColumnOfNote(over.id as string);
+      const drop = resolveKanbanDrop({
+        overId: String(over.id),
+        fromColId,
+        columnIds: [...columns.map((c) => c.id), NO_VALUE_COLUMN_ID],
+        columnOfNote: findColumnOfNote,
+      });
+      if (!drop) return;
 
-      if (!toColId || toColId === fromColId) return;
+      if (drop.kind === "delete") {
+        log.info("drag terminé sur la corbeille", { noteId, fromColId });
+        onDeleteCard(noteId);
+        return;
+      }
 
-      log.info("drag terminé", { noteId, fromColId, toColId });
-      onMoveCard(noteId, fromColId, toColId);
+      log.info("drag terminé", { noteId, fromColId, toColId: drop.toColId });
+      onMoveCard(noteId, fromColId, drop.toColId);
     },
-    [cards, columns, onMoveCard]
+    [cards, columns, onMoveCard, onDeleteCard]
   );
 
   function commitAddColumn() {
@@ -123,10 +150,12 @@ export function KanbanView({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveNote(null)}
     >
+      <KanbanTrashZone visible={activeNote !== null} />
       <div className="flex gap-4 p-4 h-full overflow-x-scroll scrollbar-none">
         {columns.map((col) => (
           <KanbanColumn
@@ -154,7 +183,7 @@ export function KanbanView({
         {/* Ajout de colonne */}
         <div className="w-64 shrink-0">
           {addingColumn ? (
-            <div className="bg-gray-50 rounded-xl p-2">
+            <div className="bg-surface-2 rounded-xl p-2">
               <input
                 // biome-ignore lint/a11y/noAutofocus: <explanation>
                 autoFocus
@@ -163,14 +192,21 @@ export function KanbanView({
                 onBlur={commitAddColumn}
                 onKeyDown={handleAddKeyDown}
                 placeholder="Nom de la colonne…"
-                className="w-full font-body text-sm bg-transparent outline-none px-1 py-0.5 border-b border-gray-400"
+                className={clsx(
+                  "w-full font-body text-sm bg-transparent outline-none px-1 py-0.5 border-b",
+                  "border-line-3"
+                )}
               />
             </div>
           ) : (
             <button
               type="button"
               onClick={() => setAddingColumn(true)}
-              className="w-full text-left px-3 py-2 rounded-xl text-sm text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors font-body"
+              className={clsx(
+                "w-full text-left px-3 py-2 rounded-xl text-sm transition-colors font-body",
+                "text-ink-4",
+                "hover:text-ink-2 hover:bg-surface-2"
+              )}
             >
               + Ajouter une colonne
             </button>

@@ -14,6 +14,7 @@ import {
   dictaphoneModeAtom,
   folderPathAtom,
   inboxAbsPathAtom,
+  mobileCardDraggingAtom,
   mobileGoBackAtom,
   mobileNavStackAtom,
   mobileNavigateAtom,
@@ -201,6 +202,9 @@ export function MobileApp() {
   // armer les deux à la fois.)
   const popNoteBack = useSetAtom(popNoteBackAtom);
   const openSheetCount = useAtomValue(mobileOpenSheetCountAtom);
+  // Un drag de carte kanban est lui aussi un geste horizontal, parti d'un point
+  // qui peut tomber dans la zone de bord : désarmer le swipe le temps du drag.
+  const cardDragging = useAtomValue(mobileCardDraggingAtom);
   // Swipe back/avant désactivés tant qu'une BottomSheet/un RowContextMenu est
   // monté (cf. mobileOpenSheetCountAtom) — plutôt que de tenter de la
   // refermer au geste : l'animation de swipe se joue de toute façon en
@@ -219,7 +223,13 @@ export function MobileApp() {
   }
   const { swipeProgress, isAnimating, touchHandlers } = useMobileSwipeGesture(
     handleSwipeBack,
-    { enabled: navStack.length > 1 && !isPushing && openSheetCount === 0 }
+    {
+      enabled:
+        navStack.length > 1 &&
+        !isPushing &&
+        openSheetCount === 0 &&
+        !cardDragging,
+    }
   );
   const isSwipingBack = swipeProgress > 0 || isAnimating;
 
@@ -264,7 +274,8 @@ export function MobileApp() {
         currentView !== "tabs" &&
         !isPushing &&
         !isSwipingBack &&
-        openSheetCount === 0,
+        openSheetCount === 0 &&
+        !cardDragging,
       excludeSelector: "[data-mobile-space-switcher]",
     }
   );
@@ -316,7 +327,7 @@ export function MobileApp() {
             ? `transform ${DURATION}ms ${EASING}`
             : "none",
           boxShadow:
-            swipeProgress > 0 ? "-6px 0 20px rgba(0,0,0,0.10)" : undefined,
+            swipeProgress > 0 ? "-6px 0 20px var(--color-shade-2)" : undefined,
           willChange: "transform",
         }
       : isSwipingForward
@@ -338,28 +349,42 @@ export function MobileApp() {
       ? `transform ${DURATION}ms ${EASING}`
       : "none",
     boxShadow:
-      tabsSwipeProgress > 0 ? "-6px 0 20px rgba(0,0,0,0.10)" : undefined,
+      tabsSwipeProgress > 0 ? "-6px 0 20px var(--color-shade-2)" : undefined,
     willChange: "transform",
   };
 
   if (!folderPath && isAndroid) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-200 gap-6 px-8">
-        <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow">
-          <IconFolder className={`size-8 ${iconAccentClass}`} />
+      <div
+        className={clsx(
+          "fixed inset-0 flex flex-col items-center justify-center gap-6 px-8",
+          "bg-surface-4"
+        )}
+      >
+        <div
+          className={clsx(
+            "w-16 h-16 rounded-2xl flex items-center justify-center shadow",
+            "bg-surface"
+          )}
+        >
+          <IconFolder className={clsx("size-8", iconAccentClass)} />
         </div>
         <div className="text-center">
-          <p className="font-semibold text-gray-900 text-lg">
+          <p className="font-semibold text-ink text-lg">
             Aucun dossier sélectionné
           </p>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-ink-4 mt-1">
             Choisis un dossier contenant tes fichiers .md
           </p>
         </div>
         <button
           type="button"
           onClick={pickFolder}
-          className="px-6 py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-base active:bg-amber-600 transition-colors"
+          className={clsx(
+            "px-6 py-3.5 rounded-xl font-semibold text-base transition-colors",
+            "bg-accent text-on-inverse",
+            "active:bg-accent-strong"
+          )}
         >
           Choisir un dossier
         </button>
@@ -380,7 +405,7 @@ export function MobileApp() {
   return (
     <div
       ref={rootRef}
-      className="fixed inset-0 overflow-hidden bg-gray-100"
+      className={clsx("fixed inset-0 overflow-hidden", "bg-surface-3")}
       onTouchStart={handleRootTouchStart}
       onTouchMove={handleRootTouchMove}
       onTouchEnd={handleRootTouchEnd}
@@ -389,7 +414,10 @@ export function MobileApp() {
           peekBackNode ci-dessus), sinon vue précédente non-éditeur. */}
       {showBg && peekBackNode && (
         <div
-          className="absolute inset-0 pointer-events-none bg-white overflow-hidden"
+          className={clsx(
+            "absolute inset-0 pointer-events-none overflow-hidden",
+            "bg-surface"
+          )}
           style={{ ...bgStyle, zIndex: 1 }}
         >
           <NodePreviewCard node={peekBackNode} />

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useMemo } from "react";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 import {
@@ -26,18 +27,18 @@ function TrashNoteContent({ note }: { note: NoteFile }) {
   return (
     <div>
       <div className="flex items-center gap-2.5 min-w-0">
-        <NodeIconProvider
-          node={note}
-          className="text-gray-300 shrink-0 size-4"
-        />
-        <p className="text-base font-semibold text-gray-500 truncate">
+        <NodeIconProvider node={note} className="text-ink-5 shrink-0 size-4" />
+        <p className={clsx("text-base font-semibold truncate", "text-ink-3")}>
           {note.name}
         </p>
       </div>
       {blocks.length > 0 && (
         <MarkdownPreview
           blocks={blocks}
-          className="mt-0.5 text-sm text-gray-400 leading-relaxed line-clamp-2"
+          className={clsx(
+            "mt-0.5 text-sm leading-relaxed line-clamp-2",
+            "text-ink-4"
+          )}
         />
       )}
     </div>
@@ -47,11 +48,16 @@ function TrashNoteContent({ note }: { note: NoteFile }) {
 function TrashFolderContent({ folder }: { folder: FolderNode }) {
   return (
     <>
-      <IconFolder className="text-gray-300 shrink-0 size-4" />
-      <span className="flex-1 text-base font-semibold text-gray-500 truncate">
+      <IconFolder className="text-ink-5 shrink-0 size-4" />
+      <span
+        className={clsx(
+          "flex-1 text-base font-semibold truncate",
+          "text-ink-3"
+        )}
+      >
         {folder.name}
       </span>
-      <IconChevronRight className="text-gray-300 shrink-0 size-3.5" />
+      <IconChevronRight className="text-ink-5 shrink-0 size-3.5" />
     </>
   );
 }
@@ -59,11 +65,8 @@ function TrashFolderContent({ folder }: { folder: FolderNode }) {
 function TrashMediaContent({ media }: { media: MediaFile }) {
   return (
     <div className="flex items-center gap-2.5 min-w-0">
-      <NodeIconProvider
-        node={media}
-        className="text-gray-300 shrink-0 size-4"
-      />
-      <p className="text-base font-semibold text-gray-500 truncate">
+      <NodeIconProvider node={media} className="text-ink-5 shrink-0 size-4" />
+      <p className={clsx("text-base font-semibold truncate", "text-ink-3")}>
         {media.name}
       </p>
     </div>
@@ -82,7 +85,10 @@ export function TrashRow({ node, onDrillIn, onOpenNote }: Props) {
   return (
     <Squircle
       radius={20}
-      className="w-full bg-gray-50 active:scale-[0.98] transition-transform"
+      className={clsx(
+        "w-full active:scale-[0.98] transition-transform",
+        "bg-surface-2"
+      )}
       onClick={handleClick}
     >
       <div className={rowContainerClass(node.kind)}>

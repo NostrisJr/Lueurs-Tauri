@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
@@ -31,6 +32,7 @@ import {
 } from "../../../shared/lib/atoms";
 import { NoteType, isNoteReadOnly } from "../../../shared/lib/noteTypes";
 import { iconAccentClass, isAndroid } from "../../../shared/lib/platform";
+import { maskStop } from "../../../shared/lib/theme";
 
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
@@ -197,7 +199,11 @@ export function MobileEditor() {
         setNoteBackStack([]);
         resetNav();
       }}
-      className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
+      className={clsx(
+        "shrink-0 w-8 h-8 flex items-center justify-center rounded-full",
+        iconAccentClass,
+        "active:bg-tint transition-colors"
+      )}
       aria-label="Retour aux notes"
       title="Retour aux notes"
     >
@@ -256,10 +262,10 @@ export function MobileEditor() {
   // s'estomper — c'est le comportement attendu d'un en-tête de tableau.
   const baseStickyEdge = FLOATING_HEADER_SCROLL_OFFSET + BASE_STICKY_TOP;
   const headerFadeMask = isBase
-    ? `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeTopAlpha}) ${baseStickyEdge}px, black ${baseStickyEdge}px)`
-    : `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeMidAlpha}) ${
+    ? `linear-gradient(to bottom, ${maskStop(headerFadeTopAlpha)} 0, ${maskStop(headerFadeTopAlpha)} ${baseStickyEdge}px, ${maskStop(1)} ${baseStickyEdge}px)`
+    : `linear-gradient(to bottom, ${maskStop(headerFadeTopAlpha)} 0, ${maskStop(headerFadeMidAlpha)} ${
         headerFadeZoneHeight * 0.8
-      }px, black ${headerFadeZoneHeight}px)`;
+      }px, ${maskStop(1)} ${headerFadeZoneHeight}px)`;
 
   // Sur Android, le WebView est déjà au-dessus du clavier (insets natifs), donc
   // on compense uniquement la hauteur de la formatting bar quand elle est visible.
@@ -274,7 +280,7 @@ export function MobileEditor() {
   return (
     <div
       ref={editorRootRef}
-      className="flex flex-col h-full w-full fixed bg-white"
+      className={clsx("flex flex-col h-full w-full fixed", "bg-surface")}
     >
       <FloatingHeaderBar
         collapseProgress={titleCollapseProgress}

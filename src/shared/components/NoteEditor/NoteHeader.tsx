@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import type React from "react";
 import { MobileNoteTitle } from "../../../mobile/components/Editor/MobileNoteTitle.tsx";
@@ -67,12 +68,14 @@ export function NoteHeader({
     // top-0 — un header sticky viendrait se cacher dessous au moindre scroll,
     // titre devenu intappable. Il défile donc avec le contenu.
     <div
-      className={`border-b border-gray-100 bg-white w-full flex min-w-0 px-4 py-2 text-3xl h-13 font-header text-left items-center justify-between gap-2 ${
-        isMobile ? "" : "sticky top-0 z-20"
-      }`}
+      className={clsx(
+        "w-full flex min-w-0 px-4 py-2 text-3xl h-13 font-header text-left items-center justify-between gap-2 border-b",
+        "bg-surface border-line",
+        !isMobile && "sticky top-0 z-20"
+      )}
     >
       <EditableText
-        className=" hover:bg-gray-100"
+        className="hover:bg-surface-3"
         value={displayName}
         onSave={async (newName: string) => onRename(newName)}
         // Entrée valide le titre → caret en début de corps de note (comme
@@ -87,7 +90,10 @@ export function NoteHeader({
             type="button"
             onClick={onRecord}
             title="Enregistrement vocal"
-            className="p-0.5 text-gray-500 hover:text-red-500 transition-colors bg-transparent rounded-full size-10 flex items-center justify-center hover:bg-gray-100"
+            className={clsx(
+              "p-0.5 transition-colors bg-transparent rounded-full size-10 flex items-center justify-center",
+              "text-ink-3 hover:text-danger hover:bg-surface-3"
+            )}
           >
             <IconRecordAudio className="size-4.5" aria-hidden="true" />
           </button>

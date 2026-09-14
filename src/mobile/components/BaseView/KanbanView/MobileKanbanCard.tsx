@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NodeIconProvider } from "../../../../shared/components/NodeIconProvider";
@@ -30,23 +31,31 @@ export function MobileKanbanCardGhost({ note }: { note: NoteFile }) {
   const blocks = useMemo(() => parsePreviewBlocks(note.body, 6), [note.body]);
 
   return (
-    <Squircle radius={16} className="w-full bg-white px-3.5 py-3 shadow-xl">
+    <Squircle
+      radius={16}
+      className={clsx("w-full px-3.5 py-3 shadow-xl", "bg-surface")}
+    >
       <div className="flex items-center gap-2 min-w-0">
-        <NodeIconProvider
-          node={note}
-          className="text-gray-400 shrink-0 size-4"
-        />
-        <p className="flex-1 min-w-0 text-base font-semibold text-gray-900 truncate">
+        <NodeIconProvider node={note} className="text-ink-4 shrink-0 size-4" />
+        <p
+          className={clsx(
+            "flex-1 min-w-0 text-base font-semibold truncate",
+            "text-ink"
+          )}
+        >
           {note.name}
         </p>
         {isNoteReadOnly(note.frontmatter) && (
-          <IconLock className="text-gray-400 shrink-0 size-3.5" />
+          <IconLock className="text-ink-4 shrink-0 size-3.5" />
         )}
       </div>
       {blocks.length > 0 && (
         <MarkdownPreview
           blocks={blocks}
-          className="mt-1 text-sm text-gray-400 leading-relaxed line-clamp-2"
+          className={clsx(
+            "mt-1 text-sm leading-relaxed line-clamp-2",
+            "text-ink-4"
+          )}
         />
       )}
     </Squircle>
@@ -120,14 +129,15 @@ export function MobileKanbanCard({
       <div {...bind()} style={style}>
         <Squircle
           radius={16}
-          className={`w-full bg-white px-3.5 py-3 transition-opacity ${
+          className={clsx(
+            "w-full bg-surface px-3.5 py-3 transition-opacity",
             isDragging ? "opacity-30" : "opacity-100"
-          }`}
+          )}
         >
           <div className="flex items-center gap-2 min-w-0">
             <NodeIconProvider
               node={note}
-              className="text-gray-400 shrink-0 size-4"
+              className="text-ink-4 shrink-0 size-4"
             />
             {editing ? (
               <input
@@ -141,25 +151,34 @@ export function MobileKanbanCard({
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
                 style={{ fontSize: 16 }}
-                className="flex-1 min-w-0 bg-transparent outline-none text-base font-semibold text-gray-900"
+                className={clsx(
+                  "flex-1 min-w-0 bg-transparent outline-none text-base font-semibold",
+                  "text-ink"
+                )}
               />
             ) : (
               <p
-                className="flex-1 min-w-0 text-base font-semibold text-gray-900 truncate"
+                className={clsx(
+                  "flex-1 min-w-0 text-base font-semibold truncate",
+                  "text-ink"
+                )}
                 onDoubleClick={startEdit}
               >
                 {note.name}
               </p>
             )}
             {isNoteReadOnly(note.frontmatter) && (
-              <IconLock className="text-gray-400 shrink-0 size-3.5" />
+              <IconLock className="text-ink-4 shrink-0 size-3.5" />
             )}
           </div>
 
           {blocks.length > 0 && (
             <MarkdownPreview
               blocks={blocks}
-              className="mt-1 text-sm text-gray-400 leading-relaxed line-clamp-2"
+              className={clsx(
+                "mt-1 text-sm leading-relaxed line-clamp-2",
+                "text-ink-4"
+              )}
             />
           )}
 
@@ -170,7 +189,11 @@ export function MobileKanbanCard({
               e.stopPropagation();
               navigateToNote(note.id);
             }}
-            className="mt-2 text-xs text-blue-500 active:text-blue-700 transition-colors"
+            className={clsx(
+              "mt-2 text-xs transition-colors",
+              "text-info",
+              "active:text-link"
+            )}
           >
             Ouvrir →
           </button>

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 export function ExportApercuPages({
   pages,
   recompilation,
@@ -8,20 +9,33 @@ export function ExportApercuPages({
   erreur: string | null;
 }) {
   return (
-    <div className="flex-1 bg-gray-50 rounded-r-xl flex items-center justify-center overflow-hidden relative">
+    <div
+      className={clsx(
+        "flex-1 rounded-r-xl flex items-center justify-center overflow-hidden relative",
+        "bg-surface-2"
+      )}
+    >
       {erreur ? (
         <div className="p-6 max-w-sm text-center">
-          <p className="text-xs font-medium text-red-600 mb-1">
+          <p className={clsx("text-xs font-medium mb-1", "text-danger-strong")}>
             Erreur de compilation
           </p>
-          <p className="text-xs text-red-500 font-mono whitespace-pre-wrap break-all">
+          <p
+            className={clsx(
+              "text-xs font-mono whitespace-pre-wrap break-all",
+              "text-danger"
+            )}
+          >
             {erreur}
           </p>
         </div>
       ) : pages.length > 0 ? (
         <div className="relative w-full h-full overflow-y-auto">
           <div
-            className={`flex flex-col items-center gap-4 p-4 transition-opacity duration-150 ${recompilation ? "opacity-40" : "opacity-100"}`}
+            className={clsx(
+              "flex flex-col items-center gap-4 p-4 transition-opacity duration-150",
+              recompilation ? "opacity-40" : "opacity-100"
+            )}
           >
             {pages.map((svgBase64, i) =>
               svgBase64 ? (
@@ -30,14 +44,14 @@ export function ExportApercuPages({
                   key={i}
                   src={`data:image/svg+xml;base64,${svgBase64}`}
                   alt={`Page ${i + 1}`}
-                  className="w-full shadow-sm bg-white"
+                  className="w-full shadow-sm bg-surface"
                   style={{ display: "block" }}
                 />
               ) : (
                 <div
                   // biome-ignore lint/suspicious/noArrayIndexKey: pages ordonnées, pas de réordonnancement
                   key={i}
-                  className="w-full bg-white shadow-sm"
+                  className="w-full bg-surface shadow-sm"
                   style={{ aspectRatio: "1 / 1.414" }}
                 />
               )
@@ -45,14 +59,19 @@ export function ExportApercuPages({
           </div>
           {recompilation && (
             <div className="absolute inset-0 flex items-end justify-center pb-4 pointer-events-none">
-              <span className="text-xs text-gray-500 bg-white/90 px-3 py-1 rounded-full shadow-sm">
+              <span
+                className={clsx(
+                  "text-xs px-3 py-1 rounded-full shadow-sm",
+                  "text-ink-3 bg-surface/90"
+                )}
+              >
                 Recompilation…
               </span>
             </div>
           )}
         </div>
       ) : (
-        <p className="text-xs text-gray-400">Compilation en cours…</p>
+        <p className="text-xs text-ink-4">Compilation en cours…</p>
       )}
     </div>
   );

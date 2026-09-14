@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { IconChevronDown } from "../../../shared/components/PlatformIcon";
 
 export function PillGroup<T extends string>({
@@ -15,18 +16,19 @@ export function PillGroup<T extends string>({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs text-gray-500">{label}</span>
-      <div className="flex gap-1 bg-gray-100 rounded-full p-0.5">
+      <span className="text-xs text-ink-3">{label}</span>
+      <div className={clsx("flex gap-1 rounded-full p-0.5", "bg-surface-3")}>
         {options.map((opt, i) => (
           <button
             key={opt}
             type="button"
             onClick={() => onChange(opt)}
-            className={`flex-1 text-xs py-0.5 rounded-full transition-all cursor-pointer ${
+            className={clsx(
+              "flex-1 text-xs py-0.5 rounded-full transition-all cursor-pointer",
               value === opt
-                ? "bg-white shadow-sm text-gray-900 font-medium"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+                ? "bg-surface shadow-sm text-ink font-medium"
+                : "text-ink-3 hover:text-ink-2"
+            )}
           >
             {labels ? labels[i] : opt}
           </button>
@@ -51,20 +53,31 @@ export function Toggle({
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className={`flex items-center gap-2 cursor-pointer group ${indent ? "pl-4" : ""}`}
+      className={clsx(
+        "flex items-center gap-2 cursor-pointer group",
+        indent ? "pl-4" : ""
+      )}
     >
       <div
-        className={`w-8 h-4 rounded-full transition-colors shrink-0 ${
-          value ? "bg-blue-500" : "bg-gray-200"
-        }`}
+        className={clsx(
+          "w-8 h-4 rounded-full transition-colors shrink-0",
+          value ? "bg-info" : "bg-surface-4"
+        )}
       >
         <div
-          className={`w-3.5 h-3.5 bg-white rounded-full shadow transition-transform mt-0.25 ${
+          className={clsx(
+            "w-3.5 h-3.5 bg-surface rounded-full shadow transition-transform mt-0.25",
             value ? "translate-x-4" : "translate-x-0.5"
-          }`}
+          )}
         />
       </div>
-      <span className="text-xs text-gray-700 group-hover:text-gray-900 text-left">
+      <span
+        className={clsx(
+          "text-xs text-left",
+          "text-ink-2",
+          "group-hover:text-ink"
+        )}
+      >
         {label}
       </span>
     </button>
@@ -89,8 +102,8 @@ export function Slider({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex justify-between items-center">
-        <span className="text-xs text-gray-500">{label}</span>
-        <span className="text-xs font-medium text-gray-700">
+        <span className="text-xs text-ink-3">{label}</span>
+        <span className="text-xs font-medium text-ink-2">
           {valueLabel ?? value}
         </span>
       </div>
@@ -101,7 +114,7 @@ export function Slider({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full cursor-pointer"
-        style={{ accentColor: "#1a1918" }}
+        style={{ accentColor: "var(--color-ink)" }}
       />
     </div>
   );
@@ -123,10 +136,17 @@ export function Section({
       <button
         type="button"
         onClick={onToggle}
-        className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 cursor-pointer transition-colors"
+        className={clsx(
+          "flex items-center gap-1.5 text-xs font-medium cursor-pointer transition-colors",
+          "text-ink-2",
+          "hover:text-ink"
+        )}
       >
         <IconChevronDown
-          className={`size-2 transition-transform duration-150 ${open ? "" : "-rotate-90"}`}
+          className={clsx(
+            "size-2 transition-transform duration-150",
+            open ? "" : "-rotate-90"
+          )}
         />
         {title}
       </button>

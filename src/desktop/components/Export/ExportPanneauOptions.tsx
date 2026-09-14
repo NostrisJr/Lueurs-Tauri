@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   activeNoteFolderAtom,
@@ -30,8 +31,13 @@ export function ExportPanneauOptions({
   const setOpen = useSetAtom(exportDialogOpenAtom);
 
   return (
-    <div className="w-72 shrink-0 border-r border-gray-100 p-5 flex flex-col gap-3 overflow-y-auto">
-      <h2 className="text-sm font-semibold text-gray-900">Exporter</h2>
+    <div
+      className={clsx(
+        "w-72 shrink-0 border-r p-5 flex flex-col gap-3 overflow-y-auto",
+        "border-line"
+      )}
+    >
+      <h2 className="text-sm font-semibold text-ink">Exporter</h2>
 
       <PillGroup
         label="Mode"
@@ -46,9 +52,12 @@ export function ExportPanneauOptions({
 
       {exportMode === "dossier" && (
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-gray-500">Dossier racine</span>
+          <span className="text-xs text-ink-3">Dossier racine</span>
           <select
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-900"
+            className={clsx(
+              "text-xs border rounded-lg px-2 py-1.5",
+              "border-line-2 bg-surface text-ink"
+            )}
             value={exportFolderId ?? activeNoteFolder?.id ?? ""}
             onChange={(e) => setExportFolderId(e.target.value || null)}
           >
@@ -66,12 +75,21 @@ export function ExportPanneauOptions({
       <SectionParagraphes />
       <SectionTitresSommaire />
 
-      <div className="mt-auto flex flex-col gap-2 pt-2 border-t border-gray-100">
+      <div
+        className={clsx(
+          "mt-auto flex flex-col gap-2 pt-2 border-t",
+          "border-line"
+        )}
+      >
         <button
           type="button"
           onClick={compilerApercu}
           disabled={recompilation}
-          className="py-1.5 px-3 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700 transition-colors cursor-pointer disabled:opacity-50"
+          className={clsx(
+            "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50",
+            "bg-inverse text-on-inverse",
+            "hover:bg-inverse-2"
+          )}
         >
           {recompilation ? "Compilation…" : "Recompiler"}
         </button>
@@ -79,21 +97,33 @@ export function ExportPanneauOptions({
           type="button"
           onClick={exporterPDF}
           disabled={recompilation}
-          className="py-1.5 px-3 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50"
+          className={clsx(
+            "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50",
+            "bg-info text-on-inverse",
+            "hover:bg-link"
+          )}
         >
           Exporter PDF
         </button>
         <button
           type="button"
           onClick={exporterTypst}
-          className="py-1.5 px-3 rounded-lg bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+          className={clsx(
+            "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+            "bg-surface-3 text-ink-2",
+            "hover:bg-surface-4"
+          )}
         >
           Exporter source .typ
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="py-1.5 px-3 rounded-lg text-gray-500 text-xs hover:bg-gray-50 transition-colors cursor-pointer"
+          className={clsx(
+            "py-1.5 px-3 rounded-lg text-xs transition-colors cursor-pointer",
+            "text-ink-3",
+            "hover:bg-surface-2"
+          )}
         >
           Fermer
         </button>

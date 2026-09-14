@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -51,7 +52,7 @@ function SideBar() {
     // Les custom properties CSS ici propagent aux enfants grâce à @property inherits:true.
     // sidebar-gradient-border et sidebar-infuse-overlay lisent ces variables et les animent.
     <div
-      className="relative z-30 flex py-2 pl-2 h-full bg-white"
+      className={clsx("relative z-30 flex py-2 pl-2 h-full", "bg-surface")}
       style={
         {
           "--sidebar-accent": accentColor ?? "white",
@@ -69,7 +70,11 @@ function SideBar() {
           onClick={() => setCollapsed(!collapsed)}
           aria-label={collapsed ? "Afficher la sidebar" : "Réduire la sidebar"}
           title={collapsed ? "Afficher" : "Réduire"}
-          className="fixed z-50 flex justify-center items-center text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full"
+          className={clsx(
+            "fixed z-50 flex justify-center items-center px-2 py-1 rounded-full",
+            "text-ink-4",
+            "hover:text-ink-3 hover:bg-surface-4/50"
+          )}
           style={{
             top: 16,
             left: collapsed ? 88 : width - 20,
@@ -98,7 +103,10 @@ function SideBar() {
       {/* Aside restauré à sa structure originale (box-content, même positionnement).
           Le bouton toggle et les coordonnées sont inchangés. */}
       <aside
-        className="relative shrink-0 flex flex-col rounded-[1.2rem] box-content bg-slate-50 overflow-hidden shadow-2xl"
+        className={clsx(
+          "relative shrink-0 flex flex-col rounded-[1.2rem] box-content overflow-hidden shadow-2xl",
+          "bg-surface-2"
+        )}
         style={{
           width: collapsed ? 0 : width,
           padding: collapsed ? 0 : 8,

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 // Dialogue affiché avant un partage (.lueurs) quand le bundle référence
 // des notes hors de sa sélection (wikilinks, ref() de formules) — voir
 // shareResolutionAtom / bundleShare.ts. Partagé desktop + mobile (overlay
@@ -48,20 +49,26 @@ export function ShareResolutionDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/30 p-4"
+      className={clsx(
+        "fixed inset-0 z-9999 flex items-center justify-center p-4",
+        "bg-overlay"
+      )}
       onClick={() => close(null)}
       onKeyDown={(e) => e.key === "Escape" && close(null)}
     >
       <div
-        className="bg-white rounded-xl shadow-xl w-full max-w-md p-5 space-y-4"
+        className={clsx(
+          "rounded-xl shadow-xl w-full max-w-md p-5 space-y-4",
+          "bg-surface"
+        )}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">
+          <h2 className="text-sm font-semibold text-ink">
             Références hors du partage
           </h2>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-ink-3 mt-1">
             {[
               wikilinkCount > 0 &&
                 `${wikilinkCount} lien${wikilinkCount > 1 ? "s" : ""} vers une autre note`,
@@ -79,18 +86,21 @@ export function ShareResolutionDialog() {
           {MODES.map((m) => (
             <label
               key={m.value}
-              className="flex items-start gap-2.5 p-2.5 rounded-lg border border-gray-200 has-checked:border-gray-900 has-checked:bg-gray-50 cursor-pointer"
+              className={clsx(
+                "flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer",
+                "border-line-2 has-checked:border-ink has-checked:bg-surface-2"
+              )}
             >
               <input
                 type="radio"
                 name="share-resolution-mode"
-                className="mt-0.5 accent-gray-900"
+                className="mt-0.5 accent-ink"
                 checked={mode === m.value}
                 onChange={() => setMode(m.value)}
               />
               <span>
-                <span className="block text-sm text-gray-900">{m.label}</span>
-                <span className="block text-xs text-gray-400">
+                <span className="block text-sm text-ink">{m.label}</span>
+                <span className="block text-xs text-ink-4">
                   {m.description}
                 </span>
               </span>
@@ -102,11 +112,11 @@ export function ShareResolutionDialog() {
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
-              className="accent-gray-900"
+              className="accent-ink"
               checked={includeChildren}
               onChange={(e) => setIncludeChildren(e.target.checked)}
             />
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-ink-2">
               Inclure les enfants de cette base
             </span>
           </label>
@@ -116,14 +126,20 @@ export function ShareResolutionDialog() {
           <button
             type="button"
             onClick={() => close(null)}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+            className={clsx(
+              "px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer",
+              "bg-surface-3 text-ink-2 hover:bg-surface-4"
+            )}
           >
             Annuler
           </button>
           <button
             type="button"
             onClick={() => close({ mode, includeChildren })}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-700 transition-colors cursor-pointer"
+            className={clsx(
+              "px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer",
+              "bg-inverse text-on-inverse hover:bg-inverse-2"
+            )}
           >
             Partager
           </button>

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useRef, useState } from "react";
 import type { TableColumn } from "../../../../shared/hooks/useTable";
 
@@ -32,12 +33,20 @@ export function TableHeader({
     // fond entre le NoteHeader et le header du tableau, à travers lequel les
     // lignes défilantes restent visibles. Ici le blanc opaque du conteneur
     // couvre cet espace tout en gardant l'accroche sticky au ras du NoteHeader.
-    <div className="sticky top-12 z-10 bg-white pt-2">
-      <div className="flex items-center border-b border-gray-200 bg-gray-100 select-none rounded-t-lg">
+    <div className={clsx("sticky top-12 z-10 pt-2", "bg-surface")}>
+      <div
+        className={clsx(
+          "flex items-center border-b select-none rounded-t-lg",
+          "border-line-2 bg-surface-3"
+        )}
+      >
         {/* Colonne titre — non renommable */}
         <div
           style={{ width: titleColWidth }}
-          className="relative border-r border-gray-200 last:border-none px-3 py-2 text-xs font-semibold text-gray-500 font-body truncate"
+          className={clsx(
+            "relative border-r last:border-none px-3 py-2 text-xs font-semibold font-body truncate",
+            "border-line-2 text-ink-3"
+          )}
         >
           Titre
         </div>
@@ -49,10 +58,17 @@ export function TableHeader({
               anchorRefs.current[col.key] = el;
             }}
             style={{ width: col.width }}
-            className="relative border-r border-gray-200 last:border-none px-3 py-2 text-xs font-semibold font-body overflow-hidden"
+            className={clsx(
+              "relative border-r last:border-none px-3 py-2 text-xs font-semibold font-body overflow-hidden",
+              "border-line-2"
+            )}
           >
             <span
-              className="text-gray-500 cursor-pointer hover:text-gray-400 transition-colors truncate block"
+              className={clsx(
+                "cursor-pointer transition-colors truncate block",
+                "text-ink-3",
+                "hover:text-ink-4"
+              )}
               onDoubleClick={() => setEditingKey(col.key)}
               title="Double-cliquer pour renommer"
             >
@@ -61,7 +77,10 @@ export function TableHeader({
 
             {/* Poignée de resize */}
             <div
-              className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-amber-300 transition-colors"
+              className={clsx(
+                "absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors",
+                "hover:bg-accent-2"
+              )}
               onPointerDown={(e) => onResizeStart(col.key, e)}
             />
 

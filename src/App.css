@@ -1,6 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap");
 
 @import "tailwindcss";
+@import "./theme.css";
+@import "./theme-prose.css";
 @import "./shared/lib/MilkdownStyle/DefaultStyle.css";
 @import "./shared/lib/MilkdownStyle/BookStyle.css";
 
@@ -20,20 +22,13 @@
   font-display: swap;
 }
 
-@theme {
-  --font-title: 'EB Garamond', Garamond, Georgia, serif;
-  --font-default: 'Inter', Arial, Helvetica, sans-serif;
-  --font-header: 'Libre Baskerville', Georgia, serif;
-  --font-code: Fira Code, Menlo, Monaco, 'Courier New', Courier, monospace;
-}
-
 :root {
   overscroll-behavior: none;
 }
 
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-gray-300) transparent;
+  scrollbar-color: var(--color-line-3) transparent;
   z-index: 50;
 }
 
@@ -69,12 +64,19 @@ html {
   inherits: true;
 }
 
+/* initial-value d'une @property n'accepte qu'un littéral. On repose donc la
+   valeur par défaut ici, où var() est permis — l'accent réel est posé en style
+   inline par SideBar, ce repli ne sert qu'avant le premier rendu. */
+:root {
+  --sidebar-accent: var(--color-surface);
+}
+
 /* Bordure en gradient : div absolu positionné 1px autour de l'aside.
    DOM order avant l'aside → peint derrière (z-index: auto, même stacking context). */
 .sidebar-gradient-border {
   position: absolute;
   pointer-events: none;
-  background: linear-gradient(135deg, var(--sidebar-accent), white);
+  background: linear-gradient(135deg, var(--sidebar-accent), var(--sidebar-fade));
   transition: --sidebar-accent 380ms ease;
 }
 
@@ -93,14 +95,14 @@ html {
 
   /* Bezel shiny : rim light haut + reflet bas + ombre portée */
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.85),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px var(--glass-rim),
+    inset 0 1px 0 var(--glass-top),
     /* highlight haut */
-    inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 var(--glass-bottom),
     /* reflet bas */
-    inset 1px 0 rgba(255, 255, 255, 0.2),
+    inset 1px 0 var(--glass-side),
     /* reflet gauche */
-    inset -1px 0 rgba(255, 255, 255, 0.2);
+    inset -1px 0 var(--glass-side);
   /* reflet droite */
 }
 
@@ -109,15 +111,28 @@ html {
   backdrop-filter: blur(15px) saturate(180%) brightness(1.1);
   -webkit-backdrop-filter: blur(3px) saturate(110%) brightness(1.05);
 
-  /* Bezel shiny : rim light haut + reflet bas */
-  /* Bordure squircle gérée par SVG sibling dans FloatingComponent */
+  /* Bezel shiny : rim light haut + reflet bas.
+     Ces reflets sont des `inset` : l'élément qui porte la classe DOIT avoir un
+     border-radius, pas seulement un clip-path (cf. FloatingComponent), sinon
+     ils tracent un rectangle tronqué aux coins. */
   box-shadow:
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.7),
+    inset 0 1.5px 0 var(--glass-top),
     /* highlight haut */
-    inset 0 -1.5px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1.5px 0 var(--glass-bottom),
     /* reflet bas */
-    inset 1.5px 0 rgba(255, 255, 255, 0.2),
+    inset 1.5px 0 var(--glass-side),
     /* reflet gauche */
-    inset -1.5px 0 rgba(255, 255, 255, 0.2);
+    inset -1.5px 0 var(--glass-side);
   /* reflet droite */
+}
+
+/* En sombre, le verre dépoli ne doit plus *éclaircir* ce qu'il recouvre. */
+:root[data-theme="dark"] .liquid-glass {
+  backdrop-filter: blur(20px) saturate(140%) brightness(0.85);
+  -webkit-backdrop-filter: blur(3px) saturate(110%) brightness(0.9);
+}
+
+:root[data-theme="dark"] .liquid-glass-shadow {
+  backdrop-filter: blur(15px) saturate(140%) brightness(0.85);
+  -webkit-backdrop-filter: blur(3px) saturate(110%) brightness(0.9);
 }

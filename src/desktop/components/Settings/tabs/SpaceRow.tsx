@@ -1,5 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import clsx from "clsx";
 import {
   ALL_SPACE_ID,
   type VaultSpace,
@@ -51,7 +52,11 @@ export function ToutSpaceRow({ icon, onIconChange }: ToutSpaceRowProps) {
           type="button"
           {...attributes}
           {...listeners}
-          className="shrink-0 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none px-0.5"
+          className={clsx(
+            "shrink-0 cursor-grab active:cursor-grabbing touch-none px-0.5",
+            "text-ink-5",
+            "hover:text-ink-3"
+          )}
           aria-label="Réordonner l'espace"
           title="Glisser pour réordonner"
         >
@@ -60,7 +65,12 @@ export function ToutSpaceRow({ icon, onIconChange }: ToutSpaceRowProps) {
         <EmojiPicker value={icon} onChange={onIconChange} />
         {/* Espacement équivalent au champ couleur */}
         <div className="w-[34px] shrink-0" />
-        <span className="flex-1 text-sm text-gray-400 px-2.5 py-1.5 select-none">
+        <span
+          className={clsx(
+            "flex-1 text-sm px-2.5 py-1.5 select-none",
+            "text-ink-4"
+          )}
+        >
           Tout
         </span>
         {/* Espacement équivalent au bouton × */}
@@ -114,7 +124,11 @@ export function SpaceRow({
           type="button"
           {...attributes}
           {...listeners}
-          className="shrink-0 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none px-0.5"
+          className={clsx(
+            "shrink-0 cursor-grab active:cursor-grabbing touch-none px-0.5",
+            "text-ink-5",
+            "hover:text-ink-3"
+          )}
           aria-label="Réordonner l'espace"
           title="Glisser pour réordonner"
         >
@@ -144,16 +158,23 @@ export function SpaceRow({
             aria-label="Couleur de l'espace"
           >
             <span
-              className="block w-[34px] h-[34px] rounded-md border-2 border-white shadow ring-1 ring-gray-200 group-hover:ring-gray-400 transition-all"
+              className={clsx(
+                "block w-[34px] h-[34px] rounded-md border-2 shadow ring-1 transition-all",
+                "border-surface ring-line-2",
+                "group-hover:ring-line-3"
+              )}
               style={{
                 background: space.color
                   ? `linear-gradient(135deg, ${space.color}, ${space.color}99)`
-                  : "linear-gradient(135deg, #e5e7eb, #d1d5db)",
+                  : "linear-gradient(135deg, var(--color-surface-4), var(--color-surface-5))",
               }}
             />
             <input
               type="color"
-              value={space.color ?? "#6366f1"}
+              // <input type="color"> n'accepte qu'un littéral #rrggbb, et cette
+              // valeur est une donnée choisie par l'utilisateur, pas une couleur
+              // de thème : elle ne doit pas basculer en sombre.
+              value={space.color ?? "#6366f1"} // theme-ok
               onChange={(e) => onColorChange(index, e.target.value)}
               className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
             />
@@ -164,7 +185,11 @@ export function SpaceRow({
               onClick={() => onColorChange(index, "")}
               title="Pas de couleur"
               aria-label="Supprimer la couleur"
-              className="w-5 h-5 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer text-base leading-none"
+              className={clsx(
+                "w-5 h-5 flex items-center justify-center rounded-full transition-colors cursor-pointer text-base leading-none",
+                "text-ink-5",
+                "hover:text-ink-3 hover:bg-surface-3"
+              )}
             >
               ×
             </button>
@@ -178,14 +203,22 @@ export function SpaceRow({
           onBlur={() => onNameBlur(index)}
           autoCorrect="off"
           autoCapitalize="off"
-          className="flex-1 text-sm border border-gray-200 rounded-md px-2.5 py-1.5 outline-none focus:border-gray-400"
+          className={clsx(
+            "flex-1 text-sm border rounded-md px-2.5 py-1.5 outline-none",
+            "border-line-2",
+            "focus:border-line-3"
+          )}
           placeholder="Nom de l'espace"
           aria-label="Nom de l'espace"
         />
         <button
           type="button"
           onClick={() => onDelete(index)}
-          className="text-gray-400 hover:text-red-500 transition-colors text-lg leading-none cursor-pointer px-1"
+          className={clsx(
+            "transition-colors text-lg leading-none cursor-pointer px-1",
+            "text-ink-4",
+            "hover:text-danger"
+          )}
           aria-label="Supprimer l'espace"
         >
           ×

@@ -1,48 +1,38 @@
-/** Palette de surlignage — toutes les couleurs disponibles dans l'éditeur. */
+/**
+ * Palette de surlignage — toutes les couleurs disponibles dans l'éditeur.
+ *
+ * Les valeurs affichées à l'écran vivent dans les tokens --color-highlight-*
+ * (theme.css), qui basculent avec le thème. Ici on ne garde que l'identité de
+ * chaque couleur et son RVB de référence, seulement utilisé par l'export Typst
+ * — un document imprimé reste clair, il ne doit jamais suivre le thème.
+ */
 
 export const HIGHLIGHT_COLORS = [
-  {
-    id: "yellow",
-    label: "Jaune",
-    bg: "rgba(253,224,71,0.38)",
-    solid: "#fbbf24",
-  },
-  {
-    id: "green",
-    label: "Vert",
-    bg: "rgba(134,239,172,0.38)",
-    solid: "#4ade80",
-  },
-  { id: "blue", label: "Bleu", bg: "rgba(147,197,253,0.38)", solid: "#60a5fa" },
-  { id: "red", label: "Rouge", bg: "rgba(252,165,165,0.38)", solid: "#f87171" },
-  {
-    id: "orange",
-    label: "Orange",
-    bg: "rgba(253,186,116,0.38)",
-    solid: "#fb923c",
-  },
-  {
-    id: "purple",
-    label: "Violet",
-    bg: "rgba(216,180,254,0.38)",
-    solid: "#c084fc",
-  },
-  { id: "gray", label: "Gris", bg: "rgba(209,213,219,0.38)", solid: "#9ca3af" },
+  { id: "yellow", label: "Jaune", print: [253, 224, 71] },
+  { id: "green", label: "Vert", print: [134, 239, 172] },
+  { id: "blue", label: "Bleu", print: [147, 197, 253] },
+  { id: "red", label: "Rouge", print: [252, 165, 165] },
+  { id: "orange", label: "Orange", print: [253, 186, 116] },
+  { id: "purple", label: "Violet", print: [216, 180, 254] },
+  { id: "gray", label: "Gris", print: [209, 213, 219] },
 ] as const;
 
 export type HighlightColorId = (typeof HIGHLIGHT_COLORS)[number]["id"];
 
 export const DEFAULT_HIGHLIGHT_COLOR: HighlightColorId = "yellow";
 
-export function getHighlightBg(colorId: string): string {
-  return (
-    HIGHLIGHT_COLORS.find((c) => c.id === colorId)?.bg ?? HIGHLIGHT_COLORS[0].bg
-  );
+function isKnown(colorId: string): colorId is HighlightColorId {
+  return HIGHLIGHT_COLORS.some((c) => c.id === colorId);
 }
 
+/** Fond appliqué au texte surligné. */
+export function getHighlightBg(colorId: string): string {
+  const id = isKnown(colorId) ? colorId : DEFAULT_HIGHLIGHT_COLOR;
+  return `var(--color-highlight-${id})`;
+}
+
+/** Teinte pleine de la pastille dans les sélecteurs de couleur. */
 export function getHighlightSolid(colorId: string): string {
-  return (
-    HIGHLIGHT_COLORS.find((c) => c.id === colorId)?.solid ??
-    HIGHLIGHT_COLORS[0].solid
-  );
+  const id = isKnown(colorId) ? colorId : DEFAULT_HIGHLIGHT_COLOR;
+  return `var(--color-highlight-${id}-solid)`;
 }

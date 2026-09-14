@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import type { NoteFile } from "../../../shared/hooks/useFileTree";
@@ -34,7 +35,7 @@ export function NoteSelector({
       className="max-w-130"
       zIndex={zIndex}
     >
-      <div className="px-2 py-1.5 border-b border-gray-100">
+      <div className={clsx("px-2 py-1.5 border-b", "border-line")}>
         <input
           ref={(el) => el?.focus()}
           type="text"
@@ -43,7 +44,11 @@ export function NoteSelector({
           onKeyDown={(e) => e.key === "Escape" && onClose()}
           placeholder={placeholder}
           style={isMobile ? { fontSize: 16 } : undefined}
-          className="w-full text-gray-700 outline-none placeholder:text-gray-400"
+          className={clsx(
+            "w-full outline-none",
+            "text-ink-2",
+            "placeholder:text-ink-4"
+          )}
         />
       </div>
       <div
@@ -52,7 +57,10 @@ export function NoteSelector({
       >
         {filtered.length === 0 ? (
           <p
-            className={`px-4 text-gray-400 ${isMobile ? "py-4 text-base" : "py-2 text-xs"}`}
+            className={clsx(
+              "px-4 text-ink-4",
+              isMobile ? "py-4 text-base" : "py-2 text-xs"
+            )}
           >
             Aucune note trouvée
           </p>
@@ -65,21 +73,28 @@ export function NoteSelector({
                 onSelect(note);
                 onClose();
               }}
-              className={`w-full text-left text-gray-700 active:bg-gray-50 transition-colors border-b border-gray-50 last:border-none ${
+              className={clsx(
+                "w-full text-left text-ink-2 active:bg-surface-2 transition-colors border-b border-line last:border-none",
                 isMobile
                   ? "px-4 py-3.5 text-base"
-                  : "px-3 py-1.5 text-xs hover:bg-gray-50"
-              }`}
+                  : "px-3 py-1.5 text-xs hover:bg-surface-2"
+              )}
             >
               <span className="font-medium">{note.name}</span>
               <span
-                className={`ml-2 text-gray-400 ${isMobile ? "text-sm" : "text-[10px]"}`}
+                className={clsx(
+                  "ml-2 text-ink-4",
+                  isMobile ? "text-sm" : "text-[10px]"
+                )}
               >
                 {note.id.split("/").slice(-2, -1)[0]}
               </span>
               {note.type && (
                 <span
-                  className={`ml-2 text-gray-300 font-mono ${isMobile ? "text-sm" : "text-[10px]"}`}
+                  className={clsx(
+                    "ml-2 text-ink-5 font-mono",
+                    isMobile ? "text-sm" : "text-[10px]"
+                  )}
                 >
                   {note.type.replace(/^__|__$/g, "")}
                 </span>

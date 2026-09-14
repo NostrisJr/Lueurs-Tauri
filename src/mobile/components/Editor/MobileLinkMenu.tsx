@@ -7,6 +7,7 @@
 
 import { editorViewCtx, schemaCtx } from "@milkdown/kit/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import clsx from "clsx";
 import { useAtom } from "jotai";
 import { activeEditorRef } from "../../../shared/components/NoteEditor/lib/activeEditorRef";
 import { mobileLinkMenuAtom } from "../../../shared/lib/atoms";
@@ -81,26 +82,38 @@ export function MobileLinkMenu() {
 
   return (
     <BottomSheet onClose={close} title={`« ${label} »`} heightFraction={0.4}>
-      <div className="flex flex-col divide-y divide-gray-100">
+      <div className={clsx("flex flex-col divide-y", "divide-line")}>
         <button
           type="button"
           onClick={openLink}
           disabled={!canOpen}
-          className="w-full px-4 py-4 text-left text-base text-sky-700 active:bg-sky-50 transition-colors disabled:text-gray-300 disabled:active:bg-transparent"
+          className={clsx(
+            "w-full px-4 py-4 text-left text-base transition-colors disabled:active:bg-transparent",
+            "text-link",
+            "active:bg-link/10 disabled:text-ink-5"
+          )}
         >
           Ouvrir le lien
         </button>
         <button
           type="button"
           onClick={editLink}
-          className="w-full px-4 py-4 text-left text-base text-gray-700 active:bg-gray-50 transition-colors"
+          className={clsx(
+            "w-full px-4 py-4 text-left text-base transition-colors",
+            "text-ink-2",
+            "active:bg-surface-2"
+          )}
         >
           Modifier le lien…
         </button>
         <button
           type="button"
           onClick={removeLink}
-          className="w-full px-4 py-4 text-left text-base text-red-600 active:bg-red-50 transition-colors"
+          className={clsx(
+            "w-full px-4 py-4 text-left text-base transition-colors",
+            "text-danger-strong",
+            "active:bg-danger-soft"
+          )}
         >
           Supprimer le lien
         </button>

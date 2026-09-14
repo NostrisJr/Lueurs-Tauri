@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { EnumOptionsFields } from "../../../desktop/components/Frontmatter/EnumOptionsFields";
 /**
  * PropertyModeFields — switcher Texte/Nombre/Bouton + champ correspondant.
@@ -64,9 +65,11 @@ export function PropertyModeFields({
   autoFocus,
   onFieldDone,
 }: Props) {
-  const fieldClassName = `w-full bg-transparent outline-none border-b text-gray-700 focus:border-amber-400 transition-colors font-mono ${
-    isMobile ? "text-base py-1 border-gray-200" : "text-sm border-gray-300"
-  }`;
+  const fieldClassName = clsx(
+    "w-full bg-transparent outline-none border-b transition-colors font-mono",
+    "text-ink-2 focus:border-accent-2",
+    isMobile ? "text-base py-1 border-line-2" : "text-sm border-line-3"
+  );
 
   return (
     <>
@@ -93,7 +96,10 @@ export function PropertyModeFields({
       ) : mode === "number" ? (
         <div className="flex items-center gap-1">
           <span
-            className={`text-gray-300 font-mono leading-none shrink-0 ${isMobile ? "text-base" : "text-xs"}`}
+            className={clsx(
+              "font-mono leading-none shrink-0 text-ink-5",
+              isMobile ? "text-base" : "text-xs"
+            )}
           >
             ƒ
           </span>

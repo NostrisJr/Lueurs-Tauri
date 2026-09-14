@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { EnumValueSelector } from "../../../../shared/components/FrontmatterPicker/EnumValueSelector";
 import { NumberCellSelector } from "../../../../shared/components/FrontmatterPicker/NumberCellSelector";
@@ -88,7 +89,10 @@ export function MobileTableCell({
   if (enumConstraint) {
     return (
       <div
-        className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none flex items-center"
+        className={clsx(
+          "shrink-0 px-3 py-2 border-r last:border-none flex items-center",
+          "border-line"
+        )}
         style={{ width: CELL_WIDTH }}
       >
         <EnumValueSelector
@@ -104,7 +108,10 @@ export function MobileTableCell({
   if (!isImposed && (numberFormatConstraint || isNumberFormula(value))) {
     return (
       <div
-        className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none flex items-center"
+        className={clsx(
+          "shrink-0 px-3 py-2 border-r last:border-none flex items-center",
+          "border-line"
+        )}
         style={{ width: CELL_WIDTH }}
         {...settingsLongPressCapture}
       >
@@ -137,7 +144,10 @@ export function MobileTableCell({
     const activeEnumDef = openEnumDraft?.enumDef ?? committedEnumDef;
     return (
       <div
-        className="shrink-0 px-3 py-2 border-r border-gray-100 last:border-none flex items-center relative group"
+        className={clsx(
+          "shrink-0 px-3 py-2 border-r last:border-none flex items-center relative group",
+          "border-line"
+        )}
         style={{ width: CELL_WIDTH }}
         {...settingsLongPressCapture}
       >
@@ -168,7 +178,10 @@ export function MobileTableCell({
 
   return (
     <div
-      className={`shrink-0 px-3 py-2 border-r border-gray-100 last:border-none relative ${!isImposed ? "group" : ""}`}
+      className={clsx(
+        "shrink-0 px-3 py-2 border-r border-line last:border-none relative",
+        !isImposed ? "group" : ""
+      )}
       style={{ width: CELL_WIDTH }}
       {...cellLongPress}
     >
@@ -198,23 +211,27 @@ export function MobileTableCell({
             }
           }}
           style={{ fontSize: 16 }}
-          className="w-full bg-transparent outline-none text-gray-700 text-sm"
+          className={clsx(
+            "w-full bg-transparent outline-none text-sm",
+            "text-ink-2"
+          )}
         />
       ) : (
         <span
-          className={`text-sm truncate block ${
+          className={clsx(
+            "text-sm truncate block",
             formula
-              ? "text-gray-400"
+              ? "text-ink-4"
               : isImposed
-                ? "text-gray-300"
+                ? "text-ink-5"
                 : value
-                  ? "text-gray-700"
-                  : "text-gray-300"
-          }`}
+                  ? "text-ink-2"
+                  : "text-ink-5"
+          )}
         >
           {formula ? (
             <span className="flex items-center gap-1">
-              <span className="text-gray-300 font-mono text-[10px]">ƒ</span>
+              <span className="text-ink-5 font-mono text-[10px]">ƒ</span>
               {displayValue || "—"}
             </span>
           ) : (

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconXmark } from "../../../shared/components/PlatformIcon";
@@ -38,7 +39,10 @@ export function SearchView() {
     <>
       <MobileContextMenu />
       <div
-        className="fixed inset-0 z-30 flex flex-col bg-white overscroll-none"
+        className={clsx(
+          "fixed inset-0 z-30 flex flex-col overscroll-none",
+          "bg-surface"
+        )}
         style={{
           paddingBottom:
             keyboardHeight > 0
@@ -49,11 +53,11 @@ export function SearchView() {
         {/* résultats : remplissent l'espace disponible */}
         <div className="flex-1 overflow-y-auto px-4 mt-15">
           {query.trim().length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-12">
+            <p className={clsx("text-sm text-center py-12", "text-ink-4")}>
               Tapez pour rechercher
             </p>
           ) : results.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-12">
+            <p className={clsx("text-sm text-center py-12", "text-ink-4")}>
               Aucun résultat
             </p>
           ) : (

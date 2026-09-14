@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { ColorDotPicker } from "../../../../shared/components/FrontmatterPicker/ColorDotPicker";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
@@ -64,8 +65,12 @@ export function MobileKanbanColumn({
 
   return (
     <div
+      // data-kanban-column : repère de mesure pour la navigation de bord.
+      // Snap centré : la colonne visée arrive au milieu de l'écran, pas collée
+      // au bord d'où vient le doigt.
+      data-kanban-column=""
       className="shrink-0 flex flex-col"
-      style={{ width: "85vw", scrollSnapAlign: "start" }}
+      style={{ width: "85vw", scrollSnapAlign: "center" }}
     >
       {/* Header colonne */}
       <div className="flex items-center gap-2 mb-3 px-1">
@@ -75,9 +80,10 @@ export function MobileKanbanColumn({
           <ColorDotPicker
             color={column.color}
             onColor={(c) => onSetColor(column.id, c)}
-            className={`size-5 rounded-full shrink-0 ${
+            className={clsx(
+              "size-5 rounded-full shrink-0",
               column.color ? "" : "opacity-40"
-            }`}
+            )}
           />
         )}
         {!virtual && editing ? (
@@ -88,27 +94,35 @@ export function MobileKanbanColumn({
             onBlur={commitRename}
             onKeyDown={handleKeyDown}
             style={{ fontSize: 16 }}
-            className="text-base font-semibold text-gray-700 bg-transparent border-b border-gray-400 outline-none flex-1"
+            className={clsx(
+              "text-base font-semibold bg-transparent border-b outline-none flex-1",
+              "text-ink-2 border-line-3"
+            )}
           />
         ) : (
           <button
             type="button"
             onClick={() => !virtual && setEditing(true)}
-            className={`text-base font-semibold text-left truncate flex-1 ${
+            className={clsx(
+              "text-base font-semibold text-left truncate flex-1",
               virtual
-                ? "text-gray-400 italic cursor-default"
-                : "text-gray-700 cursor-text"
-            }`}
+                ? "text-ink-4 italic cursor-default"
+                : "text-ink-2 cursor-text"
+            )}
           >
             {column.label}
           </button>
         )}
-        <span className="text-sm text-gray-400 shrink-0">{notes.length}</span>
+        <span className="text-sm text-ink-4 shrink-0">{notes.length}</span>
         {!virtual && (
           <button
             type="button"
             onClick={() => onDelete(column.id)}
-            className="shrink-0 text-gray-300 active:text-red-400 px-1"
+            className={clsx(
+              "shrink-0 px-1",
+              "text-ink-5",
+              "active:text-danger-2"
+            )}
           >
             ✕
           </button>
@@ -118,9 +132,10 @@ export function MobileKanbanColumn({
       {/* Drop zone */}
       <div
         data-dropzone-column={column.id}
-        className={`flex flex-col gap-3 min-h-24 rounded-2xl p-3 transition-colors flex-1 ${
-          isOver ? "bg-blue-50" : "bg-gray-50"
-        }`}
+        className={clsx(
+          "flex flex-col gap-3 min-h-24 rounded-2xl p-3 transition-colors flex-1",
+          isOver ? "bg-info/10" : "bg-surface-2"
+        )}
       >
         {notes.map((note) => (
           <MobileKanbanCard

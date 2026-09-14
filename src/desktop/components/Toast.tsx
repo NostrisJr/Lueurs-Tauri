@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { toastAtom } from "../../shared/lib/atoms";
@@ -25,7 +26,10 @@ function Toast() {
 
   return (
     <div
-      className={`liquid-glass-shadow rounded-xl fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md px-4 py-2.5 text-xs text-gray-600 text-center transition-opacity duration-300 ${visible ? "opacity-100" : "opacity-0"}`}
+      className={clsx(
+        "liquid-glass-shadow rounded-xl fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md px-4 py-2.5 text-xs text-ink-2 text-center transition-opacity duration-300",
+        visible ? "opacity-100" : "opacity-0"
+      )}
       role="status"
     >
       {toast}

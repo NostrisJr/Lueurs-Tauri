@@ -7,6 +7,7 @@
  * (chevron retour + burger uniquement). Cf. refonte UI mobile "headerless".
  */
 
+import clsx from "clsx";
 import { useEffect, useState } from "react";
 import type { Editor } from "../../../shared/components/NoteEditor/MarkdownEditor";
 import {
@@ -82,7 +83,11 @@ export function MobileEditorMenu({
           hapticImpact("light");
           setOpen((v) => !v);
         }}
-        className={`w-8 h-8 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
+        className={clsx(
+          "w-8 h-8 flex items-center justify-center rounded-full",
+          iconAccentClass,
+          "active:bg-tint transition-colors"
+        )}
         aria-label="Menu"
       >
         <IconEllipsis className="size-5" />
@@ -93,17 +98,17 @@ export function MobileEditorMenu({
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile de fermeture */}
           <div
             className="fixed inset-0 z-40"
-            style={{ background: "rgba(0,0,0,0.01)" }}
+            style={{ background: "rgba(0,0,0,0.01)" }} // theme-ok
             onClick={() => setOpen(false)}
           />
           <div className="absolute right-0 top-10 z-50">
             <div
               className="absolute inset-0 rounded-2xl shadow-xl"
               style={{
-                background: "rgba(255,255,255,0.92)",
+                background: "var(--glass-menu)",
                 backdropFilter: "blur(40px) saturate(180%)",
                 WebkitBackdropFilter: "blur(40px) saturate(180%)",
-                border: "1px solid rgba(0,0,0,0.06)",
+                border: "1px solid var(--color-shade-ring)",
                 transformOrigin: "top right",
                 transform: visible ? "scale(1)" : "scale(0.85)",
                 opacity: visible ? 1 : 0,
@@ -123,18 +128,26 @@ export function MobileEditorMenu({
                 type="button"
                 disabled={isReadOnly}
                 onClick={() => runAndClose(() => editorUndo(editorRef))}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 disabled:opacity-30 transition-colors"
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-3.5 text-sm disabled:opacity-30 transition-colors",
+                  "text-ink",
+                  "active:bg-tint"
+                )}
               >
-                <IconArrowUturnBackward className="size-4 text-gray-500" />
+                <IconArrowUturnBackward className="size-4 text-ink-3" />
                 Annuler
               </button>
               <button
                 type="button"
                 disabled={isReadOnly}
                 onClick={() => runAndClose(() => editorRedo(editorRef))}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 disabled:opacity-30 transition-colors"
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-3.5 text-sm disabled:opacity-30 transition-colors",
+                  "text-ink",
+                  "active:bg-tint"
+                )}
               >
-                <IconArrowUturnForward className="size-4 text-gray-500" />
+                <IconArrowUturnForward className="size-4 text-ink-3" />
                 Rétablir
               </button>
               {!isBase && (
@@ -143,9 +156,13 @@ export function MobileEditorMenu({
                   onClick={() =>
                     runAndClose(() => onDisplayModeChange(nextEntry.value))
                   }
-                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors",
+                    "text-ink",
+                    "active:bg-tint"
+                  )}
                 >
-                  <currentEntry.Icon className="size-4 text-gray-500" />
+                  <currentEntry.Icon className="size-4 text-ink-3" />
                   Affichage : {currentEntry.label}
                 </button>
               )}
@@ -153,26 +170,38 @@ export function MobileEditorMenu({
                 <button
                   type="button"
                   onClick={() => runAndClose(onRecord)}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors",
+                    "text-ink",
+                    "active:bg-tint"
+                  )}
                 >
-                  <IconRecordAudio className="size-4 text-gray-500" />
+                  <IconRecordAudio className="size-4 text-ink-3" />
                   Ajouter un enregistrement
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => runAndClose(openSearchBar)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors",
+                  "text-ink",
+                  "active:bg-tint"
+                )}
               >
-                <IconMagnifyingglass className="size-4 text-gray-500" />
+                <IconMagnifyingglass className="size-4 text-ink-3" />
                 Rechercher et remplacer
               </button>
               <button
                 type="button"
                 onClick={() => runAndClose(onOpenSettings)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors",
+                  "text-ink",
+                  "active:bg-tint"
+                )}
               >
-                <IconGearshape className="size-4 text-gray-500" />
+                <IconGearshape className="size-4 text-ink-3" />
                 Réglages
               </button>
             </div>

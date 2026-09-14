@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import {
@@ -48,24 +49,39 @@ export function SettingsModal() {
 
   return (
     <div
-      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/20"
+      className={clsx(
+        "fixed inset-0 z-9999 flex items-center justify-center",
+        "bg-overlay"
+      )}
       onClick={() => setOpen(false)}
       onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
     >
       <div
-        className="bg-white rounded-xl shadow-xl w-130 h-150 flex flex-col overflow-hidden"
+        className={clsx(
+          "rounded-xl shadow-xl w-130 h-150 flex flex-col overflow-hidden",
+          "bg-surface"
+        )}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
         {/* En-tête */}
         <div className="relative flex items-center justify-center px-6 pt-5 pb-1 shrink-0">
-          <h2 className="text-[13px] font-semibold text-gray-500 tracking-wide uppercase">
+          <h2
+            className={clsx(
+              "text-[13px] font-semibold tracking-wide uppercase",
+              "text-ink-3"
+            )}
+          >
             Réglages
           </h2>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-default"
+            className={clsx(
+              "absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full transition-colors cursor-default",
+              "text-ink-4",
+              "hover:text-ink-2 hover:bg-surface-3"
+            )}
             aria-label="Fermer"
           >
             <IconXmark className="size-3.5" />
@@ -82,7 +98,7 @@ export function SettingsModal() {
           />
         </div>
 
-        <div className="h-px bg-gray-100 shrink-0 mx-1" />
+        <div className={clsx("h-px shrink-0 mx-1", "bg-surface-3")} />
 
         {/* Contenu scrollable de l'onglet actif */}
         <div className="flex-1 overflow-y-auto px-6 py-5">

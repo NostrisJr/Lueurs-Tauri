@@ -1,5 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import clsx from "clsx";
 import { IconXmark } from "../../../shared/components/PlatformIcon";
 import type { MediaFile, NoteFile } from "../../../shared/hooks/useFileTree";
 
@@ -31,18 +32,22 @@ export function TabItem({
       }}
       {...attributes}
       {...listeners}
-      className={`relative flex items-center justify-center gap-2 px-4 py-1 min-w-30 rounded-full whitespace-nowrap transition-all flex-1 group 
-        ${
-          isActive
-            ? "bg-white hover:bg-stone-50 text-black min-w-50 shadow-sm shadow-gray-400/40 ring-1 ring-white ring-inset inset-shadow-sm inset-shadow-white"
-            : "bg-none text-gray-400 hover:bg-gray-200 min-w-30"
-        }`}
+      className={clsx(
+        "relative flex items-center justify-center gap-2 px-4 py-1 min-w-30 rounded-full whitespace-nowrap transition-all flex-1 group",
+        isActive
+          ? "bg-control hover:bg-surface-2 text-ink min-w-50 shadow-sm shadow-shade-2 ring-1 ring-control ring-inset inset-shadow-sm inset-shadow-control"
+          : "bg-none text-ink-4 hover:bg-surface-4 min-w-30"
+      )}
       onClick={onSelect}
     >
       <button
         type="button"
-        className={`absolute left-3 text-gray-500 invisible group-hover:visible select-none rounded-full p-1.5 flex items-center justify-center
-          ${isActive ? " hover:text-gray-700 hover:bg-gray-200/50" : "hover:text-gray-800  hover:bg-gray-300"}`}
+        className={clsx(
+          "absolute left-3 text-ink-3 invisible group-hover:visible select-none rounded-full p-1.5 flex items-center justify-center",
+          isActive
+            ? " hover:text-ink-2 hover:bg-surface-4/50"
+            : "hover:text-ink hover:bg-surface-5"
+        )}
         onClick={(e) => {
           e.stopPropagation();
           onClose();
@@ -61,7 +66,10 @@ export function TabOverlay({
 }: { note: NoteFile | MediaFile; isActive: boolean }) {
   return (
     <div
-      className={`relative flex items-center justify-center gap-2 px-4 py-1 rounded-full whitespace-nowrap shrink-0 cursor-grabbing shadow-md ${isActive ? "bg-white text-black" : "bg-gray-50 text-gray-400"}`}
+      className={clsx(
+        "relative flex items-center justify-center gap-2 px-4 py-1 rounded-full whitespace-nowrap shrink-0 cursor-grabbing shadow-md",
+        isActive ? "bg-surface text-ink" : "bg-surface-2 text-ink-4"
+      )}
     >
       <span className="truncate select-none px-5">{note.name}</span>
     </div>

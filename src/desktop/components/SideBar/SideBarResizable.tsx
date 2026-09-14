@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -159,7 +160,11 @@ export function SideBarResizable() {
               onClick={reload}
               aria-label="Recharger"
               title="Recharger"
-              className="w-auto h-6 flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-colors cursor-pointer"
+              className={clsx(
+                "w-auto h-6 flex items-center justify-center px-2 py-1 rounded-full transition-colors cursor-pointer",
+                "text-ink-4",
+                "hover:text-ink-3 hover:bg-surface-4/50"
+              )}
             >
               <IconArrowClockwise
                 className="size-4 select-none"
@@ -171,13 +176,17 @@ export function SideBarResizable() {
               onClick={pickFolder}
               aria-label="Changer de dossier"
               title="Changer de dossier"
-              className="w-auto h-6 flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 rounded-full transition-colors cursor-pointer"
+              className={clsx(
+                "w-auto h-6 flex items-center justify-center px-2 py-1 rounded-full transition-colors cursor-pointer",
+                "text-ink-4",
+                "hover:text-ink-3 hover:bg-surface-4/50"
+              )}
             >
               <IconFolder className="size-4 select-none" aria-hidden="true" />
             </button>
 
             <p
-              className="text-xs text-gray-400 truncate"
+              className="text-xs text-ink-4 truncate"
               title={folderPath ?? "Aucun dossier sélectionné"}
             >
               {folderPath?.split("/").pop()}
@@ -190,7 +199,11 @@ export function SideBarResizable() {
               onClick={handleCreateNote}
               aria-label="Nouvelle note à la racine"
               title="Nouvelle note"
-              className="w-auto h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 transition-colors cursor-pointer"
+              className={clsx(
+                "w-auto h-6 flex items-center justify-center rounded-full px-2 py-1 transition-colors cursor-pointer",
+                "text-ink-4",
+                "hover:text-ink-3 hover:bg-surface-4/50"
+              )}
             >
               <IconDocumentBadgePlus
                 className="size-4 select-none"
@@ -202,7 +215,11 @@ export function SideBarResizable() {
               onClick={handleCreateFolder}
               aria-label="Nouveau dossier à la racine"
               title="Nouveau dossier"
-              className="w-auto h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-200/50 px-2 py-1 transition-colors cursor-pointer"
+              className={clsx(
+                "w-auto h-6 flex items-center justify-center rounded-full px-2 py-1 transition-colors cursor-pointer",
+                "text-ink-4",
+                "hover:text-ink-3 hover:bg-surface-4/50"
+              )}
             >
               <IconFolderBadgePlus
                 className="size-4 select-none"
@@ -214,21 +231,34 @@ export function SideBarResizable() {
 
         {/* Recherche */}
         <div className="px-3 py-2">
-          <div className="flex items-center gap-2 h-8 liquid-glass bg-white/40 rounded-full px-2.5 py-1.5 text-gray-700 transition-colors">
+          <div
+            className={clsx(
+              "flex items-center gap-2 h-8 liquid-glass rounded-full px-2.5 py-1.5 transition-colors",
+              "bg-surface/40 text-ink-2"
+            )}
+          >
             <IconMagnifyingglass className="size-4" aria-hidden="true" />
             <input
               type="text"
               placeholder="Rechercher..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full outline-none text-gray-900 placeholder:text-gray-700 "
+              className={clsx(
+                "w-full outline-none",
+                "text-ink",
+                "placeholder:text-ink-2"
+              )}
             />
             {/* TODO : remplacer par une icône */}
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="text-gray-700 hover:text-gray-900 text-lg cursor-pointer"
+                className={clsx(
+                  "text-lg cursor-pointer",
+                  "text-ink-2",
+                  "hover:text-ink"
+                )}
               >
                 ✕
               </button>
@@ -248,18 +278,22 @@ export function SideBarResizable() {
         }}
       >
         {loading && !hasData && (
-          <p className="px-4 py-4 text-xs text-center text-gray-400">
+          <p className={clsx("px-4 py-4 text-xs text-center", "text-ink-4")}>
             Chargement...
           </p>
         )}
         {error && (
-          <p className="px-4 py-4 text-xs text-center text-red-400">{error}</p>
+          <p className={clsx("px-4 py-4 text-xs text-center", "text-danger-2")}>
+            {error}
+          </p>
         )}
 
         {(!loading || hasData) && !error && isSearching && (
           <div className="px-2 py-2 space-y-0.5">
             {searchResults.length === 0 ? (
-              <p className="px-2 py-4 text-xs text-center text-gray-400">
+              <p
+                className={clsx("px-2 py-4 text-xs text-center", "text-ink-4")}
+              >
                 Aucun résultat
               </p>
             ) : (
@@ -269,10 +303,13 @@ export function SideBarResizable() {
                   key={note.id}
                   onClick={(e) => handleSelectNote(note, e.metaKey)}
                   onKeyDown={(e) => e.key === "Enter" && handleSelectNote(note)}
-                  className={`select-none flex flex-col gap-0.5 px-2 py-2 cursor-pointer transition-colors ${activeNote?.id === note.id ? ROW_ACTIVE : ROW_INACTIVE}`}
+                  className={clsx(
+                    "select-none flex flex-col gap-0.5 px-2 py-2 cursor-pointer transition-colors",
+                    activeNote?.id === note.id ? ROW_ACTIVE : ROW_INACTIVE
+                  )}
                 >
                   <p className="text-xs font-medium truncate">{note.name}</p>
-                  <p className="text-xs text-gray-400 truncate">
+                  <p className="text-xs text-ink-4 truncate">
                     {note.id
                       .replace(`${folderPath}/`, "")
                       .replace(`/${note.name}.md`, "") || "racine"}

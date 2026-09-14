@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useRef } from "react";
 import type { NoteFile } from "../../hooks/useFileTree";
 import type { NumberDef } from "../../lib/FrontmatterPicker/numberProperty";
@@ -74,8 +75,12 @@ export function PropertyCellSettingsPopup({
           onClick={() => (settings.open ? close() : settings.openPopup())}
           onMouseDown={(e) => e.preventDefault()}
           title="Réglages de la propriété"
-          className={`absolute top-0.5 right-0.5 p-0 bg-transparent border-0 cursor-pointer size-3 transition-colors
-            ${settings.open ? "text-gray-500" : "text-transparent group-hover:text-gray-300 hover:text-gray-500"}`}
+          className={clsx(
+            "absolute top-0.5 right-0.5 p-0 bg-transparent border-0 cursor-pointer size-3 transition-colors",
+            settings.open
+              ? "text-ink-3"
+              : "text-transparent group-hover:text-ink-5 hover:text-ink-3"
+          )}
         >
           <IconGearshape className="size-full" />
         </button>

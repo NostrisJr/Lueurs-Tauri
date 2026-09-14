@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const FADE_MS = 300;
@@ -40,20 +41,33 @@ export function MobileSplashScreen({ visible }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white"
+      className={clsx(
+        "fixed inset-0 z-50 flex flex-col items-center justify-center",
+        "bg-surface"
+      )}
       style={{
         opacity: phase === "fade-out" ? 0 : 1,
         transition: phase === "fade-out" ? `opacity ${FADE_MS}ms ease` : "none",
         pointerEvents: phase === "fade-out" ? "none" : "auto",
       }}
     >
-      <div className="h-full flex items-center justify-center bg-white pt-8">
-        <p className="font-title text-4xl text-gray-900 font-semibold tracking-wide">
+      <div
+        className={clsx(
+          "h-full flex items-center justify-center pt-8",
+          "bg-surface"
+        )}
+      >
+        <p
+          className={clsx(
+            "font-title text-4xl font-semibold tracking-wide",
+            "text-ink"
+          )}
+        >
           Lueurs
         </p>
       </div>
       <div className="mb-6">
-        <p className="font-body text-md text-gray-400 ">par Théophile Donato</p>
+        <p className="font-body text-md text-ink-4 ">par Théophile Donato</p>
       </div>
     </div>
   );

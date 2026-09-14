@@ -13,6 +13,7 @@
  * barre flottante (retour, menu…) matérialisent une pill au scroll.
  */
 
+import clsx from "clsx";
 import { forwardRef } from "react";
 
 // Repris de MobileNoteTitle (mêmes valeurs) pour une cohérence visuelle du
@@ -41,7 +42,11 @@ export const FloatingCollapsibleTitle = forwardRef<HTMLSpanElement, Props>(
         <span
           ref={ref}
           {...rest}
-          className={`block max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-gray-900 tracking-tight${className ? ` ${className}` : ""}`}
+          className={clsx(
+            "block max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-semibold tracking-tight",
+            "text-ink",
+            className
+          )}
           style={{
             ...style,
             fontSize: lerp(TITLE_FONT_SIZE, PILL_FONT_SIZE, t),

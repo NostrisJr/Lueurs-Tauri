@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useRef, useState } from "react";
 import { EnumValueSelector } from "../../../shared/components/FrontmatterPicker/EnumValueSelector";
@@ -121,9 +122,9 @@ export function FrontmatterValue({
             onTextChange(checked ? "" : "true");
             onTextBlur();
           }}
-          className="rounded accent-gray-800 cursor-pointer"
+          className="rounded accent-ink cursor-pointer"
         />
-        <span className="text-gray-500 text-xs">
+        <span className="text-ink-3 text-xs">
           {checked ? "Verrouillée" : "Déverrouillée"}
         </span>
       </label>
@@ -188,7 +189,12 @@ export function FrontmatterValue({
     const path = value as string;
     if (!path) {
       return (
-        <span className="flex-1 mt-0.5 text-gray-300 italic text-xs select-none">
+        <span
+          className={clsx(
+            "flex-1 mt-0.5 italic text-xs select-none",
+            "text-ink-5"
+          )}
+        >
           aucun dossier
         </span>
       );
@@ -224,7 +230,10 @@ export function FrontmatterValue({
     const spaceNames = new Set((vaultConfig?.spaces ?? []).map((s) => s.name));
     return (
       <div
-        className={`flex flex-wrap gap-1 flex-1 mt-0.5 ${scrollable ? "max-h-18 overflow-y-auto" : ""}`}
+        className={clsx(
+          "flex flex-wrap gap-1 flex-1 mt-0.5",
+          scrollable ? "max-h-18 overflow-y-auto" : ""
+        )}
       >
         {paths.map((path) =>
           isSpaceField ? (
@@ -248,7 +257,7 @@ export function FrontmatterValue({
           )
         )}
         {paths.length === 0 && (
-          <span className="text-gray-300 italic text-xs mt-0.5">
+          <span className={clsx("italic text-xs mt-0.5", "text-ink-5")}>
             {isSpaceField ? "aucun espace" : "aucune note"}
           </span>
         )}
@@ -267,7 +276,7 @@ export function FrontmatterValue({
   // commit live de useValueEditor.
   if (!isMobile && editor.visible && !isValueLocked) {
     const inputClassName =
-      "w-full mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-400 transition-colors";
+      "w-full mt-0.5 bg-transparent outline-none border-b border-line-3 text-ink-2 focus:border-line-3 transition-colors";
 
     const { draft } = editor;
     if (draft.type === "text") {
@@ -283,7 +292,7 @@ export function FrontmatterValue({
           spellCheck={false}
           placeholder="valeur"
           style={isMobile ? { fontSize: 14 } : undefined}
-          className={`flex-1 ${inputClassName}`}
+          className={clsx("flex-1", inputClassName)}
         />
       );
     }
@@ -325,9 +334,10 @@ export function FrontmatterValue({
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
       <span
-        className={`flex items-baseline gap-1 flex-1 mt-0.5 text-xs select-none ${
+        className={clsx(
+          "flex items-baseline gap-1 flex-1 mt-0.5 text-xs select-none",
           isValueLocked ? "cursor-default" : "cursor-pointer"
-        }`}
+        )}
         title={
           isValueLocked
             ? toDisplay(strValue)
@@ -335,10 +345,12 @@ export function FrontmatterValue({
         }
         onClick={() => !isValueLocked && editor.open()}
       >
-        <span className="text-gray-300 font-mono text-[10px] leading-none">
+        <span
+          className={clsx("font-mono text-[10px] leading-none", "text-ink-5")}
+        >
           ƒ
         </span>
-        <span className={isError ? "text-red-400" : "text-gray-600"}>
+        <span className={isError ? "text-danger-2" : "text-ink-2"}>
           {computed || "—"}
         </span>
       </span>
@@ -355,9 +367,11 @@ export function FrontmatterValue({
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
       <span
-        className={`flex-1 mt-0.5 truncate text-sm
-          ${isSystem ? "font-bold" : ""}
-          ${isValueLocked ? "text-gray-300" : strValue ? "text-gray-600" : "text-gray-300"}`}
+        className={clsx(
+          "flex-1 mt-0.5 truncate text-sm",
+          isSystem ? "font-bold" : "",
+          isValueLocked ? "text-ink-5" : strValue ? "text-ink-2" : "text-ink-5"
+        )}
         onClick={() => canOpenSheet && !isValueLocked && editor.open()}
       >
         {strValue || "valeur"}
@@ -404,10 +418,14 @@ export function FrontmatterValue({
         autoCapitalize="none"
         spellCheck={false}
         style={isMobile ? { fontSize: 14 } : undefined}
-        className={`w-full mt-0.5 bg-transparent outline-none border-b border-transparent
-                  ${isSystem ? "font-bold" : ""}
-                  ${isValueLocked ? "text-gray-300 select-none" : "text-gray-600 focus:border-gray-300"}
-                  transition-colors`}
+        className={clsx(
+          "w-full mt-0.5 bg-transparent outline-none border-b border-transparent",
+          isSystem ? "font-bold" : "",
+          isValueLocked
+            ? "text-ink-5 select-none"
+            : "text-ink-2 focus:border-line-3",
+          "transition-colors"
+        )}
       />
       {refSelectorOpen && allNotes && (
         <NoteSelector

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useRef } from "react";
 import type { NoteFile } from "../../hooks/useFileTree";
 import type { NumberDef } from "../../lib/FrontmatterPicker/numberProperty";
@@ -51,16 +52,24 @@ export function NumberCellSelector({
         ref={anchorRef}
         type="button"
         onClick={() => (settings.open ? close() : settings.openPopup())}
-        className={`w-full min-w-0 truncate text-left bg-transparent ${
-          formula ? "flex items-baseline gap-1" : ""
-        } text-gray-700 ${isMobile ? "text-base" : "text-xs"}`}
+        className={clsx(
+          "w-full min-w-0 truncate text-left bg-transparent",
+          "text-ink-2",
+          formula && "flex items-baseline gap-1",
+          isMobile ? "text-base" : "text-xs"
+        )}
       >
         {formula && (
-          <span className="text-gray-300 font-mono text-[10px] leading-none shrink-0">
+          <span
+            className={clsx(
+              "font-mono text-[10px] leading-none shrink-0",
+              "text-ink-5"
+            )}
+          >
             ƒ
           </span>
         )}
-        <span className={isError ? "text-red-400" : undefined}>
+        <span className={clsx(isError && "text-danger-2")}>
           {displayValue || "—"}
         </span>
       </button>

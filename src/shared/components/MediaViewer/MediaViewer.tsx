@@ -1,3 +1,4 @@
+import clsx from "clsx";
 // Visionneuse de fichiers médias (image, vidéo, PDF, audio).
 
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
@@ -69,7 +70,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
 
   const content = (
     <div className="px-10 py-6 max-w-3xl mx-auto w-full">
-      <p className="text-xs text-gray-400 mb-6 uppercase tracking-wide">
+      <p className="text-xs text-ink-4 mb-6 uppercase tracking-wide">
         {media.mediaType === "image" && "Image"}
         {media.mediaType === "audio" && "Audio"}
         {media.mediaType === "video" && "Vidéo"}
@@ -82,7 +83,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
         <img
           src={assetUrl}
           alt={media.name}
-          className="max-w-full rounded-xl shadow-sm border border-black/5"
+          className="max-w-full rounded-xl shadow-sm border border-tint"
           style={{ maxHeight: "70vh", objectFit: "contain" }}
         />
       )}
@@ -98,7 +99,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
         <video
           src={assetUrl}
           controls
-          className="w-full rounded-xl shadow-sm border border-black/5"
+          className="w-full rounded-xl shadow-sm border border-tint"
           style={{ maxHeight: "70vh" }}
         />
       )}
@@ -107,7 +108,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
         <iframe
           src={assetUrl}
           title={media.name}
-          className="w-full rounded-xl border border-black/5"
+          className="w-full rounded-xl border border-tint"
           style={{ height: "80vh" }}
         />
       )}
@@ -126,7 +127,11 @@ export function MediaViewer({ media }: { media: MediaFile }) {
           setNoteBackStack([]);
           resetNav();
         }}
-        className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
+        className={clsx(
+          "shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors",
+          "active:bg-tint",
+          iconAccentClass
+        )}
         aria-label="Retour aux notes"
         title="Retour aux notes"
       >
@@ -137,7 +142,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
     const title = (
       <div className="relative w-3/4 mx-auto flex items-center justify-center">
         <EditableText
-          className="font-semibold text-gray-900 tracking-tight"
+          className="font-semibold text-ink tracking-tight"
           value={media.name}
           onSave={handleRename}
         />
@@ -147,7 +152,7 @@ export function MediaViewer({ media }: { media: MediaFile }) {
     // Pas de morph au scroll ici (pas de long corps de note à défiler) : les
     // pills restent nues (collapseProgress fixe à 0), cf. leftPill/rightPill.
     return (
-      <div className="flex flex-col h-full w-full bg-white">
+      <div className="flex flex-col h-full w-full bg-canvas">
         <FloatingHeaderBar
           collapseProgress={0}
           leftPill={false}

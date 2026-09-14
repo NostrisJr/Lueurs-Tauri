@@ -1,17 +1,20 @@
-// Couleur highlight → classes Tailwind pour les pills ENUM (fond 300, texte 700).
+// Couleur highlight → classes des pills ENUM.
 // Classes littérales : indispensables pour que le JIT Tailwind les détecte.
+// Les teintes viennent des tokens --color-pill-* (theme.css), partagés avec les
+// pills de formule du corps de note (DefaultStyle.css) — une même valeur doit
+// se lire pareil des deux côtés.
 
 const COLOR_CLASSES: Record<string, string> = {
-  yellow: "bg-amber-300 text-amber-700",
-  green: "bg-green-300 text-green-700",
-  blue: "bg-blue-300 text-blue-700",
-  red: "bg-red-300 text-red-700",
-  orange: "bg-orange-300 text-orange-700",
-  purple: "bg-purple-300 text-purple-700",
-  gray: "bg-gray-300 text-gray-700",
+  yellow: "bg-pill-yellow text-pill-yellow-ink",
+  green: "bg-pill-green text-pill-green-ink",
+  blue: "bg-pill-blue text-pill-blue-ink",
+  red: "bg-pill-red text-pill-red-ink",
+  orange: "bg-pill-orange text-pill-orange-ink",
+  purple: "bg-pill-purple text-pill-purple-ink",
+  gray: "bg-pill-gray text-pill-gray-ink",
 };
 
-export const NEUTRAL_PILL = "bg-gray-300 text-gray-700";
+export const NEUTRAL_PILL = "bg-pill-gray text-pill-gray-ink";
 
 export function pillClasses(color: string | undefined): string {
   return (color && COLOR_CLASSES[color]) || NEUTRAL_PILL;

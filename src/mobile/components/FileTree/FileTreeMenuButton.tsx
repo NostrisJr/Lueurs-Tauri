@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -116,7 +117,11 @@ export function FileTreeMenuButton() {
           hapticImpact("light");
           setShowMenu((v) => !v);
         }}
-        className={`w-8 h-8 flex items-center justify-center rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
+        className={clsx(
+          "w-8 h-8 flex items-center justify-center rounded-full",
+          iconAccentClass,
+          "active:bg-tint transition-colors"
+        )}
         aria-label="Menu"
       >
         <IconEllipsis className="size-5" />
@@ -129,7 +134,7 @@ export function FileTreeMenuButton() {
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: overlay tactile de fermeture */}
           <div
             className="fixed inset-0 z-40"
-            style={{ background: "rgba(0,0,0,0.01)" }}
+            style={{ background: "rgba(0,0,0,0.01)" }} // theme-ok
             onClick={() => setShowMenu(false)}
           />
           <div className="absolute right-0 top-10 z-50">
@@ -140,10 +145,10 @@ export function FileTreeMenuButton() {
             <div
               className="absolute inset-0 rounded-2xl shadow-xl"
               style={{
-                background: "rgba(255,255,255,0.92)",
+                background: "var(--glass-menu)",
                 backdropFilter: "blur(40px) saturate(180%)",
                 WebkitBackdropFilter: "blur(40px) saturate(180%)",
-                border: "1px solid rgba(0,0,0,0.06)",
+                border: "1px solid var(--color-shade-ring)",
                 transformOrigin: "top right",
                 transform: menuVisible ? "scale(1)" : "scale(0.85)",
                 opacity: menuVisible ? 1 : 0,
@@ -167,9 +172,13 @@ export function FileTreeMenuButton() {
                     type="button"
                     onClick={handleUndo}
                     disabled={undoStack.length === 0}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 disabled:opacity-30 disabled:active:bg-transparent transition-colors border-b border-black/5"
+                    className={clsx(
+                      "w-full flex items-center gap-3 px-4 py-3.5 text-sm disabled:opacity-30 disabled:active:bg-transparent transition-colors border-b",
+                      "text-ink border-tint",
+                      "active:bg-tint"
+                    )}
                   >
-                    <IconArrowUturnBackward className="size-4 text-gray-500 shrink-0" />
+                    <IconArrowUturnBackward className="size-4 text-ink-3 shrink-0" />
                     <span className="truncate text-left">
                       {undoStack.length > 0
                         ? `Annuler : ${undoStack[undoStack.length - 1].label}`
@@ -180,9 +189,13 @@ export function FileTreeMenuButton() {
                     type="button"
                     onClick={handleRedo}
                     disabled={redoStack.length === 0}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 disabled:opacity-30 disabled:active:bg-transparent transition-colors border-b border-black/5"
+                    className={clsx(
+                      "w-full flex items-center gap-3 px-4 py-3.5 text-sm disabled:opacity-30 disabled:active:bg-transparent transition-colors border-b",
+                      "text-ink border-tint",
+                      "active:bg-tint"
+                    )}
                   >
-                    <IconArrowUturnForward className="size-4 text-gray-500 shrink-0" />
+                    <IconArrowUturnForward className="size-4 text-ink-3 shrink-0" />
                     <span className="truncate text-left">
                       {redoStack.length > 0
                         ? `Rétablir : ${redoStack[redoStack.length - 1].label}`
@@ -194,25 +207,37 @@ export function FileTreeMenuButton() {
               <button
                 type="button"
                 onClick={handleCreateNote}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors border-b border-black/5"
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors border-b",
+                  "text-ink border-tint",
+                  "active:bg-tint"
+                )}
               >
-                <IconDocumentBadgePlus className="size-4 text-blue-500" />
+                <IconDocumentBadgePlus className="size-4 text-info" />
                 Nouvelle note
               </button>
               <button
                 type="button"
                 onClick={handleCreateFolder}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors border-b border-black/5"
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors border-b",
+                  "text-ink border-tint",
+                  "active:bg-tint"
+                )}
               >
-                <IconFolderBadgePlus className="size-4 text-yellow-500" />
+                <IconFolderBadgePlus className="size-4 text-accent" />
                 Nouveau dossier
               </button>
               <button
                 type="button"
                 onClick={handleOpenSettings}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-gray-900 active:bg-black/5 transition-colors"
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors",
+                  "text-ink",
+                  "active:bg-tint"
+                )}
               >
-                <IconGearshape className="size-4 text-gray-500" />
+                <IconGearshape className="size-4 text-ink-3" />
                 Réglages
               </button>
             </div>

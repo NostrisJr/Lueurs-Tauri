@@ -25,6 +25,7 @@ import {
 import { NoteType } from "../../../shared/lib/noteTypes";
 import { isAndroid } from "../../../shared/lib/platform";
 import { findFolderById } from "../../../shared/lib/spaceAssignment";
+import { maskStop } from "../../../shared/lib/theme";
 import {
   ALL_SPACE_ID,
   type VaultSpace,
@@ -124,7 +125,9 @@ function NodeList({
 
   if (nodes.length === 0) {
     return (
-      <p className="text-sm text-gray-400 text-center py-12">Dossier vide</p>
+      <p className={clsx("text-sm text-center py-12", "text-ink-4")}>
+        Dossier vide
+      </p>
     );
   }
 
@@ -176,7 +179,7 @@ function NodeList({
                 className={clsx(
                   "rounded-[20px] transition-colors",
                   dragOverFolderId === node.id &&
-                    "ring-2 ring-amber-400 bg-amber-50"
+                    "ring-2 ring-accent-2 bg-accent-soft"
                 )}
               >
                 {row}
@@ -465,7 +468,7 @@ export function MobileFileTree() {
           transform: "translateX(0%)",
           transition: `transform ${DURATION}ms ${EASING}`,
           willChange: "transform",
-          boxShadow: "-6px 0 20px rgba(0,0,0,0.10)",
+          boxShadow: "-6px 0 20px var(--color-shade-2)",
         }
     : isSwipingBack
       ? {
@@ -474,7 +477,7 @@ export function MobileFileTree() {
             ? `transform ${DURATION}ms ${EASING}`
             : "none",
           boxShadow:
-            swipeProgress > 0 ? "-6px 0 20px rgba(0,0,0,0.10)" : undefined,
+            swipeProgress > 0 ? "-6px 0 20px var(--color-shade-2)" : undefined,
           willChange: "transform",
         }
       : {};
@@ -487,9 +490,9 @@ export function MobileFileTree() {
   const headerFadeZoneHeight = FLOATING_HEADER_SCROLL_OFFSET * 1.45;
   const headerFadeTopAlpha = 1 - titleCollapseProgress;
   const headerFadeMidAlpha = 1 - titleCollapseProgress * 0.96;
-  const headerFadeMask = `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeMidAlpha}) ${
+  const headerFadeMask = `linear-gradient(to bottom, ${maskStop(headerFadeTopAlpha)} 0, ${maskStop(headerFadeMidAlpha)} ${
     headerFadeZoneHeight * 0.8
-  }px, black ${headerFadeZoneHeight}px)`;
+  }px, ${maskStop(1)} ${headerFadeZoneHeight}px)`;
 
   return (
     <div className="relative flex flex-col w-full h-screen overflow-hidden select-none">
@@ -520,7 +523,10 @@ export function MobileFileTree() {
       <div className="relative flex-1 overflow-hidden">
         {showBgContent && (
           <div
-            className="absolute inset-0 overflow-y-scroll pointer-events-none bg-gray-100"
+            className={clsx(
+              "absolute inset-0 overflow-y-scroll pointer-events-none",
+              "bg-surface-3"
+            )}
             style={bgContentStyle}
           >
             <div
@@ -539,7 +545,10 @@ export function MobileFileTree() {
         <div
           ref={scrollContainerRef}
           data-mobile-scroll-container=""
-          className="absolute inset-0 flex flex-col gap-0 pb-4 bg-gray-100 overflow-y-scroll"
+          className={clsx(
+            "absolute inset-0 flex flex-col gap-0 pb-4 overflow-y-scroll",
+            "bg-surface-3"
+          )}
           style={{
             ...contentStyle,
             paddingTop:

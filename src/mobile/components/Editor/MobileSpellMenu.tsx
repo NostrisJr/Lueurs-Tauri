@@ -1,4 +1,5 @@
 import { editorViewCtx, schemaCtx } from "@milkdown/kit/core";
+import clsx from "clsx";
 import { useAtom, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import { activeEditorRef } from "../../../shared/components/NoteEditor/lib/activeEditorRef";
@@ -82,16 +83,25 @@ export function MobileSpellMenu() {
       <div className="flex flex-col">
         {popup.replacements.length > 0 ? (
           <>
-            <p className="px-4 pt-1 pb-2 text-xs text-gray-400 uppercase tracking-wide">
+            <p
+              className={clsx(
+                "px-4 pt-1 pb-2 text-xs uppercase tracking-wide",
+                "text-ink-4"
+              )}
+            >
               Suggestions
             </p>
-            <div className="flex flex-col divide-y divide-gray-100">
+            <div className={clsx("flex flex-col divide-y", "divide-line")}>
               {popup.replacements.slice(0, 5).map((rep) => (
                 <button
                   key={rep}
                   type="button"
                   onClick={() => applyReplacement(rep)}
-                  className="w-full px-4 py-4 text-left text-base text-amber-600 font-medium active:bg-amber-50 transition-colors"
+                  className={clsx(
+                    "w-full px-4 py-4 text-left text-base font-medium transition-colors",
+                    "text-accent-strong",
+                    "active:bg-accent-soft"
+                  )}
                 >
                   {rep}
                 </button>
@@ -99,23 +109,32 @@ export function MobileSpellMenu() {
             </div>
           </>
         ) : (
-          <p className="px-4 py-4 text-base text-gray-400 italic">
+          <p className={clsx("px-4 py-4 text-base italic", "text-ink-4")}>
             Aucune suggestion
           </p>
         )}
 
         {popup.message ? (
-          <p className="px-4 pt-3 pb-2 text-sm text-gray-500 leading-snug">
+          <p
+            className={clsx(
+              "px-4 pt-3 pb-2 text-sm leading-snug",
+              "text-ink-3"
+            )}
+          >
             {popup.message}
           </p>
         ) : null}
 
         {popup.category === "spelling" && (
-          <div className="border-t border-gray-100 mt-1">
+          <div className="border-t border-line mt-1">
             <button
               type="button"
               onClick={ignoreWord}
-              className="w-full px-4 py-4 text-left text-base text-gray-500 active:bg-gray-50 transition-colors"
+              className={clsx(
+                "w-full px-4 py-4 text-left text-base transition-colors",
+                "text-ink-3",
+                "active:bg-surface-2"
+              )}
             >
               Ignorer « {popup.word} »
             </button>

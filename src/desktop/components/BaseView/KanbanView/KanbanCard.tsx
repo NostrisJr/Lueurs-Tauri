@@ -1,5 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import clsx from "clsx";
 import { useCallback, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
 import { useNote } from "../../../../shared/hooks/useNote";
@@ -66,7 +67,10 @@ export function KanbanCard({ note }: Props) {
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className={`bg-white border border-gray-200 rounded-lg px-3 py-2.5 hover:border-gray-300 hover:shadow-sm transition-all select-none group ${cmdHeld ? "cursor-pointer" : ""}`}
+      className={clsx(
+        "bg-surface border border-line-2 rounded-lg px-3 py-2.5 hover:border-line-3 hover:shadow-sm transition-all select-none group",
+        cmdHeld ? "cursor-pointer" : ""
+      )}
     >
       {editing ? (
         <input
@@ -78,18 +82,29 @@ export function KanbanCard({ note }: Props) {
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
           onClick={(e) => e.stopPropagation()}
-          className="w-full text-sm bg-transparent outline-none text-gray-800 font-body"
+          className={clsx(
+            "w-full text-sm bg-transparent outline-none font-body",
+            "text-ink"
+          )}
         />
       ) : (
         <p
-          className="font-body text-sm text-gray-800 leading-snug truncate"
+          className={clsx(
+            "font-body text-sm leading-snug truncate",
+            "text-ink"
+          )}
           onDoubleClick={startEdit}
         >
           {note.name}
         </p>
       )}
       {note.title && note.title !== note.name && (
-        <p className="font-body text-xs text-gray-400 mt-1 leading-snug line-clamp-2">
+        <p
+          className={clsx(
+            "font-body text-xs mt-1 leading-snug line-clamp-2",
+            "text-ink-4"
+          )}
+        >
           {note.title}
         </p>
       )}

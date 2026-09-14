@@ -34,11 +34,11 @@ export const DEFAULT_DISTINGUISHED_TYPES: MapBlockType[] = [
 ];
 
 export const BLOCK_TYPE_COLORS: Record<MapBlockType, string> = {
-  blockquote: "var(--color-amber-400)",
-  code_block: "var(--color-red-400)",
-  poetry_block: "var(--color-lime-500)",
-  audio_block: "var(--color-blue-500)",
-  image: "var(--color-pink-500)",
+  blockquote: "var(--color-accent-2)",
+  code_block: "var(--color-danger-2)",
+  poetry_block: "var(--color-prose-poetry)",
+  audio_block: "var(--color-info)",
+  image: "var(--color-media)",
 };
 
 export const BLOCK_TYPE_LABELS: Record<MapBlockType, string> = {

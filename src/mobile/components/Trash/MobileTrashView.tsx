@@ -1,4 +1,5 @@
 import { ask } from "@tauri-apps/plugin-dialog";
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -158,26 +159,44 @@ export function MobileTrashView() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full fixed bg-gray-200">
-      <div className="flex items-center w-full justify-center px-2 py-2 border-b bg-gray-100 border-gray-200 fixed top-0 pt-14 z-30">
+    <div className={clsx("flex flex-col h-full w-full fixed", "bg-surface-4")}>
+      <div
+        className={clsx(
+          "flex items-center w-full justify-center px-2 py-2 border-b fixed top-0 pt-14 z-30",
+          "bg-surface-3 border-line-2"
+        )}
+      >
         <button
           type="button"
           onClick={handleBack}
-          className="flex-1 justify-start fixed left-1 items-center gap-1 px-2 py-1.5 rounded-lg text-gray-500 active:bg-gray-200 transition-colors z-10"
+          className={clsx(
+            "flex-1 justify-start fixed left-1 items-center gap-1 px-2 py-1.5 rounded-lg transition-colors z-10",
+            "text-ink-3",
+            "active:bg-surface-4"
+          )}
         >
           <IconChevronLeft className="size-4" />
           <span className="text-base">
             {folderStack.length > 0 ? "Retour" : "Réglages"}
           </span>
         </button>
-        <h1 className="justify-center text-2xl font-semibold text-gray-600">
+        <h1
+          className={clsx(
+            "justify-center text-2xl font-semibold",
+            "text-ink-2"
+          )}
+        >
           {currentFolder ? currentFolder.name : "Corbeille"}
         </h1>
         {folderStack.length === 0 && trashTree.length > 0 && (
           <button
             type="button"
             onClick={handleEmptyTrash}
-            className="flex-1 justify-end fixed right-2 items-center gap-1 px-2 py-1.5 rounded-lg text-red-500 active:bg-gray-200 transition-colors z-10 text-base"
+            className={clsx(
+              "flex-1 justify-end fixed right-2 items-center gap-1 px-2 py-1.5 rounded-lg transition-colors z-10 text-base",
+              "text-danger",
+              "active:bg-surface-4"
+            )}
           >
             Tout supprimer
           </button>
@@ -186,9 +205,11 @@ export function MobileTrashView() {
 
       <div className="flex-1 overflow-auto pt-28 px-4 pb-8">
         {loading ? (
-          <p className="text-sm text-gray-400 text-center py-12">Chargement…</p>
+          <p className={clsx("text-sm text-center py-12", "text-ink-4")}>
+            Chargement…
+          </p>
         ) : sortedNodes.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-12">
+          <p className={clsx("text-sm text-center py-12", "text-ink-4")}>
             {folderStack.length > 0 ? "Dossier vide" : "Corbeille vide"}
           </p>
         ) : (

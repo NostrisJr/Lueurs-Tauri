@@ -230,7 +230,7 @@ export function FormulaEditField({
         style={{ resize: "none", ...(isMobile ? { fontSize: 16 } : {}) }}
         className={
           inputClassName ??
-          "w-full mt-0.5 bg-transparent outline-none border-b border-gray-300 text-gray-600 focus:border-gray-300 transition-colors font-mono"
+          "w-full mt-0.5 bg-transparent outline-none border-b border-line-3 text-ink-2 focus:border-line-3 transition-colors font-mono"
         }
       />
 

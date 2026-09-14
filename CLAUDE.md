@@ -84,6 +84,50 @@ persistant un chemin absolu dans le markdown. Voir `imageNodeView.ts` (images),
 concerne les chemins de nœuds de l'arbre en mémoire — toujours absolus là — et les
 champs frontmatter `__Template__`/`__Base__`/`__Children__` sur disque.)
 
+### Thème clair / sombre (obligatoire sur toute nouvelle UI)
+
+Toute fonctionnalité se livre **avec ses deux thèmes**. Le sombre n'est pas une passe de
+finition ultérieure : une UI qui n'a été regardée qu'en clair n'est pas terminée.
+
+**Source unique : `src/theme.css`.** Les rôles (`--color-surface`, `--color-ink-3`,
+`--color-line-2`, `--color-accent`…) sont déclarés dans `@theme static` avec leurs valeurs
+claires, puis redéfinis sous `:root[data-theme="dark"]`. Un composant n'écrit **jamais** de
+couleur : ni hex, ni `rgba()`, ni palette Tailwind par défaut (`bg-white`, `text-gray-400`),
+ni `var(--color-gray-200)`. Il ne consomme que des rôles (`bg-surface-2`, `text-ink-3`,
+`border-line`). `src/shared/lib/themeTokens.test.ts` échoue sinon — son `BACKLOG` doit
+rester vide.
+
+- **Une couleur nouvelle → un nouveau rôle dans `theme.css`**, nommé par son usage et non
+  par sa valeur, avec ses deux variantes. Jamais un hex dans le composant « en attendant ».
+- **Le sombre n'est pas une inversion.** C'est un charbon chaud qui prolonge l'encre
+  `#1a1918`, jamais un gris bleuté. Et certains rôles changent de *logique*, pas seulement
+  de valeur :
+  - voiles : `--color-tint` est un noir translucide en clair, un **blanc** en sombre (un
+    voile noir est invisible sur fond sombre) ;
+  - `bg-inverse` vaut quasi blanc en sombre : pour une pastille sélectionnée posée sur du
+    verre, utiliser `--color-selected` / `--color-on-selected` (un cran au-dessus du fond),
+    sinon on obtient un disque éblouissant ;
+  - fondu sous une barre flottante : `--bar-fade` / `--bar-fade-2`, jamais les surfaces du
+    clair (`from-surface-5`), qui *éclaircissent* en sombre alors qu'un voile doit
+    assombrir ;
+  - verre (`--glass-*`) : en sombre le remplissage doit être **plus sombre que la page**
+    (il creuse le fond) et les reflets blancs tombent très bas, sinon la pill paraît
+    allumée ;
+  - pastilles et surlignages : même teinte, alpha abaissé ou fond sourd + encre claire —
+    reprendre les pastels du clair donne des pavés fluorescents.
+- **Pas de modificateur d'opacité Tailwind (`/90`) sur une couleur de thème** : Tailwind v4
+  compile en `color-mix(oklab)`, non supporté par certaines WebView Android. Utiliser un
+  token qui porte déjà son alpha, passé en `style` si besoin (cf. `FloatingComponent`,
+  `FileTreeBottomBar`).
+- **Côté JS** (canvas, libs tierces, masques) : `themeColor(token)` relit la valeur
+  calculée — à rappeler à chaque changement de thème ; `maskStop(alpha)` pour un
+  `mask-image`, qui n'a pas de couleur (seul l'alpha compte) et ne bascule donc pas.
+- Le variant `dark:` suit `data-theme`, pas `prefers-color-scheme` : le réglage utilisateur
+  doit pouvoir contredire le système. Le réserver à ce qu'un token ne couvre pas (ombres,
+  opacités, filtres).
+
+Pièges détaillés et valeurs retenues : `Documentation-technique.md` § Thème clair / sombre.
+
 ### Template Propagation
 
 When a template's properties change, `useTemplateSync` collects affected note paths and calls the Rust command `propagate_template_change`. Rust processes files in parallel (Tokio) and writes changes directly to disk. Frontend reloads the tree after completion.
@@ -120,6 +164,8 @@ Variable names, comments, and UI strings are in French throughout the codebase.
 ## Collaboration Guidelines
 
 - **Vérifier l'existant avant toute nouvelle fonctionnalité** — avant de proposer une approche ou d'écrire du code, chercher s'il existe déjà du code réutilisable (hooks, composants, utilitaires) qui couvre tout ou partie du besoin. Ex : demande de scroll automatique → vérifier s'il existe déjà des hooks de scroll ; demande d'une UI particulière → vérifier si un composant équivalent existe déjà. But : maximiser la réutilisation et éviter du code redondant qui entre en conflit avec l'existant.
+- **Toute mutation de fichier passe par `useFileReferences`** — renommage, déplacement ou suppression d'une note/d'un média/d'un dossier doit systématiquement ré-indexer ou désindexer les références entrantes via ce hook (`propagateRename` pour un renommage/déplacement, `confirmAndCleanupReferences` avant une suppression). Il balaie tout le vault : wikilinks et blocs image/audio du corps, champs path du frontmatter (`__Template__`, `__Base__`, `__Children__`, `__DefaultFolder__`) et `ref()` de formule. Ne jamais écrire un nettoyage à la main sur un seul champ : on laisse alors des références mortes partout ailleurs.
+- **Mode sombre systématique** — toute nouvelle UI se développe *et se vérifie* dans les deux thèmes, uniquement via les tokens de `src/theme.css` (cf. § Thème clair / sombre). Ne jamais écrire une couleur en dur en se disant qu'on la tokenisera plus tard : c'est une dette invisible tant qu'on ne bascule pas le thème.
 - **Valider avant de coder** — pour toute tâche non triviale, proposer l'approche technique et attendre validation avant d'écrire du code.
 - **Tests avant le code** — pour toute nouvelle fonctionnalité, ou toute fonctionnalité existante sur laquelle on retombe et qui n'a pas encore de tests, commencer par mettre en place ses tests avant de coder/modifier le comportement. Objectif : ne plus coder à l'aveugle sans filet de régression.
 - **Pas de patch sur patch** — quand une solution ne fonctionne pas, retirer le code ajouté avant d'essayer autre chose. Ne jamais empiler des correctifs.

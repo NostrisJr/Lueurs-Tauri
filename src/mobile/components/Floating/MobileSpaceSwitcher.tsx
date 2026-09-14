@@ -150,8 +150,8 @@ export function MobileSpaceSwitcher() {
               className={clsx(
                 "flex items-center justify-center size-9 rounded-full transition-colors",
                 isActive
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-500 active:bg-black/5"
+                  ? "bg-selected text-on-selected"
+                  : "text-ink-3 active:bg-tint"
               )}
               aria-label="Tout"
             >
@@ -175,9 +175,9 @@ export function MobileSpaceSwitcher() {
               "flex items-center justify-center size-9 rounded-full text-sm transition-colors",
               isActive
                 ? space.color
-                  ? "text-white"
-                  : "bg-gray-800 text-white"
-                : "text-gray-600 active:bg-black/5"
+                  ? "text-on-selected"
+                  : "bg-selected text-on-selected"
+                : "text-ink-2 active:bg-tint"
             )}
             style={
               isActive && space.color

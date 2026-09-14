@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import type { ReactNode } from "react";
 import { IconWaveform } from "../../../shared/components/PlatformIcon";
+import { getHighlightBg } from "../../../shared/plugins/highlight/colors";
 import type {
   BadgeKind,
   InlineSegment,
@@ -13,16 +14,6 @@ const BADGE_ICON: Record<BadgeKind, ReactNode> = {
   table: "📊",
   formula: "ƒ",
   audio: <IconWaveform className="size-3.5" aria-hidden="true" />,
-};
-
-const HIGHLIGHT_BG: Record<string, string> = {
-  yellow: "bg-yellow-200/60",
-  green: "bg-green-200/60",
-  blue: "bg-blue-200/60",
-  pink: "bg-pink-200/60",
-  red: "bg-red-200/60",
-  purple: "bg-purple-200/60",
-  orange: "bg-orange-200/60",
 };
 
 function Segment({
@@ -47,17 +38,24 @@ function Segment({
       return <span className="line-through">{segment.value}</span>;
     case "code":
       return (
-        <code className="font-mono text-[0.85em] bg-gray-100 rounded px-1">
+        <code
+          className={clsx(
+            "font-mono text-[0.85em] rounded px-1",
+            "bg-surface-3"
+          )}
+        >
           {segment.value}
         </code>
       );
     case "highlight":
       return (
+        // Le fond vient des tokens de surlignage, pas d'une table locale :
+        // l'aperçu doit montrer exactement la couleur de l'éditeur. L'ancienne
+        // table ignorait `gray` (surlignage gris rendu sans fond) et prévoyait
+        // un `pink` que la palette ne produit pas.
         <span
-          className={clsx(
-            "rounded px-0.5",
-            HIGHLIGHT_BG[segment.color] ?? "bg-gray-200/60"
-          )}
+          className="rounded px-0.5"
+          style={{ background: getHighlightBg(segment.color) }}
         >
           {segment.value}
         </span>

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom } from "jotai";
 import type { ChangeEvent } from "react";
 import { infoAuteurAtom } from "../../../../shared/lib/atoms";
@@ -18,7 +19,7 @@ function Champ({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs text-gray-500">{label}</label>
+      <label className="text-xs text-ink-3">{label}</label>
       <input
         type="text"
         value={value}
@@ -26,7 +27,11 @@ function Champ({
         onChange={(e: ChangeEvent<HTMLInputElement>) =>
           onChange(field, e.target.value)
         }
-        className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white"
+        className={clsx(
+          "px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1",
+          "border-line-2 text-ink placeholder-ink-5 bg-surface",
+          "focus:ring-line-3"
+        )}
       />
     </div>
   );
@@ -41,7 +46,7 @@ export function AuteurTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs text-gray-400 leading-relaxed">
+      <p className="text-xs text-ink-4 leading-relaxed">
         Ces informations peuvent être incluses sur la page de titre lors de
         l'export PDF (option "Bloc auteur").
       </p>
@@ -76,13 +81,17 @@ export function AuteurTab() {
       />
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-gray-500">Adresse</label>
+        <label className="text-xs text-ink-3">Adresse</label>
         <textarea
           value={auteur.adresse}
           placeholder={"12 rue des Lilas\n75011 Paris"}
           onChange={(e) => update("adresse", e.target.value)}
           rows={3}
-          className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white resize-none"
+          className={clsx(
+            "px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1 resize-none",
+            "border-line-2 text-ink placeholder-ink-5 bg-surface",
+            "focus:ring-line-3"
+          )}
         />
       </div>
     </div>

@@ -61,31 +61,7 @@ export function useNote() {
   } = useFileTree();
   const { onFrontmatterChange } = useFrontmatter();
   const { onTemplateChange } = useTemplateSync();
-  const { propagateRename, countReferences, cleanupReferences } =
-    useFileReferences();
-
-  /**
-   * Avant suppression : compte les références au chemin visé et, s'il y en a,
-   * demande confirmation (même pattern que la propagation de suppression de
-   * propriété de template, cf. FrontmatterEditor.tsx) avant de les nettoyer.
-   * Un refus laisse les références telles quelles (signalées cassées au rendu).
-   */
-  async function confirmAndCleanupReferences(
-    path: string,
-    kind: Parameters<typeof cleanupReferences>[1]
-  ) {
-    const count = await countReferences(path, kind);
-    if (count === 0) return;
-    const label =
-      count === 1
-        ? "1 référence va être cassée."
-        : `${count} références vont être cassées.`;
-    const clean = await ask(`${label} Nettoyer automatiquement ?`, {
-      title: "Suppression",
-      kind: "warning",
-    });
-    if (clean) await cleanupReferences(path, kind);
-  }
+  const { propagateRename, confirmAndCleanupReferences } = useFileReferences();
 
   // Enregistre une visite dans l'historique (dédupliqué, plus récent en dernier)
   function pushHistory(id: string) {

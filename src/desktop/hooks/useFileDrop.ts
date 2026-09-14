@@ -122,12 +122,12 @@ function createGhostEl(name: string, x: number, y: number): HTMLDivElement {
         left: ${x + 14}px;
         top: ${y - 10}px;
         padding: 3px 10px;
-        background: white;
-        border: 1px solid #d1d5db;
+        background: var(--color-surface);
+        border: 1px solid var(--color-line-3);
         border-radius: 6px;
-        box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.18);
+        box-shadow: 0 4px 12px -2px var(--color-shade-2);
         font-size: 13px;
-        color: #374151;
+        color: var(--color-ink-2);
         pointer-events: none;
         z-index: 9999;
         opacity: 0.93;

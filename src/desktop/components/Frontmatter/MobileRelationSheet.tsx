@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useRef, useState } from "react";
 import { BottomSheet } from "../../../mobile/components/BottomSheet/BottomSheet";
@@ -81,12 +82,12 @@ export function MobileRelationSheet({
                 onRemove={() => selectFolder("")}
               />
             ) : (
-              <span className="text-gray-300 italic text-sm px-1">
+              <span className={clsx("italic text-sm px-1", "text-ink-5")}>
                 aucun dossier
               </span>
             )
           ) : paths.length === 0 ? (
-            <span className="text-gray-300 italic text-sm px-1">
+            <span className={clsx("italic text-sm px-1", "text-ink-5")}>
               {isSpaceField ? "aucun espace" : "aucune note"}
             </span>
           ) : (
@@ -115,7 +116,11 @@ export function MobileRelationSheet({
           ref={anchorRef}
           type="button"
           onClick={() => setPickerOpen(true)}
-          className="w-full px-3 py-2.5 rounded-xl text-gray-600 bg-gray-100 active:bg-gray-200 font-medium transition-colors"
+          className={clsx(
+            "w-full px-3 py-2.5 rounded-xl font-medium transition-colors",
+            "text-ink-2 bg-surface-3",
+            "active:bg-surface-4"
+          )}
         >
           {isFolderField ? "Changer de dossier..." : "Ajouter..."}
         </button>
@@ -160,7 +165,11 @@ export function MobileRelationSheet({
           <button
             type="button"
             onClick={onDelete}
-            className="w-full px-3 py-2.5 rounded-xl text-red-500 bg-red-50 active:bg-red-100 font-medium transition-colors"
+            className={clsx(
+              "w-full px-3 py-2.5 rounded-xl font-medium transition-colors",
+              "text-danger bg-danger-soft",
+              "active:bg-danger-soft-2"
+            )}
           >
             Supprimer la propriété
           </button>

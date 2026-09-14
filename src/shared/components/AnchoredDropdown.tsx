@@ -2,6 +2,7 @@
  * AnchoredDropdown — dropdown positionné en fixed sous son ancre (desktop),
  * ou BottomSheet clavier-aware (mobile).
  */
+import clsx from "clsx";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BottomSheet } from "../../mobile/components/BottomSheet/BottomSheet";
@@ -150,7 +151,11 @@ function DesktopDropdown({
         // z-50) surclasse via `zIndex` — cf. AnchoredDropdownProps.
         zIndex,
       }}
-      className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden whitespace-normal ${className}`}
+      className={clsx(
+        "border rounded-lg shadow-lg overflow-hidden whitespace-normal",
+        "bg-surface border-line-2",
+        className
+      )}
     >
       {children}
     </div>,

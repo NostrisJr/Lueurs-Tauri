@@ -1,13 +1,20 @@
+import clsx from "clsx";
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
+import { useKanbanEdgeScroll } from "../../../../shared/hooks/useKanbanEdgeScroll";
 import {
   type KanbanCards,
   NO_VALUE_COLUMN_ID,
+  mobileCardDraggingAtom,
 } from "../../../../shared/lib/atoms";
+import { edgeDirection } from "../../../../shared/lib/kanbanColumnScroll";
+import { KANBAN_TRASH_ID } from "../../../../shared/lib/kanbanDrop";
 import type { KanbanColumn as KanbanColumnType } from "../../../../shared/lib/noteTypes";
 import { startDragAutoscroll } from "../../../lib/dragAutoscroll";
 import { MobileKanbanCardGhost } from "./MobileKanbanCard";
 import { MobileKanbanColumn } from "./MobileKanbanColumn";
+import { MobileKanbanTrashZone } from "./MobileKanbanTrashZone";
 
 interface Props {
   columns: KanbanColumnType[];
@@ -17,12 +24,16 @@ interface Props {
     fromColId: string,
     toColId: string
   ) => Promise<void>;
+  onDeleteCard: (noteId: string) => Promise<void>;
   onRenameColumn: (colId: string, newLabel: string) => Promise<void>;
   onAddColumn: (label: string) => void;
   onDeleteColumn: (colId: string) => void;
   // Défini uniquement pour une clé ENUM → pastille couleur cliquable
   onSetColumnColor?: (colId: string, color: string | undefined) => void;
 }
+
+// Largeur des bandes de bord déclenchant le passage à la colonne voisine.
+const EDGE_WIDTH_PX = 56;
 
 interface DragState {
   noteId: string;
@@ -34,6 +45,7 @@ export function MobileKanbanView({
   columns,
   cards,
   onMoveCard,
+  onDeleteCard,
   onRenameColumn,
   onAddColumn,
   onDeleteColumn,
@@ -48,16 +60,24 @@ export function MobileKanbanView({
   const [dropTargetColId, setDropTargetColId] = useState<string | null>(null);
   const [ghostPoint, setGhostPoint] = useState({ x: 0, y: 0 });
   const pointRef = useRef({ x: 0, y: 0 });
-  const stopBoardScrollRef = useRef<(() => void) | null>(null);
   const stopPageScrollRef = useRef<(() => void) | null>(null);
 
   useEffect(
     () => () => {
-      stopBoardScrollRef.current?.();
       stopPageScrollRef.current?.();
     },
     []
   );
+
+  const setEdgeDirection = useKanbanEdgeScroll(boardRef);
+  const setCardDragging = useSetAtom(mobileCardDraggingAtom);
+
+  // Le doigt près d'un bord du board fait passer à la colonne voisine.
+  function updateEdgeDirection(x: number) {
+    const rect = boardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setEdgeDirection(edgeDirection(x, rect.left, rect.right, EDGE_WIDTH_PX));
+  }
 
   function findColumnOfNote(noteId: string): string | null {
     for (const [colId, notes] of Object.entries(cards)) {
@@ -80,6 +100,9 @@ export function MobileKanbanView({
   // none` toujours fiable en plein geste (cf. MobileFileTree).
   const findDropTarget = useCallback((x: number, y: number): string | null => {
     for (const el of document.elementsFromPoint(x, y)) {
+      // La corbeille flotte au-dessus des colonnes : testée en premier sur
+      // chaque élément traversé, sinon la colonne dessous l'emporterait.
+      if (el.closest("[data-dropzone-trash]")) return KANBAN_TRASH_ID;
       const id = el.closest<HTMLElement>("[data-dropzone-column]")?.dataset
         .dropzoneColumn;
       if (id) return id;
@@ -92,25 +115,29 @@ export function MobileKanbanView({
     const note = findNote(noteId);
     if (!fromColId || !note) return;
     setDragState({ noteId, fromColId, note });
+    setCardDragging(true);
     pointRef.current = { x, y };
     setGhostPoint({ x, y });
     setDropTargetColId(findDropTarget(x, y));
 
-    stopBoardScrollRef.current?.();
+    updateEdgeDirection(x);
+
     stopPageScrollRef.current?.();
-    // Deux axes indépendants : le board scrolle horizontalement (changer de
-    // colonne), la page (posée par MobileEditor) scrolle verticalement.
-    stopBoardScrollRef.current = startDragAutoscroll({
-      container: () => boardRef.current,
-      point: () => pointRef.current,
-      axis: "x",
-      onScroll: (px, py) => setDropTargetColId(findDropTarget(px, py)),
-    });
+    // Seule la page (posée par MobileEditor) défile en continu, verticalement.
+    // L'horizontal passe par updateEdgeDirection : le board est en
+    // scroll-snap mandatory, qui ramène aussitôt en place tout défilement
+    // programmatique par petits pas — il faut viser un point d'ancrage.
     stopPageScrollRef.current = startDragAutoscroll({
       container: () =>
         boardRef.current?.closest<HTMLElement>("[data-scrollable]") ?? null,
       point: () => pointRef.current,
       axis: "y",
+      // `elementsFromPoint` (pluriel) : le fantôme coiffe la pile, on la
+      // traverse jusqu'à la corbeille, qui recouvre la zone de défilement haute.
+      paused: ({ x, y }) =>
+        document
+          .elementsFromPoint(x, y)
+          .some((el) => el.closest("[data-no-autoscroll]")),
       onScroll: (px, py) => setDropTargetColId(findDropTarget(px, py)),
     });
   }
@@ -119,11 +146,12 @@ export function MobileKanbanView({
     pointRef.current = { x, y };
     setGhostPoint({ x, y });
     setDropTargetColId(findDropTarget(x, y));
+    updateEdgeDirection(x);
   }
 
   function resetDrag() {
-    stopBoardScrollRef.current?.();
-    stopBoardScrollRef.current = null;
+    setCardDragging(false);
+    setEdgeDirection(0);
     stopPageScrollRef.current?.();
     stopPageScrollRef.current = null;
     setDragState(null);
@@ -137,7 +165,12 @@ export function MobileKanbanView({
     const target = findDropTarget(x, y);
     const source = dragState;
     resetDrag();
-    if (!source || !target || target === source.fromColId) return;
+    if (!source || !target) return;
+    if (target === KANBAN_TRASH_ID) {
+      onDeleteCard(source.noteId);
+      return;
+    }
+    if (target === source.fromColId) return;
     onMoveCard(source.noteId, source.fromColId, target);
   }
 
@@ -158,10 +191,16 @@ export function MobileKanbanView({
 
   return (
     <div className="relative h-full">
+      <MobileKanbanTrashZone
+        visible={dragState !== null}
+        active={dropTargetColId === KANBAN_TRASH_ID}
+      />
       <div
         ref={boardRef}
         data-kanban-board=""
-        className="flex gap-4 px-4 py-3 overflow-x-auto scrollbar-none h-full"
+        // relative : les colonnes mesurent leur offsetLeft depuis le board, pas
+        // depuis un ancêtre positionné dont l'origine pourrait différer.
+        className="relative flex gap-4 px-4 py-3 overflow-x-auto scrollbar-none h-full"
         style={{
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch",
@@ -196,10 +235,10 @@ export function MobileKanbanView({
         {/* Ajout de colonne */}
         <div
           className="shrink-0 flex flex-col"
-          style={{ width: "85vw", scrollSnapAlign: "start" }}
+          style={{ width: "85vw", scrollSnapAlign: "center" }}
         >
           {addingColumn ? (
-            <div className="bg-gray-50 rounded-2xl p-3">
+            <div className="bg-surface-2 rounded-2xl p-3">
               <input
                 // biome-ignore lint/a11y/noAutofocus: focus intentionnel
                 autoFocus
@@ -215,14 +254,21 @@ export function MobileKanbanView({
                 }}
                 placeholder="Nom de la colonne…"
                 style={{ fontSize: 16 }}
-                className="w-full bg-transparent outline-none text-gray-700 border-b border-gray-400 pb-1"
+                className={clsx(
+                  "w-full bg-transparent outline-none border-b pb-1",
+                  "text-ink-2 border-line-3"
+                )}
               />
             </div>
           ) : (
             <button
               type="button"
               onClick={() => setAddingColumn(true)}
-              className="text-left px-3 py-3 rounded-2xl text-base text-gray-400 active:bg-gray-50 transition-colors"
+              className={clsx(
+                "text-left px-3 py-3 rounded-2xl text-base transition-colors",
+                "text-ink-4",
+                "active:bg-surface-2"
+              )}
             >
               + Ajouter une colonne
             </button>

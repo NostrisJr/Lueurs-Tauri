@@ -1,5 +1,5 @@
 import { message } from "@tauri-apps/plugin-dialog";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { useTemplateSync } from "../../desktop/hooks/useTemplateSync";
 import {
@@ -10,9 +10,11 @@ import {
 import {
   type KanbanCards,
   NO_VALUE_COLUMN_ID,
+  activeNoteIdAtom,
   generateColumnId,
   kanbanCardsAtom,
   notesByIdAtom,
+  openTabIdsAtom,
   parseColumns,
   serializeColumns,
 } from "../lib/atoms";
@@ -24,7 +26,9 @@ import {
 } from "../lib/fileTreeHelpers";
 import { createLogger } from "../lib/logger";
 import { type KanbanColumn, SystemField } from "../lib/noteTypes";
+import { useFileReferences } from "./useFileReferences";
 import type { Frontmatter, NoteFile } from "./useFileTree";
+import { useFileTree } from "./useFileTree";
 import { usePersistNote } from "./usePersistNote";
 
 const log = createLogger("useKanban");
@@ -92,6 +96,11 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
   const notesById = useAtomValue(notesByIdAtom);
   const persistPatch = usePersistNote();
   const { onTemplateChange } = useTemplateSync();
+  const { deleteNote } = useFileTree();
+  const { confirmAndCleanupReferences } = useFileReferences();
+  const store = useStore();
+  const setOpenTabIds = useSetAtom(openTabIdsAtom);
+  const setActiveNoteId = useSetAtom(activeNoteIdAtom);
 
   const kanbanKey = base.frontmatter[SystemField.KANBAN_KEY] as
     | string
@@ -253,6 +262,68 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
       }
     },
     [kanbanKey, columns, childNotes, persistPatch]
+  );
+
+  /**
+   * Suppression d'une carte lâchée sur la corbeille du board — même pipeline que
+   * la suppression depuis l'arborescence : désindexation des références
+   * entrantes (wikilinks, __Base__/__Children__/__Template__ de toute note du
+   * vault) puis suppression du fichier, qui part à la corbeille OS et empile un
+   * undo (Cmd+Z). Pas de dialogue de confirmation propre au kanban : seul
+   * subsiste celui des références, et uniquement s'il y en a à casser.
+   */
+  const deleteCard = useCallback(
+    async (noteId: string) => {
+      const note = childNotes.find((n) => n.id === noteId);
+      if (!note) {
+        log.warn("note introuvable pour suppression", { noteId });
+        return;
+      }
+
+      log.info("suppression carte", { baseId: base.id, noteId });
+
+      // Optimistic UI — la carte disparaît sans attendre l'aller-retour disque
+      setOptimisticCards((prev) => {
+        const current = prev ?? derivedCardsRef.current;
+        return Object.fromEntries(
+          Object.entries(current).map(([colId, notes]) => [
+            colId,
+            notes.filter((n) => n.id !== noteId),
+          ])
+        );
+      });
+
+      try {
+        // Retire aussi l'entrée __Children__ de la base : elle fait partie des
+        // path fields balayés, inutile de la traiter à part ici.
+        await confirmAndCleanupReferences(noteId, "note");
+        await deleteNote(noteId);
+
+        // La note peut être ouverte dans un onglet, éventuellement l'actif :
+        // on retombe alors sur la base d'où part le drag.
+        setOpenTabIds((prev) => prev.filter((id) => id !== noteId));
+        if (store.get(activeNoteIdAtom) === noteId) setActiveNoteId(base.id);
+
+        setOptimisticCards(null);
+        log.info("carte supprimée", { noteId });
+      } catch (err) {
+        log.error("échec suppression carte — rollback UI", { noteId, err });
+        setOptimisticCards(null);
+        await message(`Impossible de supprimer la note "${note.name}".`, {
+          title: "Erreur",
+          kind: "error",
+        });
+      }
+    },
+    [
+      base,
+      childNotes,
+      deleteNote,
+      confirmAndCleanupReferences,
+      setOpenTabIds,
+      setActiveNoteId,
+      store,
+    ]
   );
 
   // ── Gestion des colonnes ──────────────────────────────────────────────
@@ -458,6 +529,7 @@ export function useKanban({ base, onBaseChange }: UseKanbanProps) {
     initKanban,
     removeKanban,
     moveCard,
+    deleteCard,
     addColumn,
     renameColumn,
     removeColumn,

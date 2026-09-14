@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -15,6 +16,7 @@ import {
   tabNodeByIdAtom,
 } from "../../../shared/lib/atoms";
 import { iconAccentClass } from "../../../shared/lib/platform";
+import { maskStop } from "../../../shared/lib/theme";
 import { hapticImpact } from "../../lib/haptics";
 import { FloatingCollapsibleTitle } from "../Floating/FloatingCollapsibleTitle";
 import {
@@ -82,12 +84,12 @@ export function MobileTabsView() {
   const headerFadeZoneHeight = FLOATING_HEADER_SCROLL_OFFSET * 1.45;
   const headerFadeTopAlpha = 1 - titleCollapseProgress;
   const headerFadeMidAlpha = 1 - titleCollapseProgress * 0.96;
-  const headerFadeMask = `linear-gradient(to bottom, rgba(0,0,0,${headerFadeTopAlpha}) 0, rgba(0,0,0,${headerFadeMidAlpha}) ${
+  const headerFadeMask = `linear-gradient(to bottom, ${maskStop(headerFadeTopAlpha)} 0, ${maskStop(headerFadeMidAlpha)} ${
     headerFadeZoneHeight * 0.8
-  }px, black ${headerFadeZoneHeight}px)`;
+  }px, ${maskStop(1)} ${headerFadeZoneHeight}px)`;
 
   return (
-    <div className="relative flex flex-col h-screen bg-gray-100">
+    <div className={clsx("relative flex flex-col h-screen", "bg-surface-3")}>
       <FloatingHeaderBar
         collapseProgress={titleCollapseProgress}
         rightPill={openTabIds.length > 0}
@@ -99,7 +101,11 @@ export function MobileTabsView() {
               hapticImpact("light");
               goBack();
             }}
-            className={`flex items-center justify-center w-8 h-8 rounded-full ${iconAccentClass} active:bg-black/5 transition-colors`}
+            className={clsx(
+              "flex items-center justify-center w-8 h-8 rounded-full",
+              iconAccentClass,
+              "active:bg-tint transition-colors"
+            )}
           >
             <IconChevronLeft className="size-4" />
           </button>
@@ -119,7 +125,11 @@ export function MobileTabsView() {
                 handleCloseAllTabs();
                 resetNav();
               }}
-              className="flex items-center gap-1 px-2 h-8 rounded-full text-red-500 active:bg-black/5 transition-colors"
+              className={clsx(
+                "flex items-center gap-1 px-2 h-8 rounded-full transition-colors",
+                "text-danger",
+                "active:bg-tint"
+              )}
               aria-label="Tout fermer"
               title="Tout fermer"
             >
@@ -148,7 +158,7 @@ export function MobileTabsView() {
         }}
       >
         {openTabIds.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-16">
+          <p className={clsx("text-sm text-center py-16", "text-ink-4")}>
             Aucun onglet ouvert
           </p>
         ) : (

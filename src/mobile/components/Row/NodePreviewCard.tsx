@@ -34,17 +34,17 @@ export function NodePreviewCard({ node, muted }: Props) {
 
   const titleClass = clsx(
     "text-lg font-semibold truncate",
-    muted ? "text-gray-500" : "text-gray-900"
+    muted ? "text-ink-3" : "text-ink"
   );
 
   if (node.kind === "folder") {
     const count = node.children.length;
     return (
       <div className="flex items-center gap-3 px-5 py-4">
-        <IconFolder className="text-yellow-500 shrink-0 size-6" />
+        <IconFolder className="text-accent shrink-0 size-6" />
         <div className="min-w-0">
           <p className={titleClass}>{node.name}</p>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-ink-4">
             {count === 0
               ? "Dossier vide"
               : `${count} élément${count > 1 ? "s" : ""}`}
@@ -57,13 +57,10 @@ export function NodePreviewCard({ node, muted }: Props) {
   if (node.kind === "media") {
     return (
       <div className="flex items-center gap-3 px-5 py-4">
-        <NodeIconProvider
-          node={node}
-          className="text-gray-400 shrink-0 size-6"
-        />
+        <NodeIconProvider node={node} className="text-ink-4 shrink-0 size-6" />
         <div className="min-w-0">
           <p className={titleClass}>{node.name}</p>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-ink-4">
             {MEDIA_LABEL[node.mediaType] ?? node.mediaType} ·{" "}
             {node.fileName.split(".").pop()?.toUpperCase()}
           </p>
@@ -80,10 +77,10 @@ export function NodePreviewCard({ node, muted }: Props) {
           blocks={blocks}
           spaced
           respectLineBreaks
-          className="text-base text-gray-500 leading-snug"
+          className="text-base text-ink-3 leading-snug"
         />
       ) : (
-        <p className="text-base text-gray-400 italic">Note vide</p>
+        <p className="text-base text-ink-4 italic">Note vide</p>
       )}
     </div>
   );

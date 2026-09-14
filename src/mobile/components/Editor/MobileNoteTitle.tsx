@@ -18,6 +18,7 @@
  * translateX du swipe retour et reste figé à l'écran pendant la transition.
  */
 
+import clsx from "clsx";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import type { EditorRef } from "../../../shared/components/NoteEditor/lib/editorCommands";
@@ -225,7 +226,10 @@ export function MobileNoteTitle({
         }}
       >
         <div
-          className="relative w-full h-full flex items-center font-header font-semibold text-gray-900"
+          className={clsx(
+            "relative w-full h-full flex items-center font-header font-semibold",
+            "text-ink"
+          )}
           style={{
             paddingLeft: textInset,
             paddingRight: textInset,
@@ -262,7 +266,11 @@ export function MobileNoteTitle({
           // Fondu/rétrécissement liés au scroll sur le bouton (pas de transition,
           // synchrone au doigt) ; la rotation d'ouverture reste sur le span
           // interne avec sa propre transition — deux transforms indépendants.
-          className="shrink-0 w-13 h-8 flex items-center justify-center rounded-full text-gray-400 active:bg-gray-100"
+          className={clsx(
+            "shrink-0 w-13 h-8 flex items-center justify-center rounded-full",
+            "text-ink-4",
+            "active:bg-surface-3"
+          )}
           style={{
             opacity: 1 - scrollCollapseProgress,
             transform: `scale(${1 - 0.15 * scrollCollapseProgress}) translateY(${-6 * scrollCollapseProgress}px)`,
@@ -290,9 +298,10 @@ export function MobileNoteTitle({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             enterKeyHint="done"
-            className={`flex-1 min-w-0 outline-none caret-amber-400 resize-none break-words font-header text-2xl leading-snug px-1 py-0.5 ${
+            className={clsx(
+              "flex-1 min-w-0 outline-none caret-accent-2 resize-none break-words font-header text-2xl leading-snug px-1 py-0.5",
               expanded ? "overflow-y-hidden" : "overflow-y-auto"
-            }`}
+            )}
           />
         ) : (
           <button
@@ -309,9 +318,10 @@ export function MobileNoteTitle({
                 même élément entre en conflit de cascade (qui l'emporte n'est
                 pas garanti par l'ordre dans le className). */}
             <span
-              className={`font-header text-2xl leading-snug break-words ${
+              className={clsx(
+                "font-header text-2xl leading-snug break-words",
                 expanded ? "" : "line-clamp-2"
-              }`}
+              )}
             >
               {name}
             </span>

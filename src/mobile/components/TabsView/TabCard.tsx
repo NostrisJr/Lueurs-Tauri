@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useMemo, useRef, useState } from "react";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider";
 import {
@@ -61,15 +62,18 @@ export function TabCard({
     <div ref={cardRef} className="relative">
       <Squircle
         radius={20}
-        className="aspect-square w-full bg-white active:scale-[0.98] transition-transform overflow-hidden flex flex-col gap-1 p-3"
+        className={clsx(
+          "aspect-square w-full active:scale-[0.98] transition-transform overflow-hidden flex flex-col gap-1 p-3",
+          "bg-surface"
+        )}
         {...longPress}
       >
         <div className="flex items-center gap-1.5 min-w-0 shrink-0">
           <NodeIconProvider
             node={node}
-            className="text-gray-400 shrink-0 size-4"
+            className="text-ink-4 shrink-0 size-4"
           />
-          <p className="text-sm font-semibold text-gray-900 truncate">
+          <p className={clsx("text-sm font-semibold truncate", "text-ink")}>
             {node.name}
           </p>
         </div>
@@ -78,10 +82,13 @@ export function TabCard({
             <MarkdownPreview
               blocks={blocks}
               respectLineBreaks
-              className="flex-1 min-h-0 overflow-hidden text-xs text-gray-400 leading-snug"
+              className={clsx(
+                "flex-1 min-h-0 overflow-hidden text-xs leading-snug",
+                "text-ink-4"
+              )}
             />
           ) : (
-            <p className="text-xs text-gray-400 italic">Note vide</p>
+            <p className="text-xs text-ink-4 italic">Note vide</p>
           ))}
       </Squircle>
 
@@ -92,7 +99,11 @@ export function TabCard({
           hapticImpact("medium");
           onClose();
         }}
-        className="absolute -top-1.5 -right-1.5 size-6 rounded-full bg-gray-900/80 text-white flex items-center justify-center active:bg-gray-900 transition-colors"
+        className={clsx(
+          "absolute -top-1.5 -right-1.5 size-6 rounded-full flex items-center justify-center transition-colors",
+          "bg-inverse/80 text-on-inverse",
+          "active:bg-inverse"
+        )}
         aria-label="Fermer l'onglet"
       >
         <IconXmark className="size-3" />

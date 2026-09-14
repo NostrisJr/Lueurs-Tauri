@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { KanbanKeySelector } from "../../../shared/components/KanbanKeySelector";
@@ -44,6 +45,7 @@ export function BaseView({ base, onBaseChange }: Props) {
     availableKeys,
     initKanban,
     moveCard,
+    deleteCard,
     addColumn,
     renameColumn,
     removeColumn,
@@ -106,7 +108,7 @@ export function BaseView({ base, onBaseChange }: Props) {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-center gap-3 px-4 py-2 bg-white">
+      <div className={clsx("flex items-center gap-3 px-4 py-2", "bg-surface")}>
         <ViewSelector
           currentView={currentView}
           kanbanAvailable={availableKeys.length > 0}
@@ -119,11 +121,15 @@ export function BaseView({ base, onBaseChange }: Props) {
               e.stopPropagation();
               setSelectingKey(true);
             }}
-            className="font-body text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            className={clsx(
+              "font-body text-xs transition-colors cursor-pointer",
+              "text-ink-4",
+              "hover:text-ink-2"
+            )}
             title="Changer la propriété de groupement"
           >
             Groupé par{" "}
-            <span className="text-gray-600 underline underline-offset-2">
+            <span className="text-ink-2 underline underline-offset-2">
               {kanbanKey}
             </span>
           </button>
@@ -131,7 +137,11 @@ export function BaseView({ base, onBaseChange }: Props) {
         <button
           type="button"
           onClick={(e) => handleCreateChild(e)}
-          className="flex items-center gap-1 font-body text-xs text-gray-400 hover:text-amber-500 transition-colors cursor-pointer"
+          className={clsx(
+            "flex items-center gap-1 font-body text-xs transition-colors cursor-pointer",
+            "text-ink-4",
+            "hover:text-accent"
+          )}
           title="Nouvelle note dans la base"
         >
           <IconPlusCircle className="size-3.5" />
@@ -151,6 +161,7 @@ export function BaseView({ base, onBaseChange }: Props) {
             columns={columns}
             cards={cards}
             onMoveCard={moveCard}
+            onDeleteCard={deleteCard}
             onRenameColumn={renameColumn}
             onAddColumn={addColumn}
             onDeleteColumn={removeColumn}

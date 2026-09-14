@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -323,11 +324,11 @@ export function FrontmatterRow({
   const keyEditMessage =
     !isMobile && isEditing
       ? isKeyDuplicate
-        ? { text: "Ce nom est déjà utilisé.", className: "text-red-400" }
+        ? { text: "Ce nom est déjà utilisé.", className: "text-danger-2" }
         : isTemplate && canSaveKey
           ? {
               text: "Sera propagé à toutes les notes héritières.",
-              className: "text-amber-500",
+              className: "text-accent",
             }
           : null
       : null;
@@ -353,7 +354,10 @@ export function FrontmatterRow({
   return (
     <div
       ref={panelRefSetter}
-      className={`grid gap-x-2 gap-y-1 group transition duration-300 select-none ${isMobile ? "text-sm min-h-10" : "text-xs min-h-5"}`}
+      className={clsx(
+        "grid gap-x-2 gap-y-1 group transition duration-300 select-none",
+        isMobile ? "text-sm min-h-10" : "text-xs min-h-5"
+      )}
       style={{ gridTemplateColumns: "auto 1fr" }}
       {...(showTypePanel ? containerHandlers : {})}
     >
@@ -390,12 +394,12 @@ export function FrontmatterRow({
               type="button"
               onClick={canDelete ? removeRow : undefined}
               title={canDelete ? "Supprimer la propriété" : undefined}
-              className={`shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 size-3
-                ${
-                  canDelete
-                    ? "text-transparent hover:text-red-400 group-hover:text-gray-300 cursor-pointer"
-                    : "text-transparent cursor-default"
-                }`}
+              className={clsx(
+                "shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 size-3",
+                canDelete
+                  ? "text-transparent hover:text-danger-2 group-hover:text-ink-5 cursor-pointer"
+                  : "text-transparent cursor-default"
+              )}
             >
               <IconXCircle className="size-full" />
             </button>
@@ -418,16 +422,25 @@ export function FrontmatterRow({
                 setEditingKey(null);
               }
             }}
-            className={`shrink-0 mt-0.5 w-28 text-xs bg-transparent border-b outline-none
-              ${isKeyDuplicate ? "border-red-400 text-red-500" : "border-gray-300 focus:border-gray-500"}`}
+            className={clsx(
+              "shrink-0 mt-0.5 w-28 text-xs bg-transparent border-b outline-none",
+              isKeyDuplicate
+                ? "border-danger-2 text-danger"
+                : "border-line-3 focus:border-ink-3"
+            )}
           />
         ) : (
           // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
           <span
-            className={`shrink-0 mt-0.5 truncate ${isMobile ? "w-24 text-sm" : "w-28 text-xs"}
-              ${row.isSystem ? "font-bold text-gray-500 select-none" : ""}
-              ${!row.isSystem && canRename ? "text-gray-500 cursor-pointer hover:text-gray-700" : ""}
-              ${isKeyLocked && !isTemplate ? "text-amber-500/70 select-none" : ""}`}
+            className={clsx(
+              "shrink-0 mt-0.5 truncate",
+              isMobile ? "w-24 text-sm" : "w-28 text-xs",
+              row.isSystem ? "font-bold text-ink-3 select-none" : "",
+              !row.isSystem && canRename
+                ? "text-ink-3 cursor-pointer hover:text-ink-2"
+                : "",
+              isKeyLocked && !isTemplate ? "text-accent/70 select-none" : ""
+            )}
             onDoubleClick={() => !isMobile && canRename && startKeyEdit()}
             onClick={() => {
               if (!isMobile) return;
@@ -465,8 +478,12 @@ export function FrontmatterRow({
               // vient courser avec toggleOpen ci-dessus.
               onMouseDown={(e) => e.preventDefault()}
               title="Réglages de la propriété"
-              className={`shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 cursor-pointer size-3
-                ${editor.visible ? "text-gray-500" : "text-transparent group-hover:text-gray-300 hover:text-gray-500"}`}
+              className={clsx(
+                "shrink-0 mt-0.5 transition-all p-0 bg-transparent border-0 cursor-pointer size-3",
+                editor.visible
+                  ? "text-ink-3"
+                  : "text-transparent group-hover:text-ink-5 hover:text-ink-3"
+              )}
             >
               <IconGearshape className="size-full" />
             </button>
@@ -479,7 +496,10 @@ export function FrontmatterRow({
           // "arrow.right" n'est pas centré verticalement dans son propre
           // viewBox comme xmark.circle/gearshape (métriques SF Symbols par
           // glyphe) — décalage compensé empiriquement ici.
-          className={`shrink-0 mt-[0.3rem] text-gray-300 select-none ${isMobile ? "size-4" : "size-3"}`}
+          className={clsx(
+            "shrink-0 mt-[0.3rem] text-ink-5 select-none",
+            isMobile ? "size-4" : "size-3"
+          )}
           aria-hidden="true"
         />
 
@@ -501,7 +521,11 @@ export function FrontmatterRow({
                       : "Ajouter une note"
                 }
                 onClick={() => setSelectorOpen(isSelectorOpen ? null : row.key)}
-                className="p-0 bg-transparent border-0 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer size-3"
+                className={clsx(
+                  "p-0 bg-transparent border-0 transition-colors cursor-pointer size-3",
+                  "text-ink-4",
+                  "hover:text-accent"
+                )}
               >
                 <IconPlusCircle className="size-full" />
               </button>
@@ -578,7 +602,7 @@ export function FrontmatterRow({
 
       {keyEditMessage && (
         <p
-          className={`text-[10px] ${keyEditMessage.className}`}
+          className={clsx("text-[10px]", keyEditMessage.className)}
           style={{ gridRow: keyMessageRow ?? undefined, gridColumn: 2 }}
         >
           {keyEditMessage.text}

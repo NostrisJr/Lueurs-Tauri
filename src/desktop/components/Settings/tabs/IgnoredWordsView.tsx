@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { IconChevronLeft } from "../../../../shared/components/PlatformIcon";
@@ -40,13 +41,17 @@ export function IgnoredWordsView({ onBack }: Props) {
         <button
           type="button"
           onClick={onBack}
-          className="flex size-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-default"
+          className={clsx(
+            "flex size-7 items-center justify-center rounded-full cursor-default",
+            "text-ink-4",
+            "hover:bg-surface-3 hover:text-ink-2"
+          )}
           aria-label="Retour"
         >
           <IconChevronLeft className="size-4" />
         </button>
-        <span className="text-sm font-medium text-gray-700">Mots ignorés</span>
-        <span className="text-xs text-gray-400">{ignoredWords.length}</span>
+        <span className="text-sm font-medium text-ink-2">Mots ignorés</span>
+        <span className="text-xs text-ink-4">{ignoredWords.length}</span>
       </div>
 
       <input
@@ -54,28 +59,39 @@ export function IgnoredWordsView({ onBack }: Props) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Rechercher…"
-        className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-sm outline-none focus:border-gray-400"
+        className={clsx(
+          "shrink-0 rounded-md border px-2 py-1 text-sm outline-none",
+          "border-line-2",
+          "focus:border-line-3"
+        )}
       />
 
       {/* Liste scrollable */}
       <div className="mt-3 flex-1 overflow-y-auto">
         {ignoredWords.length === 0 ? (
-          <p className="text-xs text-gray-400">Aucun mot ignoré.</p>
+          <p className="text-xs text-ink-4">Aucun mot ignoré.</p>
         ) : filtered.length === 0 ? (
-          <p className="text-xs text-gray-400">Aucun résultat.</p>
+          <p className="text-xs text-ink-4">Aucun résultat.</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-line">
             {filtered.map((word) => (
               <li
                 key={word}
-                className="flex items-center justify-between py-1.5 text-sm text-gray-700"
+                className={clsx(
+                  "flex items-center justify-between py-1.5 text-sm",
+                  "text-ink-2"
+                )}
               >
                 <span className="truncate">{word}</span>
                 <button
                   type="button"
                   onClick={() => removeWord(word)}
                   title="Retirer"
-                  className="ml-2 flex size-5 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-700 cursor-default"
+                  className={clsx(
+                    "ml-2 flex size-5 shrink-0 items-center justify-center rounded-full cursor-default",
+                    "text-ink-4",
+                    "hover:bg-surface-4 hover:text-ink-2"
+                  )}
                 >
                   ×
                 </button>

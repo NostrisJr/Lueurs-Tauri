@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import type { NoteFile } from "../../../../shared/hooks/useFileTree";
@@ -55,12 +56,18 @@ export function TableRow({
   }
 
   return (
-    <div className="flex items-center border-b min-h-8 border-gray-100 hover:bg-gray-50/50 transition-colors">
+    <div
+      className={clsx(
+        "flex items-center border-b min-h-8 transition-colors",
+        "border-line",
+        "hover:bg-surface-2/50"
+      )}
+    >
       {/* Colonne titre */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: édition inline */}
       <div
         style={{ width: titleColWidth }}
-        className="border-r border-gray-100 px-3 last:border-none"
+        className={clsx("border-r px-3 last:border-none", "border-line")}
         onDoubleClick={startTitleEdit}
         onClick={(e) => {
           if (e.metaKey) handleSelectNote(note, true);
@@ -76,13 +83,19 @@ export function TableRow({
             onChange={(e) => setTitleDraft(e.target.value)}
             onBlur={commitTitle}
             onKeyDown={handleTitleKeyDown}
-            className="w-full text-xs bg-transparent outline-none text-gray-700"
+            className={clsx(
+              "w-full text-xs bg-transparent outline-none",
+              "text-ink-2"
+            )}
           />
         ) : (
           <span
-            className={`text-xs text-gray-700 truncate block font-body ${cmdHeld ? "cursor-pointer" : ""}`}
+            className={clsx(
+              "text-xs text-ink-2 truncate block font-body",
+              cmdHeld ? "cursor-pointer" : ""
+            )}
           >
-            {note.name || <span className="text-gray-300">Sans titre</span>}
+            {note.name || <span className="text-ink-5">Sans titre</span>}
           </span>
         )}
       </div>

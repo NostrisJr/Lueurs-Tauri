@@ -1,0 +1,319 @@
+/* =========================================================================
+   Thème clair / sombre — tokens sémantiques
+
+   Règle : aucun composant n'écrit de couleur de la palette Tailwind par défaut
+   (bg-white, text-gray-400…) ni de hex en dur. Tout passe par les rôles définis
+   ici, qui basculent seuls selon `data-theme` sur <html>. Le test
+   `themeTokens.test.ts` fait respecter la règle.
+
+   Le sombre est un charbon *chaud* : il prolonge l'encre #1a1918 et les crèmes
+   du mode clair. Un gris bleuté trahirait l'identité de l'app.
+==========================================================================*/
+
+/* Le variant `dark:` suit l'attribut data-theme, pas prefers-color-scheme :
+   le réglage utilisateur doit pouvoir contredire le système. Réservé aux cas
+   que les tokens ne couvrent pas (ombres, opacités, filtres) — pour une
+   couleur, utiliser un token. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* `static` : émet toutes les variables, y compris celles consommées uniquement
+   par du CSS écrit à la main (DefaultStyle.css, BookStyle.css) que le scanner
+   de Tailwind ne voit pas. */
+@theme static {
+  --font-title: 'EB Garamond', Garamond, Georgia, serif;
+  --font-default: 'Inter', Arial, Helvetica, sans-serif;
+  --font-header: 'Libre Baskerville', Georgia, serif;
+  --font-code: Fira Code, Menlo, Monaco, 'Courier New', Courier, monospace;
+
+  /* ── Surfaces, du fond de page au plus élevé ──────────────────────────── */
+  --color-canvas: #ffffff;
+  /* fond de l'app et de l'éditeur */
+  --color-surface: #ffffff;
+  /* panneaux, cartes, popups, modales */
+  --color-surface-2: #f9fafb;
+  /* remplissage discret (champs, en-têtes) */
+  --color-surface-3: #f3f4f6;
+  /* survol */
+  --color-surface-4: #e5e7eb;
+  /* actif / pressé */
+  --color-surface-5: #d1d5db;
+  /* appui marqué (poignées, pastilles) */
+
+  /* Surface inversée — boutons pleins, tooltips */
+  --color-inverse: #111827;
+  --color-inverse-2: #374151;
+  --color-on-inverse: #ffffff;
+
+  /* Sélection d'une pastille posée sur du verre (espace actif du switcher) —
+     distinct de `inverse` : sur fond sombre, inverser donnerait un disque
+     quasi blanc, éblouissant sur une pill translucide. */
+  --color-selected: #111827;
+  --color-on-selected: #ffffff;
+
+  /* ── Encre, du plus appuyé au plus effacé ─────────────────────────────── */
+  --color-ink: #111827;
+  /* titres, texte primaire */
+  --color-ink-2: #374151;
+  /* corps de texte */
+  --color-ink-3: #6b7280;
+  /* texte secondaire, libellés */
+  --color-ink-4: #9ca3af;
+  /* icônes, texte tertiaire */
+  --color-ink-5: #d1d5db;
+  /* placeholder, désactivé */
+
+  /* ── Traits ───────────────────────────────────────────────────────────── */
+  --color-line: #f3f4f6;
+  /* séparateurs discrets */
+  --color-line-2: #e5e7eb;
+  /* bordures de composants */
+  --color-line-3: #d1d5db;
+  /* bordures appuyées, focus */
+
+  /* ── Accent (ambre) — signature de l'app, conservée à l'identique ─────── */
+  --color-accent: #f59e0b;
+  --color-accent-2: #fbbf24;
+  /* variante claire */
+  --color-accent-strong: #d97706;
+  /* texte sur fond clair */
+  --color-accent-soft: #fffbeb;
+  /* fond teinté */
+  --color-accent-soft-2: #fef3c7;
+
+  /* ── Danger ───────────────────────────────────────────────────────────── */
+  --color-danger: #ef4444;
+  --color-danger-2: #f87171;
+  --color-danger-strong: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-danger-soft-2: #fee2e2;
+
+  /* ── Lien ─────────────────────────────────────────────────────────────── */
+  --color-link: #3b6ea5;
+
+  /* ── Voiles translucides ──────────────────────────────────────────────────
+     Tokens opaques en alpha plutôt que modificateurs `/xx` : ces derniers
+     passent par color-mix(oklab), non supporté par certaines WebView Android
+     (cf. FloatingComponent). Ne pas les remplacer par bg-ink/5 & co. */
+  --color-tint: rgba(0, 0, 0, 0.05);
+  /* survol translucide sur fond variable */
+  --color-veil: rgba(255, 255, 255, 0.1);
+  /* voile des panneaux vitrés — éclaircit dans les DEUX thèmes, contrairement
+     à --color-tint : c'est le flou qui fait le verre, le voile ne fait que
+     détacher le panneau de son fond. */
+  --color-tint-2: rgba(0, 0, 0, 0.1);
+  --color-tint-3: rgba(0, 0, 0, 0.18);
+  --color-overlay: rgba(0, 0, 0, 0.2);
+  /* arrière-plan de modale */
+
+  /* ── Information (soulignage grammatical, états neutres) ──────────────── */
+  --color-info: #3b82f6;
+  /* Marqueur des médias (images) dans la carte du document. */
+  --color-media: #ec4899;
+
+  /* ── Surlignage du corps de note ──────────────────────────────────────────
+     `-solid` est la pastille du sélecteur (même valeur dans les deux thèmes :
+     ces teintes saturées se lisent sur l'un comme sur l'autre) ; le token nu
+     est le fond appliqué au texte. */
+  --color-highlight-yellow: rgba(253, 224, 71, 0.38);
+  --color-highlight-yellow-solid: #fbbf24;
+  --color-highlight-green: rgba(134, 239, 172, 0.38);
+  --color-highlight-green-solid: #4ade80;
+  --color-highlight-blue: rgba(147, 197, 253, 0.38);
+  --color-highlight-blue-solid: #60a5fa;
+  --color-highlight-red: rgba(252, 165, 165, 0.38);
+  --color-highlight-red-solid: #f87171;
+  --color-highlight-orange: rgba(253, 186, 116, 0.38);
+  --color-highlight-orange-solid: #fb923c;
+  --color-highlight-purple: rgba(216, 180, 254, 0.38);
+  --color-highlight-purple-solid: #c084fc;
+  --color-highlight-gray: rgba(209, 213, 219, 0.38);
+  --color-highlight-gray-solid: #9ca3af;
+
+  /* ── Waveform audio ───────────────────────────────────────────────────────
+     Lues au trait par le canvas (themeColor), pas par la cascade CSS. */
+  --color-wave: rgba(0, 0, 0, 0.18);
+  --color-wave-played: rgba(251, 191, 36, 0.85);
+
+  /* ── Contrôles segmentés ──────────────────────────────────────────────────
+     Une piste creusée et une pastille en relief : la pastille doit rester plus
+     *claire* que sa piste dans les deux thèmes, sinon elle se lit comme un trou
+     au lieu d'un bouton. D'où deux tokens dédiés plutôt que des surfaces
+     numérotées, dont l'ordre s'inverse en sombre. */
+  --color-track: #f3f4f6;
+  --color-control: #ffffff;
+
+  /* ── Ombres ───────────────────────────────────────────────────────────────
+     En sombre, une ombre noire est invisible : on l'opacifie fortement plutôt
+     que de la supprimer, l'élévation restant nécessaire à la lecture. */
+  --color-shade: rgba(0, 0, 0, 0.05);
+  --color-shade-2: rgba(0, 0, 0, 0.1);
+  --color-shade-ring: rgba(0, 0, 0, 0.08);
+  /* cerne 1px des badges flottants */
+
+  /* Élévation des cartes de réglages (filter: drop-shadow, pas box-shadow :
+     l'ombre doit épouser le clip-path squircle). */
+  --shadow-card: drop-shadow(0px 1px 2px var(--color-shade));
+
+  /* ── Pastilles de valeur (enum frontmatter, formules BUTTON) ──────────────
+     Une même valeur doit se lire pareil dans une cellule de table et dans le
+     corps d'une note : la source est ici, jamais dans un composant. */
+  --color-pill-yellow: #fcd34d;
+  --color-pill-yellow-ink: #b45309;
+  --color-pill-green: #86efac;
+  --color-pill-green-ink: #15803d;
+  --color-pill-blue: #93c5fd;
+  --color-pill-blue-ink: #1d4ed8;
+  --color-pill-red: #fca5a5;
+  --color-pill-red-ink: #b91c1c;
+  --color-pill-orange: #fdba74;
+  --color-pill-orange-ink: #c2410c;
+  --color-pill-purple: #d8b4fe;
+  --color-pill-purple-ink: #7e22ce;
+  --color-pill-gray: #d1d5db;
+  --color-pill-gray-ink: #374151;
+}
+
+/* ── Sombre : charbon chaud ───────────────────────────────────────────────── */
+
+/* :root[data-theme] plutôt que [data-theme] seul — spécificité (0,2,0), au-dessus
+   du :root (0,1,0) émis par @theme, quel que soit l'ordre de concaténation. */
+:root[data-theme="dark"] {
+  --color-canvas: #171614;
+  --color-surface: #1e1d1a;
+  --color-surface-2: #262421;
+  --color-surface-3: #302e2a;
+  --color-surface-4: #3a3833;
+  --color-surface-5: #46433d;
+
+  --color-inverse: #ece9e2;
+  --color-inverse-2: #cfcbc2;
+  --color-on-inverse: #171614;
+
+  /* Pastille sélectionnée : un cran au-dessus du verre, pas une inversion. */
+  --color-selected: #4a463f;
+  --color-on-selected: #ece9e2;
+
+  --color-ink: #ece9e2;
+  --color-ink-2: #c9c4ba;
+  --color-ink-3: #a09b91;
+  --color-ink-4: #837e75;
+  --color-ink-5: #6b665e;
+
+  --color-line: #2a2825;
+  --color-line-2: #35322e;
+  --color-line-3: #46433d;
+
+  /* L'ambre reste l'ambre : c'est le seul point de couleur de l'app. Sur fond
+     sombre on remonte légèrement la luminance (#f4af2f, celle du caret). */
+  --color-accent: #f4af2f;
+  --color-accent-2: #f9c55f;
+  --color-accent-strong: #ffc95e;
+  --color-accent-soft: #2a2318;
+  --color-accent-soft-2: #382e1c;
+
+  --color-danger: #f4756a;
+  --color-danger-2: #f89a91;
+  --color-danger-strong: #ff9a90;
+  --color-danger-soft: #2b1c1a;
+  --color-danger-soft-2: #3a2320;
+
+  --color-link: #7fa9d8;
+
+  /* Un voile noir est invisible sur fond sombre : on éclaircit au lieu d'assombrir. */
+  --color-tint: rgba(255, 255, 255, 0.06);
+  --color-tint-2: rgba(255, 255, 255, 0.11);
+  --color-tint-3: rgba(255, 255, 255, 0.2);
+  /* Le voile de modale, lui, reste noir — et plus opaque, l'écart avec le fond
+     étant plus faible. */
+  --color-overlay: rgba(0, 0, 0, 0.5);
+
+  --color-info: #6aa3f8;
+  --color-media: #f472b6;
+
+  /* Surlignage : même teinte, alpha abaissé — un pastel à 38 % sur fond charbon
+     vire au kaki et noie le texte qu'il est censé mettre en valeur. */
+  --color-highlight-yellow: rgba(253, 224, 71, 0.26);
+  --color-highlight-green: rgba(134, 239, 172, 0.26);
+  --color-highlight-blue: rgba(147, 197, 253, 0.26);
+  --color-highlight-red: rgba(252, 165, 165, 0.26);
+  --color-highlight-orange: rgba(253, 186, 116, 0.26);
+  --color-highlight-purple: rgba(216, 180, 254, 0.26);
+  --color-highlight-gray: rgba(209, 213, 219, 0.26);
+
+  /* Barres non lues : un noir translucide disparaîtrait sur fond sombre. */
+  --color-wave: rgba(255, 255, 255, 0.22);
+
+  --color-track: #141312;
+  --color-control: #3a3833;
+
+  --color-shade: rgba(0, 0, 0, 0.4);
+  --color-shade-2: rgba(0, 0, 0, 0.55);
+  /* Un cerne noir disparaît sur fond sombre : on inverse en lumière. */
+  --color-shade-ring: rgba(255, 255, 255, 0.1);
+
+  --shadow-card: drop-shadow(0px 1px 3px var(--color-shade));
+
+  /* Pastilles inversées : fond sourd, texte clair. Reprendre les teintes
+     claires telles quelles donnerait des pavés fluorescents. */
+  --color-pill-yellow: #4a3a12;
+  --color-pill-yellow-ink: #f5c65a;
+  --color-pill-green: #1c3d28;
+  --color-pill-green-ink: #86d8a3;
+  --color-pill-blue: #1e3356;
+  --color-pill-blue-ink: #9dc2f5;
+  --color-pill-red: #4a2020;
+  --color-pill-red-ink: #f4a0a0;
+  --color-pill-orange: #4a2e14;
+  --color-pill-orange-ink: #f0ac74;
+  --color-pill-purple: #3a2550;
+  --color-pill-purple-ink: #cfa8f0;
+  --color-pill-gray: #35322e;
+  --color-pill-gray-ink: #c9c4ba;
+}
+
+/* Repli sans JavaScript : le script anti-FOUC d'index.html pose toujours
+   data-theme, ce bloc ne sert que s'il a échoué. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+/* ── Liquid glass ─────────────────────────────────────────────────────────────
+   Le bezel iOS est construit sur des reflets blancs. En sombre, un rim light à
+   0.85 ferait un liseré fluorescent : on le descend très bas, et la lumière
+   vient alors surtout du fond translucide lui-même. */
+:root {
+  --glass-rim: rgba(255, 255, 255, 0.85);
+  --glass-top: rgba(255, 255, 255, 0.7);
+  --glass-bottom: rgba(255, 255, 255, 0.3);
+  --glass-side: rgba(255, 255, 255, 0.2);
+  --glass-fill: rgba(250, 251, 253, 0.5);
+  --glass-fill-2: rgba(249, 250, 251, 0.75);
+  --glass-drop-shadow: rgba(70, 70, 70, 0.2);
+  --glass-menu: rgba(255, 255, 255, 0.92);
+  /* Fondu du dégradé de bordure de la sidebar vers le fond */
+  --sidebar-fade: #ffffff;
+  /* Voile sous une barre flottante du bas : assombrit le contenu qui défile
+     dessous. Tokens plutôt que `from-surface-5/90` — en sombre il faut des
+     valeurs *plus sombres* que la page, pas les mêmes surfaces qu'en clair. */
+  --bar-fade: rgba(209, 213, 219, 0.9);
+  --bar-fade-2: rgba(229, 231, 235, 0.9);
+}
+
+:root[data-theme="dark"] {
+  --glass-rim: rgba(255, 255, 255, 0.08);
+  --glass-top: rgba(255, 255, 255, 0.07);
+  --glass-bottom: rgba(255, 255, 255, 0.025);
+  --glass-side: rgba(255, 255, 255, 0.02);
+  /* Le remplissage était plus clair que la page une fois composité : la pill
+     semblait allumée. En sombre, le verre doit *creuser* le fond, la séparation
+     venant de l'assombrissement et non des reflets (abaissés ci-dessus). */
+  --glass-fill: rgba(24, 23, 20, 0.66);
+  --glass-fill-2: rgba(26, 25, 22, 0.86);
+  --glass-drop-shadow: rgba(0, 0, 0, 0.55);
+  --glass-menu: rgba(38, 36, 33, 0.94);
+  --sidebar-fade: #1e1d1a;
+  --bar-fade: rgba(18, 17, 15, 0.92);
+  --bar-fade-2: rgba(26, 25, 22, 0.88);
+}

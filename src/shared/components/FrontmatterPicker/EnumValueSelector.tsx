@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useRef, useState } from "react";
 import { pillClasses } from "../../lib/FrontmatterPicker/enumPillColors";
 import {
@@ -33,9 +34,9 @@ export function EnumValueSelector({
 
   const tone =
     state === "invalid"
-      ? "bg-red-50 text-red-500 line-through"
+      ? "bg-danger-soft text-danger line-through"
       : state === "placeholder"
-        ? "bg-gray-50 text-gray-400 italic"
+        ? "bg-surface-2 text-ink-4 italic"
         : pillClasses(optionColor(value, constraint));
 
   return (
@@ -48,9 +49,11 @@ export function EnumValueSelector({
         title={
           state === "invalid" ? "Valeur non permise par le template" : undefined
         }
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-colors ${tone} ${
+        className={clsx(
+          "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-colors",
+          tone,
           disabled ? "cursor-default" : "cursor-pointer hover:brightness-95"
-        }`}
+        )}
       >
         <span>{value || "—"}</span>
         {!disabled && (

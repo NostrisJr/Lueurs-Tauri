@@ -86,20 +86,20 @@ export function SearchBar() {
       {/* Couche d'ombre séparée, non clippée : box-shadow ignore le clip-path de
           Squircle (d'où rounded-2xl ici, pas la vraie forme squircle — invisible
           vu le flou). Et filter: drop-shadow sur le panneau lui-même serait trop
-          faible : son alpha est presque nul (bg-white/10, effet verre), or
+          faible : son alpha est presque nul (bg-veil, effet verre), or
           drop-shadow module l'ombre par l'alpha source. Même contournement que
           le menu vitré de FileTreeMenuButton. */}
       <div className="absolute inset-0 rounded-2xl shadow-xl" />
       {/* Panneau vitré : un seul Squircle. Un second clip-path imbriqué pour la
           bordure (essayé plus haut dans l'historique) opacifiait le fond derrière
-          lui (bg-gray-200 de l'anneau) et bloquait le backdrop-blur — le verre
+          lui (le gris de l'anneau) et bloquait le backdrop-blur — le verre
           redevenait un gris plat. La bordure vit donc en dehors, cf. plus bas. */}
       <Squircle
         radius={16}
-        className="relative overflow-hidden backdrop-blur-xs bg-white/10"
+        className="relative overflow-hidden backdrop-blur-xs bg-veil"
       >
         <div className="flex items-center gap-1 px-2 py-1.5">
-          <IconMagnifyingglass className="size-4 text-gray-400 shrink-0" />
+          <IconMagnifyingglass className="size-4 text-ink-4 shrink-0" />
           <input
             ref={queryRef}
             value={state.query}
@@ -118,9 +118,12 @@ export function SearchBar() {
               }
             }}
             placeholder="Rechercher"
-            className="flex-1 min-w-0 outline-none text-sm text-gray-800 placeholder:text-gray-400"
+            className={clsx(
+              "flex-1 min-w-0 outline-none text-sm",
+              "text-ink placeholder:text-ink-4"
+            )}
           />
-          <span className="text-xs text-gray-400 tabular-nums shrink-0 px-1 whitespace-nowrap">
+          <span className="text-xs text-ink-4 tabular-nums shrink-0 px-1 whitespace-nowrap">
             {counterLabel}
           </span>
           <button
@@ -132,9 +135,9 @@ export function SearchBar() {
               runAndScroll((v) => runSearch(v, state.query, next));
             }}
             className={clsx(
-              "w-7 h-7 shrink-0 flex items-center justify-center rounded-md hover:bg-gray-100 hover:text-amber-600 disabled:opacity-30 disabled:hover:bg-transparent transition-colors",
+              "w-7 h-7 shrink-0 flex items-center justify-center rounded-md hover:bg-surface-3 hover:text-accent-strong disabled:opacity-30 disabled:hover:bg-transparent transition-colors",
               state.caseSensitive &&
-                "text-amber-600 bg-gray-100 hover:bg-gray-200/70"
+                "text-accent-strong bg-surface-3 hover:bg-surface-4/70"
             )}
           >
             <IconTextformat className="size-4" />
@@ -145,7 +148,7 @@ export function SearchBar() {
             disabled={state.matchCount === 0}
             onClick={() => runAndScroll((v) => searchStep(v, -1))}
             className={clsx(
-              "w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              "w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-ink-3 hover:bg-surface-3 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             )}
           >
             <IconChevronLeft className="size-4" />
@@ -156,7 +159,7 @@ export function SearchBar() {
             disabled={state.matchCount === 0}
             onClick={() => runAndScroll((v) => searchStep(v, 1))}
             className={clsx(
-              "w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              "w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-ink-3 hover:bg-surface-3 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             )}
           >
             <IconChevronRight className="size-4" />
@@ -165,13 +168,13 @@ export function SearchBar() {
             type="button"
             title="Fermer"
             onClick={handleClose}
-            className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+            className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-ink-3 hover:bg-surface-3 transition-colors"
           >
             <IconXmark className="size-4" />
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 px-2 py-1.5 border-t border-gray-100">
+        <div className="flex items-center gap-1.5 px-2 py-1.5 border-t border-line">
           <input
             value={state.replacement}
             onChange={(e) => setSearchReplacement(e.target.value)}
@@ -185,7 +188,10 @@ export function SearchBar() {
               }
             }}
             placeholder="Remplacer par"
-            className="flex-1 min-w-0 outline-none text-sm text-gray-800 placeholder:text-gray-400 pl-5"
+            className={clsx(
+              "flex-1 min-w-0 outline-none text-sm pl-5",
+              "text-ink placeholder:text-ink-4"
+            )}
           />
           <button
             type="button"
@@ -193,7 +199,10 @@ export function SearchBar() {
             onClick={() =>
               runAndScroll((v) => replaceCurrentMatch(v, state.replacement))
             }
-            className="text-xs px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:hover:bg-gray-100 transition-colors whitespace-nowrap"
+            className={clsx(
+              "text-xs px-2 py-1 rounded-md transition-colors whitespace-nowrap disabled:opacity-40",
+              "bg-surface-3 hover:bg-surface-4 disabled:hover:bg-surface-3"
+            )}
           >
             Remplacer
           </button>
@@ -210,7 +219,10 @@ export function SearchBar() {
                 )
               )
             }
-            className="text-xs px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:hover:bg-gray-100 transition-colors whitespace-nowrap"
+            className={clsx(
+              "text-xs px-2 py-1 rounded-md transition-colors whitespace-nowrap disabled:opacity-40",
+              "bg-surface-3 hover:bg-surface-4 disabled:hover:bg-surface-3"
+            )}
           >
             Tout remplacer
           </button>
@@ -220,7 +232,7 @@ export function SearchBar() {
           vrai border-radius, pas un clip-path) pour que `border` suive le
           contour sans être coupée aux angles ; sans fond, donc sans opacifier
           le verre du panneau en dessous. */}
-      <div className="absolute inset-0 rounded-2xl border border-gray-200 pointer-events-none" />
+      <div className="absolute inset-0 rounded-2xl border border-line-2 pointer-events-none" />
     </div>
   );
 

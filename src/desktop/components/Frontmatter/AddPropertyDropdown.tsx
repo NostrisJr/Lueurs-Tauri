@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useRef, useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 import type { getAddableFields } from "../../../shared/lib/noteTypes";
@@ -33,7 +34,10 @@ export function AddPropertyDropdown({
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`text-gray-300 hover:text-gray-500 text-left transition-colors cursor-pointer select-none ${isMobile ? "text-sm mt-1 py-1" : "text-xs mt-0.5"}`}
+        className={clsx(
+          "text-ink-5 hover:text-ink-3 text-left transition-colors cursor-pointer select-none",
+          isMobile ? "text-sm mt-1 py-1" : "text-xs mt-0.5"
+        )}
       >
         + propriété
       </button>
@@ -46,7 +50,12 @@ export function AddPropertyDropdown({
         >
           {addableFields.length > 0 && (
             <div>
-              <p className="px-3 pt-2 pb-1 text-[10px] text-gray-400 uppercase tracking-wide">
+              <p
+                className={clsx(
+                  "px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide",
+                  "text-ink-4"
+                )}
+              >
                 Propriétés système
               </p>
               {addableFields.map((field) => (
@@ -55,26 +64,30 @@ export function AddPropertyDropdown({
                   type="button"
                   onClick={() => handleAddSystem(field.key)}
                   title={field.description}
-                  className={`w-full text-left hover:bg-gray-50 active:bg-gray-50 transition-colors ${isMobile ? "px-4 py-3 text-sm" : "px-3 py-1.5 text-xs"}`}
+                  className={clsx(
+                    "w-full text-left hover:bg-surface-2 active:bg-surface-2 transition-colors",
+                    isMobile ? "px-4 py-3 text-sm" : "px-3 py-1.5 text-xs"
+                  )}
                 >
-                  <span className="font-bold text-gray-600">{field.label}</span>
-                  <span className="ml-2 text-gray-400">
-                    {field.description}
-                  </span>
+                  <span className="font-bold text-ink-2">{field.label}</span>
+                  <span className="ml-2 text-ink-4">{field.description}</span>
                 </button>
               ))}
-              <div className="border-t border-gray-100 my-1" />
+              <div className="border-t border-line my-1" />
             </div>
           )}
           <button
             type="button"
             onClick={handleAddUser}
-            className={`w-full text-left text-gray-600 hover:bg-gray-50 active:bg-gray-50 transition-colors ${isMobile ? "px-4 py-3 text-sm" : "px-3 py-1.5 text-xs"}`}
+            className={clsx(
+              "w-full text-left text-ink-2 hover:bg-surface-2 active:bg-surface-2 transition-colors",
+              isMobile ? "px-4 py-3 text-sm" : "px-3 py-1.5 text-xs"
+            )}
           >
-            <span className="font-bold text-gray-600">
+            <span className="font-bold text-ink-2">
               Propriété personnalisée
             </span>
-            <span className="ml-2 text-gray-400">Ce que vous voulez...</span>
+            <span className="ml-2 text-ink-4">Ce que vous voulez...</span>
           </button>
         </AnchoredDropdown>
       )}

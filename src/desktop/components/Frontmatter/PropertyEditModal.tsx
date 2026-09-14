@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useState } from "react";
 import { AnchoredDropdown } from "../../../shared/components/AnchoredDropdown";
 /**
@@ -43,7 +44,10 @@ export function PropertyEditModal({
       className="w-48 p-3"
     >
       <p
-        className={`text-gray-400 uppercase tracking-wide mb-2 ${isMobile ? "text-sm px-1" : "text-[10px]"}`}
+        className={clsx(
+          "text-ink-4 uppercase tracking-wide mb-2",
+          isMobile ? "text-sm px-1" : "text-[10px]"
+        )}
       >
         Renommer la propriété
       </p>
@@ -57,29 +61,42 @@ export function PropertyEditModal({
           if (e.key === "Escape") onClose();
         }}
         style={{ fontSize: 16 }}
-        className={`w-full border rounded mb-2 outline-none transition-colors
-          ${isMobile ? "px-3 py-2" : "px-2 py-1"}
-          ${isDuplicate ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-gray-400"}`}
+        className={clsx(
+          "w-full border rounded mb-2 outline-none transition-colors",
+          isMobile ? "px-3 py-2" : "px-2 py-1",
+          isDuplicate
+            ? "border-danger-2 focus:border-danger-2"
+            : "border-line-2 focus:border-line-3"
+        )}
       />
       {isDuplicate && (
         <p
-          className={`text-red-400 mb-2 ${isMobile ? "text-sm px-1" : "text-[10px]"}`}
+          className={clsx(
+            "text-danger-2 mb-2",
+            isMobile ? "text-sm px-1" : "text-[10px]"
+          )}
         >
           Ce nom est déjà utilisé.
         </p>
       )}
       {isTemplate && !isDuplicate && !isUnchanged && trimmed && (
         <p
-          className={`text-amber-500 mb-2 ${isMobile ? "text-sm px-1" : "text-[10px]"}`}
+          className={clsx(
+            "text-accent mb-2",
+            isMobile ? "text-sm px-1" : "text-[10px]"
+          )}
         >
           Sera propagé à toutes les notes héritières.
         </p>
       )}
-      <div className={`flex gap-2 justify-end ${isMobile ? "mt-2" : ""}`}>
+      <div className={clsx("flex gap-2 justify-end", isMobile ? "mt-2" : "")}>
         <button
           type="button"
           onClick={onClose}
-          className={`text-gray-400 hover:text-gray-600 cursor-pointer ${isMobile ? "text-base px-3 py-2" : "text-xs"}`}
+          className={clsx(
+            "text-ink-4 hover:text-ink-2 cursor-pointer",
+            isMobile ? "text-base px-3 py-2" : "text-xs"
+          )}
         >
           Annuler
         </button>
@@ -87,13 +104,13 @@ export function PropertyEditModal({
           type="button"
           onClick={handleSave}
           disabled={!canSave}
-          className={`rounded transition-colors
-            ${isMobile ? "text-base px-4 py-2" : "text-xs px-2 py-1"}
-            ${
-              canSave
-                ? "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
+          className={clsx(
+            "rounded transition-colors",
+            isMobile ? "text-base px-4 py-2" : "text-xs px-2 py-1",
+            canSave
+              ? "bg-inverse text-on-inverse hover:bg-inverse-2 cursor-pointer"
+              : "bg-surface-4 text-ink-4 cursor-not-allowed"
+          )}
         >
           Renommer
         </button>

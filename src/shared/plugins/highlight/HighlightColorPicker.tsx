@@ -66,7 +66,10 @@ export function HighlightColorPicker({
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="shrink-0 cursor-pointer rounded-full border border-white/80 p-0 shadow-sm outline-none transition-transform touch-none hover:scale-[1.2]"
+        className={clsx(
+          "shrink-0 cursor-pointer rounded-full border p-0 shadow-sm outline-none transition-transform touch-none hover:scale-[1.2]",
+          "border-surface/80"
+        )}
         style={{
           width: state.size,
           height: state.size,
@@ -75,7 +78,12 @@ export function HighlightColorPicker({
       />
 
       {open && (
-        <div className="absolute left-0 top-4.5 flex w-30 flex-wrap gap-1.5 rounded-[10px] border border-black/8 bg-white p-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.12)]">
+        <div
+          className={clsx(
+            "absolute left-0 top-4.5 flex w-30 flex-wrap gap-1.5 rounded-[10px] border p-1.5",
+            "border-tint-2 bg-surface shadow-[0_4px_20px_var(--color-shade-2)]"
+          )}
+        >
           {HIGHLIGHT_COLORS.map((c) => (
             <button
               key={c.id}
@@ -89,9 +97,9 @@ export function HighlightColorPicker({
               }}
               className={clsx(
                 "h-5 w-5 cursor-pointer rounded-full border-2 p-0 outline-none transition-transform hover:scale-[1.15]",
-                c.id === state.color ? "border-gray-700" : "border-transparent"
+                c.id === state.color ? "border-ink-2" : "border-transparent"
               )}
-              style={{ background: c.solid }}
+              style={{ background: getHighlightSolid(c.id) }}
             />
           ))}
 
@@ -103,7 +111,10 @@ export function HighlightColorPicker({
               e.stopPropagation();
               onRemove();
             }}
-            className="flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] border-gray-200 bg-white p-0 text-[11px] text-gray-400 outline-none transition-colors hover:bg-red-100 hover:text-red-500"
+            className={clsx(
+              "flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] p-0 text-[11px] outline-none transition-colors",
+              "border-line-2 bg-surface text-ink-4 hover:bg-danger-soft-2 hover:text-danger"
+            )}
           >
             ✕
           </button>

@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom, useAtomValue } from "jotai";
 import { useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
@@ -27,6 +28,7 @@ import {
   showResourcesAtom,
   spellcheckEngineAtom,
   textJustificationAtom,
+  themePreferenceAtom,
   treeAtom,
 } from "../../../shared/lib/atoms";
 import { DISPLAY_MODES } from "../../../shared/lib/displayModes";
@@ -36,8 +38,12 @@ import {
   isAndroid,
   isIOS,
 } from "../../../shared/lib/platform";
+import { THEME_OPTIONS } from "../../../shared/lib/theme";
 import { vaultIO } from "../../../shared/lib/vaultIO";
-import { HIGHLIGHT_COLORS } from "../../../shared/plugins/highlight/colors";
+import {
+  HIGHLIGHT_COLORS,
+  getHighlightSolid,
+} from "../../../shared/plugins/highlight/colors";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { hapticImpact } from "../../lib/haptics";
 import { vaultDisplayName } from "../../lib/vault";
@@ -60,6 +66,7 @@ export function MobileSettingsView() {
     textJustificationAtom
   );
   const [spellcheckEngine, setSpellcheckEngine] = useAtom(spellcheckEngineAtom);
+  const [themePreference, setThemePreference] = useAtom(themePreferenceAtom);
   const [showResources, setShowResources] = useAtom(showResourcesAtom);
   const [inboxRelPath, setInboxRelPath] = useAtom(inboxRelPathAtom);
   const [dictaphoneRelPath, setDictaphoneRelPath] = useAtom(
@@ -133,21 +140,32 @@ export function MobileSettingsView() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full fixed bg-gray-100">
+    <div className={clsx("flex flex-col h-full w-full fixed", "bg-surface-3")}>
       {/* Header */}
-      <div className="flex items-center w-full justify-center px-2 py-2 border-b bg-white border-gray-100 fixed top-0 pt-14 z-30">
+      <div
+        className={clsx(
+          "flex items-center w-full justify-center px-2 py-2 border-b fixed top-0 pt-14 z-30",
+          "bg-surface border-line"
+        )}
+      >
         <button
           type="button"
           onClick={() => {
             hapticImpact("light");
             goBack();
           }}
-          className={`flex-1 justify-start fixed left-1 items-center gap-1 px-2 py-1.5 rounded-lg ${iconAccentClass} active:bg-gray-100 transition-colors z-10`}
+          className={clsx(
+            "flex-1 justify-start fixed left-1 items-center gap-1 px-2 py-1.5 rounded-lg",
+            iconAccentClass,
+            "active:bg-surface-3 transition-colors z-10"
+          )}
         >
           <IconChevronLeft className="size-4" />
           <span className="text-base">{backLabel}</span>
         </button>
-        <h1 className="justify-center text-2xl font-semibold text-gray-900">
+        <h1
+          className={clsx("justify-center text-2xl font-semibold", "text-ink")}
+        >
           Réglages
         </h1>
       </div>
@@ -164,13 +182,64 @@ export function MobileSettingsView() {
           paddingBottom: isKeyboardOpen ? keyboardHeight + 24 : 32,
         }}
       >
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3 px-1">
-          Mode de lecture par défaut
+        <p
+          className={clsx(
+            "mb-3 px-1 text-xs font-medium uppercase tracking-wider",
+            "text-ink-4"
+          )}
+        >
+          Apparence
         </p>
-        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+        <div style={{ filter: "var(--shadow-card)" }}>
           <Squircle
             radius={18}
-            className="overflow-hidden bg-white border border-gray-100"
+            className={clsx("overflow-hidden border", "bg-surface border-line")}
+          >
+            {THEME_OPTIONS.map(({ value, label }, i) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  hapticImpact("light");
+                  setThemePreference(value);
+                }}
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-4 text-left transition-colors",
+                  "active:bg-surface-2",
+                  i < THEME_OPTIONS.length - 1 && "border-b border-line"
+                )}
+              >
+                <p className={clsx("flex-1 min-w-0 text-base", "text-ink")}>
+                  {label}
+                </p>
+                {themePreference === value && (
+                  <div
+                    className={clsx(
+                      "w-2.5 h-2.5 rounded-full shrink-0",
+                      "bg-accent"
+                    )}
+                  />
+                )}
+              </button>
+            ))}
+          </Squircle>
+        </div>
+        <p className={clsx("mt-2 mb-8 px-1 text-xs", "text-ink-4")}>
+          « Système » suit le réglage clair/sombre de l'appareil.
+        </p>
+
+        <p
+          className={clsx(
+            "text-xs font-medium uppercase tracking-wider mb-3 px-1",
+            "text-ink-4"
+          )}
+        >
+          Mode de lecture par défaut
+        </p>
+        <div style={{ filter: "var(--shadow-card)" }}>
+          <Squircle
+            radius={18}
+            className={clsx("overflow-hidden border", "bg-surface border-line")}
           >
             {DISPLAY_MODES.map(({ value, Icon, label }, i) => (
               <button
@@ -180,37 +249,40 @@ export function MobileSettingsView() {
                   hapticImpact("light");
                   setDefaultDisplayMode(value);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors ${
-                  i < DISPLAY_MODES.length - 1 ? "border-b border-gray-100" : ""
-                }`}
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-4 text-left active:bg-surface-2 transition-colors",
+                  i < DISPLAY_MODES.length - 1 ? "border-b border-line" : ""
+                )}
               >
                 <Icon
-                  className="size-5 text-gray-400 shrink-0"
+                  className="size-5 text-ink-4 shrink-0"
                   aria-hidden="true"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-base text-gray-900">{label}</p>
-                  <p className="text-sm text-gray-400">{descriptions[value]}</p>
+                  <p className="text-base text-ink">{label}</p>
+                  <p className="text-sm text-ink-4">{descriptions[value]}</p>
                 </div>
                 {defaultDisplayMode === value && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                  <div
+                    className={clsx(
+                      "w-2.5 h-2.5 rounded-full shrink-0",
+                      "bg-accent"
+                    )}
+                  />
                 )}
               </button>
             ))}
           </Squircle>
         </div>
-        <p className="mt-2 text-xs text-gray-400 px-1">
+        <p className={clsx("mt-2 text-xs px-1", "text-ink-4")}>
           Appliqué aux nouvelles notes et aux notes sans mode défini.
         </p>
 
         {/* Justification du texte en mode livre */}
-        <div
-          className="mt-4"
-          style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
-        >
+        <div className="mt-4" style={{ filter: "var(--shadow-card)" }}>
           <Squircle
             radius={18}
-            className="overflow-hidden bg-white border border-gray-100"
+            className={clsx("overflow-hidden border", "bg-surface border-line")}
           >
             <button
               type="button"
@@ -218,22 +290,27 @@ export function MobileSettingsView() {
                 hapticImpact("light");
                 setTextJustification((v) => !v);
               }}
-              className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors"
+              className={clsx(
+                "w-full flex items-center gap-3 px-4 py-4 text-left transition-colors",
+                "active:bg-surface-2"
+              )}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-base text-gray-900">
+                <p className="text-base text-ink">
                   Justifier le texte en mode livre
                 </p>
               </div>
               <div
-                className={`w-11 h-6 rounded-full transition-colors shrink-0 ${
-                  textJustification ? "bg-amber-500" : "bg-gray-200"
-                }`}
+                className={clsx(
+                  "w-11 h-6 rounded-full transition-colors shrink-0",
+                  textJustification ? "bg-accent" : "bg-surface-4"
+                )}
               >
                 <div
-                  className={`w-5 h-5 rounded-full bg-white shadow m-0.5 transition-transform ${
+                  className={clsx(
+                    "w-5 h-5 rounded-full bg-surface shadow m-0.5 transition-transform",
                     textJustification ? "translate-x-5" : "translate-x-0"
-                  }`}
+                  )}
                 />
               </div>
             </button>
@@ -241,13 +318,18 @@ export function MobileSettingsView() {
         </div>
 
         {/* Correcteur orthographique et grammatical */}
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+        <p
+          className={clsx(
+            "text-xs font-medium uppercase tracking-wider mt-8 mb-3 px-1",
+            "text-ink-4"
+          )}
+        >
           Correcteur orthographique et grammatical
         </p>
-        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+        <div style={{ filter: "var(--shadow-card)" }}>
           <Squircle
             radius={18}
-            className="overflow-hidden bg-white border border-gray-100"
+            className={clsx("overflow-hidden border", "bg-surface border-line")}
           >
             {SPELLCHECK_ENGINES.map(({ value, label }, i) => (
               <button
@@ -257,17 +339,23 @@ export function MobileSettingsView() {
                   hapticImpact("light");
                   setSpellcheckEngine(value);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors ${
+                className={clsx(
+                  "w-full flex items-center gap-3 px-4 py-4 text-left active:bg-surface-2 transition-colors",
                   i < SPELLCHECK_ENGINES.length - 1
-                    ? "border-b border-gray-100"
+                    ? "border-b border-line"
                     : ""
-                }`}
+                )}
               >
-                <p className="flex-1 min-w-0 text-base text-gray-900">
+                <p className={clsx("flex-1 min-w-0 text-base", "text-ink")}>
                   {label}
                 </p>
                 {spellcheckEngine === value && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                  <div
+                    className={clsx(
+                      "w-2.5 h-2.5 rounded-full shrink-0",
+                      "bg-accent"
+                    )}
+                  />
                 )}
               </button>
             ))}
@@ -275,13 +363,21 @@ export function MobileSettingsView() {
         </div>
 
         {/* Couleur de surlignage par défaut */}
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+        <p
+          className={clsx(
+            "text-xs font-medium uppercase tracking-wider mt-8 mb-3 px-1",
+            "text-ink-4"
+          )}
+        >
           Couleur de surlignage par défaut
         </p>
-        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+        <div style={{ filter: "var(--shadow-card)" }}>
           <Squircle
             radius={18}
-            className="overflow-hidden bg-white border border-gray-100 px-4 py-4"
+            className={clsx(
+              "overflow-hidden border px-4 py-4",
+              "bg-surface border-line"
+            )}
           >
             <div className="flex gap-3 flex-wrap">
               {HIGHLIGHT_COLORS.map((c) => (
@@ -295,15 +391,20 @@ export function MobileSettingsView() {
                   }}
                   className="relative w-8 h-8 rounded-full border-2 transition-all active:scale-110"
                   style={{
-                    background: c.solid,
+                    background: getHighlightSolid(c.id),
                     borderColor:
                       defaultHighlightColor === c.id
-                        ? "#374151"
+                        ? "var(--color-ink-2)"
                         : "transparent",
                   }}
                 >
                   {defaultHighlightColor === c.id && (
-                    <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">
+                    <span
+                      className={clsx(
+                        "absolute inset-0 flex items-center justify-center text-xs font-bold",
+                        "text-on-inverse"
+                      )}
+                    >
                       ✓
                     </span>
                   )}
@@ -314,13 +415,18 @@ export function MobileSettingsView() {
         </div>
 
         {/* Ressources */}
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+        <p
+          className={clsx(
+            "text-xs font-medium uppercase tracking-wider mt-8 mb-3 px-1",
+            "text-ink-4"
+          )}
+        >
           Ressources
         </p>
-        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+        <div style={{ filter: "var(--shadow-card)" }}>
           <Squircle
             radius={18}
-            className="overflow-hidden bg-white border border-gray-100"
+            className={clsx("overflow-hidden border", "bg-surface border-line")}
           >
             <button
               type="button"
@@ -329,18 +435,26 @@ export function MobileSettingsView() {
                 setShowResources((v) => !v);
                 reload();
               }}
-              className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors border-b border-gray-100"
+              className={clsx(
+                "w-full flex items-center gap-3 px-4 py-4 text-left transition-colors border-b",
+                "border-line",
+                "active:bg-surface-2"
+              )}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-base text-gray-900">
-                  Afficher les ressources
-                </p>
+                <p className="text-base text-ink">Afficher les ressources</p>
               </div>
               <div
-                className={`w-11 h-6 rounded-full transition-colors shrink-0 ${showResources ? "bg-amber-500" : "bg-gray-200"}`}
+                className={clsx(
+                  "w-11 h-6 rounded-full transition-colors shrink-0",
+                  showResources ? "bg-accent" : "bg-surface-4"
+                )}
               >
                 <div
-                  className={`w-5 h-5 rounded-full bg-white shadow m-0.5 transition-transform ${showResources ? "translate-x-5" : "translate-x-0"}`}
+                  className={clsx(
+                    "w-5 h-5 rounded-full bg-surface shadow m-0.5 transition-transform",
+                    showResources ? "translate-x-5" : "translate-x-0"
+                  )}
                 />
               </div>
             </button>
@@ -351,15 +465,18 @@ export function MobileSettingsView() {
                 handleCleanResources();
               }}
               disabled={cleanStatus === "running" || !folderPath}
-              className="w-full flex items-center justify-between px-4 py-4 text-left active:bg-gray-50 transition-colors disabled:opacity-50"
+              className={clsx(
+                "w-full flex items-center justify-between px-4 py-4 text-left transition-colors disabled:opacity-50",
+                "active:bg-surface-2"
+              )}
             >
-              <p className="text-base text-gray-900">
+              <p className="text-base text-ink">
                 {cleanStatus === "running"
                   ? "Nettoyage…"
                   : "Nettoyer les ressources"}
               </p>
               {cleanStatus !== null && cleanStatus !== "running" && (
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-ink-4">
                   {cleanStatus === "error"
                     ? "Erreur"
                     : cleanStatus.count === 0
@@ -372,23 +489,31 @@ export function MobileSettingsView() {
         </div>
 
         {/* Dossiers par défaut */}
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+        <p
+          className={clsx(
+            "text-xs font-medium uppercase tracking-wider mt-8 mb-3 px-1",
+            "text-ink-4"
+          )}
+        >
           Dossiers par défaut
         </p>
-        <div style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}>
+        <div style={{ filter: "var(--shadow-card)" }}>
           <Squircle
             radius={18}
-            className="overflow-hidden bg-white border border-gray-100"
+            className={clsx("overflow-hidden border", "bg-surface border-line")}
           >
-            <div className="px-4 py-3.5 border-b border-gray-100">
-              <p className="text-base text-gray-900 mb-1.5">Inbox</p>
+            <div className={clsx("px-4 py-3.5 border-b", "border-line")}>
+              <p className="text-base text-ink mb-1.5">Inbox</p>
               <select
                 value={inboxRelPath ?? ""}
                 onChange={(e) => {
                   hapticImpact("light");
                   setInboxRelPath(e.target.value || null);
                 }}
-                className="w-full text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200"
+                className={clsx(
+                  "w-full text-sm rounded-lg px-3 py-2 border",
+                  "text-ink-3 bg-surface-2 border-line-2"
+                )}
               >
                 <option value="">Racine du vault</option>
                 {allFolders.map((folder) => {
@@ -402,19 +527,22 @@ export function MobileSettingsView() {
                   );
                 })}
               </select>
-              <p className="text-xs text-gray-400 mt-1.5">
+              <p className="text-xs text-ink-4 mt-1.5">
                 Destination des nouvelles notes (bouton + et raccourcis).
               </p>
             </div>
-            <div className="px-4 py-3.5 border-b border-gray-100">
-              <p className="text-base text-gray-900 mb-1.5">Dictaphone</p>
+            <div className={clsx("px-4 py-3.5 border-b", "border-line")}>
+              <p className="text-base text-ink mb-1.5">Dictaphone</p>
               <select
                 value={dictaphoneRelPath ?? ""}
                 onChange={(e) => {
                   hapticImpact("light");
                   setDictaphoneRelPath(e.target.value || null);
                 }}
-                className="w-full text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200"
+                className={clsx(
+                  "w-full text-sm rounded-lg px-3 py-2 border",
+                  "text-ink-3 bg-surface-2 border-line-2"
+                )}
               >
                 <option value="">Racine du vault</option>
                 {allFolders.map((folder) => {
@@ -428,15 +556,18 @@ export function MobileSettingsView() {
                   );
                 })}
               </select>
-              <p className="text-xs text-gray-400 mt-1.5">
+              <p className="text-xs text-ink-4 mt-1.5">
                 Destination des enregistrements dictaphone.
               </p>
             </div>
             <div className="px-4 py-3.5">
-              <p className="text-base text-gray-900 mb-1.5">
-                Boîte aux lettres
-              </p>
-              <div className="flex gap-1 bg-gray-50 rounded-lg p-0.75 border border-gray-200">
+              <p className="text-base text-ink mb-1.5">Boîte aux lettres</p>
+              <div
+                className={clsx(
+                  "flex gap-1 rounded-lg p-0.75 border",
+                  "bg-surface-2 border-line-2"
+                )}
+              >
                 {(
                   [
                     ["recus", MAILBOX_DEFAULT_FOLDER_NAME],
@@ -451,11 +582,12 @@ export function MobileSettingsView() {
                       hapticImpact("light");
                       setMailboxMode(mode);
                     }}
-                    className={`flex-1 px-2 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    className={clsx(
+                      "flex-1 px-2 py-1.5 rounded-md text-sm font-medium transition-colors",
                       mailboxMode === mode
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-400"
-                    }`}
+                        ? "bg-surface text-ink shadow-sm"
+                        : "text-ink-4"
+                    )}
                   >
                     {label}
                   </button>
@@ -468,7 +600,10 @@ export function MobileSettingsView() {
                     hapticImpact("light");
                     setMailboxCustomRelPath(e.target.value || null);
                   }}
-                  className="w-full text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 mt-2"
+                  className={clsx(
+                    "w-full text-sm rounded-lg px-3 py-2 border mt-2",
+                    "text-ink-3 bg-surface-2 border-line-2"
+                  )}
                 >
                   <option value="">Racine du vault</option>
                   {allFolders.map((folder) => {
@@ -483,7 +618,7 @@ export function MobileSettingsView() {
                   })}
                 </select>
               )}
-              <p className="text-xs text-gray-400 mt-1.5">
+              <p className="text-xs text-ink-4 mt-1.5">
                 Destination des notes, dossiers et médias reçus par bundle
                 partagé (.lueurs).
               </p>
@@ -497,15 +632,21 @@ export function MobileSettingsView() {
 
         {isIOS && (
           <>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+            <p
+              className={clsx(
+                "text-xs font-medium uppercase tracking-wider mt-8 mb-3 px-1",
+                "text-ink-4"
+              )}
+            >
               Corbeille
             </p>
-            <div
-              style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
-            >
+            <div style={{ filter: "var(--shadow-card)" }}>
               <Squircle
                 radius={18}
-                className="overflow-hidden bg-white border border-gray-100"
+                className={clsx(
+                  "overflow-hidden border",
+                  "bg-surface border-line"
+                )}
               >
                 <button
                   type="button"
@@ -513,17 +654,20 @@ export function MobileSettingsView() {
                     hapticImpact("light");
                     navigate("trash");
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-gray-50 transition-colors"
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-4 text-left transition-colors",
+                    "active:bg-surface-2"
+                  )}
                 >
                   <IconTrash
-                    className="size-5 text-gray-400 shrink-0"
+                    className="size-5 text-ink-4 shrink-0"
                     aria-hidden="true"
                   />
-                  <p className="flex-1 min-w-0 text-base text-gray-900">
+                  <p className={clsx("flex-1 min-w-0 text-base", "text-ink")}>
                     Corbeille
                   </p>
                   <IconChevronRight
-                    className="size-4 text-gray-300 shrink-0"
+                    className="size-4 text-ink-5 shrink-0"
                     aria-hidden="true"
                   />
                 </button>
@@ -534,15 +678,21 @@ export function MobileSettingsView() {
 
         {import.meta.env.DEV && (
           <>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+            <p
+              className={clsx(
+                "text-xs font-medium uppercase tracking-wider mt-8 mb-3 px-1",
+                "text-ink-4"
+              )}
+            >
               Développement
             </p>
-            <div
-              style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
-            >
+            <div style={{ filter: "var(--shadow-card)" }}>
               <Squircle
                 radius={18}
-                className="overflow-hidden bg-white border border-gray-100"
+                className={clsx(
+                  "overflow-hidden border",
+                  "bg-surface border-line"
+                )}
               >
                 <button
                   type="button"
@@ -550,7 +700,11 @@ export function MobileSettingsView() {
                     hapticImpact("light");
                     setShowSplash(true);
                   }}
-                  className="w-full px-4 py-4 text-left text-base text-gray-900 active:bg-gray-50 transition-colors"
+                  className={clsx(
+                    "w-full px-4 py-4 text-left text-base transition-colors",
+                    "text-ink",
+                    "active:bg-surface-2"
+                  )}
                 >
                   Aperçu du splash screen
                 </button>
@@ -561,19 +715,25 @@ export function MobileSettingsView() {
 
         {isAndroid && (
           <>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-8 mb-3 px-1">
+            <p
+              className={clsx(
+                "text-xs font-medium uppercase tracking-wider mt-8 mb-3 px-1",
+                "text-ink-4"
+              )}
+            >
               Vault
             </p>
-            <div
-              style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))" }}
-            >
+            <div style={{ filter: "var(--shadow-card)" }}>
               <Squircle
                 radius={18}
-                className="overflow-hidden bg-white border border-gray-100"
+                className={clsx(
+                  "overflow-hidden border",
+                  "bg-surface border-line"
+                )}
               >
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 mb-0.5">Dossier racine</p>
-                  <p className="text-sm text-gray-700 truncate">
+                <div className={clsx("px-4 py-3 border-b", "border-line")}>
+                  <p className="text-xs text-ink-4 mb-0.5">Dossier racine</p>
+                  <p className="text-sm text-ink-2 truncate">
                     {folderPath ? vaultDisplayName(folderPath) : "–"}
                   </p>
                 </div>
@@ -583,7 +743,11 @@ export function MobileSettingsView() {
                     hapticImpact("light");
                     pickFolder();
                   }}
-                  className="w-full px-4 py-4 text-left text-base text-amber-500 active:bg-gray-50 transition-colors"
+                  className={clsx(
+                    "w-full px-4 py-4 text-left text-base transition-colors",
+                    "text-accent",
+                    "active:bg-surface-2"
+                  )}
                 >
                   Changer de dossier
                 </button>

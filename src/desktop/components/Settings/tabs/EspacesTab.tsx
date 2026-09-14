@@ -10,6 +10,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import clsx from "clsx";
 import { useSpacesEditor } from "../../../../shared/hooks/useSpacesEditor";
 import {
   ALL_SPACE_ID,
@@ -40,7 +41,7 @@ export function EspacesTab() {
   );
 
   if (!canEdit)
-    return <p className="text-sm text-gray-400">Aucun vault chargé.</p>;
+    return <p className="text-sm text-ink-4">Aucun vault chargé.</p>;
 
   function handleReorder(event: DragEndEvent) {
     const { active, over } = event;
@@ -90,7 +91,11 @@ export function EspacesTab() {
       <button
         type="button"
         onClick={addSpace}
-        className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-40 transition-colors cursor-pointer"
+        className={clsx(
+          "text-xs disabled:opacity-40 transition-colors cursor-pointer",
+          "text-ink-3",
+          "hover:text-ink-2"
+        )}
       >
         + Ajouter un espace
       </button>
@@ -99,15 +104,17 @@ export function EspacesTab() {
           type="checkbox"
           checked={iconOnly}
           onChange={(e) => setIconOnly(e.target.checked)}
-          className="rounded accent-gray-800 cursor-pointer"
+          className="rounded accent-ink cursor-pointer"
         />
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-ink-3">
           Afficher les icônes uniquement
         </span>
       </label>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-ink-4">
         Taguez vos notes avec{" "}
-        <code className="font-mono bg-gray-100 px-1 rounded">__Space__</code>{" "}
+        <code className={clsx("font-mono px-1 rounded", "bg-surface-3")}>
+          __Space__
+        </code>{" "}
         pour les associer à un espace.
       </p>
     </div>

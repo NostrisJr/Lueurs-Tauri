@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { useAtom, useAtomValue, useStore } from "jotai";
 import { EditableText } from "../../../shared/components/EditableText";
 import { NodeIconProvider } from "../../../shared/components/NodeIconProvider.tsx";
@@ -92,9 +93,8 @@ function computeRangeSelection(
 
 const ROW_BASE =
   "select-none group justify-between flex items-center gap-1.5 rounded-lg px-2 py-1.5 pl-2 cursor-pointer";
-export const ROW_ACTIVE = "liquid-glass bg-white/90";
-export const ROW_INACTIVE =
-  "text-gray-600 hover:bg-white/80 hover:text-gray-800";
+export const ROW_ACTIVE = "liquid-glass bg-surface/90";
+export const ROW_INACTIVE = "text-ink-2 hover:bg-surface/80 hover:text-ink";
 const ROW_DRAGGING = "opacity-40";
 const rowIndent = 8;
 
@@ -175,12 +175,16 @@ function FileNodeComponent({
         onClick={handleClick}
         onKeyDown={(e) => e.key === "Enter" && handleSelectNote(node)}
         onContextMenu={(e) => dnd.onContextMenu(e, node.id, "file")}
-        className={`${ROW_BASE} ${isActive || isSelected ? ROW_ACTIVE : ROW_INACTIVE} ${isDragging ? ROW_DRAGGING : ""}`}
+        className={clsx(
+          ROW_BASE,
+          isActive || isSelected ? ROW_ACTIVE : ROW_INACTIVE,
+          isDragging ? ROW_DRAGGING : ""
+        )}
       >
         <div className="flex items-center gap-2 min-w-0">
           <NodeIconProvider
             node={node}
-            className="size-4 text-gray-400 shrink-0"
+            className="size-4 text-ink-4 shrink-0"
           />
           <EditableText
             value={node.name}
@@ -191,7 +195,7 @@ function FileNodeComponent({
           />
           {readOnly && (
             <IconLock
-              className="size-3 text-gray-300 shrink-0"
+              className="size-3 text-ink-5 shrink-0"
               aria-hidden="true"
             />
           )}
@@ -204,7 +208,11 @@ function FileNodeComponent({
           }}
           aria-label={`Mettre ${node.name} à la poubelle`}
           title="Mettre à la poubelle"
-          className="hidden group-hover:block rounded text-gray-300 hover:text-red-400 transition-all cursor-pointer"
+          className={clsx(
+            "hidden group-hover:block rounded transition-all cursor-pointer",
+            "text-ink-5",
+            "hover:text-danger-2"
+          )}
         >
           <IconTrash className="size-3" aria-hidden="true" />
         </button>
@@ -261,13 +269,14 @@ function MediaNodeComponent({
       onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
       onClick={handleClick}
       onContextMenu={(e) => dnd.onContextMenu(e, node.id, "media")}
-      className={`${ROW_BASE} ${isActive || isSelected ? ROW_ACTIVE : ROW_INACTIVE} ${isDragging ? ROW_DRAGGING : ""}`}
+      className={clsx(
+        ROW_BASE,
+        isActive || isSelected ? ROW_ACTIVE : ROW_INACTIVE,
+        isDragging ? ROW_DRAGGING : ""
+      )}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <NodeIconProvider
-          node={node}
-          className="size-4 text-gray-400 shrink-0"
-        />
+        <NodeIconProvider node={node} className="size-4 text-ink-4 shrink-0" />
         <EditableText value={node.name} onSave={handleRename} />
       </div>
       <button
@@ -278,7 +287,11 @@ function MediaNodeComponent({
         }}
         aria-label={`Mettre ${node.name} à la poubelle`}
         title="Mettre à la poubelle"
-        className="hidden group-hover:block rounded text-gray-300 hover:text-red-400 transition-all cursor-pointer"
+        className={clsx(
+          "hidden group-hover:block rounded transition-all cursor-pointer",
+          "text-ink-5",
+          "hover:text-danger-2"
+        )}
       >
         <IconTrash className="size-3" aria-hidden="true" />
       </button>
@@ -358,7 +371,14 @@ function FolderNodeComponent({
           onPointerDown={(e) => dnd.onPointerDown(e, node.id, node.name)}
           onClick={handleFolderShiftClick}
           onContextMenu={(e) => dnd.onContextMenu(e, node.id, "folder")}
-          className={`${ROW_BASE} ${isActive || isSelected ? ROW_ACTIVE : isOver ? "bg-amber-400/20 text-gray-700" : ROW_INACTIVE}`}
+          className={clsx(
+            ROW_BASE,
+            isActive || isSelected
+              ? ROW_ACTIVE
+              : isOver
+                ? "bg-accent-2/20 text-ink-2"
+                : ROW_INACTIVE
+          )}
         >
           {/* Flèche : toggle seul */}
           <button
@@ -372,12 +392,12 @@ function FolderNodeComponent({
           >
             {open ? (
               <IconChevronDown
-                className="size-3 text-gray-400"
+                className="size-3 text-ink-4"
                 aria-hidden="true"
               />
             ) : (
               <IconChevronRight
-                className="size-3 text-gray-400"
+                className="size-3 text-ink-4"
                 aria-hidden="true"
               />
             )}
@@ -396,7 +416,7 @@ function FolderNodeComponent({
             }}
           >
             <IconFolder
-              className="size-4 text-gray-400 shrink-0"
+              className="size-4 text-ink-4 shrink-0"
               aria-hidden="true"
             />
             <EditableText
@@ -417,7 +437,11 @@ function FolderNodeComponent({
               }}
               aria-label="Nouvelle note dans ce dossier"
               title="Nouvelle note"
-              className="rounded text-gray-400 hover:bg-gray-200 transition-colors cursor-pointer"
+              className={clsx(
+                "rounded transition-colors cursor-pointer",
+                "text-ink-4",
+                "hover:bg-surface-4"
+              )}
             >
               <IconPlus className="size-3 m-1" aria-hidden="true" />
             </button>
@@ -429,7 +453,11 @@ function FolderNodeComponent({
               }}
               aria-label="Nouveau sous-dossier"
               title="Nouveau dossier"
-              className="rounded text-gray-400 hover:bg-gray-200 transition-colors cursor-pointer"
+              className={clsx(
+                "rounded transition-colors cursor-pointer",
+                "text-ink-4",
+                "hover:bg-surface-4"
+              )}
             >
               <IconFolderBadgePlus
                 className="size-3.5 m-1"
@@ -444,7 +472,11 @@ function FolderNodeComponent({
               }}
               aria-label={`Mettre ${node.name} à la poubelle`}
               title="Mettre à la poubelle"
-              className="rounded text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
+              className={clsx(
+                "rounded transition-colors cursor-pointer",
+                "text-ink-4",
+                "hover:text-danger-2"
+              )}
             >
               <IconTrash className="size-3" aria-hidden="true" />
             </button>
@@ -454,7 +486,12 @@ function FolderNodeComponent({
         {/* Enfants */}
         {open && visibleChildren.length > 0 && (
           <div
-            className={`border-l pl-1 select-none  transition-colors ${isOver ? "border-amber-300/70 bg-amber-100/30" : "border-gray-400/30"}`}
+            className={clsx(
+              "border-l pl-1 select-none transition-colors",
+              isOver
+                ? "border-accent-2/70 bg-accent-soft-2/30"
+                : "border-line-3/30"
+            )}
             style={{ marginLeft: `${rowIndent * 2}px` }}
           >
             <TreeNodes
@@ -468,7 +505,10 @@ function FolderNodeComponent({
         {/* Dossier vide */}
         {open && visibleChildren.length === 0 && (
           <p
-            className={`text-xs py-1 transition-colors ${isOver ? "text-amber-400" : "text-gray-300"}`}
+            className={clsx(
+              "text-xs py-1 transition-colors",
+              isOver ? "text-accent-2" : "text-ink-5"
+            )}
             style={{ paddingLeft: `${(depth + 1) * rowIndent + 8}px` }}
           >
             Vide

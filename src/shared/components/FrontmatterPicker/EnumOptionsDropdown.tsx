@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { pillClasses } from "../../lib/FrontmatterPicker/enumPillColors";
 import type { EnumDef } from "../../lib/FrontmatterPicker/enumProperty";
 import { isMobile } from "../../lib/platform";
@@ -39,17 +40,27 @@ export function EnumOptionsDropdown({
           key={opt.value}
           type="button"
           onClick={() => onSelect(opt.value)}
-          className={`w-full text-left hover:bg-gray-50 active:bg-gray-50 transition-colors flex items-center gap-2
-            ${isMobile ? "px-4 py-3.5" : "px-3 py-1.5"}`}
+          className={clsx(
+            "w-full text-left transition-colors flex items-center gap-2",
+            "hover:bg-surface-2 active:bg-surface-2",
+            isMobile ? "px-4 py-3.5" : "px-3 py-1.5"
+          )}
         >
           <span
-            className={`inline-flex px-2 py-0.5 rounded-md font-medium ${isMobile ? "text-base" : "text-xs"} ${pillClasses(opt.color)}`}
+            className={clsx(
+              "inline-flex px-2 py-0.5 rounded-md font-medium",
+              isMobile ? "text-base" : "text-xs",
+              pillClasses(opt.color)
+            )}
           >
             {opt.value}
           </span>
           {opt.value === value && (
             <span
-              className={`text-gray-400 ${isMobile ? "text-base" : "text-[10px]"}`}
+              className={clsx(
+                "text-ink-4",
+                isMobile ? "text-base" : "text-[10px]"
+              )}
             >
               ✓
             </span>

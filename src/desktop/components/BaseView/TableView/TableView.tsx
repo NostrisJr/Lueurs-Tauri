@@ -68,7 +68,7 @@ export function TableView({ base, onBaseChange }: Props) {
 
           {childNotes.length === 0 ? (
             <div className="flex items-center justify-center py-16">
-              <p className="font-body text-sm text-gray-400">
+              <p className="font-body text-sm text-ink-4">
                 Aucune note dans cette base.
               </p>
             </div>
