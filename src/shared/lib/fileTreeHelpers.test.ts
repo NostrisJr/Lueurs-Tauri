@@ -15,6 +15,7 @@ import {
   frontmatterEqual,
   frontmatterFieldEqual,
   migrateLegacySpaceKey,
+  moveNoteInTree,
   parseFrontmatter,
   renameNodeInTree,
   serializeFrontmatter,
@@ -262,6 +263,36 @@ describe("renameNodeInTree", () => {
     const renamed = renameNodeInTree(tree, "a.md", "z.md", "Zoulou");
     expect(renamed.map((n) => n.name)).toEqual(["Bravo", "Zoulou"]);
     expect(renamed[1].id).toBe("z.md");
+  });
+});
+
+describe("moveNoteInTree", () => {
+  it("déplace la note dans le dossier cible", () => {
+    const tree: TreeNode[] = [
+      note({ id: "vault/a.md", name: "a" }),
+      folder("vault/dir", "dir"),
+    ];
+    const result = moveNoteInTree(tree, "vault/a.md", "vault/dir/a.md", "vault/dir", "vault");
+    expect(result.map((n) => n.id)).toEqual(["vault/dir"]);
+    const moved = (result[0] as FolderNode).children[0];
+    expect(moved.id).toBe("vault/dir/a.md");
+    expect(moved.name).toBe("a");
+  });
+
+  it("aligne name sur le fichier renommé en cas de collision", () => {
+    const tree: TreeNode[] = [
+      note({ id: "vault/a.md", name: "a" }),
+      folder("vault/dir", "dir", [note({ id: "vault/dir/a.md", name: "a" })]),
+    ];
+    const result = moveNoteInTree(tree, "vault/a.md", "vault/dir/a (2).md", "vault/dir", "vault");
+    const children = (result[0] as FolderNode).children;
+    expect(children.map((n) => n.name).sort()).toEqual(["a", "a (2)"]);
+    expect(children.find((n) => n.id === "vault/dir/a (2).md")?.name).toBe("a (2)");
+  });
+
+  it("ne change rien si la source est introuvable", () => {
+    const tree: TreeNode[] = [note({ id: "vault/a.md" })];
+    expect(moveNoteInTree(tree, "vault/x.md", "vault/d/x.md", "vault/d", "vault")).toBe(tree);
   });
 });
 

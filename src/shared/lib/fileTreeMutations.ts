@@ -34,6 +34,7 @@ import {
   extractTitle,
   findNextAvailableNumber,
   flattenTree,
+  moveNoteInTree,
   renameNodeInTree,
   serializeFrontmatter,
   updateFolderInTree,
@@ -1045,20 +1046,15 @@ async function moveNodeCore(
 
   if (isNote) {
     // Mise à jour optimiste de l'arbre en mémoire
-    const note = flattenTree(store.get(treeAtom)).find(
-      (n) => n.id === sourceId
+    store.set(treeAtom, (prev) =>
+      moveNoteInTree(
+        prev,
+        sourceId,
+        newPath,
+        targetFolderPath,
+        folderPath ?? undefined
+      )
     );
-    if (note) {
-      const movedNote: NoteFile = { ...note, id: newPath };
-      store.set(treeAtom, (prev) =>
-        addNodeInTree(
-          deleteNodeInTree(prev, sourceId),
-          targetFolderPath,
-          movedNote,
-          folderPath ?? undefined
-        )
-      );
-    }
   } else if (folderPath) {
     // Dossier ou média : rechargement complet (inclut les médias via loadTree)
     await reload(store, folderPath);

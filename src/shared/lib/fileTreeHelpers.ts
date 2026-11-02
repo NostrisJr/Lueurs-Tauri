@@ -473,6 +473,27 @@ export function addNodeInTree(
   });
 }
 
+// `name` suit le nom réel du fichier : resolveDestName peut avoir renommé la
+// note (« a (2).md ») en cas de collision dans le dossier cible.
+export function moveNoteInTree(
+  nodes: TreeNode[],
+  sourceId: string,
+  newPath: string,
+  targetFolderPath: string,
+  rootId?: string
+): TreeNode[] {
+  const source = findNodeById(nodes, sourceId);
+  if (!source || source.kind !== "file") return nodes;
+  const newName = (newPath.split("/").pop() ?? newPath).replace(/\.md$/, "");
+  const moved = { ...source, id: newPath, name: newName };
+  return addNodeInTree(
+    deleteNodeInTree(nodes, sourceId),
+    targetFolderPath,
+    moved,
+    rootId
+  );
+}
+
 /**
  * Filtre l'arborescence pour n'afficher que les nœuds appartenant à `spaceName`.
  *
