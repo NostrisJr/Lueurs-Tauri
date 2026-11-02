@@ -1,84 +1,30 @@
-import type { MarkType } from "@milkdown/kit/prose/model";
 import type { EditorState } from "@milkdown/kit/prose/state";
 import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
+import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { $prose } from "@milkdown/kit/utils";
 import { createElement } from "react";
-import { type Root, createRoot } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import { createLogger } from "../../lib/logger";
 import { isMobile } from "../../lib/platform";
-import { HighlightColorPicker, type PickerState } from "./HighlightColorPicker";
+import { HighlightColorPicker } from "./HighlightColorPicker";
+import {
+  type PickerRange,
+  highlightRangeAt,
+  mapPickerRange,
+} from "./picker-range";
 
 const log = createLogger("highlight-color-picker");
 
-// Étend la position survolée à toute la plage contiguë portant la marque
-// highlight de même couleur (la marque peut couvrir plusieurs text nodes si
-// du gras/italique la traverse).
-function highlightRangeAt(
-  state: EditorState,
-  pos: number,
-  hlType: MarkType
-): { from: number; to: number; color: string } | null {
-  const $pos = state.doc.resolve(pos);
-  const after = $pos.nodeAfter;
-  const mark = after && hlType.isInSet(after.marks);
-  if (!after || !mark) return null;
-  const color = mark.attrs.color as string;
+// La pastille est un widget de décoration inséré dans le flux de l'éditeur :
+// elle suit le texte au scroll, à la remontée du clavier et au rescroll vers
+// le caret, ce qu'une position `fixed` calculée une fois ne pouvait pas faire.
 
-  let from = pos;
-  let to = pos + after.nodeSize;
-  for (;;) {
-    const before = state.doc.resolve(from).nodeBefore;
-    const m = before && hlType.isInSet(before.marks);
-    if (before && m && m.attrs.color === color) from -= before.nodeSize;
-    else break;
-  }
-  for (;;) {
-    const next = state.doc.resolve(to).nodeAfter;
-    const m = next && hlType.isInSet(next.marks);
-    if (next && m && m.attrs.color === color) to += next.nodeSize;
-    else break;
-  }
-  return { from, to, color };
-}
+const pickerKey = new PluginKey<PickerRange | null>("highlightColorPicker");
 
-// ── Root React singleton ─────────────────────────────────────────────────────
+type PickerMeta = { show: PickerRange } | { hide: true };
 
-let container: HTMLDivElement | null = null;
-let root: Root | null = null;
-
-let currentView: EditorView | null = null;
-let currentRange: { from: number; to: number } | null = null;
-let pickerState: PickerState | null = null;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
-
-function render() {
-  root?.render(
-    createElement(HighlightColorPicker, {
-      state: pickerState,
-      onPick: applyColor,
-      onRemove: removeHighlight,
-      onCancelHide: cancelHide,
-      onScheduleHide: scheduleHide,
-      onClickOutside: hidePicker,
-    })
-  );
-}
-
-function ensureRoot() {
-  if (root) return;
-  container = document.createElement("div");
-  container.id = "lueurs-hl-picker";
-  document.body.appendChild(container);
-  root = createRoot(container);
-}
-
-// ── Affichage / masquage ───────────────────────────────────────────────────
-
-function scheduleHide() {
-  cancelHide();
-  hideTimer = setTimeout(() => hidePicker(), 250);
-}
 
 function cancelHide() {
   if (hideTimer !== null) {
@@ -87,118 +33,169 @@ function cancelHide() {
   }
 }
 
-function hidePicker() {
+function hidePicker(view: EditorView) {
   cancelHide();
-  pickerState = null;
-  currentRange = null;
-  render();
+  if (!pickerKey.getState(view.state)) return;
+  view.dispatch(view.state.tr.setMeta(pickerKey, { hide: true }));
 }
 
-function showPickerAt(
-  markEl: HTMLElement,
-  view: EditorView,
-  range: { from: number; to: number }
-) {
-  ensureRoot();
+function scheduleHide(view: EditorView) {
   cancelHide();
-
-  currentView = view;
-  currentRange = range;
-
-  const color = markEl.getAttribute("data-hl-color") ?? "yellow";
-
-  // Positionné à gauche de la marque, centré verticalement (dotSize logique = 20)
-  const rect = markEl.getBoundingClientRect();
-  const dotSize = isMobile ? 16 : 12;
-
-  pickerState = {
-    color,
-    size: dotSize,
-    position: {
-      left: rect.left - dotSize / 2,
-      top: rect.top - dotSize / 2,
-    },
-  };
-  render();
+  hideTimer = setTimeout(() => hidePicker(view), 250);
 }
 
 // ── Actions sur le nœud ───────────────────────────────────────────────────
 
-function applyColor(colorId: string) {
-  if (!currentView || !currentRange) return;
-  const view = currentView;
-  const { from, to } = currentRange;
+function applyColor(view: EditorView, colorId: string) {
+  const range = pickerKey.getState(view.state);
+  const hlType = view.state.schema.marks.highlight_inline;
+  if (!range || !hlType) return;
+  const { from, to } = range;
 
   view.focus();
-  const hlType = view.state.schema.marks.highlight_inline;
-  if (!hlType) return;
-
-  const tr = view.state.tr
-    .removeMark(from, to, hlType)
-    .addMark(from, to, hlType.create({ color: colorId }));
-  view.dispatch(tr);
+  view.dispatch(
+    view.state.tr
+      .removeMark(from, to, hlType)
+      .addMark(from, to, hlType.create({ color: colorId }))
+  );
   log.info("couleur surlignage modifiée", { colorId, from, to });
-
-  // Reflète la nouvelle couleur sur le dot, puis laisse le picker se masquer
-  if (pickerState) pickerState = { ...pickerState, color: colorId };
-  render();
-  scheduleHide();
+  scheduleHide(view);
 }
 
-function removeHighlight() {
-  if (!currentView || !currentRange) return;
-  const view = currentView;
-  const { from, to } = currentRange;
+function removeHighlight(view: EditorView) {
+  const range = pickerKey.getState(view.state);
+  const hlType = view.state.schema.marks.highlight_inline;
+  if (!range || !hlType) return;
+  const { from, to } = range;
 
   view.focus();
-  const hlType = view.state.schema.marks.highlight_inline;
-  if (!hlType) return;
-
-  // Retire la marque sur la plage (texte et marques imbriquées conservés)
-  const tr = view.state.tr.removeMark(from, to, hlType);
-  view.dispatch(tr);
+  // Retire la marque sur la plage (texte et marques imbriquées conservées)
+  view.dispatch(view.state.tr.removeMark(from, to, hlType));
   log.info("surlignage supprimé", { from, to });
-  hidePicker();
+  hidePicker(view);
+}
+
+// ── Widget ─────────────────────────────────────────────────────────────────
+
+function createPickerWidget(view: EditorView, color: string) {
+  // Ancre de taille nulle, calée en haut de la ligne : la pastille s'y
+  // positionne en absolu, donc sans calcul de coordonnées à maintenir.
+  const anchor = document.createElement("span");
+  anchor.className = "lueurs-hl-picker-anchor";
+  anchor.contentEditable = "false";
+  anchor.style.cssText =
+    "position:relative;display:inline-block;width:0;height:0;vertical-align:top;";
+
+  const root = createRoot(anchor);
+  root.render(
+    createElement(HighlightColorPicker, {
+      color,
+      size: isMobile ? 16 : 12,
+      onPick: (id) => applyColor(view, id),
+      onRemove: () => removeHighlight(view),
+      onCancelHide: cancelHide,
+      onScheduleHide: () => scheduleHide(view),
+      onClickOutside: () => hidePicker(view),
+    })
+  );
+  return { anchor, root };
+}
+
+function buildDecorations(state: EditorState, view: EditorView | null) {
+  const range = pickerKey.getState(state);
+  const hlType = state.schema.marks.highlight_inline;
+  if (!range || !hlType || !view) return DecorationSet.empty;
+
+  const found = highlightRangeAt(state, range.from, hlType);
+  if (!found) return DecorationSet.empty;
+
+  return DecorationSet.create(state.doc, [
+    Decoration.widget(
+      found.from,
+      () => {
+        const { anchor, root } = createPickerWidget(view, found.color);
+        // Démontage différé : destroy peut tomber pendant un rendu React
+        (anchor as HTMLElement & { _root?: typeof root })._root = root;
+        return anchor;
+      },
+      {
+        // La couleur dans la clé recrée le widget quand elle change
+        key: `hl-picker-${found.color}`,
+        side: -1,
+        stopEvent: () => true,
+        ignoreSelection: true,
+        destroy: (node) => {
+          const root = (node as HTMLElement & { _root?: { unmount(): void } })
+            ._root;
+          if (root) queueMicrotask(() => root.unmount());
+        },
+      }
+    ),
+  ]);
 }
 
 // ── Plugin ProseMirror ─────────────────────────────────────────────────────
 
-const highlightPickerKey = new PluginKey("highlightColorPicker");
+export const highlightColorPickerPlugin = $prose(() => {
+  let editorView: EditorView | null = null;
 
-export const highlightColorPickerPlugin = $prose(
-  () =>
-    new Plugin({
-      key: highlightPickerKey,
-      props: {
-        handleDOMEvents: {
-          mouseover(view, event) {
-            const target = (event.target as HTMLElement).closest<HTMLElement>(
-              "mark.lueurs-hl[data-hl-color]"
+  return new Plugin<PickerRange | null>({
+    key: pickerKey,
+    view(view) {
+      editorView = view;
+      return {
+        destroy() {
+          cancelHide();
+          editorView = null;
+        },
+      };
+    },
+    state: {
+      init: () => null,
+      apply(tr, prev) {
+        const meta = tr.getMeta(pickerKey) as PickerMeta | undefined;
+        if (meta) return "hide" in meta ? null : meta.show;
+        if (!tr.docChanged) return prev;
+        return mapPickerRange(prev, (pos, assoc) => tr.mapping.map(pos, assoc));
+      },
+    },
+    props: {
+      decorations: (state) => buildDecorations(state, editorView),
+      handleDOMEvents: {
+        mouseover(view, event) {
+          const target = (event.target as HTMLElement).closest<HTMLElement>(
+            "mark.lueurs-hl[data-hl-color]"
+          );
+          if (!target) return false;
+
+          try {
+            const hlType = view.state.schema.marks.highlight_inline;
+            if (!hlType) return false;
+            const pos = view.posAtDOM(target, 0);
+            if (pos < 0) return false;
+            const range = highlightRangeAt(view.state, pos, hlType);
+            if (!range) return false;
+            cancelHide();
+            const current = pickerKey.getState(view.state);
+            if (current?.from === range.from && current.to === range.to)
+              return false;
+            view.dispatch(
+              view.state.tr.setMeta(pickerKey, {
+                show: { from: range.from, to: range.to },
+              })
             );
-            if (!target) return false;
-
-            // Trouver la plage ProseMirror de la marque highlight survolée
-            try {
-              const hlType = view.state.schema.marks.highlight_inline;
-              if (!hlType) return false;
-              const pos = view.posAtDOM(target, 0);
-              if (pos < 0) return false;
-              const range = highlightRangeAt(view.state, pos, hlType);
-              if (!range) return false;
-              showPickerAt(target, view, range);
-            } catch {
-              // DOM pas encore en sync, ignoré
-            }
-            return false;
-          },
-          mouseleave(_view, event) {
-            const to = event.relatedTarget as HTMLElement | null;
-            // Ne pas masquer si on déplace la souris vers le picker lui-même
-            if (to && container?.contains(to)) return false;
-            scheduleHide();
-            return false;
-          },
+          } catch {
+            // DOM pas encore en sync, ignoré
+          }
+          return false;
+        },
+        mouseleave(view) {
+          // Le widget est dans le DOM de l'éditeur : l'entrée de la souris sur
+          // la pastille annule ce délai via onCancelHide.
+          scheduleHide(view);
+          return false;
         },
       },
-    })
-);
+    },
+  });
+});

@@ -6,15 +6,9 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { HIGHLIGHT_COLORS, getHighlightSolid } from "./colors";
 
-export type PickerState = {
+export type HighlightColorPickerProps = {
   color: string;
   size: number;
-  position: { left: number; top: number };
-};
-
-export type HighlightColorPickerProps = {
-  // null = masqué (le composant ne rend rien)
-  state: PickerState | null;
   onPick: (colorId: string) => void;
   onRemove: () => void;
   onCancelHide: () => void;
@@ -23,7 +17,8 @@ export type HighlightColorPickerProps = {
 };
 
 export function HighlightColorPicker({
-  state,
+  color,
+  size,
   onPick,
   onRemove,
   onCancelHide,
@@ -33,29 +28,25 @@ export function HighlightColorPicker({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Referme le dropdown dès que le picker est masqué
+  // Clic ou toucher en dehors → fermer
   useEffect(() => {
-    if (!state) setOpen(false);
-  }, [state]);
-
-  // Clic en dehors → fermer
-  useEffect(() => {
-    if (!state) return;
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: Event) => {
       if (ref.current && !ref.current.contains(e.target as Node))
         onClickOutside();
     };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [state, onClickOutside]);
-
-  if (!state) return null;
+    document.addEventListener("touchstart", onDown, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [onClickOutside]);
 
   return (
     <div
       ref={ref}
-      className="fixed z-10 flex items-center"
-      style={{ left: state.position.left, top: state.position.top }}
+      className="absolute z-10 flex items-center"
+      style={{ left: -size / 2, top: -size / 2 }}
       onMouseEnter={onCancelHide}
       onMouseLeave={onScheduleHide}
     >
@@ -71,9 +62,9 @@ export function HighlightColorPicker({
           "border-surface/80"
         )}
         style={{
-          width: state.size,
-          height: state.size,
-          background: getHighlightSolid(state.color),
+          width: size,
+          height: size,
+          background: getHighlightSolid(color),
         }}
       />
 
@@ -97,7 +88,7 @@ export function HighlightColorPicker({
               }}
               className={clsx(
                 "h-5 w-5 cursor-pointer rounded-full border-2 p-0 outline-none transition-transform hover:scale-[1.15]",
-                c.id === state.color ? "border-ink-2" : "border-transparent"
+                c.id === color ? "border-ink-2" : "border-transparent"
               )}
               style={{ background: getHighlightSolid(c.id) }}
             />
