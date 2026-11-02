@@ -31,6 +31,7 @@ import { TabBar } from "./components/TabBar/TabBar";
 import { Toast } from "./components/Toast.tsx";
 import { WelcomeScreen } from "./components/WelcomeScreen.tsx";
 import { useMenuEvents } from "./hooks/useMenuEvents";
+import { useSelectAllGuard } from "./hooks/useSelectAllGuard";
 
 const DesktopDictaphone = lazy(() =>
   import("./components/Dictaphone/DesktopDictaphone.tsx").then((m) => ({
@@ -49,6 +50,7 @@ const SettingsModal = lazy(() =>
 );
 
 export function DesktopApp() {
+  useSelectAllGuard();
   const { pickFolder, initFolder, autoInitFolder } = useFileTree();
   const { handleCreateNote } = useNote();
   useVaultSync();
