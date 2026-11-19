@@ -17,9 +17,6 @@ mod vault_android;
 use vault_android::*;
 
 #[cfg(target_os = "macos")]
-mod macos_window;
-
-#[cfg(target_os = "macos")]
 mod macos_spellcheck;
 #[cfg(target_os = "macos")]
 use macos_spellcheck::{native_learn_word, native_spell_suggestions, set_native_text_checking};
@@ -202,19 +199,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 let window = app.get_webview_window("main").unwrap();
-                let radius = macos_window::CORNER_RADIUS;
-                // 4e arg = rayon des coins : arrondit la vue de vibrancy (fond visible).
-                apply_vibrancy(
-                    &window,
-                    NSVisualEffectMaterial::FullScreenUI,
-                    None,
-                    Some(radius),
-                )
-                .expect("Vibrancy non supportée");
-                // Clippe le contentView au même rayon pour que le webview suive l'arrondi.
-                if let Err(e) = macos_window::apply_corner_radius(&window, radius) {
-                    eprintln!("[macos_window] arrondi non appliqué : {}", e);
-                }
+                apply_vibrancy(&window, NSVisualEffectMaterial::FullScreenUI, None, None)
+                    .expect("Vibrancy non supportée");
             }
             #[cfg(target_os = "ios")]
             {

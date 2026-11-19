@@ -16,7 +16,7 @@
         "width": 1200,
         "height": 800,
         "titleBarStyle": "Overlay",
-        "trafficLightPosition": { "x": 18, "y": 29 },
+        "trafficLightPosition": { "x": 19, "y": 28 },
         "hiddenTitle": true,
         "acceptFirstMouse": true,
         "disableInputAccessoryView": true,

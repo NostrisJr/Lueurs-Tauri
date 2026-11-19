@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FloatingComponent } from "../../../mobile/components/Floating/FloatingComponent";
 import { IconSidebarLeft } from "../../../shared/components/PlatformIcon";
 import {
   activeSpaceAtom,
@@ -9,6 +10,7 @@ import {
   vaultConfigAtom,
 } from "../../../shared/lib/atoms";
 import { SideBarResizable } from "./SideBarResizable";
+import { GLASS_HEIGHT, GLASS_ICON_BUTTON } from "./glassStyles";
 
 function SideBar() {
   const [collapsed, setCollapsed] = useAtom(sidebarCollapsedAtom);
@@ -29,7 +31,7 @@ function SideBar() {
 
     const onMouseMove = (e: MouseEvent) => {
       if (!isResizing.current) return;
-      const newWidth = Math.min(Math.max(e.clientX - 8, 230), 480);
+      const newWidth = Math.min(Math.max(e.clientX - 16, 230), 480);
       setWidth(newWidth);
     };
 
@@ -44,19 +46,14 @@ function SideBar() {
     window.addEventListener("mouseup", onMouseUp);
   }, []);
 
-  // Largeur totale de l'aside (box-content + padding:8 = +16px, pas de border).
-  // Le div de bordure gradient doit dépasser de 1px de chaque côté → +18px au total.
-  const borderDivWidth = collapsed ? 0 : width + 18;
-
   return (
-    // Les custom properties CSS ici propagent aux enfants grâce à @property inherits:true.
-    // sidebar-gradient-border et sidebar-infuse-overlay lisent ces variables et les animent.
+    // La custom property CSS propage aux enfants grâce à @property inherits:true.
+    // sidebar-infuse-overlay la lit et l'anime.
     <div
-      className={clsx("relative z-30 flex py-2 pl-2 h-full", "bg-surface")}
+      className="relative z-30 flex h-full"
       style={
         {
-          "--sidebar-accent": accentColor ?? "white",
-          "--sidebar-infuse": accentColor ? `${accentColor}20` : "transparent",
+          "--sidebar-infuse": accentColor ? `${accentColor}35` : "transparent",
         } as React.CSSProperties
       }
     >
@@ -65,68 +62,56 @@ function SideBar() {
           z-40). Glisse du bord droit de la sidebar (ouverte) vers la gauche
           (repliée), en synchro avec l'animation de largeur de l'aside. */}
       {createPortal(
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? "Afficher la sidebar" : "Réduire la sidebar"}
-          title={collapsed ? "Afficher" : "Réduire"}
-          className={clsx(
-            "fixed z-50 flex justify-center items-center px-2 py-1 rounded-full",
-            "text-ink-4",
-            "hover:text-ink-3 hover:bg-surface-4/50"
-          )}
+        <div
+          className="fixed z-50"
           style={{
-            top: 16,
-            left: collapsed ? 88 : width - 20,
+            top: 8,
+            left: collapsed ? 88 : width - 36,
             transition: resizing ? "none" : "left 220ms ease, top 220ms ease",
           }}
         >
-          <IconSidebarLeft className="size-5" aria-hidden="true" />
-        </button>,
+          <FloatingComponent height={GLASS_HEIGHT}>
+            <button
+              type="button"
+              onClick={() => setCollapsed(!collapsed)}
+              aria-label={
+                collapsed ? "Afficher la sidebar" : "Réduire la sidebar"
+              }
+              title={collapsed ? "Afficher" : "Réduire"}
+              className={GLASS_ICON_BUTTON}
+            >
+              <IconSidebarLeft className="size-5" aria-hidden="true" />
+            </button>
+          </FloatingComponent>
+        </div>,
         document.body
       )}
 
-      {/* Gradient border : div absolu, 1px en dehors de l'aside sur tous les côtés.
-          Peint avant l'aside (DOM order) → reste derrière malgré z-index:auto.
-          width:0 quand collapsed → aucun strip visible. */}
-      <div
-        className="sidebar-gradient-border rounded-[1.26rem]"
-        style={{
-          top: 7,
-          bottom: 7,
-          left: 7,
-          width: borderDivWidth,
-          transition: resizing ? "none" : "width 220ms ease",
-        }}
-      />
-
-      {/* Aside restauré à sa structure originale (box-content, même positionnement).
-          Le bouton toggle et les coordonnées sont inchangés. */}
+      {/* Pleine hauteur, collée aux bords (macOS 27) : fond translucide sur la vibrancy,
+          séparée du contenu par un simple filet. box-content : width = zone utile. */}
       <aside
         className={clsx(
-          "relative shrink-0 flex flex-col rounded-[1.2rem] box-content overflow-hidden shadow-2xl",
-          "bg-surface-2"
+          "relative shrink-0 flex flex-col box-content overflow-hidden",
+          "bg-sidebar",
+          !collapsed && "border-r border-line"
         )}
         style={{
           width: collapsed ? 0 : width,
-          padding: collapsed ? 0 : 8,
+          padding: collapsed ? 0 : "8px 8px 16px",
           transition: resizing
             ? "none"
             : "width 220ms ease, padding 220ms ease",
         }}
       >
-        {/* Infusion : gradient intérieur animé via --sidebar-infuse */}
-        <div
-          className="sidebar-infuse-overlay absolute inset-0 pointer-events-none"
-          style={{ borderRadius: "1.1rem" }}
-        />
+        {/* Infusion : voile d'accent depuis la bordure droite, animé via --sidebar-infuse */}
+        <div className="sidebar-infuse-overlay absolute inset-0 pointer-events-none" />
 
         {/* SideBarResizable est position:relative → peint au-dessus de l'overlay */}
         <SideBarResizable />
 
         <div
           onMouseDown={startResize}
-          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-50 rounded-full my-3"
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-50"
         />
       </aside>
     </div>

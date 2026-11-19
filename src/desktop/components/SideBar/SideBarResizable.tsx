@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { FloatingComponent } from "../../../mobile/components/Floating/FloatingComponent";
 import {
   IconArrowClockwise,
   IconDocumentBadgePlus,
@@ -28,6 +29,7 @@ import { flattenTree } from "../../../shared/lib/fileTreeHelpers";
 import { ROW_ACTIVE, ROW_INACTIVE } from "../FileTree/FileNode";
 import { FileTree } from "../FileTree/FileTree";
 import { SpaceSwitcher } from "./SpaceSwitcher";
+import { GLASS_HEIGHT, GLASS_ICON_BUTTON } from "./glassStyles";
 
 const SLIDE_PX = 14;
 const EXIT_MS = 130;
@@ -148,23 +150,19 @@ export function SideBarResizable() {
   const hasData = tree.length > 0;
 
   return (
-    <div className="relative flex flex-col h-full pt-7 overflow-clip">
+    <div className="relative flex flex-col h-full pt-10 overflow-clip">
       {/* ── Partie haute fixe ────────────────────────────── */}
       <div className="shrink-0 select-none">
         {/* En-tête */}
-        <div className="flex items-center justify-between px-4 h-11">
-          {/* Dossier actif */}
-          <div className="flex items-center -ml-2">
+        <div className="flex items-center justify-between gap-2 px-4 h-11">
+          {/* Dossier actif : recharger + (dossier & nom) dans une même pill */}
+          <FloatingComponent height={GLASS_HEIGHT} wrapperClassName="min-w-0">
             <button
               type="button"
               onClick={reload}
               aria-label="Recharger"
               title="Recharger"
-              className={clsx(
-                "w-auto h-6 flex items-center justify-center px-2 py-1 rounded-full transition-colors cursor-pointer",
-                "text-ink-4",
-                "hover:text-ink-3 hover:bg-surface-4/50"
-              )}
+              className={GLASS_ICON_BUTTON}
             >
               <IconArrowClockwise
                 className="size-4 select-none"
@@ -175,35 +173,26 @@ export function SideBarResizable() {
               type="button"
               onClick={pickFolder}
               aria-label="Changer de dossier"
-              title="Changer de dossier"
-              className={clsx(
-                "w-auto h-6 flex items-center justify-center px-2 py-1 rounded-full transition-colors cursor-pointer",
-                "text-ink-4",
-                "hover:text-ink-3 hover:bg-surface-4/50"
-              )}
+              title={folderPath ?? "Choisir un dossier"}
+              className="h-full min-w-0 flex items-center gap-2 pr-4 rounded-full cursor-pointer transition-colors text-ink-3 hover:text-ink"
             >
-              <IconFolder className="size-4 select-none" aria-hidden="true" />
+              <IconFolder
+                className="size-4 shrink-0 select-none"
+                aria-hidden="true"
+              />
+              <span className="text-xs truncate">
+                {folderPath?.split("/").pop()}
+              </span>
             </button>
+          </FloatingComponent>
 
-            <p
-              className="text-xs text-ink-4 truncate"
-              title={folderPath ?? "Aucun dossier sélectionné"}
-            >
-              {folderPath?.split("/").pop()}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1">
+          <FloatingComponent height={GLASS_HEIGHT} wrapperClassName="shrink-0">
             <button
               type="button"
               onClick={handleCreateNote}
               aria-label="Nouvelle note à la racine"
               title="Nouvelle note"
-              className={clsx(
-                "w-auto h-6 flex items-center justify-center rounded-full px-2 py-1 transition-colors cursor-pointer",
-                "text-ink-4",
-                "hover:text-ink-3 hover:bg-surface-4/50"
-              )}
+              className={GLASS_ICON_BUTTON}
             >
               <IconDocumentBadgePlus
                 className="size-4 select-none"
@@ -215,18 +204,14 @@ export function SideBarResizable() {
               onClick={handleCreateFolder}
               aria-label="Nouveau dossier à la racine"
               title="Nouveau dossier"
-              className={clsx(
-                "w-auto h-6 flex items-center justify-center rounded-full px-2 py-1 transition-colors cursor-pointer",
-                "text-ink-4",
-                "hover:text-ink-3 hover:bg-surface-4/50"
-              )}
+              className={GLASS_ICON_BUTTON}
             >
               <IconFolderBadgePlus
                 className="size-4 select-none"
                 aria-hidden="true"
               />
             </button>
-          </div>
+          </FloatingComponent>
         </div>
 
         {/* Recherche */}

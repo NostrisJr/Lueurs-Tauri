@@ -84,8 +84,7 @@ export function SpaceSwitcher() {
   return (
     <div
       className={clsx(
-        "shrink-0 px-2 py-2 flex gap-1 items-center justify-start overflow-x-scroll border-t scrollbar-none",
-        "border-line/60"
+        "shrink-0 px-2 py-2 flex gap-1 items-center justify-start overflow-x-scroll scrollbar-none",
       )}
     >
       {orderedSpaces.map((entry) => {

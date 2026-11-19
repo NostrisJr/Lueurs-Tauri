@@ -12,6 +12,8 @@ interface FloatingComponentProps {
   bgColor?: string;
   // Pile verticale (hauteur auto) au lieu de la pilule horizontale par défaut
   vertical?: boolean;
+  // Pill compacte de `height` px (largeur au contenu, boutons jointifs) au lieu de la h-13
+  height?: number;
 }
 
 function FloatingComponent({
@@ -21,6 +23,7 @@ function FloatingComponent({
   children,
   bgColor,
   vertical,
+  height,
 }: FloatingComponentProps) {
   return (
     <div
@@ -35,7 +38,11 @@ function FloatingComponent({
         radius={9999}
         className={clsx(
           "flex items-center liquid-glass-shadow",
-          vertical ? "flex-col gap-2 px-2 py-2.5" : "h-13 gap-3 px-3 py-2",
+          height !== undefined
+            ? "gap-1 px-1"
+            : vertical
+              ? "flex-col gap-2 px-2 py-2.5"
+              : "h-13 gap-3 px-3 py-2",
           className ?? ""
         )}
         style={{
@@ -45,6 +52,7 @@ function FloatingComponent({
           // — 4 traits qui ne se rejoignent pas, comme une sous-div incrustée.
           borderRadius: 9999,
           backgroundColor: bgColor ?? "var(--glass-fill)",
+          ...(height !== undefined && { height }),
         }}
         onClick={onClick}
         tabIndex={-1}

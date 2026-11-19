@@ -31,6 +31,8 @@
   --color-surface: #ffffff;
   /* panneaux, cartes, popups, modales */
   --color-surface-2: #f9fafb;
+  /* Fond de la sidebar pleine hauteur : voile translucide posé sur la vibrancy macOS */
+  --color-sidebar: rgba(250, 250, 249, 0.72);
   /* remplissage discret (champs, en-têtes) */
   --color-surface-3: #f3f4f6;
   /* survol */
@@ -181,6 +183,7 @@
   --color-canvas: #171614;
   --color-surface: #1e1d1a;
   --color-surface-2: #262421;
+  --color-sidebar: rgba(30, 29, 26, 0.72);
   --color-surface-3: #302e2a;
   --color-surface-4: #3a3833;
   --color-surface-5: #46433d;
@@ -292,8 +295,6 @@
   --glass-fill-2: rgba(249, 250, 251, 0.75);
   --glass-drop-shadow: rgba(70, 70, 70, 0.2);
   --glass-menu: rgba(255, 255, 255, 0.92);
-  /* Fondu du dégradé de bordure de la sidebar vers le fond */
-  --sidebar-fade: #ffffff;
   /* Voile sous une barre flottante du bas : assombrit le contenu qui défile
      dessous. Tokens plutôt que `from-surface-5/90` — en sombre il faut des
      valeurs *plus sombres* que la page, pas les mêmes surfaces qu'en clair. */
@@ -313,7 +314,6 @@
   --glass-fill-2: rgba(26, 25, 22, 0.86);
   --glass-drop-shadow: rgba(0, 0, 0, 0.55);
   --glass-menu: rgba(38, 36, 33, 0.94);
-  --sidebar-fade: #1e1d1a;
   --bar-fade: rgba(18, 17, 15, 0.92);
   --bar-fade-2: rgba(26, 25, 22, 0.88);
 }

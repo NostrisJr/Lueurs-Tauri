@@ -50,39 +50,17 @@ html {
 
 /* ── Sidebar accent (espaces) ────────────────────────────────────────────── */
 
-/* Permet d'animer la couleur dans des gradients via CSS transition.
+/* Permet d'animer la couleur dans un gradient via CSS transition.
    WebKit interpole '<color>' quand la valeur de la custom property change. */
-@property --sidebar-accent {
-  syntax: '<color>';
-  initial-value: white;
-  inherits: true;
-}
-
 @property --sidebar-infuse {
   syntax: '<color>';
   initial-value: transparent;
   inherits: true;
 }
 
-/* initial-value d'une @property n'accepte qu'un littéral. On repose donc la
-   valeur par défaut ici, où var() est permis — l'accent réel est posé en style
-   inline par SideBar, ce repli ne sert qu'avant le premier rendu. */
-:root {
-  --sidebar-accent: var(--color-surface);
-}
-
-/* Bordure en gradient : div absolu positionné 1px autour de l'aside.
-   DOM order avant l'aside → peint derrière (z-index: auto, même stacking context). */
-.sidebar-gradient-border {
-  position: absolute;
-  pointer-events: none;
-  background: linear-gradient(135deg, var(--sidebar-accent), var(--sidebar-fade));
-  transition: --sidebar-accent 380ms ease;
-}
-
-/* Infusion : gradient intérieur, animé via la même mécanique */
+/* Infusion : voile d'accent qui part de la bordure droite, animé via --sidebar-infuse */
 .sidebar-infuse-overlay {
-  background: linear-gradient(135deg, var(--sidebar-infuse), transparent 80%);
+  background: linear-gradient(270deg, var(--sidebar-infuse), transparent 90%);
   transition: --sidebar-infuse 380ms ease;
 }
 
